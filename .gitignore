@@ -1,0 +1,7 @@
+/node_modules/
+/build/
+/.mygo/
+/log/
+/flux/.local/
+*.test
+.DS_Store

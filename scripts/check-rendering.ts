@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {EditorState} from '@codemirror/state';
+import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
+import {GFM} from '@lezer/markdown';
+import {richExtensions,composing,setComposing} from '../src/editor';
+const rich=richExtensions(async()=> 'data:image/png;base64,');
+let state=EditorState.create({doc:'# 标题\n\n正文 [链接](https://example.com)\n\n- [ ] 待办\n\n| 项目 | 说明 |\n| --- | --- |\n| 甲 | 乙 |\n',extensions:[markdown({base:markdownLanguage,extensions:GFM}),composing,rich]});
+let values=[];state.field(rich).between(0,state.doc.length,(from,to,value)=>values.push({from,to,value}));
+assert.ok(values.some(x=>x.value.spec.widget?.constructor.name==='TaskWidget'));
+assert.ok(values.some(x=>x.value.spec.widget?.constructor.name==='TableWidget'));
+const before=state.field(rich);state=state.update({effects:setComposing.of(true)}).state;
+assert.equal(state.field(composing),true);
+state=state.update({changes:{from:state.doc.length,insert:'拼'}}).state;
+assert.equal(state.field(composing),true);assert.ok(state.doc.toString().endsWith('拼'));
+state=state.update({effects:setComposing.of(false)}).state;assert.equal(state.field(composing),false);
+console.log('任务与表格装饰、中文组合输入期间保留文本和暂停排版检查通过');

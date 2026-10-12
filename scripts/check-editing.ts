@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import {EditorState} from '@codemirror/state';
+import {history,undo} from '@codemirror/commands';
+import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
+import {GFM} from '@lezer/markdown';
+import {blockFormat,wrapSelection,makeLink,safeLink,serializeTable,parseTable,headings,linkAt} from '../src/editing';
+const create=(doc:string,from=0,to=doc.length)=>EditorState.create({doc,selection:{anchor:from,head:to},extensions:[history(),markdown({base:markdownLanguage,extensions:GFM})]});
+let s=create('第一行\n第二行\n不选这行',1,8);s=s.update(blockFormat(s,'task')).state;
+assert.equal(s.doc.toString(),'- [ ] 第一行\n- [ ] 第二行\n不选这行');
+let t=s;s=s.update(blockFormat(s,'task')).state;assert.equal(s.doc.toString(),'第一行\n第二行\n不选这行');
+assert.ok(undo({state:t,dispatch:tr=>t=tr.state}));assert.equal(t.doc.toString(),'第一行\n第二行\n不选这行');
+s=create('文字',0,2);s=s.update(wrapSelection(s,'**')).state;assert.equal(s.doc.toString(),'**文字**');s=s.update(wrapSelection(s,'**')).state;assert.equal(s.doc.toString(),'文字');
+assert.equal(safeLink('javascript:alert(1)'),false);assert.equal(safeLink('file:///private/test'),false);assert.equal(safeLink('#标题'),true);
+const link=makeLink('中文[标题]','https://example.com/a_(b)');s=create(link,4,4);assert.equal(linkAt(s)?.url,'https://example.com/a_(b)');
+assert.equal(linkAt(s)?.text,'中文[标题]');assert.equal(makeLink(linkAt(s)!.text,linkAt(s)!.url),link);
+const rows=[['项目','说明'],['中文|说明','`code`'],['最后一行','文本']];const raw=serializeTable(rows,['left','right']);const parsed=parseTable(raw);assert.equal(parsed.rows.length,3);assert.equal(parsed.aligns[1],'right');assert.equal(parsed.rows[1][0],'中文\\|说明');assert.equal(serializeTable(parsed.rows,parsed.aligns),raw);
+s=create('# 第一标题\n\n```md\n# 假标题\n```\n\n## 第二标题');assert.deepEqual(headings(s).map(h=>h.text),['第一标题','第二标题']);
+console.log('列表范围与撤销、强调切换、链接协议和转义、表格往返与真实大纲检查通过');
+// Multiple sequential replacements should retain an isolated undo step.
+const {isolateHistory}=await import('@codemirror/commands');
+s=create('前 留白 后',2,4);
+s=s.update({changes:{from:2,to:4,insert:makeLink('留白','https://example.com/a')},annotations:isolateHistory.of('full')}).state;
+const first=s.doc.toString();s=s.update({changes:{from:2,to:s.doc.length-2,insert:makeLink('留白','https://example.com/b')},annotations:isolateHistory.of('full')}).state;
+assert.ok(undo({state:s,dispatch:tr=>s=tr.state}));assert.equal(s.doc.toString(),first);

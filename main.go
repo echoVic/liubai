@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
+	"mime"
+	"net/url"
+	"sync"
+
 	"encoding/json"
 	"flag"
 	"io/fs"
@@ -16,6 +21,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/transfer"
 )
 
 //go:embed web
@@ -75,6 +81,47 @@ func (d *Desktop) Export(ctx context.Context, id string, allowMissing bool) (Exp
 	}
 	return d.w.Export(id, path, allowMissing)
 }
+func (d *Desktop) Delivery(id string) (Delivery, error) { return d.w.Delivery(id) }
+func (d *Desktop) CopyRich(html, text string) error {
+	if len(html)+len(text) > 64<<20 {
+		return errors.New("复制内容过大，请导出文稿")
+	}
+	return mygo.Clipboard.Write(transfer.New(transfer.NewItem(transfer.Bytes(transfer.HTML, []byte(html)), transfer.Bytes(transfer.Text, []byte(text)))))
+}
+func (d *Desktop) OpenLink(raw string) error {
+	u, e := url.Parse(raw)
+	if e != nil || (u.Scheme != "https" && u.Scheme != "http" && u.Scheme != "mailto") {
+		return errors.New("不支持的链接")
+	}
+	return mygo.Shell.OpenExternal(raw)
+}
+func (d *Desktop) Rescue(ctx context.Context, id, content string) (ExportResult, error) {
+	path, e := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "保存当前恢复副本", DefaultPath: "留白恢复副本.md", Filters: []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md"}}}})
+	if e != nil {
+		return ExportResult{}, e
+	}
+	if path == "" {
+		return ExportResult{Cancelled: true}, nil
+	}
+	return d.w.SaveRecovery(id, content, path)
+}
+func (d *Desktop) PDF(ctx context.Context, title string) (ExportResult, error) {
+	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "导出 PDF", DefaultPath: documentFilename(title, ".pdf"), Filters: []mygo.FileFilter{{Name: "PDF", Extensions: []string{"pdf"}}}})
+	if err != nil {
+		return ExportResult{}, err
+	}
+	if path == "" {
+		return ExportResult{Cancelled: true}, nil
+	}
+	b, err := d.win.Page().PrintToPDF(mygo.PDFOptions{PageSize: mygo.PageA4, Background: true})
+	if err != nil {
+		return ExportResult{}, err
+	}
+	if err = atomicWrite(path, b, 0644); err != nil {
+		return ExportResult{}, err
+	}
+	return ExportResult{Path: path}, nil
+}
 func (d *Desktop) Close()             { d.allowClose.Store(true); mygo.App.Quit() }
 func (d *Desktop) Reveal(path string) { mygo.Shell.ShowItemInFolder(path) }
 func (d *Desktop) requestClose()      { _ = desktopAction.Broadcast("close") }
@@ -84,7 +131,7 @@ func main() {
 	dataDir := flag.String("data-dir", "", "独立文稿存储目录")
 	flag.Parse()
 	mygo.App.SetName("留白")
-	mygo.App.SetVersion("0.1.0")
+	mygo.App.SetVersion("0.2.0")
 	web, _ := fs.Sub(frontend, "web")
 	if os.Getenv("MYGO_GENERATE") != "" {
 		mygo.Bind(&Desktop{})
@@ -143,11 +190,11 @@ func main() {
 		}
 		mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
 			{Label: "留白", Submenu: []*mygo.MenuItem{{Label: "关于留白", Click: func(*mygo.MenuItem, *mygo.Window) {
-				mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: "留白", ApplicationVersion: "0.1.0"})
+				mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: "留白", ApplicationVersion: "0.2.0"})
 			}}, mygo.Separator(), {Label: "退出留白", Accelerator: "CmdOrCtrl+Q", Click: action("close")}}},
-			{Label: "文件", Submenu: []*mygo.MenuItem{{Label: "新建文稿", Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: "打开文稿…", Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Label: "保存", Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: "另存为…", Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, {Label: "带走文稿…", Click: action("export")}}},
+			{Label: "文件", Submenu: []*mygo.MenuItem{{Label: "新建文稿", Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: "打开文稿…", Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Label: "保存", Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: "另存为…", Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, {Label: "带走文稿…", Click: action("deliver")}, {Label: "导出 PDF…", Accelerator: "CmdOrCtrl+P", Click: action("pdf")}}},
 			{Label: "编辑", Submenu: []*mygo.MenuItem{{Label: "撤销", Accelerator: "CmdOrCtrl+Z", Click: action("undo")}, {Label: "重做", Accelerator: "CmdOrCtrl+Shift+Z", Click: action("redo")}, mygo.Separator(), {Role: mygo.RoleCut}, {Role: mygo.RoleCopy}, {Role: mygo.RolePaste}, {Role: mygo.RoleSelectAll}, {Label: "查找", Accelerator: "CmdOrCtrl+F", Click: action("find")}}},
-			{Label: "显示", Submenu: []*mygo.MenuItem{{Label: "外观", Click: action("theme")}, {Label: "源码 / 即时排版", Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: "操作搜索", Accelerator: "CmdOrCtrl+K", Click: action("commands")}}},
+			{Label: "显示", Submenu: []*mygo.MenuItem{{Label: "段落专注", Accelerator: "CmdOrCtrl+Shift+F", Click: action("focus")}, {Label: "外观", Click: action("theme")}, {Label: "源码 / 即时排版", Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: "操作搜索", Accelerator: "CmdOrCtrl+K", Click: action("commands")}}},
 		}))
 		mygo.App.OnActivate(func(bool) { d.win.Show(); d.win.Focus() })
 		d.win.Page().OnWillNavigate(func(e *mygo.NavigateEvent) { e.PreventDefault() })
@@ -179,6 +226,41 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 		return os.ErrInvalid
 	}
 	mux := http.NewServeMux()
+	type ticket struct {
+		path, name string
+		created    time.Time
+	}
+	downloadDir := filepath.Join(d.w.root, "downloads")
+	if err := os.MkdirAll(downloadDir, 0700); err != nil {
+		return err
+	}
+	if files, err := os.ReadDir(downloadDir); err == nil {
+		for _, f := range files {
+			if info, e := f.Info(); e == nil && time.Since(info.ModTime()) > 10*time.Minute {
+				_ = os.Remove(filepath.Join(downloadDir, f.Name()))
+			}
+		}
+	}
+	downloads := map[string]ticket{}
+	var downloadMu sync.Mutex
+	mux.HandleFunc("/download/", func(out http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" || r.Host != addr {
+			http.Error(out, "invalid request", 400)
+			return
+		}
+		token := strings.TrimPrefix(r.URL.Path, "/download/")
+		downloadMu.Lock()
+		t, ok := downloads[token]
+		downloadMu.Unlock()
+		if !ok || time.Since(t.created) > 10*time.Minute {
+			http.NotFound(out, r)
+			return
+		}
+		out.Header().Set("Content-Type", "application/zip")
+		out.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": t.name}))
+		out.Header().Set("Cache-Control", "no-store")
+		http.ServeFile(out, r, t.path)
+	})
 	mux.Handle("/", http.FileServer(http.FS(web)))
 	mux.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
@@ -264,20 +346,37 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			if e == nil {
 				value, e = d.ImportImage(id, name, b)
 			}
-		case "ExportBrowser":
+		case "Delivery":
 			var id string
 			e = arg(0, &id)
 			if e == nil {
-				p := filepath.Join(d.w.root, "export-"+uid()+".zip")
+				value, e = d.Delivery(id)
+			}
+		case "ExportBrowser":
+			var id string
+			var allow bool
+			e = arg(0, &id)
+			if len(req.Args) > 1 && e == nil {
+				e = arg(1, &allow)
+			}
+			if e == nil {
+				p := filepath.Join(downloadDir, "export-"+uid()+".zip")
 				var result ExportResult
-				result, e = d.w.Export(id, p, false)
-				defer os.Remove(p)
-				if e == nil && len(result.Missing) == 0 {
-					b, er := os.ReadFile(p)
-					e = er
-					value = map[string]any{"data": b, "external": result.External}
+				result, e = d.w.Export(id, p, allow)
+				if e == nil && result.Path != "" {
+					token := uid()
+					downloadMu.Lock()
+					for key, t := range downloads {
+						if time.Since(t.created) > 10*time.Minute {
+							os.Remove(t.path)
+							delete(downloads, key)
+						}
+					}
+					downloads[token] = ticket{p, documentFilename(result.Document.Title, ".zip"), time.Now()}
+					downloadMu.Unlock()
+					value = map[string]any{"url": "/download/" + token, "missing": result.Missing, "external": result.External}
 				} else if e == nil {
-					e = os.ErrNotExist
+					value = map[string]any{"missing": result.Missing, "external": result.External}
 				}
 			}
 		default:

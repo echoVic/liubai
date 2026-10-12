@@ -8,12 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf16"
 	"unicode/utf8"
 )
 
@@ -22,6 +24,8 @@ const maxPicture = 20 << 20
 
 type Appearance struct {
 	Theme        string `json:"theme"`
+	FontSize     int    `json:"fontSize,omitempty"`
+	LineWidth    string `json:"lineWidth,omitempty"`
 	FollowSystem bool   `json:"followSystem"`
 }
 type Position struct {
@@ -167,7 +171,7 @@ func openWorkspace(root string) (*Workspace, error) {
 	if err := os.MkdirAll(filepath.Join(root, "drafts"), 0700); err != nil {
 		return nil, err
 	}
-	w := &Workspace{root: root, docs: map[string]*Document{}, appearance: Appearance{"paper", true}}
+	w := &Workspace{root: root, docs: map[string]*Document{}, appearance: Appearance{Theme: "paper", FollowSystem: true}}
 	if b, err := readLimited(filepath.Join(root, "workspace.json"), 1<<20); err == nil {
 		var x index
 		if json.Unmarshal(b, &x) != nil || x.Version != 1 {
@@ -312,8 +316,15 @@ func (w *Workspace) Update(e Edit) (Document, error) {
 	if len(e.Content) > maxDocument || !utf8.ValidString(e.Content) {
 		return *d, errors.New("文稿超过 8 MB 或编码无效")
 	}
+	before := *d
 	changed := d.Content != e.Content
 	d.Content = e.Content
+	length := len(utf16.Encode([]rune(e.Content)))
+	e.Position.Anchor = max(0, min(length, e.Position.Anchor))
+	e.Position.Head = max(0, min(length, e.Position.Head))
+	if math.IsNaN(e.Position.Scroll) || math.IsInf(e.Position.Scroll, 0) || e.Position.Scroll < 0 {
+		e.Position.Scroll = 0
+	}
 	d.Position = e.Position
 	d.Revision++
 	if changed {
@@ -324,7 +335,7 @@ func (w *Workspace) Update(e Edit) (Document, error) {
 	}
 	d.Status = "草稿已保存"
 	if err := w.persist(d); err != nil {
-		d.Revision--
+		*d = before
 		d.Status = "保存失败，内容仍在编辑器"
 		return *d, err
 	}
@@ -419,6 +430,12 @@ func (w *Workspace) Appearance(p Appearance) error {
 	if !validTheme(p.Theme) {
 		return errors.New("未知主题")
 	}
+	if p.FontSize != 0 && (p.FontSize < 15 || p.FontSize > 22) {
+		return errors.New("字号应为 15 至 22")
+	}
+	if p.LineWidth != "" && p.LineWidth != "normal" && p.LineWidth != "wide" {
+		return errors.New("未知行宽")
+	}
 	old := w.appearance
 	w.appearance = p
 	if err := w.saveIndex(); err != nil {
@@ -485,9 +502,14 @@ func (w *Workspace) Rename(id, title string) (WorkspaceState, error) {
 	if d.Path != "" {
 		return WorkspaceState{}, errors.New("已有文件请通过另存命名")
 	}
+	old := *d
 	d.Title = title
 	d.CustomTitle = true
-	return w.snapshot(), w.persist(d)
+	if err := w.persist(d); err != nil {
+		*d = old
+		return w.snapshot(), err
+	}
+	return w.snapshot(), nil
 }
 func cleanError(err error) error {
 	if err == nil {

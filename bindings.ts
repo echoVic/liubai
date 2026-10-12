@@ -6,7 +6,17 @@ import { call, event } from "mygo-runtime";
 
 export interface Appearance {
   theme: string;
+  fontSize?: number;
+  lineWidth?: string;
   followSystem: boolean;
+}
+
+export interface Delivery {
+  title: string;
+  content: string;
+  images: Record<string, string>;
+  missing: string[];
+  external: number;
 }
 
 export interface Document {
@@ -88,6 +98,12 @@ export const Desktop = {
   close(): Promise<void> {
     return call("Desktop.Close");
   },
+  copyRich(html: string, text: string): Promise<void> {
+    return call("Desktop.CopyRich", html, text);
+  },
+  delivery(id: string): Promise<Delivery> {
+    return call("Desktop.Delivery", id);
+  },
   export(id: string, allowMissing: boolean): Promise<ExportResult> {
     return call("Desktop.Export", id, allowMissing);
   },
@@ -100,6 +116,12 @@ export const Desktop = {
   open(): Promise<WorkspaceState> {
     return call("Desktop.Open");
   },
+  openLink(raw: string): Promise<void> {
+    return call("Desktop.OpenLink", raw);
+  },
+  pdf(title: string): Promise<ExportResult> {
+    return call("Desktop.PDF", title);
+  },
   readImage(id: string, dest: string): Promise<ImageResult> {
     return call("Desktop.ReadImage", id, dest);
   },
@@ -108,6 +130,9 @@ export const Desktop = {
   },
   rename(id: string, title: string): Promise<WorkspaceState> {
     return call("Desktop.Rename", id, title);
+  },
+  rescue(id: string, content: string): Promise<ExportResult> {
+    return call("Desktop.Rescue", id, content);
   },
   reveal(path: string): Promise<void> {
     return call("Desktop.Reveal", path);

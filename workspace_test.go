@@ -43,7 +43,7 @@ func TestDraftRecoveryRevisionAndAppearance(t *testing.T) {
 	if _, e := w.Update(Edit{ID: d.ID, Revision: 0, Content: "stale"}); e == nil {
 		t.Fatal("stale revision accepted")
 	}
-	if e := w.Appearance(Appearance{"warm", false}); e != nil {
+	if e := w.Appearance(Appearance{Theme: "warm", FollowSystem: false}); e != nil {
 		t.Fatal(e)
 	}
 	recovered, e := openWorkspace(w.root)
@@ -304,5 +304,94 @@ func TestComplexImageExportFailsBeforeWritingBrokenArchive(t *testing.T) {
 	}
 	if _, e = os.Stat(p); !os.IsNotExist(e) {
 		t.Fatal("broken archive produced")
+	}
+}
+
+func TestFailedDraftWriteCanRetryWithoutLosingRevision(t *testing.T) {
+	w := workspace(t)
+	d := edit(t, w, "原始内容")
+	file := filepath.Join(w.root, "drafts", d.ID+".json")
+	old, e := os.ReadFile(file)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = os.Remove(file); e != nil {
+		t.Fatal(e)
+	}
+	if e = os.Mkdir(file, 0700); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = w.Update(Edit{ID: d.ID, Revision: d.Revision, Content: "最新修改"}); e == nil {
+		t.Fatal("expected write failure")
+	}
+	if got := w.State().Current; got.Revision != d.Revision || got.Content != d.Content {
+		t.Fatal("failed transaction changed durable state")
+	}
+	if e = os.Remove(file); e != nil {
+		t.Fatal(e)
+	}
+	if e = os.WriteFile(file, old, 0600); e != nil {
+		t.Fatal(e)
+	}
+	got, e := w.Update(Edit{ID: d.ID, Revision: d.Revision, Content: "最新修改"})
+	if e != nil || got.Content != "最新修改" {
+		t.Fatal(e)
+	}
+	recovered, e := openWorkspace(w.root)
+	if e != nil || recovered.State().Current.Content != "最新修改" {
+		t.Fatal("retry recovery", e)
+	}
+}
+func TestDeliverySnapshotEmbedsLocalImagesAndReportsMissing(t *testing.T) {
+	w := workspace(t)
+	d := w.State().Current
+	im, e := w.ImportImage(d.ID, "a.png", base64.StdEncoding.EncodeToString(tinyPNG()))
+	if e != nil {
+		t.Fatal(e)
+	}
+	s := "# 图文\n\n![图](" + im.Destination + ")\n\n![不存在](missing.png)\n\n![联网](https://example.com/p.png)\n\n最后一段"
+	edit(t, w, s)
+	r, e := w.Delivery(d.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if r.Content != s || len(r.Images) != 1 || len(r.Missing) != 1 || r.External != 1 {
+		t.Fatal("incomplete delivery")
+	}
+	if !strings.HasPrefix(r.Images[im.Destination], "data:image/png;base64,") {
+		t.Fatal("image not embedded")
+	}
+	edit(t, w, "后续编辑")
+	if r.Content != s {
+		t.Fatal("delivery snapshot mutated")
+	}
+}
+func TestRecoverySavesLatestContentAndImagesWithoutOverwritingOriginal(t *testing.T) {
+	w := workspace(t)
+	d := w.State().Current
+	im, e := w.ImportImage(d.ID, "a.png", base64.StdEncoding.EncodeToString(tinyPNG()))
+	if e != nil {
+		t.Fatal(e)
+	}
+	original := filepath.Join(t.TempDir(), "original.md")
+	edit(t, w, "已保存正文")
+	if _, e = w.SaveAs(d.ID, original); e != nil {
+		t.Fatal(e)
+	}
+	latest := "# 尚未保存的文字\n\n![图](" + im.Destination + ")"
+	path := filepath.Join(t.TempDir(), "recovery.md")
+	if _, e = w.SaveRecovery(d.ID, latest, path); e != nil {
+		t.Fatal(e)
+	}
+	b, e := os.ReadFile(path)
+	if e != nil || !strings.Contains(string(b), "尚未保存的文字") || strings.Contains(string(b), "liubai-asset:") {
+		t.Fatal("recovery not portable", e)
+	}
+	b, e = os.ReadFile(original)
+	if e != nil || string(b) != "已保存正文" {
+		t.Fatal("original overwritten")
+	}
+	if _, e = w.SaveRecovery(d.ID, latest, original); e == nil {
+		t.Fatal("recovery may overwrite original")
 	}
 }

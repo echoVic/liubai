@@ -56,6 +56,22 @@ def import_text(page, text, name):
     assert workspace(page)["current"]["content"] == text
 
 
+def open_recent(page, title):
+    page.locator('[data-action="recent"]').click()
+    expect(page.locator("#drawer")).to_be_visible()
+    item = page.locator(".recent-item").filter(
+        has=page.locator("b", has_text=title)
+    )
+    expect(item).to_have_count(1)
+    with page.expect_response(
+        lambda response: response.url.endswith("/api")
+        and '"Activate"' in (response.request.post_data or "")
+    ) as activated:
+        item.click()
+    assert not activated.value.json().get("error"), activated.value.text()
+    expect(page.locator("#drawer")).to_be_hidden()
+
+
 def scroll_top(locator):
     return locator.evaluate("(element) => element.scrollTop")
 
@@ -278,6 +294,63 @@ def run(page):
     page.unroute(BASE + "/api", defer_first_read)
     expect(page.locator("#preview .markdown-image-note")).to_have_count(0)
 
+    # Recent must reopen persisted documents through the real drawer flow.
+    image_document = workspace(page)
+    image_id = image_document["current"]["id"]
+    image_title = image_document["current"]["title"]
+    original = next(item for item in image_document["recent"] if item["id"] == original_id)
+    open_recent(page, original["title"])
+    reopened = workspace(page)
+    assert reopened["current"]["id"] == original_id
+    original_content = reopened["current"]["content"]
+    expect(page.locator("#preview h1")).to_have_text("分栏验收")
+    open_recent(page, image_title)
+    assert workspace(page)["current"]["id"] == image_id
+    expect(page.locator("#preview h1")).to_have_text("图片晚到重试")
+
+    # A deferred image result from document A must not affect document B after
+    # switching through Recent. This is a synthetic network race, not native I/O.
+    stale_reads = []
+    stale_attempts = 0
+
+    def defer_stale_read(route):
+        nonlocal stale_attempts
+        if route.request.post_data_json.get("method") == "ReadImage":
+            stale_attempts += 1
+            if stale_attempts == 1:
+                stale_reads.append(route)
+                return
+        route.continue_()
+
+    page.route(BASE + "/api", defer_stale_read)
+    with page.expect_request(
+        lambda request: request.url == BASE + "/api"
+        and request.post_data_json.get("method") == "ReadImage"
+    ):
+        page.reload()  # Clear A's image cache and hold its first backend read.
+    page.wait_for_timeout(50)  # Let Playwright's Python route callback retain it.
+    assert stale_reads, "document A ReadImage was not held"
+    expect(page.locator("#preview h1")).to_have_text("图片晚到重试")
+    open_recent(page, original["title"])
+    switched = workspace(page)
+    assert switched["current"]["id"] == original_id
+    assert switched["current"]["content"] == original_content
+    expect(page.locator("#preview h1")).to_have_text("分栏验收")
+    stale_reads[0].fulfill(
+        status=200,
+        content_type="application/json",
+        body=json.dumps({"value": None, "error": "synthetic stale ReadImage failure"}),
+    )
+    page.wait_for_timeout(500)
+    after_stale = workspace(page)
+    assert after_stale["current"]["id"] == original_id
+    assert after_stale["current"]["content"] == original_content
+    expect(page.locator("#preview h1")).to_have_text("分栏验收")
+    expect(page.locator("#preview img")).to_have_count(0)
+    expect(page.locator("#preview .markdown-image-note")).to_have_count(0)
+    assert stale_attempts == 1, f"stale document retried ReadImage {stale_attempts - 1} times"
+    page.unroute(BASE + "/api", defer_stale_read)
+
     # Theme/font controls must not reset the new global fields.
     page.locator('[data-action="theme"]').click()
     for theme in ["ink", "warm", "mist", "paper"]:
@@ -316,10 +389,13 @@ def run(page):
           return {left:{x:left.x,y:left.y,w:left.width,h:left.height},
             right:{x:right.x,y:right.y,w:right.width,h:right.height},
             visibleFirst,
+            headerCount:document.querySelectorAll('body > .topbar').length,
+            iframeCount:document.querySelectorAll('iframe').length,
             readerOverflow:reader.scrollWidth > reader.clientWidth + 1,
             localCodeScroll:code.scrollWidth > code.clientWidth,
             overflow:document.documentElement.scrollWidth > innerWidth};
         }""")
+        assert geometry["headerCount"] == 1 and geometry["iframeCount"] == 0, geometry
         assert not geometry["overflow"], geometry
         assert not geometry["readerOverflow"], geometry
         assert geometry["localCodeScroll"], geometry
@@ -332,7 +408,7 @@ def run(page):
             assert geometry["right"]["x"] >= geometry["left"]["x"] + geometry["left"]["w"] - 2, geometry
         page.screenshot(path=str(ARTIFACTS / f"split-{width}.png"))
 
-    print("PASS: rendering, readonly tasks, modes/history, soft follow, IME guard, persistence, themes, local images/HTML export, responsive layout")
+    print("PASS: rendering, readonly tasks, modes/history, soft follow, IME guard, reload/new-document/Recent persistence, stale image isolation, themes, local images/HTML export, responsive layout")
 
 
 with sync_playwright() as playwright:

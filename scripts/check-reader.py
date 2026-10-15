@@ -41,12 +41,17 @@ def new_document(page, text):
     # Wait for the New round-trip itself: the previous draft may also be titled 未命名文稿,
     # and typing while the request is in flight lands in a read-only editor.
     with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
-        page.locator('[data-action="new"]').first.click()
+        more_action(page, "new")
     expect(page.locator("#doc-title")).to_have_text("未命名文稿")
     page.wait_for_timeout(150)
     page.locator(".cm-content").click()
     page.keyboard.insert_text(text)
     expect(page.locator("#save-status")).to_have_text("草稿已保存")
+
+
+def more_action(page, action):
+    page.locator("#more-button").click()
+    page.locator(f'#more-menu [data-menu-action="{action}"]').click()
 
 
 def run(page):
@@ -68,6 +73,13 @@ def run(page):
     for hidden in ("#retry-save", "#banner-save-as", "#reload-disk", "#overwrite-disk"):
         expect(page.locator(hidden)).to_be_hidden()
     page.unroute(BASE + "/api", notice_route)
+
+    page.locator('[data-view="split"]').click()
+    expect(page.locator("#preview")).to_be_visible()
+    page.locator('[data-view="read"]').click()
+    expect(page.locator(".editor-pane")).to_be_hidden()
+    page.locator('[data-view="single"]').click()
+    expect(page.locator("#preview")).to_be_hidden()
 
     # Reader rendering through the real preview: sanitized HTML, front matter, linkify, alerts, footnotes, highlighting.
     new_document(page, README)
@@ -146,13 +158,14 @@ def run(page):
 
     # Empty drafts are cleaned when switching away; removal needs two clicks.
     new_document(page, "# 要移除的文稿\n\n内容")
-    page.locator('[data-action="new"]').first.click()
+    more_action(page, "new")
     page.wait_for_timeout(300)
-    page.locator('[data-action="new"]').first.click()
+    more_action(page, "new")
     page.wait_for_timeout(300)
     titles = [d["title"] for d in api(page, "State")["recent"]]
     assert titles.count("未命名文稿") == 1, titles
-    page.locator('[data-action="recent"]').first.click()
+    page.locator("#sidebar-button").click()
+    page.locator('[data-tab="recent"]').click()
     row = page.locator(".recent-row").filter(has=page.locator("b", has_text="要移除的文稿"))
     row.hover()
     remove = row.locator(".recent-remove")

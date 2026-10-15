@@ -58,7 +58,8 @@ def import_text(page, text, name):
 
 
 def open_recent(page, title):
-    page.locator('[data-action="recent"]').click()
+    page.locator("#sidebar-button").click()
+    page.locator('[data-tab="recent"]').click()
     expect(page.locator("#drawer")).to_be_visible()
     item = page.locator(".recent-item").filter(
         has=page.locator("b", has_text=title)
@@ -121,6 +122,11 @@ def stability_sample(page):
     })""")
 
 
+def more_action(page, action):
+    page.locator("#more-button").click()
+    page.locator(f'#more-menu [data-menu-action="{action}"]').click()
+
+
 def run(page):
     page.goto(BASE)
     expect(page.locator(".cm-content")).to_be_visible()
@@ -129,7 +135,7 @@ def run(page):
     # On the pre-feature build this fails: the page has no reading pane.
     expect(page.locator("#preview")).to_have_count(1)
     expect(page.locator("#preview")).to_be_hidden()
-    appearance_change(page, lambda: page.locator("#mode-button").click())
+    appearance_change(page, lambda: page.locator('[data-view="split"]').click())
     expect(page.locator("#preview")).to_be_visible()
     expect(page.locator("#preview h1")).to_have_text("分栏验收")
     expect(page.locator("#preview h2")).to_have_count(40)
@@ -152,12 +158,12 @@ def run(page):
     page.keyboard.press("Meta+End")
     page.keyboard.insert_text("\n\n撤销保留检查")
     expect(page.locator("#preview article")).to_contain_text("撤销保留检查")
-    appearance_change(page, lambda: page.locator("#mode-button").click())
+    appearance_change(page, lambda: page.locator('[data-view="single"]').click())
     expect(page.locator("#preview")).to_be_hidden()
     assert "source-mode" not in page.locator(".paper").get_attribute("class")
     content.focus()
     page.keyboard.press("Meta+z")
-    appearance_change(page, lambda: page.locator("#mode-button").click())
+    appearance_change(page, lambda: page.locator('[data-view="split"]').click())
     expect(page.locator("#preview article")).not_to_contain_text("撤销保留检查")
     assert "source-mode" in page.locator(".paper").get_attribute("class")
     page.keyboard.press("Meta+Shift+z")
@@ -244,7 +250,7 @@ def run(page):
         lambda response: response.url.endswith("/api")
         and '"New"' in (response.request.post_data or "")
     ):
-        page.locator('[data-action="new"]').click()
+        more_action(page, "new")
     assert_preview_renders(page)
     assert workspace(page)["current"]["id"] != before_new
     import_text(page, "# 第二篇\n\n另一篇正文", "第二篇.md")
@@ -265,7 +271,7 @@ def run(page):
       return img && img.complete && img.naturalWidth > 0;
     }""")
     expect(page.locator("#save-status")).to_have_text(re.compile("^(草稿已保存|文件已保存)$"))
-    page.locator('[data-action="deliver"]').click()
+    page.locator(".export-button").click()
     page.locator('[data-deliver="html"]').click()
     expect(page.locator("#ready-go")).to_be_visible()
     with page.expect_download() as downloaded:
@@ -499,7 +505,7 @@ def run(page):
 
     page.route(BASE + "/api", fulfill_same_id)
     reset_preview_renders(page)
-    page.locator('[data-action="new"]').click()
+    more_action(page, "new")
     expect(page.locator("#preview h1")).to_have_text("同 ID 重载")
     assert_preview_renders(page)
     page.unroute(BASE + "/api", fulfill_same_id)

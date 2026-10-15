@@ -1,0 +1,258 @@
+"""Browser regression for the approved toolbar. Use an isolated --data-dir.
+
+python3 scripts/check-toolbar.py http://127.0.0.1:4197
+Requires Python Playwright and Chrome (or PLAYWRIGHT_CHANNEL).
+"""
+import json
+import os
+from pathlib import Path
+import re
+import sys
+import tempfile
+
+from playwright.sync_api import expect, sync_playwright
+
+
+BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4197"
+ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-toolbar-qa-"))
+TEXT = "# 一\n\n第一段。\n\n## 二\n\n第二段。"
+
+
+def api(page, method, *args):
+    response = page.request.post(BASE + "/api", data={"method": method, "args": list(args)}, headers={"Origin": BASE})
+    assert response.ok, response.text()
+    body = response.json()
+    assert not body.get("error"), body
+    return body["value"]
+
+
+def appearance_change(page, operation):
+    with page.expect_response(lambda r: r.url.endswith("/api") and '"Appearance"' in (r.request.post_data or "")) as pending:
+        operation()
+    assert not pending.value.json().get("error"), pending.value.text()
+
+
+def select_view(page, view):
+    appearance_change(page, lambda: page.locator(f'[data-view="{view}"]').click())
+    assert_view(page, view)
+
+
+def assert_view(page, view):
+    expect(page.locator('.view-switch [aria-checked="true"]')).to_have_count(1)
+    expect(page.locator(f'[data-view="{view}"]')).to_have_attribute("aria-checked", "true")
+    assert page.locator('.view-switch button').evaluate_all("els => els.filter(el => el.tabIndex === 0).map(el => el.dataset.view)") == [view]
+    assert api(page, "State")["appearance"]["layout"] == view
+
+
+def more_action(page, action):
+    page.locator("#more-button").click()
+    page.locator(f'#more-menu [data-menu-action="{action}"]').click()
+
+
+def accessible_buttons(page):
+    for button in page.locator('.topbar button:visible, #drawer button:visible, #more-menu button:visible').all():
+        expect(button).to_have_accessible_name(re.compile(r"\S"))
+        # SVG-only controls and the × recent-removal control need tooltips.
+        if button.locator("svg").count() and not button.inner_text().strip() or button.inner_text().strip() == "×":
+            assert button.get_attribute("title"), button.evaluate("el => el.outerHTML")
+
+
+def run(page):
+    page.goto(BASE)
+    expect(page.locator(".cm-content")).to_be_visible()
+    order = page.locator(".topbar button").evaluate_all("els => els.map(el => el.id || el.dataset.view || el.dataset.action)")
+    assert order == ["sidebar-button", "doc-title", "single", "split", "read", "theme", "deliver", "more-button"], order
+    assert page.locator(".view-switch button").all_text_contents() == ["编辑", "分栏", "阅读"]
+    expect(page.locator('.view-switch')).to_have_attribute("role", "radiogroup")
+    expect(page.locator('.view-switch')).to_have_attribute("aria-label", "视图")
+    expect(page.locator('.view-switch [role="radio"]')).to_have_count(3)
+    accessible_buttons(page)
+    icons = page.locator('.topbar button, .drawer-head button').evaluate_all("""els => els.filter(el => el.querySelector('svg')).map(el => ({
+      action:el.dataset.action || el.dataset.close || el.id, svg:el.querySelector('svg').outerHTML
+    }))""")
+    for i, first in enumerate(icons):
+        for second in icons[i + 1:]:
+            assert first["action"] == second["action"] or first["svg"] != second["svg"], (first, second)
+
+    # Use the real New action and autosave before checking sidebar headings/recent.
+    with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
+        more_action(page, "new")
+    page.locator('.cm-content[contenteditable="true"]').click()
+    page.keyboard.insert_text(TEXT)
+    expect(page.locator("#save-status")).to_have_text("草稿已保存")
+    title = page.locator("#doc-title").inner_text()
+
+    select_view(page, "split")
+    expect(page.locator("#preview")).to_be_visible()
+    select_view(page, "read")
+    expect(page.locator(".editor-pane")).to_be_hidden()
+    select_view(page, "single")
+    expect(page.locator(".editor-pane")).to_be_visible()
+    expect(page.locator("#preview")).to_be_hidden()
+    appearance_change(page, lambda: page.keyboard.press("Meta+\\"))
+    assert_view(page, "split")
+    appearance_change(page, lambda: page.keyboard.press("Meta+Shift+R"))
+    assert_view(page, "read")
+    appearance_change(page, lambda: page.keyboard.press("Meta+Shift+R"))
+    assert_view(page, "split")
+    page.locator('[data-view="split"]').focus()
+    appearance_change(page, lambda: page.keyboard.press("ArrowLeft"))
+    assert_view(page, "single")
+    expect(page.locator('[data-view="single"]')).to_be_focused()
+    appearance_change(page, lambda: page.keyboard.press("ArrowRight"))
+    assert_view(page, "split")
+    appearance_change(page, lambda: page.keyboard.press("ArrowRight"))
+    assert_view(page, "read")
+    appearance_change(page, lambda: page.keyboard.press("ArrowRight"))
+    assert_view(page, "single")
+    page.reload()
+    expect(page.locator(".cm-content")).to_be_visible()
+    assert_view(page, "single")
+
+    sidebar = page.locator("#sidebar-button")
+    drawer = page.locator("#drawer")
+    sidebar.click()
+    expect(drawer).to_be_visible()
+    expect(sidebar).to_have_attribute("aria-expanded", "true")
+    expect(page.locator('[data-tab="recent"]')).to_have_attribute("aria-selected", "true")
+    accessible_buttons(page)
+    sidebar.click()
+    expect(drawer).to_be_hidden()
+    expect(sidebar).to_have_attribute("aria-expanded", "false")
+    sidebar.click()
+    page.locator('[data-tab="outline"]').click()
+    expect(page.locator('[data-tab="outline"]')).to_have_attribute("aria-selected", "true")
+    expect(page.locator('[data-tab="recent"]')).to_have_attribute("aria-selected", "false")
+    expect(page.locator("#drawer-list")).to_have_attribute("role", "tabpanel")
+    expect(page.locator("#recent-search")).to_be_hidden()
+    expect(page.locator(".drawer-open")).to_be_hidden()
+    expect(page.locator(".outline-item")).to_have_text(["一", "二"])
+    page.locator(".outline-item", has_text="二").click()
+    page.wait_for_function("""() => {
+      const node=getSelection()?.anchorNode;
+      return node?.parentElement?.closest('.cm-line')?.textContent.includes('二');
+    }""")
+    # Verify the actual CodeMirror selection via the separately persisted position.
+    page.wait_for_function("""async ({base, anchor}) => {
+      const r=await fetch(base+'/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'State',args:[]})});
+      return (await r.json()).value.current.position.anchor===anchor;
+    }""", arg={"base": BASE, "anchor": TEXT.index("## 二")})
+    page.keyboard.press("Escape")
+    expect(drawer).to_be_hidden()
+    expect(sidebar).to_have_attribute("aria-expanded", "false")
+    sidebar.click()
+    expect(page.locator('[data-tab="outline"]')).to_have_attribute("aria-selected", "true")
+    page.locator('[data-tab="recent"]').click()
+    expect(page.locator("#recent-search")).to_be_visible()
+    expect(page.locator(".drawer-open")).to_be_visible()
+    expect(page.locator(".recent-item b", has_text=title)).to_have_count(1)
+    accessible_buttons(page)
+    page.locator('[data-close="drawer"]').click()
+    expect(sidebar).to_have_attribute("aria-expanded", "false")
+
+    more = page.locator("#more-button")
+    menu = page.locator("#more-menu")
+    first = menu.locator('[data-menu-action="new"]')
+    source = menu.locator('[data-menu-action="source"]')
+    focus = menu.locator('[data-menu-action="focus"]')
+    more.click()
+    expect(menu).to_be_visible()
+    expect(more).to_have_attribute("aria-expanded", "true")
+    expect(first).to_be_focused()
+    accessible_buttons(page)
+    expect(source).to_have_attribute("aria-disabled", "true")
+    expect(source).to_contain_text("仅分栏可用")
+    page.keyboard.press("ArrowDown")
+    expect(menu.locator('[data-menu-action="open"]')).to_be_focused()
+    page.keyboard.press("End")
+    expect(menu.locator('[data-menu-action="commands"]')).to_be_focused()
+    page.keyboard.press("ArrowUp")  # Skip disabled source.
+    expect(focus).to_be_focused()
+    page.keyboard.press("Home")
+    expect(first).to_be_focused()
+    page.keyboard.press("Escape")
+    expect(menu).to_be_hidden()
+    expect(more).to_have_attribute("aria-expanded", "false")
+    expect(more).to_be_focused()
+    for key in ("Enter", "Space", "ArrowDown"):
+        page.keyboard.press(key)
+        expect(first).to_be_focused()
+        page.keyboard.press("Escape")
+    more.click()
+    page.locator("#document-kind").click()
+    expect(menu).to_be_hidden()
+    expect(more).to_have_attribute("aria-expanded", "false")
+    more.click()
+    page.keyboard.press("Tab")
+    expect(menu).to_be_hidden()
+
+    select_view(page, "read")
+    more.click()
+    expect(focus).to_have_attribute("aria-disabled", "true")
+    expect(source).to_have_attribute("aria-disabled", "true")
+    page.keyboard.press("Escape")
+    select_view(page, "split")
+    more.click()
+    expect(source).to_have_attribute("aria-disabled", "false")
+    expect(source.locator("small")).to_be_hidden()
+    previous = source.get_attribute("aria-checked")
+    source.focus()
+    appearance_change(page, lambda: page.keyboard.press("Space"))
+    expect(menu).to_be_hidden()
+    more.click()
+    expect(source).to_have_attribute("aria-checked", "false" if previous == "true" else "true")
+    page.keyboard.press("Escape")
+    more_action(page, "focus")
+    expect(page.locator("body")).to_have_class(re.compile("focus-mode"))
+    page.keyboard.press("Escape")
+    expect(page.locator("body")).not_to_have_class(re.compile("focus-mode"))
+    more.click()
+    page.keyboard.press("End")
+    page.keyboard.press("Enter")
+    expect(page.locator("#commands")).to_be_visible()
+    expect(page.locator("#commands")).to_have_attribute("aria-label", "所有操作")
+    page.keyboard.press("Escape")
+    page.locator(".export-button").click()
+    expect(page.locator("#delivery-dialog")).to_be_visible()
+    expect(page.locator("#delivery-dialog h2")).to_have_text("导出这一页")
+    page.keyboard.press("Escape")
+
+    # Include desktop traffic-light space even though this test uses the web backend.
+    page.evaluate("document.body.classList.add('desktop')")
+    for width in (1440, 1120, 800, 680):
+        page.set_viewport_size({"width": width, "height": 820})
+        accessible_buttons(page)
+        geometry = page.locator(".topbar").evaluate("""bar => {
+          const r=bar.getBoundingClientRect();
+          return {overflow:bar.scrollWidth>bar.clientWidth || document.documentElement.scrollWidth>innerWidth,
+            boxes:[...bar.querySelectorAll('button')].map(b => {const q=b.getBoundingClientRect();return {x:q.x,right:q.right,y:q.y,bottom:q.bottom}}),
+            bounds:{x:r.x,right:r.right,y:r.y,bottom:r.bottom}};
+        }""")
+        assert not geometry["overflow"], geometry
+        for box in geometry["boxes"]:
+            assert box["x"] >= 0 and box["right"] <= width and box["y"] >= geometry["bounds"]["y"] and box["bottom"] <= geometry["bounds"]["bottom"], geometry
+        for radio in page.locator(".view-switch button").all():
+            expect(radio).to_be_visible()
+        if width == 680:
+            expect(page.locator(".export-label")).to_be_hidden()
+            expect(page.locator(".export-button")).to_have_accessible_name("导出")
+        page.locator(".topbar").screenshot(path=str(ARTIFACTS / f"toolbar-{width}.png"))
+    print("PASS: toolbar order/names/icons, view radios/shortcuts/reload, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
+
+
+with sync_playwright() as playwright:
+    browser = playwright.chromium.launch(headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
+    page = browser.new_page(viewport={"width": 1120, "height": 820})
+    page.set_default_timeout(7000)
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    try:
+        run(page)
+        assert not errors, errors
+    except Exception:
+        page.screenshot(path=str(ARTIFACTS / "failure.png"))
+        (ARTIFACTS / "errors.json").write_text(json.dumps(errors, ensure_ascii=False))
+        raise
+    finally:
+        print(f"Evidence: {ARTIFACTS}")
+        browser.close()

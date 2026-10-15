@@ -39,10 +39,31 @@ func TestMenuTemplateUsesChineseLabelsAndStandardItems(t *testing.T) {
 func TestSaveHTMLRejectsOversizedContentBeforeDialog(t *testing.T) {
 	d := &Desktop{}
 	r, err := d.SaveHTML(context.Background(), "文稿", strings.Repeat("x", (64<<20)+1))
-	if err == nil || err.Error() != "HTML 过大，请使用 ZIP 带走文稿" {
+	if err == nil || err.Error() != "HTML 过大，请改用 ZIP 导出" {
 		t.Fatalf("SaveHTML error = %v", err)
 	}
 	if r.Path != "" || r.Cancelled {
 		t.Fatalf("SaveHTML result = %+v", r)
+	}
+}
+
+func TestMenuUsesToolbarNamesAndShortcuts(t *testing.T) {
+	got := map[string]string{}
+	var walk func([]*mygo.MenuItem)
+	walk = func(items []*mygo.MenuItem) {
+		for _, item := range items {
+			got[item.Label] = item.Accelerator
+			walk(item.Submenu)
+		}
+	}
+	walk(menuTemplate(func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }))
+	for label, key := range map[string]string{
+		"导出…": "", "专注模式": "CmdOrCtrl+Shift+F", "外观与排版…": "",
+		"切换分栏": "CmdOrCtrl+\\", "阅读模式": "CmdOrCtrl+Shift+R",
+		"显示 Markdown 源码": "CmdOrCtrl+Shift+M", "所有操作…": "CmdOrCtrl+K",
+	} {
+		if actual, exists := got[label]; !exists || actual != key {
+			t.Errorf("menu %q shortcut = %q (exists %v), want %q", label, actual, exists, key)
+		}
 	}
 }

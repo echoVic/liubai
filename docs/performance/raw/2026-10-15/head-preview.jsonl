@@ -1,0 +1,12 @@
+{"suite": "preview", "tree": "modern", "scenario": "render-markdown", "chars": 20000, "ms": 5.65}
+{"suite": "preview", "tree": "modern", "scenario": "render-markdown", "chars": 100000, "ms": 26.43}
+{"suite": "preview", "tree": "modern", "scenario": "render-readme-html-header", "chars": 20000, "ms": 19.83}
+{"suite": "preview", "tree": "modern", "scenario": "render-readme-html-header", "chars": 100000, "ms": 106.93}
+{"suite": "preview", "tree": "modern", "scenario": "render-html-every-section", "chars": 20000, "ms": 17.85}
+{"suite": "preview", "tree": "modern", "scenario": "render-html-every-section", "chars": 100000, "ms": 85.46}
+{"suite": "preview", "tree": "modern", "scenario": "render-markdown", "chars": 20000, "ms": 5.1}
+{"suite": "preview", "tree": "modern", "scenario": "render-markdown", "chars": 100000, "ms": 26.94}
+{"suite": "preview", "tree": "modern", "scenario": "render-readme-html-header", "chars": 20000, "ms": 18.08}
+{"suite": "preview", "tree": "modern", "scenario": "render-readme-html-header", "chars": 100000, "ms": 95.64}
+{"suite": "preview", "tree": "modern", "scenario": "render-html-every-section", "chars": 20000, "ms": 16.64}
+{"suite": "preview", "tree": "modern", "scenario": "render-html-every-section", "chars": 100000, "ms": 85.04}

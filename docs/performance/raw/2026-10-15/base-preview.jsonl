@@ -1,0 +1,12 @@
+{"suite": "preview", "tree": "legacy", "scenario": "render-markdown", "chars": 20000, "ms": 4.97}
+{"suite": "preview", "tree": "legacy", "scenario": "render-markdown", "chars": 100000, "ms": 26.3}
+{"suite": "preview", "tree": "legacy", "scenario": "render-readme-html-header", "chars": 20000, "ms": 5.21}
+{"suite": "preview", "tree": "legacy", "scenario": "render-readme-html-header", "chars": 100000, "ms": 27.15}
+{"suite": "preview", "tree": "legacy", "scenario": "render-html-every-section", "chars": 20000, "ms": 4.27}
+{"suite": "preview", "tree": "legacy", "scenario": "render-html-every-section", "chars": 100000, "ms": 21.81}
+{"suite": "preview", "tree": "legacy", "scenario": "render-markdown", "chars": 20000, "ms": 4.3}
+{"suite": "preview", "tree": "legacy", "scenario": "render-markdown", "chars": 100000, "ms": 22.9}
+{"suite": "preview", "tree": "legacy", "scenario": "render-readme-html-header", "chars": 20000, "ms": 4.37}
+{"suite": "preview", "tree": "legacy", "scenario": "render-readme-html-header", "chars": 100000, "ms": 21.51}
+{"suite": "preview", "tree": "legacy", "scenario": "render-html-every-section", "chars": 20000, "ms": 3.17}
+{"suite": "preview", "tree": "legacy", "scenario": "render-html-every-section", "chars": 100000, "ms": 19.99}

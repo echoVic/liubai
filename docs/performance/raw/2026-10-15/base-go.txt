@@ -1,0 +1,48 @@
+goos: darwin
+goarch: arm64
+pkg: liubai
+cpu: Apple M2 Pro
+BenchmarkIdlePoll-12            	      20	  78331898 ns/op
+BenchmarkIdlePoll-12            	      20	  87547710 ns/op
+BenchmarkIdlePoll-12            	      20	  65170610 ns/op
+BenchmarkRecentList-12          	      20	  85530481 ns/op
+BenchmarkRecentList-12          	      20	  92836217 ns/op
+BenchmarkRecentList-12          	      20	 112749548 ns/op
+BenchmarkStartup300Drafts-12    	      20	 673483021 ns/op
+BenchmarkStartup300Drafts-12    	      20	 487525096 ns/op
+BenchmarkStartup300Drafts-12    	      20	1464354960 ns/op
+BenchmarkSaveSmallDraft-12      	      20	   7788310 ns/op
+BenchmarkSaveSmallDraft-12      	      20	   7848521 ns/op
+BenchmarkSaveSmallDraft-12      	      20	   9760500 ns/op
+BenchmarkSaveFile2MB-12         	      20	  97069344 ns/op
+BenchmarkSaveFile2MB-12         	      20	  90466208 ns/op
+BenchmarkSaveFile2MB-12         	      20	 224524271 ns/op
+BenchmarkCursorMove2MB-12       	      20	  27930796 ns/op
+BenchmarkCursorMove2MB-12       	      20	  24385192 ns/op
+BenchmarkCursorMove2MB-12       	      20	  40997800 ns/op
+PASS
+ok  	liubai	111.976s
+goos: darwin
+goarch: arm64
+pkg: liubai
+cpu: Apple M2 Pro
+BenchmarkIdlePoll-12            	      20	  97930656 ns/op
+BenchmarkIdlePoll-12            	      20	  73177246 ns/op
+BenchmarkIdlePoll-12            	      20	  71355548 ns/op
+BenchmarkRecentList-12          	      20	  67579683 ns/op
+BenchmarkRecentList-12          	      20	  62858733 ns/op
+BenchmarkRecentList-12          	      20	  67884525 ns/op
+BenchmarkStartup300Drafts-12    	      20	 340866950 ns/op
+BenchmarkStartup300Drafts-12    	      20	 463229867 ns/op
+BenchmarkStartup300Drafts-12    	      20	 354751696 ns/op
+BenchmarkSaveSmallDraft-12      	      20	  22757602 ns/op
+BenchmarkSaveSmallDraft-12      	      20	   7248269 ns/op
+BenchmarkSaveSmallDraft-12      	      20	   8510583 ns/op
+BenchmarkSaveFile2MB-12         	      20	 122266648 ns/op
+BenchmarkSaveFile2MB-12         	      20	 115397558 ns/op
+BenchmarkSaveFile2MB-12         	      20	 154400979 ns/op
+BenchmarkCursorMove2MB-12       	      20	  29055108 ns/op
+BenchmarkCursorMove2MB-12       	      20	  25408454 ns/op
+BenchmarkCursorMove2MB-12       	      20	  58630608 ns/op
+PASS
+ok  	liubai	70.267s

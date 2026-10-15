@@ -13,3 +13,7 @@
 .markdown-document table{margin:1.3em 0;font-size:.9em;table-layout:fixed}.markdown-document th,.markdown-document td{overflow-wrap:anywhere}.markdown-document ul,.markdown-document ol{padding-left:1.7em}
 .markdown-document input[type=checkbox]{accent-color:var(--primary);margin:0 7px 0 0}.markdown-document .task-list{list-style:none;padding-left:.2em}
 .markdown-image-note{display:block;padding:12px 14px;border:1px dashed var(--border);border-radius:5px;color:var(--muted-foreground);font:12px/1.7 -apple-system,sans-serif}
+@media(max-width:819px) and (max-height:600px){
+ .preview-head{height:34px;padding:0 14px}.preview-scroll{height:calc(100% - 34px)}
+ .markdown-document{padding:14px 22px 40px}.markdown-document>:first-child{margin-top:0}
+}

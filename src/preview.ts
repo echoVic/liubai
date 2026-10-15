@@ -30,6 +30,7 @@ const rangeKey=(range:LineRange|null|undefined)=>range?`${range.start}:${range.e
 
 export function createPreviewController(options:PreviewControllerOptions):PreviewController {
  let documentID='',visible=false,composing=false,dirty=false,missingImages=false;
+ let renderGeneration=0,saveEpoch=0,retriedSaveEpoch=-1;
  let renderTimer:ReturnType<typeof setTimeout>|undefined;
  let followTimer:ReturnType<typeof setTimeout>|undefined;
  let pendingLine:number|undefined;
@@ -74,17 +75,26 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
    heading.id=base+(count?`-${count}`:'');
   }
  };
+ const retryAfterSave=(epoch:number)=>{
+  if(epoch<=retriedSaveEpoch)return;
+  retriedSaveEpoch=epoch;
+  if(visible&&!composing)render();
+  else dirty=true;
+ };
  const render=()=>{
   clearTimeout(renderTimer);
   renderTimer=undefined;
   if(!visible||composing){dirty=true;return}
   const saved=anchor();
   const id=documentID;
+  const generation=++renderGeneration;
+  const startedAtSaveEpoch=saveEpoch;
+  let renderMissingImages=false;
   missingImages=false;
   const next=renderMarkdown(options.getContent(),{
    external:'load',
    resolve:destination=>options.resolveImage(id,destination).catch(error=>{
-    if(id===documentID)missingImages=true;
+    if(id===documentID&&generation===renderGeneration)renderMissingImages=true;
     throw error;
    }),
   });
@@ -99,6 +109,11 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
    pendingLine=undefined;
    scheduleFollow(line);
   }
+  void next.ready.then(()=>{
+   if(id!==documentID||generation!==renderGeneration)return;
+   missingImages=renderMissingImages;
+   if(renderMissingImages&&saveEpoch>startedAtSaveEpoch)retryAfterSave(saveEpoch);
+  });
  };
  const scheduleRender=()=>{
   dirty=true;
@@ -161,6 +176,10 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
   setDocument(next){
    if(next===documentID)return;
    documentID=next;
+   renderGeneration++;
+   saveEpoch=0;
+   retriedSaveEpoch=-1;
+   missingImages=false;
    followedRange='';
    pendingLine=undefined;
    options.scroll.scrollTop=0;
@@ -184,7 +203,8 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
    if(visible&&!composing)render();
   },
   saved(){
-   if(missingImages)render();
+   saveEpoch++;
+   if(missingImages)retryAfterSave(saveEpoch);
   },
   dispose(){
    clearTimeout(renderTimer);

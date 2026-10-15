@@ -50,3 +50,7 @@ dialog{padding:24px;width:470px;max-width:calc(100vw - 32px);border:1px solid va
  .desk.split-layout{grid-template-areas:'caption' 'editor' 'preview' 'bottom';grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) minmax(0,1fr) auto;row-gap:12px}
  .split-layout .editor-pane{padding-bottom:0}.split-layout #preview{min-height:0}
 }
+@media(max-width:819px) and (max-height:600px){
+ .desk{padding:12px 14px 18px}.desk.split-layout{row-gap:8px}
+ .desk-caption{margin-bottom:8px}.desk-bottom{margin-top:8px}
+}

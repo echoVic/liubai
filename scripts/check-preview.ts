@@ -1,5 +1,5 @@
 import {renderDelivery} from '../src/delivery';
-import {renderMarkdown,splitFrontMatter} from '../src/markdown';
+import {renderMarkdown,sanitizeStats,splitFrontMatter} from '../src/markdown';
 import {EditorState} from '@codemirror/state';
 import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
 import {GFM} from '@lezer/markdown';
@@ -298,5 +298,45 @@ export async function runPreviewChecks(): Promise<string> {
  equal(oversizedCode.root.innerHTML,oversizedHTML,'oversized code was changed');
  const deliveryCode=renderDelivery({title:'t',content:'```ts\nconst a = 1\n```',images:{},missing:[],external:0});
  assert(!deliveryCode.querySelector('code span'),'delivery code was highlighted');
+ const plainSanitizeCalls=sanitizeStats.calls;
+ const longMarkdown=renderMarkdown([
+  '---','title: <img src=x onerror=alert(1)>','---','',
+  '# Long Markdown','',
+  'Plain text with **emphasis**, `code` and a footnote[^long].\n\n'.repeat(2000),
+  '- First item','- Second item','',
+  '| Column | Value |','| --- | --- |','| A | B |','',
+  '- [ ] Pending','- [x] Done','',
+  '> [!NOTE]','> Alert body.','',
+  '![Local image](long.png)','',
+  '[^long]: Footnote content.',
+ ].join('\n'),{resolve:destination=>destination==='long.png'?localURL:undefined,external:'load'});
+ equal(sanitizeStats.calls,plainSanitizeCalls,'plain Markdown unnecessarily invoked the sanitizer');
+ const longTasks=[...longMarkdown.root.querySelectorAll<HTMLInputElement>('input[type=checkbox]')];
+ equal(longTasks.length,2,'plain Markdown task checkboxes are missing');
+ assert(longTasks.every(task=>task.disabled),'plain Markdown task checkbox is editable');
+ equal(longMarkdown.root.querySelector('.markdown-alert-title')?.textContent,'说明','plain Markdown alert title is missing');
+ equal(longMarkdown.root.querySelector('img')?.getAttribute('src'),localURL,'plain Markdown image was not resolved');
+ assert(!longMarkdown.root.querySelector('details img'),'front matter HTML was not escaped');
+ await longMarkdown.ready;
+
+ const htmlSanitizeCalls=sanitizeStats.calls;
+ const authorHTML=renderMarkdown('<kbd>⌘</kbd>\n\n<img src=x onerror=alert(1)>',{resolve:()=>localURL,external:'load'});
+ assert(sanitizeStats.calls>htmlSanitizeCalls,'author HTML did not invoke the sanitizer');
+ equal(authorHTML.root.querySelector('kbd')?.textContent,'⌘','author HTML kbd was dropped');
+ assert(authorHTML.root.querySelector('img'),'author HTML image was dropped');
+ assert(!authorHTML.root.querySelector('[onerror]'),'author HTML event handler survived sanitizing');
+ await authorHTML.ready;
+ const alignedTable='| 左 | 中 | 右 |\n| :-- | :-: | --: |\n| a | b | c |';
+ for(const [label,source] of [['plain Markdown',alignedTable],['author HTML',alignedTable+'\n\n<kbd>x</kbd>\n\n<table><tr><td style="color:red;text-align:right">d</td></tr></table>']]){
+  const aligned=renderMarkdown(source,{resolve:()=>undefined,external:'load'});
+  equal([...aligned.root.querySelectorAll<HTMLElement>('table.md-table td')].map(cell=>cell.style.textAlign).join(),'left,center,right',`${label} table alignment was dropped`);
+  assert(![...aligned.root.querySelectorAll('[style]')].some(element=>!/^T[HD]$/.test(element.tagName)||/color/.test(element.getAttribute('style')||'')),`${label} kept an unsafe style`);
+ }
+ const plainCalls=sanitizeStats.calls;
+ const unsafeMarkdown=renderMarkdown('[脚本](javascript:alert(1)) [数据](data:text/html;base64,PGI+eDwvYj4=) ![<img src=x onerror=alert(1)>](a.png)\n\n`<script>alert(1)</script>`',{resolve:()=>undefined,external:'load'});
+ equal(sanitizeStats.calls,plainCalls,'escaped Markdown invoked the sanitizer');
+ assert(!unsafeMarkdown.root.querySelector('a[href^="javascript"], a[href^="data"], script, [onerror]'),'plain Markdown produced an unsafe element');
+ equal(unsafeMarkdown.root.querySelector('code')?.textContent,'<script>alert(1)</script>','inline code was not escaped');
+ await unsafeMarkdown.ready;
  return 'shared renderer and delivery DOM checks passed';
 }

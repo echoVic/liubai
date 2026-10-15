@@ -15,6 +15,8 @@ export interface MarkdownRender {
  dispose: ()=>void;
 }
 
+export const sanitizeStats={calls:0};
+
 const parser=new MarkdownIt({html:true,linkify:true,typographer:false});
 parser.linkify.set({fuzzyLink:false,fuzzyEmail:false,fuzzyIP:false});
 parser.linkify.add('www.',{
@@ -47,8 +49,9 @@ export function headingSlug(text:string,used:Map<string,number>):string {
 
 const allowedTags='a abbr b blockquote br caption center code col colgroup dd del details div dl dt em figcaption figure h1 h2 h3 h4 h5 h6 hr i img input ins kbd li mark ol p pre q s samp section small span strike strong sub summary sup table tbody td tfoot th thead tr u ul var'.split(' ');
 const allowedAttributes='href src alt title width height align valign colspan rowspan open id class start reversed type checked disabled aria-label aria-hidden lang dir datetime cite scope data-line data-line-end data-image-source'.split(' ');
-if(DOMPurify.addHook)DOMPurify.addHook('uponSanitizeAttribute',(_node,data)=>{
+if(DOMPurify.addHook)DOMPurify.addHook('uponSanitizeAttribute',(node,data)=>{
  if(data.attrName==='class')data.attrValue=data.attrValue.split(/\s+/).filter(value=>/^(md-|language-|task-list|contains-task-list|footnote|markdown-alert)/.test(value)).join(' ');
+ else if(data.attrName==='style'&&/^T[HD]$/.test(node.nodeName)&&/^text-align:\s*(left|center|right);?$/i.test(data.attrValue))data.forceKeepAttr=true;
 });
 
 function lineAttributes(map:[number,number]|null):string {
@@ -106,6 +109,7 @@ const taskPlugin:PluginSimple=md=>{
     token.content=token.content.slice(match[0].length);
     const checked=match[1].toLowerCase()==='x';
     const checkbox=new state.Token('html_inline','',0);
+    checkbox.meta={...checkbox.meta,liubai:true};
     checkbox.content=`<input type="checkbox" disabled${checked?' checked':''} aria-label="${checked?'已完成':'未完成'}"> `;
     token.children?.unshift(checkbox);
     const item=state.tokens[items[items.length-1].index];
@@ -154,6 +158,7 @@ const githubAlerts:PluginSimple=md=>{
    }
    inline.content=inline.content.replace(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*\n?/i,'');
    const title=new state.Token('html_block','',0);
+   title.meta={...title.meta,liubai:true};
    title.content=`<p class="markdown-alert-title">${titles[kind]}</p>\n`;
    state.tokens.splice(i+1,0,title);
   }
@@ -197,10 +202,16 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
  const root=document.createElement('article');
  root.className='markdown-document';
  const meta=splitFrontMatter(content);
- const rendered=parser.render(meta.body,{lineOffset:meta.lines});
+ const env={lineOffset:meta.lines};
+ const tokens=parser.parse(meta.body,env);
+ const authorHTML=tokens.some(t=>(t.type==='html_block'&&!t.meta?.liubai)||(t.children||[]).some(c=>c.type==='html_inline'&&!c.meta?.liubai));
+ const rendered=parser.renderer.render(tokens,parser.options,env);
  const properties=meta.raw!==null&&options.frontMatter!=='hide'?`<details class="md-front-matter" data-line="0" data-line-end="${meta.lines-1}"><summary>文稿属性</summary><pre>${parser.utils.escapeHtml(meta.raw)}</pre></details>`:'';
  const template=document.createElement('template');
- template.innerHTML=DOMPurify.sanitize(properties+rendered,{ALLOWED_TAGS:allowedTags,ALLOWED_ATTR:allowedAttributes,ADD_URI_SAFE_ATTR:['data-image-source','data-line','data-line-end'],ALLOW_DATA_ATTR:false,FORBID_ATTR:['style']});
+ if(authorHTML){
+  sanitizeStats.calls++;
+  template.innerHTML=DOMPurify.sanitize(properties+rendered,{ALLOWED_TAGS:allowedTags,ALLOWED_ATTR:allowedAttributes,ADD_URI_SAFE_ATTR:['data-image-source','data-line','data-line-end'],ALLOW_DATA_ATTR:false,FORBID_ATTR:['style']});
+ }else template.innerHTML=properties+rendered;
  for(const input of template.content.querySelectorAll('input')){
   if(input.type!=='checkbox')input.remove();
   else input.disabled=true;

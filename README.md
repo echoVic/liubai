@@ -16,6 +16,7 @@
 - 点击顶部「侧栏」打开最近文稿与大纲，两个标签可切换，最近文稿支持搜索；悬停文稿可「从最近文稿移除」（需再点一次确认）：草稿移到数据目录的 `trash/` 保留 30 天，已有文件只从列表移除、磁盘文件不动。空的未命名草稿在切走时自动清理。点击顶部草稿标题命名，「更多」提供新建、打开、另存为、重命名、专注模式、显示 Markdown 源码和所有操作…。
 - 粘贴或拖入 PNG / JPEG / GIF / WebP / SVG / AVIF / BMP，光标移开后显示图片预览。中文或带空格路径的本地图片（包括 Typora 生成的 `文稿名.assets/`）可以正常显示。
 - 「导出」集中提供 Markdown、图片 ZIP、PDF、富文本复制和含本地图片的 HTML。交付使用整篇文稿，不受编辑器可视区域限制。
+- 导出的 PDF 会将标题与后续正文保持在同一页，中文可正常复制和搜索。
 - 布局、分栏左侧编辑方式、主题、字号和行宽都是全局偏好，对新文稿和最近文稿继续生效。纸白、暖纸、雾绿、夜墨四主题首次跟随系统，手动选择后记住选择。
 - 专注模式突出正在写的段落，淡化其余文字与工具；按 Esc 返回。
 - 字数按中文字、日文假名和韩文字逐个计、其他文字按词计，不计 Markdown 标记、链接地址、HTML 标签和 front matter，输入停顿后更新。
@@ -53,6 +54,7 @@ npx --yes bun@1.4.3 scripts/check-editing.ts
 npx --yes bun@1.4.3 scripts/check-rendering.ts
 npx --yes bun@1.4.3 scripts/check-performance.ts
 python3 scripts/check-preview.py
+python3 scripts/check-pdf.py
 node scripts/build.mjs
 go build -o /tmp/liubai-preview-acceptance .
 data_dir="$(mktemp -d /tmp/liubai-preview-data.XXXXXX)"

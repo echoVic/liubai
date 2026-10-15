@@ -34,6 +34,8 @@ dialog{padding:24px;width:470px;max-width:calc(100vw - 32px);border:1px solid va
  html,body{height:auto!important;overflow:visible!important;background:white!important;display:block!important}
  body>*{display:none!important}body>#print-document{display:block!important;position:static!important;left:auto!important;top:auto!important;width:auto!important;height:auto!important;overflow:visible!important;pointer-events:auto}
  #print-document .delivery-document{padding:0!important}#print-document img{max-width:100%!important;max-height:225mm!important}.delivery-document p{orphans:3;widows:3}
+ #print-document .delivery-document :is(h1,h2,h3,h4,h5,h6){break-inside:avoid}
+ #print-document .delivery-document :is(h1,h2,h3,h4,h5,h6)::after{content:"";display:block;height:120px;margin-bottom:-120px}
 }
 
 /* Main writing and split-reading layout */

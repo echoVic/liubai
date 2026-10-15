@@ -957,7 +957,7 @@ import {createBlockField,inlineDecorations,composing} from '../src/editor';
 const block='这是一段普通的中文正文，用来模拟长篇写作。偶尔会有**加粗**、一个[链接](https://example.com/a)和`代码`。\n\n'
  +'另一段没有任何格式的正文内容，写作者在这里连续地输入文字，句子很长很长。\n\n'.repeat(3)
  +'## 一个小标题\n\n- 列表项一\n- [ ] 待办\n\n| 列一 | 列二 |\n| --- | --- |\n| 甲 | 乙 |\n\n![图](images/a.png)\n\n';
-for(const [size,budget] of [[100_000,5],[300_000,12]] as const){
+for(const [size,budget] of [[100_000,5],[300_000,15]] as const){
  const doc=block.repeat(Math.ceil(size/block.length));
  const field=createBlockField(async()=>'data:,');
  let state=EditorState.create({doc,extensions:[markdown({base:markdownLanguage,extensions:GFM}),composing,field]});

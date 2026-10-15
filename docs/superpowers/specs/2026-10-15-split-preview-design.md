@@ -1,8 +1,10 @@
 # 分栏预览模式设计
 
 **日期**：2026-10-15
-**状态**：待实现
+**状态**：已实现并验证
 **范围**：留白桌面端 0.3.0 新功能
+**实施计划**：[2026-10-15-split-preview.md](../plans/2026-10-15-split-preview.md)
+**验证记录**：[2026-10-15-split-preview.md](../validation/2026-10-15-split-preview.md)
 
 ## 背景与目标
 
@@ -22,11 +24,11 @@
 
 ## 现状分析
 
-- **即时排版**：[src/editor.ts](../src/editor.ts) 的 `richExtensions` 用 CodeMirror 装饰把标记渲染成样式，`mode` Compartment 控制即时排版/源码切换。
+- **即时排版**：[src/editor.ts](../../../src/editor.ts) 的 `richExtensions` 用 CodeMirror 装饰把标记渲染成样式，`mode` Compartment 控制即时排版/源码切换。
 - **源码视图**：`mode.of(doc.position.source ? [] : richExtensions(...))`，按文稿存在 `Position.source`。
-- **交付渲染**：[src/delivery.ts](../src/delivery.ts) 的 `renderDelivery` 用 markdown-it 渲染，但直接套了**打印用内联样式**，且外链图片不加载、缺失图片转提示文字——不能直接当屏幕预览。
-- **图片解析**：[src/app.ts](../src/app.ts) 的 `resolveImage` 本地图走 `ReadImage`，外链 http(s) 直接返回原 URL。预览可复用。
-- **布局**：[src/index.html](../src/index.html) 的 `.desk > .paper > #editor` 单栏居中，宽度由 `--paper-width` 控制，四主题全靠 CSS 变量。CSP 允许 `data:` `blob:` `https:` `http:` 图片。
+- **交付渲染**：[src/delivery.ts](../../../src/delivery.ts) 的 `renderDelivery` 用 markdown-it 渲染，但直接套了**打印用内联样式**，且外链图片不加载、缺失图片转提示文字——不能直接当屏幕预览。
+- **图片解析**：[src/app.ts](../../../src/app.ts) 的 `resolveImage` 本地图走 `ReadImage`，外链 http(s) 直接返回原 URL。预览可复用。
+- **布局**：[src/index.html](../../../src/index.html) 的 `.desk > .paper > #editor` 单栏居中，宽度由 `--paper-width` 控制，四主题全靠 CSS 变量。CSP 允许 `data:` `blob:` `https:` `http:` 图片。
 
 ## 设计
 
@@ -49,7 +51,7 @@
 **`renderMarkdown(content, { resolve, external })` — 单一渲染源**
 
 - 用同一个 markdown-it 实例渲染，产出**带语义 class、不带打印内联样式**的 DOM（`.md-h1..h6`、`.md-p`、`.md-quote`、`.md-pre`、`.md-inline-code`、`.md-table`、`.md-ul`、`.md-ol`、`.md-task`、`.md-link`、`.md-image`）。
-- 给每个块级元素加 `data-line` 属性：markdown-it 的 `token.map = [startLine, endLine]` 提供行号，在 block render rule 中写入 `data-line`（0-based 起始行）。这是软联动滚动的锚点，不影响渲染语义。
+- 给每个块级元素加 `data-line` 与 `data-line-end` 属性：markdown-it 的 `token.map = [startLine, endLine]` 提供行号，`data-line-end` 转成 0-based **包含式**结束行。这是软联动滚动的锚点，不影响渲染语义。
 - 图片：通过 `resolve(dest)` 解析（复用 `resolveImage`）。`external` 参数区分：
   - 屏幕预览：外链图片直接加载（与编辑器一致）。
   - 交付：外链转可点击链接、缺失图片显示提示（现有行为）。
@@ -76,8 +78,9 @@
 ### 4. 软联动滚动
 
 - 预览每个块有 `data-line`。
-- 编辑器 `selectionSet` 时 debounce ~120ms：取光标行号 N，在预览里找 `data-line ≤ N` 的最大块，`scrollIntoView({ block: 'nearest', behavior: 'smooth' })`。
+- 编辑器 `selectionSet` 时 debounce ~120ms：取光标行号 N，在预览里优先选择包含 N 的最小可见块；没有包含块时回退到最近的前置块。
 - 只在光标跨进新块时触发（记录上次同步的 `data-line`，相同则跳过）。
+- 只计算阅读滚动容器内的 nearest 位置并调用该容器的 `scrollTo`，不使用可能滚动祖先的 `scrollIntoView`。
 - 鼠标滚轮互不干扰，预览独立滚动不反向同步编辑器。
 
 ### 5. 模式切换 UI 与快捷键
@@ -106,6 +109,13 @@
    - `toggleSourceInSplit()`：分栏内切左侧即时排版/源码。
    - 快捷键 ⌘\ 与 ⌘⇧M、顶栏按钮接线。
 6. **验证**：`tsc --noEmit`、`go test ./...`、`go vet ./...`；手工分栏切换、左右滚动、源码切换、图片/表格/外链渲染、窄屏降级。
+
+## 实施结果
+
+- `.desk` 使用固定 grid 行区，`.editor-pane` 与 `.preview-scroll` 是独立且有确定高度的滚动容器；低于 820px 改为上下排列。
+- 块映射采用包含式 `data-line-end`，软联动选择覆盖光标的最小可见块，并只对阅读容器执行 `scrollTo`。
+- 预览按文稿 ID、渲染代次和保存 epoch 隔离异步图片结果。新引用在保存后可重试一次；即使 `ReadImage` 在换稿后才结束，也不能刷新或污染当前文稿。
+- 回归使用真实 Go 工作区后端验证重载、新文稿、Recent 重开、本地图片导入与 HTML 下载；完整命令和原生验证边界见上述验证记录。
 
 ## 边界与不做
 

@@ -131,7 +131,7 @@ func main() {
 	dataDir := flag.String("data-dir", "", "独立文稿存储目录")
 	flag.Parse()
 	mygo.App.SetName("留白")
-	mygo.App.SetVersion("0.2.0")
+	mygo.App.SetVersion("0.3.0")
 	web, _ := fs.Sub(frontend, "web")
 	if os.Getenv("MYGO_GENERATE") != "" {
 		mygo.Bind(&Desktop{})
@@ -190,7 +190,7 @@ func main() {
 		}
 		mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
 			{Label: "留白", Submenu: []*mygo.MenuItem{{Label: "关于留白", Click: func(*mygo.MenuItem, *mygo.Window) {
-				mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: "留白", ApplicationVersion: "0.2.0"})
+				mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: "留白", ApplicationVersion: "0.3.0"})
 			}}, mygo.Separator(), {Label: "退出留白", Accelerator: "CmdOrCtrl+Q", Click: action("close")}}},
 			{Label: "文件", Submenu: []*mygo.MenuItem{{Label: "新建文稿", Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: "打开文稿…", Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Label: "保存", Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: "另存为…", Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, {Label: "带走文稿…", Click: action("deliver")}, {Label: "导出 PDF…", Accelerator: "CmdOrCtrl+P", Click: action("pdf")}}},
 			{Label: "编辑", Submenu: []*mygo.MenuItem{{Label: "撤销", Accelerator: "CmdOrCtrl+Z", Click: action("undo")}, {Label: "重做", Accelerator: "CmdOrCtrl+Shift+Z", Click: action("redo")}, mygo.Separator(), {Role: mygo.RoleCut}, {Role: mygo.RoleCopy}, {Role: mygo.RolePaste}, {Role: mygo.RoleSelectAll}, {Label: "查找", Accelerator: "CmdOrCtrl+F", Click: action("find")}}},

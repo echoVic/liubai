@@ -9,6 +9,8 @@ export interface Appearance {
   fontSize?: number;
   lineWidth?: string;
   followSystem: boolean;
+  layout: string;
+  source: boolean;
 }
 
 export interface Delivery {

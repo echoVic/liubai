@@ -57,6 +57,7 @@ dialog{padding:24px;width:470px;max-width:calc(100vw - 32px);border:1px solid va
 .cm-line.md-front-matter{color:var(--muted-foreground);font:13px/1.85 'SFMono-Regular',Consolas,monospace}
 
 /* Reading layout */
+.preview-scroll:focus{outline:none}
 .desk.read-layout .editor-pane{display:none}
 .read-layout #preview{grid-area:editor;width:100%;max-width:var(--paper-width);justify-self:center}
 .read-layout .markdown-document{padding:42px 50px 60px}

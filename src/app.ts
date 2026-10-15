@@ -31,7 +31,7 @@ const names:{id:Appearance['theme'];name:string;kind:string}[]=[{id:'paper',name
 if(desktop)document.body.classList.add('desktop');else $('#workspace-label').textContent='本地开发版 · 独立草稿存档';
 const errorText=(e:unknown)=>e instanceof Error?e.message:String(e);
 function toast(s:string){$('#toast').textContent=s;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4200)}
-function banner(s='',conflict=false,reveal=''){$('#banner').hidden=!s;$('#banner-text').textContent=s;$('#reload-disk').hidden=!conflict;$('#overwrite-disk').hidden=!conflict;quarantineReveal=reveal;$('#reveal-quarantine').hidden=!desktop||!reveal}
+function banner(s='',kind:'error'|'conflict'|'notice'='error',reveal=''){$('#banner').hidden=!s;$('#banner-text').textContent=s;$('#retry-save').hidden=kind!=='error';$('#banner-save-as').hidden=kind==='notice';$('#reload-disk').hidden=kind!=='conflict';$('#overwrite-disk').hidden=kind!=='conflict';quarantineReveal=kind==='notice'?reveal:'';$('#reveal-quarantine').hidden=!desktop||!quarantineReveal}
 $('#reveal-quarantine').onclick=()=>{if(quarantineReveal)void call('Reveal',quarantineReveal).catch(e=>toast(errorText(e)))};
 const split=()=>appearance?.layout==='split';
 const reading=()=>appearance?.layout==='read';
@@ -54,8 +54,8 @@ async function save(force=false):Promise<boolean>{
   const result=await call<Doc>('Update',{id,revision:doc.revision,content,position:pos});
   if(doc.id!==id)return true;doc.revision=result.revision;doc.status=result.status;doc.conflict=result.conflict;doc.title=result.title;doc.content=content;doc.position=pos;doc.updated=result.updated;
   if(stamp===generation)dirty=false;savedPosition=JSON.stringify(pos);header();preview.saved();
-  if(result.conflict||result.status.includes('失败'))banner(result.status,result.conflict);else banner();return true;
- }catch(e){if(positionOnly)return true;banner('保存失败：'+errorText(e));$('#save-status').textContent='保存失败 · 当前输入仍在';dirty=true;return false}finally{saveFlight=null;syncPending()}})();syncPending();const ok=await saveFlight;if(ok&&dirty)return save();return ok;
+  if(result.conflict||result.status.includes('失败'))banner(result.status,result.conflict?'conflict':'error');else banner();return true;
+ }catch(e){if(positionOnly)return true;banner('保存失败：'+errorText(e),'error');$('#save-status').textContent='保存失败 · 当前输入仍在';dirty=true;return false}finally{saveFlight=null;syncPending()}})();syncPending();const ok=await saveFlight;if(ok&&dirty)return save();return ok;
 }
 async function saveForAction(){const ok=await save();if(!ok&&dirty){toast('请先重试保存，当前输入仍保留');return false}await appearanceQueue.catch(()=>{});return true}
 async function resolveImageFor(documentID:string,dest:string):Promise<string>{
@@ -72,11 +72,11 @@ function load(next:WorkspaceState){
  const cached=sessions.get(doc.id);if(cached&&cached.doc.toString()===doc.content)view.setState(cached);
  view.dispatch({effects:editLock.reconfigure(EditorState.readOnly.of(busy||reading()))});
  reconfigure();
- loading=false;view.dispatch({effects:setFocus.of(focusMode)});applyTheme();const changedPreviewDocument=preview.setDocument(doc.id);applyLayout();if(!changedPreviewDocument)preview.refresh();header();scheduleWordCount(true);if(doc.conflict||doc.status.includes('失败'))banner(doc.status,doc.conflict);else banner();
+ loading=false;view.dispatch({effects:setFocus.of(focusMode)});applyTheme();const changedPreviewDocument=preview.setDocument(doc.id);applyLayout();if(!changedPreviewDocument)preview.refresh();header();scheduleWordCount(true);if(doc.conflict||doc.status.includes('失败'))banner(doc.status,doc.conflict?'conflict':'error');else banner();
  requestAnimationFrame(()=>{$('.editor-pane').scrollTop=doc.position.scroll||0;focusContent()});
  if(!$('#drawer').hidden)renderDrawer();
 }
-async function refreshRecent(){await appearanceQueue.catch(()=>{});const next=await call<WorkspaceState>('State');next.appearance=appearance;state=next;renderDrawer();if(next.notices?.length)banner(next.notices.join('；'),false,next.quarantineDir)}
+async function refreshRecent(){await appearanceQueue.catch(()=>{});const next=await call<WorkspaceState>('State');next.appearance=appearance;state=next;renderDrawer();if(next.notices?.length)banner(next.notices.join('；'),'notice',next.quarantineDir)}
 function themeID(){return appearance.followSystem?(mq.matches?'ink':'paper'):appearance.theme}
 function applyTheme(){if(!appearance)return;const id=themeID();document.documentElement.dataset.liubaiTheme=id;document.documentElement.style.colorScheme=id==='ink'?'dark':'light';$('#follow-system').setAttribute('aria-checked',String(appearance.followSystem));$<HTMLInputElement>('#follow-system').checked=appearance.followSystem;document.documentElement.style.setProperty('--editor-size',(appearance.fontSize||18)+'px');document.documentElement.style.setProperty('--paper-width',appearance.lineWidth==='wide'?'920px':'760px');$<HTMLSelectElement>('#font-size').value=String(appearance.fontSize||18);$<HTMLSelectElement>('#line-width').value=appearance.lineWidth||'normal';renderThemes()}
 function applyLayout(){
@@ -271,13 +271,13 @@ preview=createPreviewController({
  resolveImage:resolveImageFor,
  openLink,
 });
-try{const next=await call<WorkspaceState>('State');load(next);if(next.notices?.length)banner(next.notices.join('；'),false,next.quarantineDir)}catch(e){banner('无法打开文稿：'+errorText(e))}
+try{const next=await call<WorkspaceState>('State');load(next);if(next.notices?.length)banner(next.notices.join('；'),'notice',next.quarantineDir)}catch(e){banner('无法打开文稿：'+errorText(e),'notice')}
 async function pollStatus(){
  if(!doc||busy||dirty||saveFlight||compositionActive||document.visibilityState!=='visible')return;
  const id=doc.id;let s:DocStatus;try{s=await call<DocStatus>('Status',id)}catch{return}
  if(!doc||doc.id!==id||dirty||busy||saveFlight)return;
  if(s.revision!==doc.revision){await run(async()=>{load(await call<WorkspaceState>('Activate',id));toast('已载入磁盘上的新版本')});return}
- if(s.conflict!==doc.conflict||s.status!==doc.status){doc.conflict=s.conflict;doc.status=s.status;header();if(s.conflict||s.status.includes('失败'))banner(s.status,s.conflict);else banner()}
+ if(s.conflict!==doc.conflict||s.status!==doc.status){doc.conflict=s.conflict;doc.status=s.status;header();if(s.conflict||s.status.includes('失败'))banner(s.status,s.conflict?'conflict':'error');else banner()}
 }
 setInterval(()=>void pollStatus(),2000);
 document.addEventListener('visibilitychange',()=>void pollStatus());

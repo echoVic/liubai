@@ -38,8 +38,12 @@ def api(page, method, *args):
 
 
 def new_document(page, text):
-    page.locator('[data-action="new"]').first.click()
+    # Wait for the New round-trip itself: the previous draft may also be titled 未命名文稿,
+    # and typing while the request is in flight lands in a read-only editor.
+    with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
+        page.locator('[data-action="new"]').first.click()
     expect(page.locator("#doc-title")).to_have_text("未命名文稿")
+    page.wait_for_timeout(150)
     page.locator(".cm-content").click()
     page.keyboard.insert_text(text)
     expect(page.locator("#save-status")).to_have_text("草稿已保存")
@@ -48,7 +52,22 @@ def new_document(page, text):
 def run(page):
     calls = []
     page.on("request", lambda r: calls.append(r.post_data_json.get("method")) if r.url.endswith("/api") and r.method == "POST" else None)
+
+    # A startup notice shows only its text: no save actions that do not apply.
+    def notice_route(route):
+        if route.request.post_data_json.get("method") == "State":
+            body = route.fetch().json()
+            body["value"]["notices"] = ["有 1 份草稿无法读取，已移到隔离目录"]
+            route.fulfill(status=200, content_type="application/json", body=json.dumps(body))
+        else:
+            route.continue_()
+
+    page.route(BASE + "/api", notice_route)
     page.goto(BASE)
+    expect(page.locator("#banner-text")).to_have_text("有 1 份草稿无法读取，已移到隔离目录")
+    for hidden in ("#retry-save", "#banner-save-as", "#reload-disk", "#overwrite-disk"):
+        expect(page.locator(hidden)).to_be_hidden()
+    page.unroute(BASE + "/api", notice_route)
 
     # Reader rendering through the real preview: sanitized HTML, front matter, linkify, alerts, footnotes, highlighting.
     new_document(page, README)
@@ -162,7 +181,7 @@ def run(page):
     page.locator(".cm-content .md-link").click(modifiers=["Meta"])
     expect(page.locator("#toast")).to_contain_text("草稿还没有保存位置")
 
-    print("PASS: reader rendering, reading mode, focus mode, position saves/word count, status reload/conflict, draft cleanup/removal, drop to open, relative links")
+    print("PASS: notice banner, reader rendering, reading mode, focus mode, position saves/word count, status reload/conflict, draft cleanup/removal, drop to open, relative links")
 
 
 with sync_playwright() as playwright:

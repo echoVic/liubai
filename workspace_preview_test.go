@@ -29,6 +29,34 @@ func appearanceRequest(t *testing.T, raw string) Appearance {
 	return appearance
 }
 
+func TestReadLayoutPersists(t *testing.T) {
+	w := workspace(t)
+	if err := w.Appearance(appearanceRequest(t, `{"theme":"paper","followSystem":true,"layout":"read","source":false}`)); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := openWorkspace(w.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := appearanceValues(t, reopened)["layout"]; got != "read" {
+		t.Fatalf("layout %v", got)
+	}
+}
+
+func TestReadLayoutRestoresFromNewerIndex(t *testing.T) {
+	w := workspace(t)
+	if err := os.WriteFile(filepath.Join(w.root, "workspace.json"), []byte(`{"version":2,"appearance":{"theme":"paper","layout":"read"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := openWorkspace(w.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := appearanceValues(t, reopened)["layout"]; got != "read" {
+		t.Fatalf("restored layout %v", got)
+	}
+}
+
 func TestPreviewAppearanceDefaultsAndLegacyPosition(t *testing.T) {
 	w := workspace(t)
 	values := appearanceValues(t, w)

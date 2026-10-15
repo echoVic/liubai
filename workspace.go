@@ -201,7 +201,7 @@ func diskBytes(d *Document) []byte {
 }
 func validTheme(s string) bool { return s == "paper" || s == "warm" || s == "mist" || s == "ink" }
 func normalizeLayout(s string) string {
-	if s == "split" {
+	if s == "split" || s == "read" {
 		return s
 	}
 	return "single"
@@ -407,7 +407,7 @@ func (w *Workspace) restoreIndex(b []byte) {
 	if json.Unmarshal(x.Appearance["lineWidth"], &width) == nil && (width == "" || width == "normal" || width == "wide") {
 		p.LineWidth = width
 	}
-	if json.Unmarshal(x.Appearance["layout"], &layout) == nil && (layout == "" || layout == "single" || layout == "split") {
+	if json.Unmarshal(x.Appearance["layout"], &layout) == nil && (layout == "" || layout == "single" || layout == "split" || layout == "read") {
 		p.Layout = normalizeLayout(layout)
 	}
 	for name, field := range map[string]*bool{"followSystem": &p.FollowSystem, "source": &p.Source} {
@@ -801,7 +801,7 @@ func (w *Workspace) Appearance(p Appearance) error {
 	if p.LineWidth != "" && p.LineWidth != "normal" && p.LineWidth != "wide" {
 		return errors.New("未知行宽")
 	}
-	if p.Layout != "" && p.Layout != "single" && p.Layout != "split" {
+	if p.Layout != "" && p.Layout != "single" && p.Layout != "split" && p.Layout != "read" {
 		return errors.New("未知布局")
 	}
 	p.Layout = normalizeLayout(p.Layout)

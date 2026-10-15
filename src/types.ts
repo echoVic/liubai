@@ -1,4 +1,4 @@
-export interface Appearance {theme:'paper'|'warm'|'mist'|'ink';followSystem:boolean;fontSize?:number;lineWidth?:'normal'|'wide';layout?:'single'|'split';source?:boolean}
+export interface Appearance {theme:'paper'|'warm'|'mist'|'ink';followSystem:boolean;fontSize?:number;lineWidth?:'normal'|'wide';layout?:'single'|'split'|'read';source?:boolean}
 export interface Position {anchor:number;head:number;scroll:number;source:boolean}
 export interface Doc {id:string;title:string;content:string;path:string;updated:number;revision:number;position:Position;conflict:boolean;status:string}
 export interface DocStatus {id:string;revision:number;conflict:boolean;status:string}

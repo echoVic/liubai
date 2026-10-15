@@ -55,3 +55,11 @@ dialog{padding:24px;width:470px;max-width:calc(100vw - 32px);border:1px solid va
  .desk-caption{margin-bottom:8px}.desk-bottom{margin-top:8px}
 }
 .cm-line.md-front-matter{color:var(--muted-foreground);font:13px/1.85 'SFMono-Regular',Consolas,monospace}
+
+/* Reading layout */
+.desk.read-layout .editor-pane{display:none}
+.read-layout #preview{grid-area:editor;width:100%;max-width:var(--paper-width);justify-self:center}
+.read-layout .markdown-document{padding:42px 50px 60px}
+.tool[data-action=read][aria-pressed=true]{color:var(--primary);background:var(--accent)}
+@media(max-width:850px){.read-layout .markdown-document{padding-left:30px;padding-right:30px}}
+@media(max-width:650px){.read-layout .markdown-document{padding-left:22px;padding-right:22px}}

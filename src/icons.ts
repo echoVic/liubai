@@ -1,5 +1,6 @@
 const paths:Record<string,string>={
  new:'M12 5v14M5 12h14',outline:'M9 6h12M9 12h12M9 18h12M3 6h.01M3 12h.01M3 18h.01',preview:'M3 5h18v14H3zM10 5v14',
+ read:'M4 5a2 2 0 0 1 2-2h5v16H6a2 2 0 0 0-2 2zM20 5a2 2 0 0 0-2-2h-5v16h5a2 2 0 0 1 2 2z',
  source:'m8 5-6 7 6 7m8-14 6 7-6 7m-3-17-2 20',theme:'M12 3a9 9 0 1 0 9 9c0-5-4-9-9-9Zm0 0v18',
  commands:'M5 12h.01M12 12h.01M19 12h.01',image:'M4 3h16v18H4zM4 16l5-5 4 4 3-3 4 4M9 7h.01',
  close:'m6 6 12 12M18 6 6 18',focus:'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M8 12h8',

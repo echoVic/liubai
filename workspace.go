@@ -41,6 +41,7 @@ type Document struct {
 	Title           string            `json:"title"`
 	CustomTitle     bool              `json:"customTitle,omitempty"`
 	Content         string            `json:"content"`
+	Excerpt         string            `json:"excerpt,omitempty"`
 	Path            string            `json:"path"`
 	Updated         int64             `json:"updated"`
 	Revision        int               `json:"revision"`
@@ -88,13 +89,15 @@ type Edit struct {
 	Position Position `json:"position"`
 }
 type Workspace struct {
-	mu            sync.Mutex
-	root          string
-	docs          map[string]*Document
-	current       string
-	appearance    Appearance
-	notices       []string
-	quarantineDir string
+	mu             sync.Mutex
+	root           string
+	docs           map[string]*Document
+	positions      map[string]Position
+	positionsDirty bool
+	current        string
+	appearance     Appearance
+	notices        []string
+	quarantineDir  string
 }
 
 func uid() string {
@@ -119,6 +122,25 @@ func readLimited(path string, n int64) ([]byte, error) {
 }
 func atomicWrite(path string, data []byte, mode os.FileMode) error {
 	return atomicWriteHook(path, data, mode, nil)
+}
+func writeQuick(path string, data []byte, mode os.FileMode) error {
+	f, err := os.CreateTemp(filepath.Dir(path), ".liubai-*")
+	if err != nil {
+		return err
+	}
+	name := f.Name()
+	defer os.Remove(name)
+	if err = f.Chmod(mode); err == nil {
+		_, err = f.Write(data)
+	}
+	ce := f.Close()
+	if err == nil {
+		err = ce
+	}
+	if err != nil {
+		return err
+	}
+	return os.Rename(name, path)
 }
 func atomicWriteHook(path string, data []byte, mode os.FileMode, beforeRename func(tmp string) error) error {
 	f, err := os.CreateTemp(filepath.Dir(path), ".liubai-*")
@@ -176,19 +198,6 @@ func diskBytes(d *Document) []byte {
 	}
 	return []byte(s)
 }
-func inferredTitle(s string) string {
-	for _, line := range strings.Split(s, "\n") {
-		line = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(line), "# "))
-		if line != "" {
-			r := []rune(line)
-			if len(r) > 42 {
-				line = string(r[:42]) + "…"
-			}
-			return line
-		}
-	}
-	return "未命名文稿"
-}
 func validTheme(s string) bool { return s == "paper" || s == "warm" || s == "mist" || s == "ink" }
 func normalizeLayout(s string) string {
 	if s == "split" {
@@ -200,7 +209,13 @@ func openWorkspace(root string) (*Workspace, error) {
 	if err := os.MkdirAll(filepath.Join(root, "drafts"), 0700); err != nil {
 		return nil, err
 	}
-	w := &Workspace{root: root, docs: map[string]*Document{}, appearance: Appearance{Theme: "paper", FollowSystem: true, Layout: "single"}}
+	w := &Workspace{root: root, docs: map[string]*Document{}, positions: map[string]Position{}, appearance: Appearance{Theme: "paper", FollowSystem: true, Layout: "single"}}
+	if b, err := readLimited(filepath.Join(root, "positions.json"), 64<<20); err == nil {
+		var positions map[string]Position
+		if json.Unmarshal(b, &positions) == nil && positions != nil {
+			w.positions = positions
+		}
+	}
 	indexPath := filepath.Join(root, "workspace.json")
 	if b, err := readLimited(indexPath, 1<<20); err == nil {
 		var version struct {
@@ -239,6 +254,9 @@ func openWorkspace(root string) (*Workspace, error) {
 			}
 			corrupt++
 			continue
+		}
+		if p, ok := w.positions[d.ID]; ok {
+			d.Position = clampPosition(d.Content, p)
 		}
 		w.docs[d.ID] = &d
 	}
@@ -334,6 +352,7 @@ func (w *Workspace) saveIndex() error {
 	return atomicWrite(filepath.Join(w.root, "workspace.json"), b, 0600)
 }
 func (w *Workspace) persist(d *Document) error {
+	d.Excerpt = excerptOf(d.Content)
 	b, err := json.Marshal(d)
 	if err != nil {
 		return err
@@ -395,6 +414,7 @@ func (w *Workspace) check(d *Document, reload bool) {
 			return
 		}
 		d.Content, d.BOM, d.CRLF = content, bom, crlf
+		d.Excerpt = excerptOf(content)
 		d.DiskHash = hash
 		d.DiskContentHash = digest([]byte(content))
 		d.recordDiskInfo(info)
@@ -414,12 +434,10 @@ func (w *Workspace) check(d *Document, reload bool) {
 func (w *Workspace) snapshot() WorkspaceState {
 	list := []Summary{}
 	for _, d := range w.docs {
-		excerpt := strings.Join(strings.Fields(d.Content), " ")
-		r := []rune(excerpt)
-		if len(r) > 90 {
-			excerpt = string(r[:90])
+		if d.Excerpt == "" {
+			d.Excerpt = excerptOf(d.Content)
 		}
-		list = append(list, Summary{d.ID, d.Title, d.Path, d.Updated, excerpt})
+		list = append(list, Summary{d.ID, d.Title, d.Path, d.Updated, d.Excerpt})
 	}
 	sort.Slice(list, func(i, j int) bool { return list[i].Updated > list[j].Updated })
 	return WorkspaceState{Current: *w.docs[w.current], Recent: list, Appearance: w.appearance}
@@ -473,6 +491,51 @@ func (w *Workspace) Activate(id string) (WorkspaceState, error) {
 	err := w.saveIndex()
 	return w.snapshot(), err
 }
+func clampPosition(content string, p Position) Position {
+	length := 0
+	for _, r := range content {
+		length += utf16.RuneLen(r)
+	}
+	p.Anchor = max(0, min(length, p.Anchor))
+	p.Head = max(0, min(length, p.Head))
+	if math.IsNaN(p.Scroll) || math.IsInf(p.Scroll, 0) || p.Scroll < 0 {
+		p.Scroll = 0
+	}
+	return p
+}
+func (w *Workspace) SavePosition(id string, p Position) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	d := w.docs[id]
+	if d == nil {
+		return errors.New("文稿不存在")
+	}
+	return w.savePosition(d, p)
+}
+func (w *Workspace) savePosition(d *Document, p Position) error {
+	d.Position = clampPosition(d.Content, p)
+	w.positions[d.ID] = d.Position
+	w.positionsDirty = true
+	return w.flushPositions()
+}
+func (w *Workspace) flushPositions() error {
+	if !w.positionsDirty {
+		return nil
+	}
+	b, err := json.Marshal(w.positions)
+	if err == nil {
+		err = writeQuick(filepath.Join(w.root, "positions.json"), b, 0600)
+	}
+	if err == nil {
+		w.positionsDirty = false
+	}
+	return err
+}
+func (w *Workspace) Flush() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.flushPositions()
+}
 func (w *Workspace) Update(e Edit) (Document, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -486,56 +549,54 @@ func (w *Workspace) Update(e Edit) (Document, error) {
 	if len(e.Content) > maxDocument || !utf8.ValidString(e.Content) {
 		return *d, errors.New("文稿超过 8 MB 或编码无效")
 	}
-	before := *d
-	changed := d.Content != e.Content
-	d.Content = e.Content
-	length := len(utf16.Encode([]rune(e.Content)))
-	e.Position.Anchor = max(0, min(length, e.Position.Anchor))
-	e.Position.Head = max(0, min(length, e.Position.Head))
-	if math.IsNaN(e.Position.Scroll) || math.IsInf(e.Position.Scroll, 0) || e.Position.Scroll < 0 {
-		e.Position.Scroll = 0
-	}
-	d.Position = e.Position
-	d.Revision++
-	if changed {
-		d.Updated = time.Now().UnixMilli()
-		if d.Path == "" && !d.CustomTitle {
-			d.Title = inferredTitle(e.Content)
-		}
-	}
-	d.Status = "草稿已保存"
-	if err := w.persist(d); err != nil {
-		*d = before
-		d.Status = "保存失败，内容仍在编辑器"
+	if d.Content == e.Content && (d.Path == "" || digest([]byte(d.Content)) == d.DiskContentHash && !d.Conflict) {
+		err := w.savePosition(d, e.Position)
 		return *d, err
 	}
-	w.check(d, false)
-	if d.Path == "" || d.Conflict {
-		return *d, nil
+	before := *d
+	d.Content = e.Content
+	d.Position = clampPosition(e.Content, e.Position)
+	d.Revision++
+	d.Updated = time.Now().UnixMilli()
+	if d.Path == "" && !d.CustomTitle {
+		d.Title = inferredTitle(e.Content)
 	}
-	if digest([]byte(d.Content)) == d.DiskContentHash {
-		d.Status = "文件已保存"
-		return *d, nil
+	d.Excerpt = excerptOf(e.Content)
+	d.Status = "草稿已保存"
+	savedFile := false
+	if d.Path != "" {
+		w.check(d, false)
+		if !d.Conflict {
+			if digest([]byte(d.Content)) == d.DiskContentHash {
+				d.Status = "文件已保存"
+			} else if portable, err := w.materialize(d, d.Path, false); err != nil {
+				d.Status = "草稿已保留，图片保存失败"
+			} else {
+				clone := *d
+				clone.Content = portable
+				b := diskBytes(&clone)
+				if digest(b) == d.DiskHash {
+					d.Status = "文件已保存"
+				} else if err := w.writeOriginal(d, b); err != nil {
+					d.Status = "草稿已保留，文件保存失败"
+				} else {
+					savedFile = true
+					d.Status = "文件已保存"
+				}
+			}
+		}
 	}
-	portable, err := w.materialize(d, d.Path, false)
-	if err != nil {
-		d.Status = "草稿已保留，图片保存失败"
-		return *d, nil
-	}
-	clone := *d
-	clone.Content = portable
-	bytes := diskBytes(&clone)
-	if digest(bytes) == d.DiskHash {
-		d.Status = "文件已保存"
-		return *d, nil
-	}
-	if err := w.writeOriginal(d, bytes); err != nil {
-		d.Status = "草稿已保留，文件保存失败"
-		return *d, nil
-	}
-	d.Status = "文件已保存"
 	if err := w.persist(d); err != nil {
+		if !savedFile {
+			*d = before
+			d.Status = "保存失败，内容仍在编辑器"
+			return *d, err
+		}
 		d.Status = "文件已保存，恢复记录更新失败"
+	}
+	// A prior position-only save must not override the newer position in the draft.
+	if _, ok := w.positions[d.ID]; ok {
+		_ = w.savePosition(d, d.Position)
 	}
 	return *d, nil
 }

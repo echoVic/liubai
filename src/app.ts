@@ -7,11 +7,13 @@ import {applyIcons,icon} from './icons';
 import {renderDelivery,waitImages,copyRich,type Delivery} from './delivery';
 import {createPreviewController,type PreviewController} from './preview';
 import {normalizeImageDestination} from './markdown';
+import {countWords} from './stats';
 const $=<T extends HTMLElement=HTMLElement>(s:string)=>document.querySelector<T>(s)!;
 const $$=(s:string)=>Array.from(document.querySelectorAll<HTMLElement>(s));
 const node=(tag:string,cls='',text='')=>{const n=document.createElement(tag);n.className=cls;n.textContent=text;return n};
 let state:WorkspaceState,doc:Doc,view:EditorView,appearance:Appearance,source=false,loading=false,busy=false,dirty=false;
 let timer:ReturnType<typeof setTimeout>,toastTimer:ReturnType<typeof setTimeout>,saveFlight:Promise<boolean>|null=null;
+let wordCountTimer:ReturnType<typeof setTimeout>;
 let generation=0,drawerMode='recent',savedPosition='',closeRequested=false;
 let quarantineReveal='';
 let appearanceQueue:Promise<void>=Promise.resolve();
@@ -32,20 +34,24 @@ $('#reveal-quarantine').onclick=()=>{if(quarantineReveal)void call('Reveal',quar
 const split=()=>appearance?.layout==='split';
 const sourceActive=()=>split()&&source;
 function position(){const r=view.state.selection.main;return {anchor:r.anchor,head:r.head,scroll:$('.editor-pane').scrollTop,source:false}}
-function header(){if(!doc)return;const isSplit=split(),isSource=sourceActive();$('#doc-title').textContent=doc.title;$('#save-status').textContent=dirty?(compositionActive?'正在输入':'待保存'):doc.status;$('#document-kind').textContent=doc.path?'本地文稿 · '+doc.title:'此刻 · 一篇草稿';$('#word-count').textContent=[...view.state.doc.toString().replace(/\s/g,'')].length.toLocaleString()+' 字';$('#mode-button').setAttribute('aria-pressed',String(isSplit));$('#mode-button').setAttribute('aria-label',isSplit?'当前为分栏预览，切换到即时排版':'当前为即时排版，切换到分栏预览');$('#mode-label').textContent=isSplit?'分栏预览':'即时排版';$('#source-button').setAttribute('aria-pressed',String(isSource));$('#source-label').textContent=isSource?'源码':'即时';$('.paper').classList.toggle('source-mode',isSource)}
+function header(){if(!doc)return;const isSplit=split(),isSource=sourceActive();$('#doc-title').textContent=doc.title;$('#save-status').textContent=dirty?(compositionActive?'正在输入':'待保存'):doc.status;$('#document-kind').textContent=doc.path?'本地文稿 · '+doc.title:'此刻 · 一篇草稿';$('#mode-button').setAttribute('aria-pressed',String(isSplit));$('#mode-button').setAttribute('aria-label',isSplit?'当前为分栏预览，切换到即时排版':'当前为即时排版，切换到分栏预览');$('#mode-label').textContent=isSplit?'分栏预览':'即时排版';$('#source-button').setAttribute('aria-pressed',String(isSource));$('#source-label').textContent=isSource?'源码':'即时';$('.paper').classList.toggle('source-mode',isSource)}
+function scheduleWordCount(immediate=false){clearTimeout(wordCountTimer);const update=()=>{$('#word-count').textContent=countWords(view.state.doc.toString()).toLocaleString()+' 字'};if(immediate)update();else wordCountTimer=setTimeout(update,400)}
 let pendingSent=false;function syncPending(){const pending=dirty||compositionActive||busy||!!saveFlight;if(pending===pendingSent||!desktop)return;pendingSent=pending;void call('SetPending',pending).catch(()=>{pendingSent=!pending})}
-function changed(content=true){if(loading||!doc)return;if(content){dirty=true;generation++;header()}preview.changed(content,view.state.doc.lineAt(view.state.selection.main.head).number-1);clearTimeout(timer);if(!compositionActive)timer=setTimeout(()=>void save(),content?450:800);syncPending()}
+function changed(content=true){if(loading||!doc)return;if(content){dirty=true;generation++;header();scheduleWordCount()}preview.changed(content,view.state.doc.lineAt(view.state.selection.main.head).number-1);clearTimeout(timer);if(!compositionActive)timer=setTimeout(()=>void save(),content?450:800);syncPending()}
 function composition(active:boolean){compositionActive=active;preview.composition(active);clearTimeout(timer);if(!active){timer=setTimeout(()=>void save(),800);if(pendingClose){pendingClose=false;void closeApp()}else void processOpened()}syncPending()}
 function reconfigure(){view.dispatch({effects:mode.reconfigure(sourceActive()?[]:richExtensions(resolveImage,openTable)),annotations:Transaction.addToHistory.of(false)})}
-async function save():Promise<boolean>{
- clearTimeout(timer);if(compositionActive)return false;if(saveFlight){const pending=await saveFlight;if(!pending&&dirty)return false;if(dirty)return save();return true}if(!doc||!view)return true;
- const content=view.state.doc.toString(),pos=position();if(!dirty&&JSON.stringify(pos)===savedPosition)return true;
- const id=doc.id,stamp=generation;if(dirty)$('#save-status').textContent='正在保存';
- saveFlight=(async()=>{try{const result=await call<Doc>('Update',{id,revision:doc.revision,content,position:pos});
+// force: an explicit save or retry resends the content so a failed file write is retried.
+async function save(force=false):Promise<boolean>{
+ clearTimeout(timer);if(compositionActive)return false;if(saveFlight){const pending=await saveFlight;if(!pending&&dirty)return false;if(dirty||force)return save(force);return true}if(!doc||!view)return true;
+ const pos=position();if(!force&&!dirty&&JSON.stringify(pos)===savedPosition)return true;
+ const id=doc.id,stamp=generation,positionOnly=!dirty&&!force,content=positionOnly?'':view.state.doc.toString();if(dirty)$('#save-status').textContent='正在保存';
+ saveFlight=(async()=>{try{
+  if(positionOnly){await call('SavePosition',id,pos);if(doc.id===id){doc.position=pos;savedPosition=JSON.stringify(pos)}return true}
+  const result=await call<Doc>('Update',{id,revision:doc.revision,content,position:pos});
   if(doc.id!==id)return true;doc.revision=result.revision;doc.status=result.status;doc.conflict=result.conflict;doc.title=result.title;doc.content=content;doc.position=pos;doc.updated=result.updated;
   if(stamp===generation)dirty=false;savedPosition=JSON.stringify(pos);header();preview.saved();
   if(result.conflict||result.status.includes('失败'))banner(result.status,result.conflict);else banner();return true;
- }catch(e){banner('保存失败：'+errorText(e));$('#save-status').textContent='保存失败 · 当前输入仍在';dirty=true;return false}finally{saveFlight=null;syncPending()}})();syncPending();const ok=await saveFlight;if(ok&&dirty)return save();return ok;
+ }catch(e){if(positionOnly)return true;banner('保存失败：'+errorText(e));$('#save-status').textContent='保存失败 · 当前输入仍在';dirty=true;return false}finally{saveFlight=null;syncPending()}})();syncPending();const ok=await saveFlight;if(ok&&dirty)return save();return ok;
 }
 async function saveForAction(){const ok=await save();if(!ok&&dirty){toast('请先重试保存，当前输入仍保留');return false}await appearanceQueue.catch(()=>{});return true}
 async function resolveImageFor(documentID:string,dest:string):Promise<string>{
@@ -62,7 +68,7 @@ function load(next:WorkspaceState){
  const cached=sessions.get(doc.id);if(cached&&cached.doc.toString()===doc.content)view.setState(cached);
  view.dispatch({effects:editLock.reconfigure(EditorState.readOnly.of(busy))});
  reconfigure();
- loading=false;view.dispatch({effects:setFocus.of(focusMode)});applyTheme();const changedPreviewDocument=preview.setDocument(doc.id);applyLayout();if(!changedPreviewDocument)preview.refresh();header();if(doc.conflict||doc.status.includes('失败'))banner(doc.status,doc.conflict);else banner();
+ loading=false;view.dispatch({effects:setFocus.of(focusMode)});applyTheme();const changedPreviewDocument=preview.setDocument(doc.id);applyLayout();if(!changedPreviewDocument)preview.refresh();header();scheduleWordCount(true);if(doc.conflict||doc.status.includes('失败'))banner(doc.status,doc.conflict);else banner();
  requestAnimationFrame(()=>{$('.editor-pane').scrollTop=doc.position.scroll||0;view.focus()});
  if(!$('#drawer').hidden)renderDrawer();
 }
@@ -174,7 +180,7 @@ async function action(id:string){
  if(id==='commands'){renderCommands();dialog('commands');$<HTMLInputElement>('#command-search').value='';renderCommands();$('#command-search').focus();return}
  if(id==='recent'||id==='outline'){drawerMode=id;$('#drawer').hidden=false;await refreshRecent();return}
  if(id==='image'){$('#image-input').click();return}if(id==='close'){await closeApp();return}
- await run(async()=>{switch(id){case 'new':if(await saveForAction())load(await call<WorkspaceState>('New'));break;case 'open':if(!await saveForAction())break;if(desktop)load(await call<WorkspaceState>('Open'));else $('#open-input').click();break;case 'save':case 'retry':if(id==='retry')savedPosition='';await save();if(!doc.path&&id==='save')await saveAs();break;case 'saveAs':await saveAs();break;case 'export':await exportDoc();break;case 'pdf':case 'copyRich':case 'html':await prepareDelivery(id);break;case 'reload':if(await saveForAction())load(await call<WorkspaceState>('Reload',doc.id));break;case 'overwrite':if(!await saveForAction())break;const title=doc.title;load(await call<WorkspaceState>('Overwrite',doc.id));toast('已用当前版本覆盖磁盘文件；原磁盘内容另存为「'+title+' · 磁盘版本」');break;}})
+ await run(async()=>{switch(id){case 'new':if(await saveForAction())load(await call<WorkspaceState>('New'));break;case 'open':if(!await saveForAction())break;if(desktop)load(await call<WorkspaceState>('Open'));else $('#open-input').click();break;case 'save':case 'retry':if(id==='retry')savedPosition='';await save(true);if(!doc.path&&id==='save')await saveAs();break;case 'saveAs':await saveAs();break;case 'export':await exportDoc();break;case 'pdf':case 'copyRich':case 'html':await prepareDelivery(id);break;case 'reload':if(await saveForAction())load(await call<WorkspaceState>('Reload',doc.id));break;case 'overwrite':if(!await saveForAction())break;const title=doc.title;load(await call<WorkspaceState>('Overwrite',doc.id));toast('已用当前版本覆盖磁盘文件；原磁盘内容另存为「'+title+' · 磁盘版本」');break;}})
 }
 function openLink(url:string){
  if(!safeLink(url)){toast('不支持打开此类链接');return}

@@ -22,3 +22,14 @@ s=create('前 留白 后',2,4);
 s=s.update({changes:{from:2,to:4,insert:makeLink('留白','https://example.com/a')},annotations:isolateHistory.of('full')}).state;
 const first=s.doc.toString();s=s.update({changes:{from:2,to:s.doc.length-2,insert:makeLink('留白','https://example.com/b')},annotations:isolateHistory.of('full')}).state;
 assert.ok(undo({state:s,dispatch:tr=>s=tr.state}));assert.equal(s.doc.toString(),first);
+
+const {countWords}=await import('../src/stats');
+assert.equal(countWords("# 标题\n\n这是**加粗**和[链接](https://example.com/a)。Hello world, it's 2026."),13);
+assert.equal(countWords('---\ntitle: 不计\n---\n\n正文'),2);
+assert.equal(countWords('![图片说明](a.png)\n\n<span>内联</span>'),2);
+assert.equal(countWords('```js\nconst a = 1\n```'),3);
+assert.equal(countWords('- [x] 完成 https://example.com/x'),2);
+console.log('字数统计检查通过');
+assert.equal(countWords('かな カナ 한글 中文 hello-world café 42 don’t'),13);
+assert.equal(countWords('<!-- 不计\n注释 -->\n[ref]: https://example.com/不计\n\n[正文][ref]\n| --- | :---: |\n1. [ ] 完成 www.example.com/不计'),4);
+assert.equal(countWords('---\r\ntitle: 不计\r\n...\r\n\r\n正文\n~~~ts\nconst a = 1\n~~~'),5);

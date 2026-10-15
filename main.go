@@ -65,6 +65,7 @@ func (d *Desktop) State() WorkspaceState {
 	return d.w.State()
 }
 func (d *Desktop) Update(e Edit) (Document, error)             { return d.w.Update(e) }
+func (d *Desktop) SavePosition(id string, p Position) error    { return d.w.SavePosition(id, p) }
 func (d *Desktop) New() (WorkspaceState, error)                { return d.w.New() }
 func (d *Desktop) Activate(id string) (WorkspaceState, error)  { return d.w.Activate(id) }
 func (d *Desktop) Status(id string) (DocStatus, error)         { return d.w.Status(id) }
@@ -210,6 +211,11 @@ func main() {
 	}
 	mygo.SetFrontend(web)
 	mygo.Bind(d)
+	mygo.App.OnWillQuit(func(*mygo.QuitEvent) {
+		if err := w.Flush(); err != nil {
+			log.Print(err)
+		}
+	})
 	mygo.App.WhenReady(func() {
 		w.mu.Lock()
 		appearance := w.appearance
@@ -344,6 +350,16 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			e = arg(0, &x)
 			if e == nil {
 				value, e = d.Update(x)
+			}
+		case "SavePosition":
+			var id string
+			var p Position
+			e = arg(0, &id)
+			if e == nil {
+				e = arg(1, &p)
+			}
+			if e == nil {
+				e = d.SavePosition(id, p)
 			}
 		case "Activate", "Reload", "Status", "Overwrite":
 			var id string

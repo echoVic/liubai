@@ -64,13 +64,18 @@ func TestPreserveUneditedCRLFBOMAndConflict(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	edit(t, w, s.Current.Content)
+	before := edit(t, w, s.Current.Content)
 	b, _ := os.ReadFile(p)
 	if !bytes.Equal(original, b) {
 		t.Fatal("unchanged source rewritten")
 	}
 	os.WriteFile(p, []byte("external"), 0644)
-	d := edit(t, w, "my changed version")
+	// Edit from the revision the editor still shows; edit() would call State(),
+	// which now reloads a clean draft from disk before the edit lands.
+	d, e := w.Update(Edit{ID: before.ID, Revision: before.Revision, Content: "my changed version"})
+	if e != nil {
+		t.Fatal(e)
+	}
 	if !d.Conflict {
 		t.Fatal("conflict not detected")
 	}

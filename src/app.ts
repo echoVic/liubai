@@ -1,4 +1,4 @@
-import {call,desktop,type Doc,type WorkspaceState,type Appearance,type ImageResult,type ExportResult} from './types';
+import {call,desktop,type Doc,type DocStatus,type WorkspaceState,type Appearance,type ImageResult,type ExportResult} from './types';
 import {createEditor,mode,richExtensions,setFocus,undo,redo,openSearchPanel,EditorState,type EditorView} from './editor';
 import {Transaction,Compartment,StateEffect} from '@codemirror/state';
 import {blockFormat,wrapSelection,codeBlock,linkAt,makeLink,safeLink,tableAt,parseTable,serializeTable,headings,type BlockKind} from './editing';
@@ -27,7 +27,7 @@ const names:{id:Appearance['theme'];name:string;kind:string}[]=[{id:'paper',name
 if(desktop)document.body.classList.add('desktop');else $('#workspace-label').textContent='本地开发版 · 独立草稿存档';
 const errorText=(e:unknown)=>e instanceof Error?e.message:String(e);
 function toast(s:string){$('#toast').textContent=s;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4200)}
-function banner(s='',conflict=false,reveal=''){$('#banner').hidden=!s;$('#banner-text').textContent=s;$('#reload-disk').hidden=!conflict;quarantineReveal=reveal;$('#reveal-quarantine').hidden=!desktop||!reveal}
+function banner(s='',conflict=false,reveal=''){$('#banner').hidden=!s;$('#banner-text').textContent=s;$('#reload-disk').hidden=!conflict;$('#overwrite-disk').hidden=!conflict;quarantineReveal=reveal;$('#reveal-quarantine').hidden=!desktop||!reveal}
 $('#reveal-quarantine').onclick=()=>{if(quarantineReveal)void call('Reveal',quarantineReveal).catch(e=>toast(errorText(e)))};
 const split=()=>appearance?.layout==='split';
 const sourceActive=()=>split()&&source;
@@ -113,7 +113,7 @@ $('#image-input').onchange=()=>{const input=$<HTMLInputElement>('#image-input');
 function setBusy(value:boolean){busy=value;if(view)view.dispatch({effects:editLock.reconfigure(EditorState.readOnly.of(value))});if(!value){if(pendingClose){pendingClose=false;void closeApp()}else if(openedQueue.length)setTimeout(()=>void processOpened(),500)}}
 async function run(fn:()=>Promise<void>){if(busy)return;setBusy(true);try{await fn()}catch(e){toast(errorText(e))}finally{setBusy(false)}}
 async function processOpened(){if(busy||compositionActive||!openedQueue.length)return;const id=openedQueue.shift()!;await run(async()=>{if(await saveForAction())load(await call<WorkspaceState>('Activate',id));else toast('当前文稿尚未保存，请先处理；打开的文件可从最近文稿进入')})}
-async function saveAs(){if(!await saveForAction()){await rescue();return;}if(!desktop){download(doc.title+'.md',view.state.doc.toString(),'text/markdown');toast('浏览器已下载 Markdown；含图片请使用“带走文稿”');return}const r=await call<ExportResult>('SaveAs',doc.id);if(r.cancelled)return;const old=view.state.doc.toString();doc=r.document;loading=true;if(old!==doc.content)view.dispatch({changes:r.changes||[],annotations:Transaction.addToHistory.of(false)});loading=false;imageCache.clear();reconfigure();const next=await call<WorkspaceState>('State');next.appearance=appearance;state=next;dirty=false;savedPosition='';if(!preview.setDocument(doc.id))preview.refresh();header();banner();toast('文稿和图片已保存：'+r.path)}
+async function saveAs(){if(!await saveForAction()){await rescue();return;}if(!desktop){download(doc.title+'.md',view.state.doc.toString(),'text/markdown');toast('浏览器已下载 Markdown；含图片请使用“带走文稿”');return}const r=await call<ExportResult>('SaveAs',doc.id);if(r.cancelled)return;const old=view.state.doc.toString();doc=r.document;loading=true;if(old!==doc.content)view.dispatch({changes:r.changes||[],annotations:Transaction.addToHistory.of(false)});loading=false;imageCache.clear();reconfigure();const next=await call<WorkspaceState>('State');next.appearance=appearance;state=next;dirty=false;savedPosition='';if(!preview.setDocument(doc.id))preview.refresh();header();banner();toast('文稿和图片已保存：'+r.path+(r.missing?.length?' · '+r.missing.length+' 张图片未找到，引用保持原样':''))}
 async function rescue(){
  if(desktop){try{const r=await call<ExportResult>('Rescue',doc.id,view.state.doc.toString());if(!r.cancelled)toast('当前内容与图片已另存：'+r.path)}catch(e){toast(errorText(e))}}
  else {download(doc.title+'-恢复副本.md',view.state.doc.toString(),'text/markdown');toast('当前正文已下载；图片仍保留在本机')}
@@ -173,7 +173,7 @@ async function action(id:string){
  if(id==='commands'){renderCommands();dialog('commands');$<HTMLInputElement>('#command-search').value='';renderCommands();$('#command-search').focus();return}
  if(id==='recent'||id==='outline'){drawerMode=id;$('#drawer').hidden=false;await refreshRecent();return}
  if(id==='image'){$('#image-input').click();return}if(id==='close'){await closeApp();return}
- await run(async()=>{switch(id){case 'new':if(await saveForAction())load(await call<WorkspaceState>('New'));break;case 'open':if(!await saveForAction())break;if(desktop)load(await call<WorkspaceState>('Open'));else $('#open-input').click();break;case 'save':case 'retry':if(id==='retry')savedPosition='';await save();if(!doc.path&&id==='save')await saveAs();break;case 'saveAs':await saveAs();break;case 'export':await exportDoc();break;case 'pdf':case 'copyRich':case 'html':await prepareDelivery(id);break;case 'reload':if(await saveForAction())load(await call<WorkspaceState>('Reload',doc.id));break;}})
+ await run(async()=>{switch(id){case 'new':if(await saveForAction())load(await call<WorkspaceState>('New'));break;case 'open':if(!await saveForAction())break;if(desktop)load(await call<WorkspaceState>('Open'));else $('#open-input').click();break;case 'save':case 'retry':if(id==='retry')savedPosition='';await save();if(!doc.path&&id==='save')await saveAs();break;case 'saveAs':await saveAs();break;case 'export':await exportDoc();break;case 'pdf':case 'copyRich':case 'html':await prepareDelivery(id);break;case 'reload':if(await saveForAction())load(await call<WorkspaceState>('Reload',doc.id));break;case 'overwrite':if(!await saveForAction())break;const title=doc.title;load(await call<WorkspaceState>('Overwrite',doc.id));toast('已用当前版本覆盖磁盘文件；原磁盘内容另存为「'+title+' · 磁盘版本」');break;}})
 }
 function openLink(url:string){
  if(!safeLink(url)){toast('不支持打开此类链接');return}
@@ -226,4 +226,13 @@ preview=createPreviewController({
  openLink,
 });
 try{const next=await call<WorkspaceState>('State');load(next);if(next.notices?.length)banner(next.notices.join('；'),false,next.quarantineDir)}catch(e){banner('无法打开文稿：'+errorText(e))}
-setInterval(()=>{if(doc&&!busy&&!dirty&&!saveFlight)void call<WorkspaceState>('State').then(next=>{if(next.current.id===doc.id&&next.current.conflict){doc.conflict=true;doc.status=next.current.status;header();banner(doc.status,true)}}).catch(()=>{})},2000);
+async function pollStatus(){
+ if(!doc||busy||dirty||saveFlight||compositionActive||document.visibilityState!=='visible')return;
+ const id=doc.id;let s:DocStatus;try{s=await call<DocStatus>('Status',id)}catch{return}
+ if(!doc||doc.id!==id||dirty||busy||saveFlight)return;
+ if(s.revision!==doc.revision){await run(async()=>{load(await call<WorkspaceState>('Activate',id));toast('已载入磁盘上的新版本')});return}
+ if(s.conflict!==doc.conflict||s.status!==doc.status){doc.conflict=s.conflict;doc.status=s.status;header();if(s.conflict||s.status.includes('失败'))banner(s.status,s.conflict);else banner()}
+}
+setInterval(()=>void pollStatus(),2000);
+document.addEventListener('visibilitychange',()=>void pollStatus());
+window.addEventListener('focus',()=>void pollStatus());

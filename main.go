@@ -63,10 +63,12 @@ func (d *Desktop) State() WorkspaceState {
 	d.pageReady.Store(true)
 	return d.w.State()
 }
-func (d *Desktop) Update(e Edit) (Document, error)            { return d.w.Update(e) }
-func (d *Desktop) New() (WorkspaceState, error)               { return d.w.New() }
-func (d *Desktop) Activate(id string) (WorkspaceState, error) { return d.w.Activate(id) }
-func (d *Desktop) Appearance(p Appearance) error              { return d.w.Appearance(p) }
+func (d *Desktop) Update(e Edit) (Document, error)             { return d.w.Update(e) }
+func (d *Desktop) New() (WorkspaceState, error)                { return d.w.New() }
+func (d *Desktop) Activate(id string) (WorkspaceState, error)  { return d.w.Activate(id) }
+func (d *Desktop) Status(id string) (DocStatus, error)         { return d.w.Status(id) }
+func (d *Desktop) Overwrite(id string) (WorkspaceState, error) { return d.w.Overwrite(id) }
+func (d *Desktop) Appearance(p Appearance) error               { return d.w.Appearance(p) }
 func (d *Desktop) ImportImage(id, name, data string) (ImageResult, error) {
 	return d.w.ImportImage(id, name, data)
 }
@@ -334,14 +336,19 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			if e == nil {
 				value, e = d.Update(x)
 			}
-		case "Activate", "Reload":
+		case "Activate", "Reload", "Status", "Overwrite":
 			var id string
 			e = arg(0, &id)
 			if e == nil {
-				if req.Method == "Activate" {
+				switch req.Method {
+				case "Activate":
 					value, e = d.Activate(id)
-				} else {
+				case "Reload":
 					value, e = d.Reload(id)
+				case "Status":
+					value, e = d.Status(id)
+				case "Overwrite":
+					value, e = d.Overwrite(id)
 				}
 			}
 		case "Appearance":

@@ -47,6 +47,9 @@ type Document struct {
 	Position        Position          `json:"position"`
 	DiskHash        string            `json:"diskHash"`
 	DiskContentHash string            `json:"diskContentHash"`
+	DiskSize        int64             `json:"diskSize,omitempty"`
+	DiskModTime     int64             `json:"diskModTime,omitempty"`
+	DiskInode       uint64            `json:"diskInode,omitempty"`
 	BOM             bool              `json:"bom"`
 	CRLF            bool              `json:"crlf"`
 	Conflict        bool              `json:"conflict"`
@@ -59,6 +62,12 @@ type Summary struct {
 	Path    string `json:"path"`
 	Updated int64  `json:"updated"`
 	Excerpt string `json:"excerpt"`
+}
+type DocStatus struct {
+	ID       string `json:"id"`
+	Revision int    `json:"revision"`
+	Conflict bool   `json:"conflict"`
+	Status   string `json:"status"`
 }
 type WorkspaceState struct {
 	Current       Document   `json:"current"`
@@ -339,8 +348,25 @@ func (w *Workspace) newLocked(content string) (*Document, error) {
 	w.docs[d.ID] = d
 	return d, nil
 }
-func (w *Workspace) check(d *Document) {
+func (d *Document) recordDiskInfo(info os.FileInfo) {
+	d.DiskSize, d.DiskModTime, d.DiskInode = 0, 0, 0
+	if info != nil {
+		d.DiskSize = info.Size()
+		d.DiskModTime = info.ModTime().UnixNano()
+		d.DiskInode = fileIdentity(info)
+	}
+}
+func (w *Workspace) check(d *Document, reload bool) {
 	if d.Path == "" {
+		return
+	}
+	info, err := os.Stat(d.Path)
+	if err != nil {
+		d.Conflict = true
+		d.Status = "文件不可访问，草稿已保留"
+		return
+	}
+	if d.DiskModTime != 0 && d.DiskSize == info.Size() && d.DiskModTime == info.ModTime().UnixNano() && d.DiskInode == fileIdentity(info) && !d.Conflict {
 		return
 	}
 	b, err := readLimited(d.Path, maxDocument)
@@ -349,10 +375,41 @@ func (w *Workspace) check(d *Document) {
 		d.Status = "文件不可访问，草稿已保留"
 		return
 	}
-	if digest(b) != d.DiskHash {
-		d.Conflict = true
-		d.Status = "磁盘内容已变化，自动写入已暂停"
+	hash := digest(b)
+	if hash == d.DiskHash {
+		d.recordDiskInfo(info)
+		if d.Conflict {
+			d.Conflict = false
+			d.Status = "草稿已保存"
+			if digest([]byte(d.Content)) == d.DiskContentHash {
+				d.Status = "文件已保存"
+			}
+		}
+		return
 	}
+	if reload && digest([]byte(d.Content)) == d.DiskContentHash {
+		content, bom, crlf, err := decodeFile(b)
+		if err != nil {
+			d.Conflict = true
+			d.Status = "磁盘文件无法读取，草稿已保留"
+			return
+		}
+		d.Content, d.BOM, d.CRLF = content, bom, crlf
+		d.DiskHash = hash
+		d.DiskContentHash = digest([]byte(content))
+		d.recordDiskInfo(info)
+		d.ImageAliases = nil
+		d.Conflict = false
+		d.Revision++
+		d.Updated = time.Now().UnixMilli()
+		d.Status = "已载入磁盘上的新版本"
+		if err := w.persist(d); err != nil {
+			d.Status = "已载入磁盘新版本，恢复记录更新失败"
+		}
+		return
+	}
+	d.Conflict = true
+	d.Status = "磁盘内容已变化，自动写入已暂停"
 }
 func (w *Workspace) snapshot() WorkspaceState {
 	list := []Summary{}
@@ -375,13 +432,23 @@ func (w *Workspace) Notify(message string) {
 func (w *Workspace) State() WorkspaceState {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.check(w.docs[w.current])
+	w.check(w.docs[w.current], true)
 	s := w.snapshot()
 	s.Notices = append([]string(nil), w.notices...)
 	s.QuarantineDir = w.quarantineDir
 	w.notices = nil
 	w.quarantineDir = ""
 	return s
+}
+func (w *Workspace) Status(id string) (DocStatus, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	d := w.docs[id]
+	if d == nil {
+		return DocStatus{}, errors.New("文稿不存在")
+	}
+	w.check(d, true)
+	return DocStatus{d.ID, d.Revision, d.Conflict, d.Status}, nil
 }
 func (w *Workspace) New() (WorkspaceState, error) {
 	w.mu.Lock()
@@ -402,7 +469,7 @@ func (w *Workspace) Activate(id string) (WorkspaceState, error) {
 		return WorkspaceState{}, errors.New("文稿不存在")
 	}
 	w.current = id
-	w.check(d)
+	w.check(d, true)
 	err := w.saveIndex()
 	return w.snapshot(), err
 }
@@ -442,7 +509,7 @@ func (w *Workspace) Update(e Edit) (Document, error) {
 		d.Status = "保存失败，内容仍在编辑器"
 		return *d, err
 	}
-	w.check(d)
+	w.check(d, false)
 	if d.Path == "" || d.Conflict {
 		return *d, nil
 	}
@@ -490,6 +557,8 @@ func (w *Workspace) writeOriginal(d *Document, b []byte) error {
 	}
 	d.DiskHash = digest(b)
 	d.DiskContentHash = digest([]byte(d.Content))
+	info, _ = os.Stat(d.Path)
+	d.recordDiskInfo(info)
 	d.Conflict = false
 	return nil
 }
@@ -507,7 +576,7 @@ func (w *Workspace) Open(path string) (WorkspaceState, error) {
 	for id, d := range w.docs {
 		if d.Path == p {
 			w.current = id
-			w.check(d)
+			w.check(d, true)
 			return w.snapshot(), w.saveIndex()
 		}
 	}
@@ -520,6 +589,8 @@ func (w *Workspace) Open(path string) (WorkspaceState, error) {
 		return WorkspaceState{}, err
 	}
 	d := &Document{ID: uid(), Title: filepath.Base(p), Content: s, Path: p, Updated: time.Now().UnixMilli(), DiskHash: digest(b), DiskContentHash: digest([]byte(s)), BOM: bom, CRLF: crlf, Status: "文件已保存"}
+	info, _ := os.Stat(p)
+	d.recordDiskInfo(info)
 	if err = w.persist(d); err != nil {
 		return WorkspaceState{}, err
 	}
@@ -566,31 +637,92 @@ func (w *Workspace) Reload(id string) (WorkspaceState, error) {
 	if err != nil {
 		return WorkspaceState{}, err
 	}
-	backup := *d
-	backup.ID = uid()
-	backup.Path = ""
-	backup.Title = d.Title + " · 恢复副本"
-	backup.DiskHash = ""
-	backup.Conflict = false
-	backup.Status = "草稿已保存"
-	backup.Updated = time.Now().UnixMilli()
-	if err = w.copyAssets(d, &backup); err != nil {
-		return WorkspaceState{}, err
+	if digest([]byte(d.Content)) != d.DiskContentHash {
+		backup := *d
+		backup.ID = uid()
+		backup.Path = ""
+		backup.Title = d.Title + " · 恢复副本"
+		backup.DiskHash, backup.DiskContentHash = "", ""
+		backup.recordDiskInfo(nil)
+		backup.Conflict = false
+		backup.Status = "草稿已保存"
+		backup.Updated = time.Now().UnixMilli()
+		if err = w.copyAssets(d, &backup); err != nil {
+			return WorkspaceState{}, err
+		}
+		if err = w.persist(&backup); err != nil {
+			return WorkspaceState{}, err
+		}
+		w.docs[backup.ID] = &backup
 	}
-	if err = w.persist(&backup); err != nil {
-		return WorkspaceState{}, err
-	}
-	w.docs[backup.ID] = &backup
 	d.Content = content
 	d.ImageAliases = nil
 	d.DiskContentHash = digest([]byte(content))
 	d.BOM = bom
 	d.CRLF = crlf
 	d.DiskHash = digest(b)
+	info, _ := os.Stat(d.Path)
+	d.recordDiskInfo(info)
 	d.Conflict = false
 	d.Status = "文件已保存"
 	d.Revision++
 	if err = w.persist(d); err != nil {
+		return WorkspaceState{}, err
+	}
+	return w.snapshot(), nil
+}
+func (w *Workspace) Overwrite(id string) (WorkspaceState, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	d := w.docs[id]
+	if d == nil || d.Path == "" {
+		return WorkspaceState{}, errors.New("文稿没有对应文件")
+	}
+	b, err := readLimited(d.Path, maxDocument)
+	if err == nil {
+		content, _, _, e := decodeFile(b)
+		if e != nil {
+			return WorkspaceState{}, e
+		}
+		if digest(b) != d.DiskHash {
+			disk := Document{Path: d.Path, Content: content}
+			backup := Document{ID: uid(), Title: d.Title + " · 磁盘版本", Content: content, Updated: time.Now().UnixMilli(), Status: "草稿已保存"}
+			if err = w.copyAssets(&disk, &backup); err != nil {
+				return WorkspaceState{}, err
+			}
+			if err = w.persist(&backup); err != nil {
+				return WorkspaceState{}, err
+			}
+			w.docs[backup.ID] = &backup
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return WorkspaceState{}, err
+	}
+	content, err := w.materialize(d, d.Path, false)
+	if err != nil {
+		return WorkspaceState{}, err
+	}
+	clone := *d
+	clone.Content = content
+	b = diskBytes(&clone)
+	if info, e := os.Stat(d.Path); e == nil {
+		err = replaceFile(d.Path, b, info.Mode().Perm())
+	} else if errors.Is(e, os.ErrNotExist) {
+		err = atomicWrite(d.Path, b, 0644)
+	} else {
+		err = e
+	}
+	if err != nil {
+		return WorkspaceState{}, err
+	}
+	d.DiskHash = digest(b)
+	d.DiskContentHash = digest([]byte(d.Content))
+	info, _ := os.Stat(d.Path)
+	d.recordDiskInfo(info)
+	d.Conflict = false
+	d.Status = "文件已保存"
+	if err = w.persist(d); err != nil {
+		d.Status = "文件已保存，恢复记录更新失败"
 		return WorkspaceState{}, err
 	}
 	return w.snapshot(), nil

@@ -472,7 +472,7 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 		return ExportResult{}, errors.New("请选择普通文件路径，避免替换符号链接")
 	}
 	if p == d.Path {
-		w.check(d)
+		w.check(d, false)
 		if d.Conflict {
 			return ExportResult{}, errors.New("文件存在外部冲突，请选择新文件名")
 		}
@@ -597,6 +597,8 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 	}
 	clone.DiskHash = digest(content)
 	clone.DiskContentHash = digest([]byte(clone.Content))
+	info, _ := os.Stat(p)
+	clone.recordDiskInfo(info)
 	clone.ImageAliases = aliases
 	*d = clone
 	if err = w.persist(d); err != nil {

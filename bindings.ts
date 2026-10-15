@@ -21,17 +21,28 @@ export interface Delivery {
   external: number;
 }
 
+export interface DocStatus {
+  id: string;
+  revision: number;
+  conflict: boolean;
+  status: string;
+}
+
 export interface Document {
   id: string;
   title: string;
   customTitle?: boolean;
   content: string;
+  excerpt?: string;
   path: string;
   updated: number;
   revision: number;
   position: Position;
   diskHash: string;
   diskContentHash: string;
+  diskSize?: number;
+  diskModTime?: number;
+  diskInode?: number;
   bom: boolean;
   crlf: boolean;
   conflict: boolean;
@@ -59,6 +70,12 @@ export interface ImageResult {
   destination: string;
   url: string;
   name: string;
+  markdown: string;
+}
+
+export interface OpenFailure {
+  path: string;
+  error: string;
 }
 
 export interface Position {
@@ -86,6 +103,8 @@ export interface WorkspaceState {
   current: Document;
   recent: Summary[];
   appearance: Appearance;
+  notices?: string[];
+  quarantineDir?: string;
 }
 
 // ---- Services ----
@@ -102,6 +121,9 @@ export const Desktop = {
   },
   copyRich(html: string, text: string): Promise<void> {
     return call("Desktop.CopyRich", html, text);
+  },
+  delete(id: string): Promise<WorkspaceState> {
+    return call("Desktop.Delete", id);
   },
   delivery(id: string): Promise<Delivery> {
     return call("Desktop.Delivery", id);
@@ -120,6 +142,12 @@ export const Desktop = {
   },
   openLink(raw: string): Promise<void> {
     return call("Desktop.OpenLink", raw);
+  },
+  openLinked(id: string, href: string): Promise<WorkspaceState> {
+    return call("Desktop.OpenLinked", id, href);
+  },
+  overwrite(id: string): Promise<WorkspaceState> {
+    return call("Desktop.Overwrite", id);
   },
   pdf(title: string): Promise<ExportResult> {
     return call("Desktop.PDF", title);
@@ -142,8 +170,20 @@ export const Desktop = {
   saveAs(id: string): Promise<ExportResult> {
     return call("Desktop.SaveAs", id);
   },
+  saveHTML(title: string, html: string): Promise<ExportResult> {
+    return call("Desktop.SaveHTML", title, html);
+  },
+  savePosition(id: string, p: Position): Promise<void> {
+    return call("Desktop.SavePosition", id, p);
+  },
+  setPending(pending: boolean): Promise<void> {
+    return call("Desktop.SetPending", pending);
+  },
   state(): Promise<WorkspaceState> {
     return call("Desktop.State");
+  },
+  status(id: string): Promise<DocStatus> {
+    return call("Desktop.Status", id);
   },
   update(e: Edit): Promise<Document> {
     return call("Desktop.Update", e);
@@ -156,4 +196,5 @@ export const Desktop = {
 export const events = {
   liubaiAction: event<string>("liubai:action"),
   liubaiOpened: event<WorkspaceState>("liubai:opened"),
+  liubaiOpenFailed: event<OpenFailure>("liubai:open-failed"),
 } as const;

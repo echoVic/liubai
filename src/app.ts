@@ -13,6 +13,7 @@ const node=(tag:string,cls='',text='')=>{const n=document.createElement(tag);n.c
 let state:WorkspaceState,doc:Doc,view:EditorView,appearance:Appearance,source=false,loading=false,busy=false,dirty=false;
 let timer:ReturnType<typeof setTimeout>,toastTimer:ReturnType<typeof setTimeout>,saveFlight:Promise<boolean>|null=null;
 let generation=0,drawerMode='recent',savedPosition='',closeRequested=false;
+let quarantineReveal='';
 let appearanceQueue:Promise<void>=Promise.resolve();
 let preview:PreviewController;
 const editLock=new Compartment();
@@ -26,7 +27,8 @@ const names:{id:Appearance['theme'];name:string;kind:string}[]=[{id:'paper',name
 if(desktop)document.body.classList.add('desktop');else $('#workspace-label').textContent='本地开发版 · 独立草稿存档';
 const errorText=(e:unknown)=>e instanceof Error?e.message:String(e);
 function toast(s:string){$('#toast').textContent=s;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4200)}
-function banner(s='',conflict=false){$('#banner').hidden=!s;$('#banner-text').textContent=s;$('#reload-disk').hidden=!conflict}
+function banner(s='',conflict=false,reveal=''){$('#banner').hidden=!s;$('#banner-text').textContent=s;$('#reload-disk').hidden=!conflict;quarantineReveal=reveal;$('#reveal-quarantine').hidden=!desktop||!reveal}
+$('#reveal-quarantine').onclick=()=>{if(quarantineReveal)void call('Reveal',quarantineReveal).catch(e=>toast(errorText(e)))};
 const split=()=>appearance?.layout==='split';
 const sourceActive=()=>split()&&source;
 function position(){const r=view.state.selection.main;return {anchor:r.anchor,head:r.head,scroll:$('.editor-pane').scrollTop,source:false}}
@@ -63,7 +65,7 @@ function load(next:WorkspaceState){
  requestAnimationFrame(()=>{$('.editor-pane').scrollTop=doc.position.scroll||0;view.focus()});
  if(!$('#drawer').hidden)renderDrawer();
 }
-async function refreshRecent(){await appearanceQueue.catch(()=>{});const next=await call<WorkspaceState>('State');next.appearance=appearance;state=next;renderDrawer()}
+async function refreshRecent(){await appearanceQueue.catch(()=>{});const next=await call<WorkspaceState>('State');next.appearance=appearance;state=next;renderDrawer();if(next.notices?.length)banner(next.notices.join('；'),false,next.quarantineDir)}
 function themeID(){return appearance.followSystem?(mq.matches?'ink':'paper'):appearance.theme}
 function applyTheme(){if(!appearance)return;const id=themeID();document.documentElement.dataset.liubaiTheme=id;document.documentElement.style.colorScheme=id==='ink'?'dark':'light';$('#follow-system').setAttribute('aria-checked',String(appearance.followSystem));$<HTMLInputElement>('#follow-system').checked=appearance.followSystem;document.documentElement.style.setProperty('--editor-size',(appearance.fontSize||18)+'px');document.documentElement.style.setProperty('--paper-width',appearance.lineWidth==='wide'?'920px':'760px');$<HTMLSelectElement>('#font-size').value=String(appearance.fontSize||18);$<HTMLSelectElement>('#line-width').value=appearance.lineWidth||'normal';renderThemes()}
 function applyLayout(){
@@ -215,7 +217,7 @@ document.addEventListener('keydown',e=>{
 });
 $('.editor-pane').addEventListener('scroll',()=>{if(loading||!doc)return;clearTimeout(timer);timer=setTimeout(()=>void save(),500)},{passive:true});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
-if(window.mygo){window.mygo.on<string>('liubai:action',id=>void action(id));window.mygo.on<WorkspaceState>('liubai:opened',next=>{openedQueue.push(next.current.id);void processOpened()})}
+if(window.mygo){window.mygo.on<string>('liubai:action',id=>void action(id));window.mygo.on<WorkspaceState>('liubai:opened',next=>{openedQueue.push(next.current.id);void processOpened()});window.mygo.on<{path:string;error:string}>('liubai:open-failed',f=>toast('无法打开「'+(f.path.split('/').pop()||f.path)+'」：'+f.error))}
 preview=createPreviewController({
  host:$('#preview-content'),
  scroll:$('.preview-scroll'),
@@ -223,5 +225,5 @@ preview=createPreviewController({
  resolveImage:resolveImageFor,
  openLink,
 });
-try{load(await call<WorkspaceState>('State'))}catch(e){banner('无法打开文稿：'+errorText(e))}
+try{const next=await call<WorkspaceState>('State');load(next);if(next.notices?.length)banner(next.notices.join('；'),false,next.quarantineDir)}catch(e){banner('无法打开文稿：'+errorText(e))}
 setInterval(()=>{if(doc&&!busy&&!dirty&&!saveFlight)void call<WorkspaceState>('State').then(next=>{if(next.current.id===doc.id&&next.current.conflict){doc.conflict=true;doc.status=next.current.status;header();banner(doc.status,true)}}).catch(()=>{})},2000);

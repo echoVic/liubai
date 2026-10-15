@@ -28,14 +28,41 @@ import (
 var frontend embed.FS
 var desktopAction = mygo.NewEvent[string]("liubai:action")
 var documentOpened = mygo.NewEvent[WorkspaceState]("liubai:opened")
+var openFailed = mygo.NewEvent[OpenFailure]("liubai:open-failed")
+
+type OpenFailure struct {
+	Path  string `json:"path"`
+	Error string `json:"error"`
+}
 
 type Desktop struct {
 	w          *Workspace
 	win        *mygo.Window
 	allowClose atomic.Bool
+	pageReady  atomic.Bool
 }
 
-func (d *Desktop) State() WorkspaceState                      { return d.w.State() }
+func (d *Desktop) openPath(path string) {
+	state, err := d.w.Open(path)
+	if err != nil {
+		if !d.pageReady.Load() {
+			d.w.Notify("无法打开「" + filepath.Base(path) + "」：" + err.Error())
+		} else {
+			_ = openFailed.Broadcast(OpenFailure{Path: path, Error: err.Error()})
+		}
+	} else {
+		_ = documentOpened.Broadcast(state)
+	}
+	if d.win != nil {
+		d.win.Show()
+		d.win.Focus()
+	}
+}
+
+func (d *Desktop) State() WorkspaceState {
+	d.pageReady.Store(true)
+	return d.w.State()
+}
 func (d *Desktop) Update(e Edit) (Document, error)            { return d.w.Update(e) }
 func (d *Desktop) New() (WorkspaceState, error)               { return d.w.New() }
 func (d *Desktop) Activate(id string) (WorkspaceState, error) { return d.w.Activate(id) }
@@ -156,7 +183,17 @@ func main() {
 	}
 	w, err := openWorkspace(root)
 	if err != nil {
-		log.Fatal(err)
+		if *webAddr != "" {
+			log.Fatal(err)
+		}
+		mygo.App.WhenReady(func() {
+			_, _ = mygo.Dialog.Message(mygo.MessageOptions{Type: mygo.MessageError, Title: "留白无法启动", Message: "无法打开文稿存储目录", Detail: root + "\n" + err.Error(), Buttons: []string{"退出"}})
+			mygo.App.Quit()
+		})
+		if err := mygo.App.Run(); err != nil {
+			log.Fatal(err)
+		}
+		return
 	}
 	d := &Desktop{w: w}
 	if *webAddr != "" {
@@ -168,7 +205,9 @@ func main() {
 	mygo.SetFrontend(web)
 	mygo.Bind(d)
 	mygo.App.WhenReady(func() {
-		appearance := w.State().Appearance
+		w.mu.Lock()
+		appearance := w.appearance
+		w.mu.Unlock()
 		dark := appearance.Theme == "ink"
 		if appearance.FollowSystem {
 			dark = mygo.Theme.IsDark()
@@ -206,12 +245,7 @@ func main() {
 		}
 	})
 	mygo.App.OnOpenFile(func(path string) {
-		go func() {
-			state, e := w.Open(path)
-			if e == nil {
-				_ = documentOpened.Broadcast(state)
-			}
-		}()
+		go d.openPath(path)
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)

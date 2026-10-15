@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"os"
@@ -60,9 +61,11 @@ type Summary struct {
 	Excerpt string `json:"excerpt"`
 }
 type WorkspaceState struct {
-	Current    Document   `json:"current"`
-	Recent     []Summary  `json:"recent"`
-	Appearance Appearance `json:"appearance"`
+	Current       Document   `json:"current"`
+	Recent        []Summary  `json:"recent"`
+	Appearance    Appearance `json:"appearance"`
+	Notices       []string   `json:"notices,omitempty"`
+	QuarantineDir string     `json:"quarantineDir,omitempty"`
 }
 type index struct {
 	Version    int        `json:"version"`
@@ -76,11 +79,13 @@ type Edit struct {
 	Position Position `json:"position"`
 }
 type Workspace struct {
-	mu         sync.Mutex
-	root       string
-	docs       map[string]*Document
-	current    string
-	appearance Appearance
+	mu            sync.Mutex
+	root          string
+	docs          map[string]*Document
+	current       string
+	appearance    Appearance
+	notices       []string
+	quarantineDir string
 }
 
 func uid() string {
@@ -179,33 +184,49 @@ func openWorkspace(root string) (*Workspace, error) {
 		return nil, err
 	}
 	w := &Workspace{root: root, docs: map[string]*Document{}, appearance: Appearance{Theme: "paper", FollowSystem: true, Layout: "single"}}
-	if b, err := readLimited(filepath.Join(root, "workspace.json"), 1<<20); err == nil {
-		var x index
-		if json.Unmarshal(b, &x) != nil || x.Version != 1 {
-			return nil, errors.New("工作区索引损坏，原文件已保留")
+	indexPath := filepath.Join(root, "workspace.json")
+	if b, err := readLimited(indexPath, 1<<20); err == nil {
+		var version struct {
+			Version int `json:"version"`
 		}
-		w.current = x.Current
-		if validTheme(x.Appearance.Theme) {
-			x.Appearance.Layout = normalizeLayout(x.Appearance.Layout)
-			w.appearance = x.Appearance
+		var x index
+		if json.Unmarshal(b, &version) == nil && version.Version > 1 {
+			if err := w.quarantine(indexPath, b); err != nil {
+				return nil, err
+			}
+			w.restoreIndex(b)
+			w.notices = append(w.notices, "工作区索引来自更新版本的留白，已备份到隔离目录")
+		} else if json.Unmarshal(b, &x) != nil || x.Version != 1 {
+			if err := w.quarantine(indexPath, nil); err != nil {
+				return nil, err
+			}
+			w.notices = append(w.notices, "工作区索引无法读取，已重建，原文件在隔离目录")
+		} else {
+			w.current = x.Current
+			if validTheme(x.Appearance.Theme) {
+				x.Appearance.Layout = normalizeLayout(x.Appearance.Layout)
+				w.appearance = x.Appearance
+			}
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
 	paths, _ := filepath.Glob(filepath.Join(root, "drafts", "*.json"))
+	corrupt := 0
 	for _, p := range paths {
 		b, err := readLimited(p, 64<<20)
-		if err != nil {
-			return nil, err
-		}
 		var d Document
-		if json.Unmarshal(b, &d) != nil || !safeID(d.ID) || filepath.Base(p) != d.ID+".json" {
-			return nil, errors.New("草稿无法读取，原文件已保留")
-		}
-		if len(d.Content) > maxDocument {
-			return nil, errors.New("草稿超过支持大小")
+		if err != nil || json.Unmarshal(b, &d) != nil || !safeID(d.ID) || filepath.Base(p) != d.ID+".json" || len(d.Content) > maxDocument {
+			if err := w.quarantine(p, nil); err != nil {
+				return nil, err
+			}
+			corrupt++
+			continue
 		}
 		w.docs[d.ID] = &d
+	}
+	if corrupt > 0 {
+		w.notices = append(w.notices, fmt.Sprintf("有 %d 份草稿无法读取，已移到隔离目录", corrupt))
 	}
 	if len(w.docs) == 0 {
 		d, err := w.newLocked("")
@@ -215,15 +236,71 @@ func openWorkspace(root string) (*Workspace, error) {
 		w.current = d.ID
 	}
 	if w.docs[w.current] == nil {
-		for id := range w.docs {
-			w.current = id
-			break
+		for id, d := range w.docs {
+			if current := w.docs[w.current]; current == nil || d.Updated > current.Updated || d.Updated == current.Updated && id < current.ID {
+				w.current = id
+			}
 		}
 	}
 	if err := w.saveIndex(); err != nil {
 		return nil, err
 	}
 	return w, nil
+}
+func (w *Workspace) quarantine(path string, backup []byte) error {
+	dir := filepath.Join(w.root, "quarantine")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	base := time.Now().Format("20060102-150405") + "-" + filepath.Base(path)
+	for n := 1; ; n++ {
+		name := base
+		if n > 1 {
+			name += fmt.Sprintf("-%d", n)
+		}
+		target := filepath.Join(dir, name)
+		if _, err := os.Lstat(target); err == nil {
+			continue
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		var err error
+		if backup == nil {
+			err = os.Rename(path, target)
+		} else {
+			err = atomicWrite(target, backup, 0600)
+		}
+		if err == nil {
+			w.quarantineDir = dir
+		}
+		return err
+	}
+}
+func (w *Workspace) restoreIndex(b []byte) {
+	var x struct {
+		Current    json.RawMessage            `json:"current"`
+		Appearance map[string]json.RawMessage `json:"appearance"`
+	}
+	_ = json.Unmarshal(b, &x)
+	_ = json.Unmarshal(x.Current, &w.current)
+	p := &w.appearance
+	var theme, width, layout string
+	var size int
+	if json.Unmarshal(x.Appearance["theme"], &theme) == nil && validTheme(theme) {
+		p.Theme = theme
+	}
+	if json.Unmarshal(x.Appearance["fontSize"], &size) == nil && (size == 0 || size >= 15 && size <= 22) {
+		p.FontSize = size
+	}
+	if json.Unmarshal(x.Appearance["lineWidth"], &width) == nil && (width == "" || width == "normal" || width == "wide") {
+		p.LineWidth = width
+	}
+	if json.Unmarshal(x.Appearance["layout"], &layout) == nil && (layout == "" || layout == "single" || layout == "split") {
+		p.Layout = normalizeLayout(layout)
+	}
+	for name, field := range map[string]*bool{"followSystem": &p.FollowSystem, "source": &p.Source} {
+		_ = json.Unmarshal(x.Appearance[name], field)
+	}
 }
 func safeID(s string) bool {
 	if len(s) != 24 {
@@ -280,13 +357,23 @@ func (w *Workspace) snapshot() WorkspaceState {
 		list = append(list, Summary{d.ID, d.Title, d.Path, d.Updated, excerpt})
 	}
 	sort.Slice(list, func(i, j int) bool { return list[i].Updated > list[j].Updated })
-	return WorkspaceState{*w.docs[w.current], list, w.appearance}
+	return WorkspaceState{Current: *w.docs[w.current], Recent: list, Appearance: w.appearance}
+}
+func (w *Workspace) Notify(message string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.notices = append(w.notices, message)
 }
 func (w *Workspace) State() WorkspaceState {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.check(w.docs[w.current])
-	return w.snapshot()
+	s := w.snapshot()
+	s.Notices = append([]string(nil), w.notices...)
+	s.QuarantineDir = w.quarantineDir
+	w.notices = nil
+	w.quarantineDir = ""
+	return s
 }
 func (w *Workspace) New() (WorkspaceState, error) {
 	w.mu.Lock()

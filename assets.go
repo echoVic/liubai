@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"html"
 	"maps"
 	"net/url"
 	"os"
@@ -44,23 +45,72 @@ type replacement struct {
 	value      string
 }
 
-func imageTargets(s string) []string {
+type imageRef struct {
+	Dest string
+	HTML bool
+}
+
+var htmlImageSource = regexp.MustCompile(`(?is)<img\b[^>]*?\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))`)
+
+func imageRefs(s string) []imageRef {
 	b := []byte(s)
 	doc := goldmark.DefaultParser().Parse(text.NewReader(b))
-	seen := map[string]bool{}
-	out := []string{}
-	_ = ast.Walk(doc, func(n ast.Node, enter bool) (ast.WalkStatus, error) {
-		if enter {
-			if im, ok := n.(*ast.Image); ok {
-				dest := string(im.Destination)
-				if !seen[dest] {
-					seen[dest] = true
-					out = append(out, dest)
+	seen := map[imageRef]bool{}
+	out := []imageRef{}
+	add := func(ref imageRef) {
+		if !seen[ref] {
+			seen[ref] = true
+			out = append(out, ref)
+		}
+	}
+	addHTML := func(raw []byte) {
+		for _, match := range htmlImageSource.FindAllSubmatch(raw, -1) {
+			for _, value := range match[1:] {
+				if value != nil {
+					add(imageRef{Dest: html.UnescapeString(string(value)), HTML: true})
+					break
 				}
 			}
 		}
+	}
+	_ = ast.Walk(doc, func(n ast.Node, enter bool) (ast.WalkStatus, error) {
+		if !enter {
+			return ast.WalkContinue, nil
+		}
+		switch node := n.(type) {
+		case *ast.Image:
+			add(imageRef{Dest: string(node.Destination)})
+		case *ast.HTMLBlock:
+			var raw []byte
+			for i := 0; i < node.Lines().Len(); i++ {
+				line := node.Lines().At(i)
+				raw = append(raw, line.Value(b)...)
+			}
+			if node.HasClosure() {
+				raw = append(raw, node.ClosureLine.Value(b)...)
+			}
+			addHTML(raw)
+		case *ast.RawHTML:
+			var raw []byte
+			for i := 0; i < node.Segments.Len(); i++ {
+				segment := node.Segments.At(i)
+				raw = append(raw, segment.Value(b)...)
+			}
+			addHTML(raw)
+		}
 		return ast.WalkContinue, nil
 	})
+	return out
+}
+func imageTargets(s string) []string {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, ref := range imageRefs(s) {
+		if !seen[ref.Dest] {
+			seen[ref.Dest] = true
+			out = append(out, ref.Dest)
+		}
+	}
 	return out
 }
 func external(dest string) bool {
@@ -333,7 +383,11 @@ func imageReplacements(source string, targets map[string]string) []replacement {
 }
 
 func validateRewrittenImages(source string, targets map[string]string) error {
-	for _, dest := range imageTargets(source) {
+	for _, ref := range imageRefs(source) {
+		if ref.HTML {
+			continue
+		}
+		dest := ref.Dest
 		if replacement, ok := targets[dest]; ok && replacement != dest {
 			return errors.New("图片引用无法转换，请将图片放在独立段落")
 		}
@@ -396,7 +450,11 @@ func writeImageExclusive(path string, b []byte) error {
 func (w *Workspace) materialize(d *Document, path string, all bool) (string, error) {
 	targets := map[string]string{}
 	assetDir := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)) + ".assets"
-	for _, dest := range imageTargets(d.Content) {
+	for _, ref := range imageRefs(d.Content) {
+		if ref.HTML {
+			continue
+		}
+		dest := ref.Dest
 		if external(dest) {
 			continue
 		}
@@ -425,7 +483,11 @@ func (w *Workspace) materialize(d *Document, path string, all bool) (string, err
 	if err := validateRewrittenImages(out, targets); err != nil {
 		return "", err
 	}
-	for _, dest := range imageTargets(out) {
+	for _, ref := range imageRefs(out) {
+		if ref.HTML {
+			continue
+		}
+		dest := ref.Dest
 		if strings.HasPrefix(dest, "liubai-asset:") {
 			return "", errors.New("图片引用无法转换，请将图片放在独立段落")
 		}
@@ -494,7 +556,11 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 		aliases = map[string]string{}
 	}
 	assetDir := strings.TrimSuffix(filepath.Base(p), filepath.Ext(p)) + ".assets"
-	for _, dest := range imageTargets(d.Content) {
+	for _, ref := range imageRefs(d.Content) {
+		if ref.HTML {
+			continue
+		}
+		dest := ref.Dest
 		if external(dest) {
 			continue
 		}
@@ -578,7 +644,11 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 	clone.Status = "文件已保存"
 	clone.Revision++
 	content := diskBytes(&clone)
-	for _, dest := range imageTargets(clone.Content) {
+	for _, ref := range imageRefs(clone.Content) {
+		if ref.HTML {
+			continue
+		}
+		dest := ref.Dest
 		if strings.HasPrefix(dest, "liubai-asset:") {
 			return ExportResult{}, errors.New("存在无法转换的图片语法，请将图片引用单独放在一行后再保存")
 		}
@@ -612,10 +682,22 @@ func (w *Workspace) Export(id, path string, allowMissing bool) (ExportResult, er
 	r := ExportResult{Missing: []string{}, Document: *d}
 	targets := map[string]string{}
 	assets := map[string][]byte{}
-	for _, dest := range imageTargets(d.Content) {
+	for _, ref := range imageRefs(d.Content) {
+		dest := ref.Dest
 		if external(dest) {
 			r.External++
 			continue
+		}
+		name := ""
+		if ref.HTML {
+			u, err := url.Parse(dest)
+			if err == nil && u.Scheme == "" && u.Host == "" {
+				name = filepath.Clean(filepath.FromSlash(u.Path))
+			}
+			if name == "" || name == "." || filepath.IsAbs(name) || name == ".." || strings.HasPrefix(name, ".."+string(filepath.Separator)) || name == "文稿.md" {
+				r.Missing = append(r.Missing, dest)
+				continue
+			}
 		}
 		p, err := w.imagePath(d, dest)
 		if err != nil {
@@ -627,8 +709,11 @@ func (w *Workspace) Export(id, path string, allowMissing bool) (ExportResult, er
 			r.Missing = append(r.Missing, dest)
 			continue
 		}
-		name := "images/" + digest(b)[:24] + "." + info.Format
-		targets[dest] = name
+		if !ref.HTML {
+			name = "images/" + digest(b)[:24] + "." + info.Format
+			targets[dest] = name
+		}
+		name = filepath.ToSlash(name)
 		assets[name] = b
 	}
 	if len(r.Missing) > 0 && !allowMissing {

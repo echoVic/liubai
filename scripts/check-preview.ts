@@ -1,5 +1,10 @@
 import {renderDelivery} from '../src/delivery';
-import {renderMarkdown} from '../src/markdown';
+import {renderMarkdown,splitFrontMatter} from '../src/markdown';
+import {EditorState} from '@codemirror/state';
+import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
+import {GFM} from '@lezer/markdown';
+import {frontMatterRange,headings} from '../src/editing';
+import {inlineDecorations,blockDecorations} from '../src/editor';
 
 function assert(condition: unknown, message: string): asserts condition {
  if (!condition) throw new Error(message);
@@ -15,7 +20,41 @@ function deferred<T>(){
  return {promise,resolve};
 }
 
+export function runFrontMatterChecks():string {
+ const doc='---\n# 属性\n\n![图](a.png)\n\n| a |\n| - |\n| b |\n---\n\n# 正文';
+ const state=EditorState.create({doc,selection:{anchor:doc.length},extensions:[markdown({base:markdownLanguage,extensions:GFM})]});
+ const end=doc.indexOf('\n\n# 正文');
+ equal(frontMatterRange(state)?.to,end,'front matter editor range');
+ equal(headings(state).map(heading=>heading.text).join(','),'正文','front matter leaked into the outline');
+ let lines=0;
+ inlineDecorations(state,[{from:0,to:state.doc.length}]).between(0,end,(from,to,value)=>{
+  if(from>=end)return;
+  equal(from,to,'front matter has an inline mark or widget');
+  equal(value.spec.class,'md-front-matter','front matter has Markdown decorations');
+  lines++;
+ });
+ equal(lines,9,'front matter lines are not styled');
+ blockDecorations(state,async()=> '').between(0,end,()=>{throw Error('front matter has a block widget')});
+ const visible=state.doc.line(4);
+ let visibleLines=0;
+ inlineDecorations(state,[{from:visible.from,to:visible.to}]).between(0,state.doc.length,(from)=>{
+  equal(from,visible.from,'front matter decoration escaped the viewport');
+  visibleLines++;
+ });
+ equal(visibleLines,1,'visible front matter line lacks styling');
+ equal(splitFrontMatter('---\nkey: value\n...\n# 正文').lines,3,'ellipsis front matter terminator');
+ equal(splitFrontMatter('---\nunclosed').raw,null,'unclosed front matter was hidden');
+ equal(splitFrontMatter('text\n---\ntitle: value\n---').raw,null,'non-leading front matter was hidden');
+ equal(splitFrontMatter('---\n'+'key\n'.repeat(199)+'---').raw,null,'front matter beyond 200 lines was hidden');
+ const boundary='---\n'+'key\n'.repeat(198)+'...';
+ equal(splitFrontMatter(boundary).lines,200,'front matter closing line 200 was rejected');
+ equal(frontMatterRange(EditorState.create({doc:boundary}))?.to,boundary.length,'editor front matter boundary differs');
+ equal(frontMatterRange(EditorState.create({doc:'---\nunclosed'})),null,'editor hid unclosed front matter');
+ return 'front matter editor and parser checks passed';
+}
+
 export async function runPreviewChecks(): Promise<string> {
+ runFrontMatterChecks();
  const markdown=[
   '# 中文标题',
   '',
@@ -169,5 +208,68 @@ export async function runPreviewChecks(): Promise<string> {
  assert(!delivery.querySelector('.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6, .md-p, .md-quote, .md-pre, .md-inline-code, .md-table, .md-ul, .md-ol, .md-task, .md-link, .md-image'),'preview semantic classes leaked into delivery');
  equal(delivery.querySelector('h1')?.getAttribute('style'),'font-size:30px;line-height:1.5;margin:24px 0 18px;','delivery heading print styles changed');
  assert(delivery.style.fontFamily.includes('PingFang SC'),'delivery root print styles changed');
+ const reader=renderMarkdown([
+  '---','title: 周报','tags: [a]','---','',
+  '<p align="center"><img src="logo.png" width="120" onerror="window.__xss=2"></p>','',
+  '<script>window.__xss=1</script>','',
+  '<a href="javascript:alert(1)">坏链接</a> <span style="position:fixed">样式</span> <kbd>⌘</kbd>','',
+  '访问 https://github.com/egoist/mygo 或查看 README.md。','',
+  '脚注引用[^1]。','',
+  '> [!NOTE]','> 这是一条说明。','',
+  '[^1]: 脚注内容',
+ ].join('\n'),{resolve:destination=>destination==='logo.png'?localURL:undefined,external:'load'});
+ const meta=reader.root.querySelector<HTMLElement>('details.md-front-matter');
+ assert(meta?.textContent?.includes('title: 周报'),'front matter is not shown as document properties');
+ equal(meta.dataset.line,'0','front matter start line');
+ const logo=reader.root.querySelector<HTMLImageElement>('p[align="center"] img');
+ equal(logo?.getAttribute('src'),localURL,'HTML image did not go through the image resolver');
+ equal(logo?.getAttribute('width'),'120','HTML image width was dropped');
+ assert(!logo?.hasAttribute('onerror'),'event handler survived sanitizing');
+ assert(!reader.root.querySelector('script')&&!(window as any).__xss,'script survived sanitizing');
+ assert(!reader.root.querySelector('a[href^="javascript"]'),'javascript link survived sanitizing');
+ assert(!reader.root.querySelector('[style]'),'style attribute survived sanitizing');
+ assert(reader.root.querySelector('kbd'),'kbd was dropped');
+ const www=renderMarkdown('www.example.com/path README.md user@example.com',{resolve:()=>undefined,external:'load'});
+ assert(www.root.querySelector('a[href="http://www.example.com/path"]'),'www URL was not linked');
+ equal(www.root.querySelectorAll('a').length,1,'bare filename or email was linked');
+ const bare=reader.root.querySelector<HTMLAnchorElement>('a[href="https://github.com/egoist/mygo"]');
+ assert(bare,'bare URL was not linked');
+ equal(bare.closest<HTMLElement>('p')?.dataset.line,'11','line mapping ignores the front matter offset');
+ assert(!reader.root.querySelector('a[href*="README.md"]'),'a file name was linked as a domain');
+ assert(reader.root.querySelector('sup a[href="#fn1"]')&&reader.root.querySelector('#fn1'),'footnote did not render');
+ const alertBlock=reader.root.querySelector('blockquote.markdown-alert.markdown-alert-note');
+ equal(alertBlock?.querySelector('.markdown-alert-title')?.textContent,'说明','GitHub alert title missing');
+ assert(!alertBlock?.textContent?.includes('[!NOTE]'),'alert marker left in the text');
+ await reader.ready;
+ const exported=renderDelivery({title:'t',content:'---\ntitle: 周报\n---\n\n# 正文',images:{},missing:[],external:0});
+ assert(!exported.textContent?.includes('title: 周报'),'front matter leaked into delivery');
+ equal(exported.querySelector('h1')?.id,'正文','delivery heading has no anchor id');
+
+ const noMeta={resolve:()=>undefined,external:'load' as const};
+ const mapped=renderMarkdown('---\ntitle: value\n---\n\n```ts\ncode\n```\n\n    indented',noMeta);
+ const mappedCode=mapped.root.querySelectorAll('pre[data-line]');
+ equal(mappedCode[0]?.getAttribute('data-line'),'4','front matter fence offset');
+ equal(mappedCode[1]?.getAttribute('data-line'),'8','front matter indented code offset');
+ const hardened=renderMarkdown('<input type=text><input type=checkbox checked><span class="foreign md-ok language-ts footnote-ref markdown-alert-tip" data-extra="x">text</span>',noMeta);
+ assert(!hardened.root.querySelector('input:not([type=checkbox])'),'non-checkbox input survived');
+ assert(hardened.root.querySelector<HTMLInputElement>('input')?.disabled,'HTML checkbox is editable');
+ const span=hardened.root.querySelector('span');
+ equal(span?.className,'md-ok language-ts footnote-ref markdown-alert-tip','class filtering failed');
+ assert(!span?.hasAttribute('data-extra'),'unlisted data attribute survived');
+ for(const [type,title] of [['TIP','提示'],['IMPORTANT','重要'],['WARNING','警告'],['CAUTION','注意']]){
+  const alert=renderMarkdown('> [!'+type.toLowerCase()+']\n> **正文**',noMeta);
+  equal(alert.root.querySelector('.markdown-alert-title')?.textContent,title,'alert title '+type);
+  equal(alert.root.querySelector('strong')?.textContent,'正文','alert inline content changed');
+ }
+ const htmlPending=deferred<string|undefined>();
+ const inertHTML=renderMarkdown('<img src="local.png">',{resolve:()=>htmlPending.promise,external:'load'});
+ assert(!inertHTML.root.querySelector('img')?.hasAttribute('src'),'HTML image started a request before resolution');
+ htmlPending.resolve(localURL);
+ await inertHTML.ready;
+ equal(inertHTML.root.querySelector('img')?.getAttribute('src'),localURL,'async HTML image resolver was not used');
+ const normalized=renderMarkdown('<img src="图 片.png">',{resolve:source=>source==='%E5%9B%BE%20%E7%89%87.png'?localURL:undefined,external:'load'});
+ equal(normalized.root.querySelector('img')?.getAttribute('src'),localURL,'HTML image source was not normalized');
+ const deliveryAnchors=renderDelivery({title:'t',content:'# 同一标题\n\n# 同一标题',images:{},missing:[],external:0});
+ equal(deliveryAnchors.querySelectorAll('h1')[1]?.id,'同一标题-1','duplicate delivery heading slug');
  return 'shared renderer and delivery DOM checks passed';
 }

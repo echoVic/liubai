@@ -1,4 +1,4 @@
-import {renderMarkdown,type MarkdownRender} from './markdown';
+import {renderMarkdown,headingSlug,type MarkdownRender} from './markdown';
 
 export interface PreviewControllerOptions {
  host: HTMLElement;
@@ -76,10 +76,7 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
  const installHeadingAnchors=()=>{
   const used=new Map<string,number>();
   for(const heading of options.scroll.querySelectorAll<HTMLElement>('h1,h2,h3,h4,h5,h6')){
-   const base=(heading.textContent||'').toLowerCase().replace(/[\p{P}\p{S}]/gu,'').trim().replace(/\s+/g,'-');
-   const count=used.get(base)||0;
-   used.set(base,count+1);
-   heading.id=base+(count?`-${count}`:'');
+   heading.id=headingSlug(heading.textContent||'',used);
   }
  };
  const retryAfterSave=(epoch:number)=>{
@@ -159,7 +156,7 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
   if(href.startsWith('#')){
    let id=href.slice(1);
    try{id=decodeURIComponent(id)}catch{}
-   const target=Array.from(options.host.querySelectorAll<HTMLElement>('h1,h2,h3,h4,h5,h6')).find(h=>h.id===id||h.textContent===id);
+   const target=Array.from(options.host.querySelectorAll<HTMLElement>('[id]')).find(h=>h.id===id||(/^H[1-6]$/.test(h.tagName)&&h.textContent===id));
    if(target){
     const viewport=options.scroll.getBoundingClientRect();
     options.scroll.scrollTo({top:Math.max(0,options.scroll.scrollTop+target.getBoundingClientRect().top-viewport.top-12),behavior:'auto'});

@@ -54,3 +54,4 @@ dialog{padding:24px;width:470px;max-width:calc(100vw - 32px);border:1px solid va
  .desk{padding:12px 14px 18px}.desk.split-layout{row-gap:8px}
  .desk-caption{margin-bottom:8px}.desk-bottom{margin-top:8px}
 }
+.cm-line.md-front-matter{color:var(--muted-foreground);font:13px/1.85 'SFMono-Regular',Consolas,monospace}

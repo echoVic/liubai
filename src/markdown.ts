@@ -1,9 +1,12 @@
 import MarkdownIt from 'markdown-it';
+import DOMPurify from 'dompurify';
+import footnote from 'markdown-it-footnote';
 import type {PluginSimple} from 'markdown-it';
 
 export interface MarkdownOptions {
  resolve: (destination:string)=>string|undefined|Promise<string|undefined>;
  external: 'load'|'link';
+ frontMatter?: 'show'|'hide';
 }
 
 export interface MarkdownRender {
@@ -12,7 +15,41 @@ export interface MarkdownRender {
  dispose: ()=>void;
 }
 
-const parser=new MarkdownIt({html:false,linkify:false,typographer:false});
+const parser=new MarkdownIt({html:true,linkify:true,typographer:false});
+parser.linkify.set({fuzzyLink:false,fuzzyEmail:false,fuzzyIP:false});
+parser.linkify.add('www.',{
+ validate(text,pos,self){
+  const match=new RegExp('^'+self.re.src_host_port_strict+self.re.src_path,'i').exec(text.slice(pos-4));
+  return match?match[0].length-4:0;
+ },
+ normalize(match){match.url='http://'+match.url},
+});
+
+export function splitFrontMatter(content:string):{raw:string|null;body:string;lines:number} {
+ if(content.startsWith('---\n')){
+  const lines=content.split('\n',200);
+  let end=4;
+  for(let i=1;i<lines.length;i++){
+   end+=lines[i].length;
+   if(lines[i]==='---'||lines[i]==='...')return {raw:content.slice(0,end),body:content.slice(end+(content[end]==='\n'?1:0)),lines:i+1};
+   end++;
+  }
+ }
+ return {raw:null,body:content,lines:0};
+}
+
+export function headingSlug(text:string,used:Map<string,number>):string {
+ const base=text.toLowerCase().replace(/[\p{P}\p{S}]/gu,'').trim().replace(/\s+/g,'-');
+ const count=used.get(base)||0;
+ used.set(base,count+1);
+ return base+(count?`-${count}`:'');
+}
+
+const allowedTags='a abbr b blockquote br caption center code col colgroup dd del details div dl dt em figcaption figure h1 h2 h3 h4 h5 h6 hr i img input ins kbd li mark ol p pre q s samp section small span strike strong sub summary sup table tbody td tfoot th thead tr u ul var'.split(' ');
+const allowedAttributes='href src alt title width height align valign colspan rowspan open id class start reversed type checked disabled aria-label aria-hidden lang dir datetime cite scope data-line data-line-end data-image-source'.split(' ');
+if(DOMPurify.addHook)DOMPurify.addHook('uponSanitizeAttribute',(_node,data)=>{
+ if(data.attrName==='class')data.attrValue=data.attrValue.split(/\s+/).filter(value=>/^(md-|language-|task-list|contains-task-list|footnote|markdown-alert)/.test(value)).join(' ');
+});
 
 function lineAttributes(map:[number,number]|null):string {
  if(!map)return '';
@@ -21,7 +58,9 @@ function lineAttributes(map:[number,number]|null):string {
 
 const lineMapPlugin:PluginSimple=md=>{
  md.core.ruler.after('block','liubai_line_maps',state=>{
+  const offset=state.env.lineOffset||0;
   for(const token of state.tokens){
+   if(token.map)token.map=[token.map[0]+offset,token.map[1]+offset];
    if(!token.block||!token.map||token.hidden||token.type==='fence'||token.type==='code_block')continue;
    if(token.nesting===1||token.nesting===0){
     token.attrSet('data-line',String(token.map[0]));
@@ -97,7 +136,31 @@ const semanticClassPlugin:PluginSimple=md=>{
  });
 };
 
-parser.use(lineMapPlugin).use(taskPlugin).use(semanticClassPlugin);
+const githubAlerts:PluginSimple=md=>{
+ md.core.ruler.after('inline','liubai_github_alerts',state=>{
+  const titles:Record<string,string>={note:'说明',tip:'提示',important:'重要',warning:'警告',caution:'注意'};
+  for(let i=state.tokens.length-1;i>=0;i--){
+   const open=state.tokens[i],paragraph=state.tokens[i+1],inline=state.tokens[i+2];
+   if(open.type!=='blockquote_open'||paragraph?.type!=='paragraph_open'||inline?.type!=='inline')continue;
+   const first=inline.children?.[0];
+   const match=first?.type==='text'&&/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:[ \t]+|$)/i.exec(first.content);
+   if(!match||!first)continue;
+   const kind=match[1].toLowerCase();
+   open.attrJoin('class',`markdown-alert markdown-alert-${kind}`);
+   first.content=first.content.slice(match[0].length);
+   if(!first.content){
+    inline.children!.shift();
+    if(inline.children?.[0]?.type==='softbreak')inline.children.shift();
+   }
+   inline.content=inline.content.replace(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*\n?/i,'');
+   const title=new state.Token('html_block','',0);
+   title.content=`<p class="markdown-alert-title">${titles[kind]}</p>\n`;
+   state.tokens.splice(i+1,0,title);
+  }
+ });
+};
+
+parser.use(footnote).use(lineMapPlugin).use(taskPlugin).use(semanticClassPlugin).use(githubAlerts);
 const imageRule:NonNullable<(typeof parser.renderer.rules)['image']>=(tokens,index,options,env,self)=>{
  const token=tokens[index];
  const source=token.attrGet('src')||'';
@@ -133,7 +196,20 @@ function isPromise<T>(value:T|Promise<T>):value is Promise<T> {
 export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownRender {
  const root=document.createElement('article');
  root.className='markdown-document';
- root.innerHTML=parser.render(content);
+ const meta=splitFrontMatter(content);
+ const rendered=parser.render(meta.body,{lineOffset:meta.lines});
+ const properties=meta.raw!==null&&options.frontMatter!=='hide'?`<details class="md-front-matter" data-line="0" data-line-end="${meta.lines-1}"><summary>文稿属性</summary><pre>${parser.utils.escapeHtml(meta.raw)}</pre></details>`:'';
+ const template=document.createElement('template');
+ template.innerHTML=DOMPurify.sanitize(properties+rendered,{ALLOWED_TAGS:allowedTags,ALLOWED_ATTR:allowedAttributes,ALLOW_DATA_ATTR:false,FORBID_ATTR:['style']});
+ for(const input of template.content.querySelectorAll('input')){
+  if(input.type!=='checkbox')input.remove();
+  else input.disabled=true;
+ }
+ for(const image of template.content.querySelectorAll<HTMLImageElement>('img[src]')){
+  if(!image.hasAttribute('data-image-source'))image.dataset.imageSource=parser.normalizeLink(image.getAttribute('src')||'');
+  image.removeAttribute('src');
+ }
+ root.append(template.content);
  let active=true;
  const pending:Promise<void>[]=[];
 

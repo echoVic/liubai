@@ -10,7 +10,7 @@ import { GFM } from '@lezer/markdown';
 import type { SyntaxNode } from '@lezer/common';
 import MarkdownIt from 'markdown-it';
 import type { Doc } from './types';
-import {safeLink} from './editing';
+import {safeLink,frontMatterRange} from './editing';
 
 const md=new MarkdownIt({html:false,linkify:false});
 export const mode=new Compartment();
@@ -75,8 +75,9 @@ function imageOnLine(state:EditorState,node:SyntaxNode){
  return node.to<=line.to&&(node.from===line.from||!state.sliceDoc(line.from,node.from).trim())&&(node.to===line.to||!state.sliceDoc(node.to,line.to).trim());
 }
 export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promise<string>,editTable?:()=>void):DecorationSet{
- const builder=new RangeSetBuilder<Decoration>(),touched=selectedLines(state);
+ const builder=new RangeSetBuilder<Decoration>(),touched=selectedLines(state),meta=frontMatterRange(state);
  syntaxTree(state).iterate({enter:n=>{
+  if(meta&&n.from<meta.to&&n.name!=='Document')return false;
   if(['Document','BulletList','OrderedList','ListItem','Blockquote'].includes(n.name))return;
   if(n.name==='Table'&&!touched(n.from,n.to))builder.add(n.from,n.to,Decoration.replace({widget:new TableWidget(state.sliceDoc(n.from,n.to),n.from,editTable),block:true}));
   if(n.name==='Paragraph')for(const image of n.node.getChildren('Image')){
@@ -100,13 +101,15 @@ export function createBlockField(resolve:(dest:string)=>Promise<string>,editTabl
  });
 }
 export function inlineDecorations(state:EditorState,ranges:readonly {from:number;to:number}[]):DecorationSet{
- const decorations:{from:number;to:number;dec:Decoration}[]=[],touched=selectedLines(state),marked=new Set<string>();
+ const decorations:{from:number;to:number;dec:Decoration}[]=[],touched=selectedLines(state),marked=new Set<string>(),meta=frontMatterRange(state);
  for(const range of ranges){
   const lineClass=(from:number,to:number,cls:string)=>{
    const first=state.doc.lineAt(Math.max(from,range.from)).number,last=state.doc.lineAt(Math.min(to,range.to)).number;
    for(let i=first;i<=last;i++){const line=state.doc.line(i),key=line.from+cls;if(!marked.has(key)){marked.add(key);decorations.push({from:line.from,to:line.from,dec:Decoration.line({class:cls})})}}
   };
+  if(meta&&range.from<=meta.to)lineClass(meta.from,meta.to,'md-front-matter');
   syntaxTree(state).iterate({from:range.from,to:range.to,enter:n=>{
+   if(meta&&n.from<meta.to&&n.name!=='Document')return false;
    if(n.to<=range.from||n.from>=range.to)return false;
    const name=n.name;
    if(name==='Table'&&!touched(n.from,n.to))return false;

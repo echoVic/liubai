@@ -1,9 +1,11 @@
-import {normalizeImageDestination,renderMarkdown} from './markdown';
+import {normalizeImageDestination,renderMarkdown,headingSlug} from './markdown';
 export interface Delivery {title:string;content:string;images:Record<string,string>;missing:string[];external:number}
 export function renderDelivery(data:Delivery){
  const images=new Map(Object.entries(data.images).map(([src,value])=>[normalizeImageDestination(src),value]));
- const {root}=renderMarkdown(data.content,{resolve:destination=>images.get(destination),external:'link'});
+ const {root}=renderMarkdown(data.content,{resolve:destination=>images.get(destination),external:'link',frontMatter:'hide'});
  root.className='delivery-document';
+ const used=new Map<string,number>();
+ for(const heading of root.querySelectorAll('h1,h2,h3,h4,h5,h6'))heading.id=headingSlug(heading.textContent||'',used);
  for(const img of root.querySelectorAll('img')){img.removeAttribute('data-image-source');img.style.maxWidth='100%'}
  for(const note of root.querySelectorAll('.markdown-image-note'))note.className='delivery-image-note';
  for(const el of root.querySelectorAll('.task-list, .task-list-item')){
@@ -17,6 +19,8 @@ export function renderDelivery(data:Delivery){
  for(const a of root.querySelectorAll('a')){a.rel='noopener noreferrer'}
  const styles:Record<string,string>={h1:'font-size:30px;line-height:1.5;margin:24px 0 18px',h2:'font-size:24px;line-height:1.5;margin:24px 0 14px',h3:'font-size:20px;line-height:1.6',p:'line-height:1.9;margin:14px 0',blockquote:'border-left:3px solid #809387;padding-left:16px;color:#45574c',pre:'background:#f1f2ef;padding:16px;white-space:pre-wrap;font-family:monospace;font-size:13px',table:'border-collapse:collapse;width:100%;margin:20px 0',th:'border:1px solid #cdd2cc;padding:9px;text-align:left;background:#edf0e9',td:'border:1px solid #cdd2cc;padding:9px;text-align:left',code:'font-family:monospace',a:'color:#315f82;text-decoration:underline'};
  for(const [tag,style]of Object.entries(styles))root.querySelectorAll(tag).forEach(el=>el.setAttribute('style',style+';'+(el.getAttribute('style')||'')));
+ const readerStyles:Record<string,string>={'.markdown-alert':'border-left:3px solid #809387;background:#edf2ee;padding:12px 16px;margin:18px 0','.markdown-alert-title':'font-weight:700;margin:0 0 8px',kbd:'border:1px solid #cdd2cc;border-radius:4px;padding:2px 5px;font-family:monospace;background:#f1f2ef','section.footnotes':'font-size:13px;border-top:1px solid #cdd2cc;margin-top:28px;padding-top:12px'};
+ for(const [selector,style] of Object.entries(readerStyles))root.querySelectorAll(selector).forEach(el=>el.setAttribute('style',style));
  root.querySelectorAll('input[type=checkbox]').forEach(el=>el.setAttribute('style','margin:0 8px 0 0;vertical-align:middle'));
  root.style.cssText='font-family:PingFang SC,Noto Sans CJK SC,sans-serif;font-size:16px;line-height:1.9;color:#242523;background:#fff;overflow-wrap:anywhere';
  return root;

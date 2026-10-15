@@ -6,6 +6,12 @@
   "out": "build",
   "bindings": "bindings.ts",
   "macos": {
+    "infoPlist": {
+      "CFBundleDevelopmentRegion": "zh-Hans",
+      "CFBundleLocalizations": ["zh-Hans", "en"],
+      "LSHasLocalizedDisplayName": true,
+      "LSApplicationCategoryType": "public.app-category.productivity"
+    },
     "minimumSystemVersion": "13.0",
     "signingIdentity": "Developer ID Application: Zijie Hu (8LH7PFQJ89)",
     "notarize": {

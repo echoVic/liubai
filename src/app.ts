@@ -168,7 +168,7 @@ $('#ready-go').onclick=()=>{if(!prepared)return;const root=prepared;
   const promise=desktop?call('CopyRich',root.outerHTML,root.innerText):copyRich(root);void promise.then(()=>{closeDialog('ready-dialog');toast('已复制富文本；图片显示取决于接收应用')}).catch(e=>toast(errorText(e)));return;
  }
  closeDialog('ready-dialog');
- if(readyAction==='html'){download(doc.title+'.html','<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>'+doc.title.replace(/[<>&]/g,'')+'</title><body>'+root.outerHTML+'</body></html>','text/html');return}
+ if(readyAction==='html'){const html='<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>'+doc.title.replace(/[<>&]/g,'')+'</title><body>'+root.outerHTML+'</body></html>';if(desktop)void run(async()=>{const r=await call<ExportResult>('SaveHTML',doc.title,html);if(!r.cancelled)toast('HTML 已保存：'+r.path)});else download(doc.title+'.html',html,'text/html');return}
  document.body.classList.add('printing');
  if(desktop)void run(async()=>{try{const r=await call<ExportResult>('PDF',doc.title);if(!r.cancelled)toast('PDF 已保存：'+r.path)}finally{document.body.classList.remove('printing')}});
  else {window.print();document.body.classList.remove('printing')}
@@ -181,6 +181,7 @@ const commands=[
 function renderCommands(){const q=$<HTMLInputElement>('#command-search').value.trim();const list=$('#command-list');list.replaceChildren();commands.filter(c=>c[1].includes(q)).forEach(([id,title,key])=>{const b=node('button','command');b.append(node('span','',title),node('kbd','',key));b.onclick=()=>{closeDialog('commands');void action(id)};list.append(b)})}
 $('#command-search').oninput=renderCommands;$('#command-search').onkeydown=e=>{if(e.key==='ArrowDown'){e.preventDefault();$('#command-list button')?.focus()}if(e.key==='Enter'){e.preventDefault();$('#command-list button')?.click()}};
 async function action(id:string){
+ if(id==='undo'||id==='redo'){const el=document.activeElement;if(el instanceof HTMLInputElement||el instanceof HTMLTextAreaElement){document.execCommand(id);return}}
  if(!view||!doc)return;
  if(busy){if(id==='close')pendingClose=true;return;}
  if(compositionActive&&id!=='close'){toast('请先确认输入法候选');return}

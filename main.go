@@ -90,10 +90,7 @@ func (d *Desktop) Open(ctx context.Context) (WorkspaceState, error) {
 }
 func (d *Desktop) SaveAs(ctx context.Context, id string) (ExportResult, error) {
 	state := d.w.State()
-	name := state.Current.Title
-	if filepath.Ext(name) != ".md" {
-		name += ".md"
-	}
+	name := documentFilename(state.Current.Title, ".md")
 	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "保存 Markdown", DefaultPath: name, Filters: []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md"}}}})
 	if err != nil {
 		return ExportResult{}, err
@@ -104,7 +101,15 @@ func (d *Desktop) SaveAs(ctx context.Context, id string) (ExportResult, error) {
 	return d.w.SaveAs(id, path)
 }
 func (d *Desktop) Export(ctx context.Context, id string, allowMissing bool) (ExportResult, error) {
-	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "文稿与图片一起带走", DefaultPath: "文稿.zip", Filters: []mygo.FileFilter{{Name: "ZIP", Extensions: []string{"zip"}}}})
+	d.w.mu.Lock()
+	doc := d.w.docs[id]
+	if doc == nil {
+		d.w.mu.Unlock()
+		return ExportResult{}, errors.New("文稿不存在")
+	}
+	name := documentFilename(doc.Title, ".zip")
+	d.w.mu.Unlock()
+	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "文稿与图片一起带走", DefaultPath: name, Filters: []mygo.FileFilter{{Name: "ZIP", Extensions: []string{"zip"}}}})
 	if err != nil {
 		return ExportResult{}, err
 	}
@@ -154,12 +159,40 @@ func (d *Desktop) PDF(ctx context.Context, title string) (ExportResult, error) {
 	}
 	return ExportResult{Path: path}, nil
 }
+func (d *Desktop) SaveHTML(ctx context.Context, title, html string) (ExportResult, error) {
+	if len(html) > 64<<20 {
+		return ExportResult{}, errors.New("HTML 过大，请使用 ZIP 带走文稿")
+	}
+	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "保存 HTML", DefaultPath: documentFilename(title, ".html"), Filters: []mygo.FileFilter{{Name: "HTML", Extensions: []string{"html"}}}})
+	if err != nil {
+		return ExportResult{}, err
+	}
+	if path == "" {
+		return ExportResult{Cancelled: true}, nil
+	}
+	if err = atomicWrite(path, []byte(html), 0644); err != nil {
+		return ExportResult{}, err
+	}
+	return ExportResult{Path: path}, nil
+}
 func (d *Desktop) Close()                  { d.allowClose.Store(true); mygo.App.Quit() }
 func (d *Desktop) SetPending(pending bool) { d.pending.Store(pending) }
 func (d *Desktop) Reveal(path string)      { mygo.Shell.ShowItemInFolder(path) }
 func (d *Desktop) requestClose()           { _ = desktopAction.Broadcast("close") }
 
 func quitAllowed(allowClose, pending bool) bool { return allowClose || !pending }
+
+func menuTemplate(action func(string) func(*mygo.MenuItem, *mygo.Window)) []*mygo.MenuItem {
+	return []*mygo.MenuItem{
+		{Label: "留白", Submenu: []*mygo.MenuItem{{Label: "关于留白", Click: func(*mygo.MenuItem, *mygo.Window) {
+			mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: "留白", ApplicationVersion: "0.3.0"})
+		}}, mygo.Separator(), {Role: mygo.RoleHide, Label: "隐藏留白"}, {Role: mygo.RoleHideOthers, Label: "隐藏其他"}, {Role: mygo.RoleUnhide, Label: "全部显示"}, mygo.Separator(), {Role: mygo.RoleQuit, Label: "退出留白"}}},
+		{Label: "文件", Submenu: []*mygo.MenuItem{{Label: "新建文稿", Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: "打开文稿…", Accelerator: "CmdOrCtrl+O", Click: action("open")}, mygo.Separator(), {Label: "保存", Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: "另存为…", Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, mygo.Separator(), {Label: "带走文稿…", Click: action("deliver")}, {Label: "导出 PDF…", Accelerator: "CmdOrCtrl+P", Click: action("pdf")}, mygo.Separator(), {Role: mygo.RoleClose, Label: "关闭窗口"}}},
+		{Label: "编辑", Submenu: []*mygo.MenuItem{{Label: "撤销", Accelerator: "CmdOrCtrl+Z", Click: action("undo")}, {Label: "重做", Accelerator: "CmdOrCtrl+Shift+Z", Click: action("redo")}, mygo.Separator(), {Role: mygo.RoleCut, Label: "剪切"}, {Role: mygo.RoleCopy, Label: "拷贝"}, {Role: mygo.RolePaste, Label: "粘贴"}, {Role: mygo.RoleSelectAll, Label: "全选"}, mygo.Separator(), {Label: "查找", Accelerator: "CmdOrCtrl+F", Click: action("find")}}},
+		{Label: "显示", Submenu: []*mygo.MenuItem{{Label: "段落专注", Accelerator: "CmdOrCtrl+Shift+F", Click: action("focus")}, {Label: "外观", Click: action("theme")}, {Label: "即时排版 / 分栏预览", Accelerator: "CmdOrCtrl+\\", Click: action("layout")}, {Label: "左侧源码 / 即时排版", Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: "操作搜索", Accelerator: "CmdOrCtrl+K", Click: action("commands")}, mygo.Separator(), {Role: mygo.RoleToggleFullScreen, Label: "切换全屏"}}},
+		{Label: "窗口", Submenu: []*mygo.MenuItem{{Role: mygo.RoleMinimize, Label: "最小化"}, {Role: mygo.RoleZoom, Label: "缩放"}, mygo.Separator(), {Role: mygo.RoleFront, Label: "前置全部窗口"}}},
+	}
+}
 
 func main() {
 	webAddr := flag.String("web", "", "仅在回环地址运行本地开发版")
@@ -242,14 +275,7 @@ func main() {
 		action := func(s string) func(*mygo.MenuItem, *mygo.Window) {
 			return func(*mygo.MenuItem, *mygo.Window) { _ = desktopAction.Broadcast(s) }
 		}
-		mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
-			{Label: "留白", Submenu: []*mygo.MenuItem{{Label: "关于留白", Click: func(*mygo.MenuItem, *mygo.Window) {
-				mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: "留白", ApplicationVersion: "0.3.0"})
-			}}, mygo.Separator(), {Role: mygo.RoleQuit, Label: "退出留白"}}},
-			{Label: "文件", Submenu: []*mygo.MenuItem{{Label: "新建文稿", Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: "打开文稿…", Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Label: "保存", Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: "另存为…", Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, {Label: "带走文稿…", Click: action("deliver")}, {Label: "导出 PDF…", Accelerator: "CmdOrCtrl+P", Click: action("pdf")}}},
-			{Label: "编辑", Submenu: []*mygo.MenuItem{{Label: "撤销", Accelerator: "CmdOrCtrl+Z", Click: action("undo")}, {Label: "重做", Accelerator: "CmdOrCtrl+Shift+Z", Click: action("redo")}, mygo.Separator(), {Role: mygo.RoleCut}, {Role: mygo.RoleCopy}, {Role: mygo.RolePaste}, {Role: mygo.RoleSelectAll}, {Label: "查找", Accelerator: "CmdOrCtrl+F", Click: action("find")}}},
-			{Label: "显示", Submenu: []*mygo.MenuItem{{Label: "段落专注", Accelerator: "CmdOrCtrl+Shift+F", Click: action("focus")}, {Label: "外观", Click: action("theme")}, {Label: "即时排版 / 分栏预览", Accelerator: "CmdOrCtrl+\\", Click: action("layout")}, {Label: "左侧源码 / 即时排版", Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: "操作搜索", Accelerator: "CmdOrCtrl+K", Click: action("commands")}}},
-		}))
+		mygo.App.SetMenu(mygo.NewMenu(menuTemplate(action)))
 		mygo.App.OnActivate(func(bool) { d.win.Show(); d.win.Focus() })
 		d.win.Page().OnWillNavigate(func(e *mygo.NavigateEvent) { e.PreventDefault() })
 	})

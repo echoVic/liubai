@@ -99,10 +99,10 @@ const source = appearance.layout === 'split' && appearance.source === true;
 - [x] 更新使用说明、实施记录、构建 `web/` 与 bindings。版本沿设计为 0.3.0，保留已有签名配置。
 - [x] 提交 Task 3 验证、文档、版本和生成产物；不推送或发布远端 Release。
 - [x] Parent：最终整分支差异审查；`81185a4` 修复空白行定位与重复渲染，定向复核通过。
-- [ ] Parent：生成正式签名的 darwin/universal 安装包。
-- [ ] Parent：验证 codesign、spctl、stapler、公证与架构。
+- [x] Parent：生成正式签名的 darwin/universal 安装包。
+- [x] Parent：验证 codesign、spctl、stapler、公证与架构。
 
-正式构建已完成双架构编译，输出目录为 `build/preview-0.3.0`；当前等待 macOS 钥匙串允许 `codesign` 使用签名私钥，授权后继续公证与验证。未推送或发布远端版本。
+正式构建已完成签名与 Apple 公证，产物位于 `build/preview-0.3.0/darwin-universal`。应用及 DMG 的 codesign、Gatekeeper、stapler 验证均通过，同时确认双架构、版本与 DMG 完整性；原 0.2.0 产物及应用进程保持不变。未推送或发布远端版本。
 
 ## 计划核对
 

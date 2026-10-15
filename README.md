@@ -65,7 +65,9 @@ Python 浏览器回归使用已安装的 Chrome channel，不下载 Playwright C
 
 最终审查及修复复核已通过，补齐了空白分隔行的前置块定位，并验证重载、新建、Recent 与同 ID 载入均只渲染一次预览。[完整验证记录](docs/superpowers/validation/2026-10-15-split-preview.md)包含命令、截图和实施取舍。
 
-这些浏览器检查不等同于 Mac 原生中文输入法候选验证，也没有验证系统 PDF 对话框与最终分页、跨应用富文本粘贴。正式通用包已完成双架构编译，当前在独立目录 `build/preview-0.3.0` 等待 macOS 钥匙串签名授权；签名、公证、Gatekeeper 与票据验证尚未完成。
+正式通用包已完成 Developer ID 签名与 Apple 公证，位于 `build/preview-0.3.0/darwin-universal/Liubai 0.3.0.dmg`（约 7.83 MiB）。应用和 DMG 的签名、Gatekeeper、公证票据与 DMG 完整性检查均通过；支持 Apple Silicon 和 Intel，最低 macOS 13。原 0.2.0 产物保持不变。
+
+这些浏览器检查不等同于 Mac 原生中文输入法候选验证，也没有验证系统 PDF 对话框与最终分页、跨应用富文本粘贴。
 
 即时排版使用 CodeMirror 装饰而不重序列化 Markdown。图片/表格在光标离开相关区块后预览。复杂跨行图片语法或扩展语法保留源码，无法安全转换资源时停止保存并提示。外部图片在编辑区保持原链接且可能联网加载；ZIP 保留原引用，PDF、HTML 与富文本中转为可点击链接，准备交付时不抓取外部图片。缺失图片会提示处理或明确继续；图文准备上限为 48 MB，较大文稿可使用 ZIP。接收应用对富文本与内嵌图片的支持不同。
 

@@ -39,6 +39,7 @@ type Desktop struct {
 	w          *Workspace
 	win        *mygo.Window
 	allowClose atomic.Bool
+	pending    atomic.Bool
 	pageReady  atomic.Bool
 }
 
@@ -151,9 +152,12 @@ func (d *Desktop) PDF(ctx context.Context, title string) (ExportResult, error) {
 	}
 	return ExportResult{Path: path}, nil
 }
-func (d *Desktop) Close()             { d.allowClose.Store(true); mygo.App.Quit() }
-func (d *Desktop) Reveal(path string) { mygo.Shell.ShowItemInFolder(path) }
-func (d *Desktop) requestClose()      { _ = desktopAction.Broadcast("close") }
+func (d *Desktop) Close()                  { d.allowClose.Store(true); mygo.App.Quit() }
+func (d *Desktop) SetPending(pending bool) { d.pending.Store(pending) }
+func (d *Desktop) Reveal(path string)      { mygo.Shell.ShowItemInFolder(path) }
+func (d *Desktop) requestClose()           { _ = desktopAction.Broadcast("close") }
+
+func quitAllowed(allowClose, pending bool) bool { return allowClose || !pending }
 
 func main() {
 	webAddr := flag.String("web", "", "仅在回环地址运行本地开发版")
@@ -221,10 +225,12 @@ func main() {
 		d.win = mygo.NewWindow(mygo.WindowOptions{Title: "留白", URL: "/", Width: 1120, Height: 820, MinWidth: 680, MinHeight: 540, Hidden: true, TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: bg, StateKey: "liubai-editor"})
 		d.win.OnReadyToShow(func() { d.win.Show() })
 		d.win.OnClose(func(e *mygo.CloseEvent) {
-			if !d.allowClose.Load() {
-				e.PreventDefault()
-				d.requestClose()
+			if quitAllowed(d.allowClose.Load(), d.pending.Load()) {
+				d.allowClose.Store(true)
+				return
 			}
+			e.PreventDefault()
+			d.requestClose()
 		})
 		action := func(s string) func(*mygo.MenuItem, *mygo.Window) {
 			return func(*mygo.MenuItem, *mygo.Window) { _ = desktopAction.Broadcast(s) }
@@ -232,7 +238,7 @@ func main() {
 		mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
 			{Label: "留白", Submenu: []*mygo.MenuItem{{Label: "关于留白", Click: func(*mygo.MenuItem, *mygo.Window) {
 				mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: "留白", ApplicationVersion: "0.3.0"})
-			}}, mygo.Separator(), {Label: "退出留白", Accelerator: "CmdOrCtrl+Q", Click: action("close")}}},
+			}}, mygo.Separator(), {Role: mygo.RoleQuit, Label: "退出留白"}}},
 			{Label: "文件", Submenu: []*mygo.MenuItem{{Label: "新建文稿", Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: "打开文稿…", Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Label: "保存", Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: "另存为…", Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, {Label: "带走文稿…", Click: action("deliver")}, {Label: "导出 PDF…", Accelerator: "CmdOrCtrl+P", Click: action("pdf")}}},
 			{Label: "编辑", Submenu: []*mygo.MenuItem{{Label: "撤销", Accelerator: "CmdOrCtrl+Z", Click: action("undo")}, {Label: "重做", Accelerator: "CmdOrCtrl+Shift+Z", Click: action("redo")}, mygo.Separator(), {Role: mygo.RoleCut}, {Role: mygo.RoleCopy}, {Role: mygo.RolePaste}, {Role: mygo.RoleSelectAll}, {Label: "查找", Accelerator: "CmdOrCtrl+F", Click: action("find")}}},
 			{Label: "显示", Submenu: []*mygo.MenuItem{{Label: "段落专注", Accelerator: "CmdOrCtrl+Shift+F", Click: action("focus")}, {Label: "外观", Click: action("theme")}, {Label: "即时排版 / 分栏预览", Accelerator: "CmdOrCtrl+\\", Click: action("layout")}, {Label: "左侧源码 / 即时排版", Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: "操作搜索", Accelerator: "CmdOrCtrl+K", Click: action("commands")}}},
@@ -241,7 +247,7 @@ func main() {
 		d.win.Page().OnWillNavigate(func(e *mygo.NavigateEvent) { e.PreventDefault() })
 	})
 	mygo.App.OnBeforeQuit(func(e *mygo.QuitEvent) {
-		if !d.allowClose.Load() {
+		if !quitAllowed(d.allowClose.Load(), d.pending.Load()) {
 			e.PreventDefault()
 			d.requestClose()
 		}
@@ -330,6 +336,9 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			value = d.State()
 		case "New":
 			value, e = d.New()
+		case "SetPending":
+			var pending bool
+			e = arg(0, &pending)
 		case "Update":
 			var x Edit
 			e = arg(0, &x)

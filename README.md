@@ -34,11 +34,15 @@
 
 本地浏览器开发：`go run . --web 127.0.0.1:4193 --data-dir /tmp/liubai-development`。这里调用同一套真实草稿后端，但浏览器通过导入/下载文件代替系统对话框。只允许回环绑定、同源 JSON 请求；使用单独存档。
 
-验证：`go test ./...`、`go vet ./...`、`tsc --noEmit`。构建 Mac 通用包：`go tool mygo build -platform darwin/universal -skip-dmg .`。应用依赖 macOS 13 或以上。
+验证：`go test ./...`、`go vet ./...`、`tsc --noEmit`。应用依赖 macOS 13 或以上。
+
+构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.2.0.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
+
+签名与公证验证：对应用运行 `codesign --verify --deep --strict` 和 `spctl -a -t exec -vv`，对 DMG 运行 `spctl -a -t open --context context:primary-signature -vv`；分别运行 `xcrun stapler validate` 检查应用和 DMG 的公证票据。`scripts/package-macos.sh` 仅生成未公证的临时预览 ZIP，会重新签名，不应用于正式签名的应用。
 
 ## 0.2.0 验证边界
 
-本轮完善编辑与交付功能，安装包处理不在本轮范围。当前开发环境为 Linux；自动化覆盖浏览器交互、保存与图片迁移、真实 CodeMirror 撤销及组合输入状态。Mac 原生中文输入法候选行为、文件对话框、PDF 最终分页及跨应用富文本粘贴仍需真机确认。
+本轮完善编辑与交付功能，Mac 通用安装包现已支持正式签名与 Apple 公证。编辑功能的自动化验证覆盖 Linux 浏览器交互、保存与图片迁移、真实 CodeMirror 撤销及组合输入状态。Mac 原生中文输入法候选行为、文件对话框、PDF 最终分页及跨应用富文本粘贴仍需真机确认。
 
 即时排版使用 CodeMirror 装饰而不重序列化 Markdown。图片/表格在光标离开相关区块后预览。复杂跨行图片语法或扩展语法保留源码，无法安全转换资源时停止保存并提示。外部图片在编辑区保持原链接且可能联网加载；ZIP 保留原引用，PDF、HTML 与富文本中转为可点击链接，准备交付时不抓取外部图片。缺失图片会提示处理或明确继续；图文准备上限为 48 MB，较大文稿可使用 ZIP。接收应用对富文本与内嵌图片的支持不同。
 

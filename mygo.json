@@ -6,6 +6,10 @@
   "out": "build",
   "bindings": "bindings.ts",
   "macos": {
-    "minimumSystemVersion": "13.0"
+    "minimumSystemVersion": "13.0",
+    "signingIdentity": "Developer ID Application: Zijie Hu (8LH7PFQJ89)",
+    "notarize": {
+      "keychainProfile": "clipnest-notary"
+    }
   }
 }

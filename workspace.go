@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"math"
 	"os"
@@ -523,10 +522,4 @@ func (w *Workspace) Rename(id, title string) (WorkspaceState, error) {
 		return w.snapshot(), err
 	}
 	return w.snapshot(), nil
-}
-func cleanError(err error) error {
-	if err == nil {
-		return nil
-	}
-	return fmt.Errorf("操作未完成：%w", err)
 }

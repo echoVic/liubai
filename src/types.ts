@@ -3,7 +3,7 @@ export interface Position {anchor:number;head:number;scroll:number;source:boolea
 export interface Doc {id:string;title:string;content:string;path:string;updated:number;revision:number;position:Position;conflict:boolean;status:string}
 export interface Summary {id:string;title:string;path:string;updated:number;excerpt:string}
 export interface WorkspaceState {current:Doc;recent:Summary[];appearance:Appearance}
-export interface ImageResult {destination:string;url:string;name:string}
+export interface ImageResult {destination:string;url:string;name:string;markdown:string}
 export interface ExportResult {path:string;missing:string[];external:number;document:Doc;cancelled:boolean;changes?:{from:number;to:number;insert:string}[]}
 declare global {interface Window {mygo?:{call<T>(method:string,...args:unknown[]):Promise<T>;on<T>(name:string,fn:(data:T)=>void):void}}}
 export const desktop=!!window.mygo;

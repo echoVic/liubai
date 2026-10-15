@@ -6,6 +6,7 @@ import {isolateHistory} from '@codemirror/commands';
 import {applyIcons,icon} from './icons';
 import {renderDelivery,waitImages,copyRich,type Delivery} from './delivery';
 import {createPreviewController,type PreviewController} from './preview';
+import {normalizeImageDestination} from './markdown';
 const $=<T extends HTMLElement=HTMLElement>(s:string)=>document.querySelector<T>(s)!;
 const $$=(s:string)=>Array.from(document.querySelectorAll<HTMLElement>(s));
 const node=(tag:string,cls='',text='')=>{const n=document.createElement(tag);n.className=cls;n.textContent=text;return n};
@@ -19,6 +20,7 @@ const openedQueue:string[]=[];
 let compositionActive=false,focusMode=false;let pendingClose=false;let pendingMissing:()=>Promise<void>=async()=>{};let prepared:HTMLElement|null=null,readyAction='';let editRange:{from:number;to:number;raw?:string}|null=null;let tableRows:string[][]=[],tableAligns:string[]=[];let editingExistingTable=false;
 const sessions=new Map<string,EditorState>();
 const imageCache=new Map<string,Promise<string>>();
+const imageKey=(id:string,dest:string)=>id+':'+normalizeImageDestination(dest);
 const mq=matchMedia('(prefers-color-scheme:dark)');
 const names:{id:Appearance['theme'];name:string;kind:string}[]=[{id:'paper',name:'纸白',kind:'清晰的中性纸面'},{id:'warm',name:'暖纸',kind:'柔和的米纸暖调'},{id:'mist',name:'雾绿',kind:'沉静的灰绿环境'},{id:'ink',name:'夜墨',kind:'克制的深炭夜色'}];
 if(desktop)document.body.classList.add('desktop');else $('#workspace-label').textContent='本地开发版 · 独立草稿存档';
@@ -45,7 +47,7 @@ async function save():Promise<boolean>{
 async function saveForAction(){const ok=await save();if(!ok&&dirty){toast('请先重试保存，当前输入仍保留');return false}await appearanceQueue.catch(()=>{});return true}
 async function resolveImageFor(documentID:string,dest:string):Promise<string>{
  if(/^https?:\/\//.test(dest))return dest;
- const key=documentID+':'+dest;if(!imageCache.has(key))imageCache.set(key,call<ImageResult>('ReadImage',documentID,dest).then(x=>x.url).catch(e=>{imageCache.delete(key);throw e}));return imageCache.get(key)!;
+ const key=imageKey(documentID,dest);if(!imageCache.has(key))imageCache.set(key,call<ImageResult>('ReadImage',documentID,dest).then(x=>x.url).catch(e=>{imageCache.delete(key);throw e}));return imageCache.get(key)!;
 }
 const resolveImage=(dest:string)=>resolveImageFor(doc.id,dest);
 function load(next:WorkspaceState){
@@ -103,7 +105,7 @@ async function toggleLayout(){const pending=setAppearance({layout:split()?'singl
 async function toggleMode(){if(!split()){toast('源码编辑仅在分栏预览中可用');return}const pending=setAppearance({source:!source});reconfigure();header();await pending;view.focus()}
 async function insertImages(files:File[],at?:number){
  if(busy||!doc||compositionActive)return;const id=doc.id;let offset=at??view.state.selection.main.from;setBusy(true);
- try{for(const file of files){if(file.size>20*1024*1024)throw Error('图片超过 20 MB');const data=await new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=()=>reject(Error('图片无法读取'));r.readAsDataURL(file)});const image=await call<ImageResult>('ImportImage',id,file.name,data);if(doc.id!==id)throw Error('文稿已切换，请重新插入');imageCache.set(id+':'+image.destination,Promise.resolve(image.url));const alt=file.name.replace(/[\[\]\\\r\n]/g,'').replace(/\.[^.]+$/,'')||'图片';const text=`\n\n![${alt}](${image.destination})\n\n`;view.dispatch({changes:{from:offset,insert:text},selection:{anchor:offset+text.length},userEvent:'input.paste'});offset+=text.length}await save();reconfigure();view.focus()}catch(e){toast(errorText(e))}finally{setBusy(false)}
+ try{for(const file of files){if(file.size>20*1024*1024)throw Error('图片超过 20 MB');const data=await new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=()=>reject(Error('图片无法读取'));r.readAsDataURL(file)});const image=await call<ImageResult>('ImportImage',id,file.name,data);if(doc.id!==id)throw Error('文稿已切换，请重新插入');imageCache.set(imageKey(id,image.destination),Promise.resolve(image.url));const alt=file.name.replace(/[\[\]\\\r\n]/g,'').replace(/\.[^.]+$/,'')||'图片';const text=`\n\n![${alt}](${image.markdown})\n\n`;view.dispatch({changes:{from:offset,insert:text},selection:{anchor:offset+text.length},userEvent:'input.paste'});offset+=text.length}await save();reconfigure();view.focus()}catch(e){toast(errorText(e))}finally{setBusy(false)}
 }
 $('#image-input').onchange=()=>{const input=$<HTMLInputElement>('#image-input');void insertImages(Array.from(input.files||[]));input.value=''};
 function setBusy(value:boolean){busy=value;if(view)view.dispatch({effects:editLock.reconfigure(EditorState.readOnly.of(value))});if(!value){if(pendingClose){pendingClose=false;void closeApp()}else if(openedQueue.length)setTimeout(()=>void processOpened(),500)}}

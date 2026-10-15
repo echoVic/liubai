@@ -28,6 +28,7 @@ type ImageResult struct {
 	Destination string `json:"destination"`
 	URL         string `json:"url"`
 	Name        string `json:"name"`
+	Markdown    string `json:"markdown"`
 }
 type ExportResult struct {
 	Path      string       `json:"path"`
@@ -73,6 +74,13 @@ func external(dest string) bool {
 func (w *Workspace) imagePath(d *Document, dest string) (string, error) {
 	if alias, ok := d.ImageAliases[dest]; ok {
 		dest = alias
+	} else {
+		for key, alias := range d.ImageAliases {
+			if canonicalDestination(key) == canonicalDestination(dest) {
+				dest = alias
+				break
+			}
+		}
 	}
 	u, err := url.Parse(dest)
 	if err != nil {
@@ -147,7 +155,7 @@ func (w *Workspace) ImportImage(id, name, encoded string) (ImageResult, error) {
 		if err = writeImageExclusive(filepath.Join(diskDir, name), b); err != nil {
 			return ImageResult{}, err
 		}
-		dest = url.PathEscape(assetDir) + "/" + name
+		dest = assetDir + "/" + name
 		d.ImageAliases = maps.Clone(d.ImageAliases)
 		if d.ImageAliases == nil {
 			d.ImageAliases = map[string]string{}
@@ -157,7 +165,7 @@ func (w *Workspace) ImportImage(id, name, encoded string) (ImageResult, error) {
 			return ImageResult{}, err
 		}
 	}
-	return ImageResult{dest, "data:image/" + format + ";base64," + base64.StdEncoding.EncodeToString(b), name}, nil
+	return ImageResult{Destination: dest, URL: "data:image/" + format + ";base64," + base64.StdEncoding.EncodeToString(b), Name: name, Markdown: markdownDestination(dest)}, nil
 }
 func (w *Workspace) ReadImage(id, dest string) (ImageResult, error) {
 	w.mu.Lock()
@@ -167,16 +175,18 @@ func (w *Workspace) ReadImage(id, dest string) (ImageResult, error) {
 		return ImageResult{}, errors.New("文稿不存在")
 	}
 	allowed := false
+	target := ""
 	for _, v := range imageTargets(d.Content) {
-		if v == dest {
+		if v == dest || canonicalDestination(v) == canonicalDestination(dest) {
 			allowed = true
+			target = v
 			break
 		}
 	}
 	if !allowed {
 		return ImageResult{}, errors.New("图片未被文稿引用")
 	}
-	p, err := w.imagePath(d, dest)
+	p, err := w.imagePath(d, target)
 	if err != nil {
 		return ImageResult{}, err
 	}
@@ -184,7 +194,7 @@ func (w *Workspace) ReadImage(id, dest string) (ImageResult, error) {
 	if err != nil {
 		return ImageResult{}, err
 	}
-	return ImageResult{dest, "data:image/" + format + ";base64," + base64.StdEncoding.EncodeToString(b), filepath.Base(p)}, nil
+	return ImageResult{Destination: dest, URL: "data:image/" + format + ";base64," + base64.StdEncoding.EncodeToString(b), Name: filepath.Base(p), Markdown: markdownDestination(target)}, nil
 }
 
 // Rewrites destination tokens only, preserving Markdown and fenced/inline code.
@@ -312,6 +322,11 @@ func imageReplacements(source string, targets map[string]string) []replacement {
 			}
 			old := line[start:end]
 			if value, ok := targets[old]; ok {
+				if angle {
+					value = strings.NewReplacer("<", "%3C", ">", "%3E").Replace(value)
+				} else {
+					value = markdownDestination(value)
+				}
 				reps = append(reps, replacement{offset + start, offset + end, value})
 			}
 		}
@@ -408,7 +423,7 @@ func (w *Workspace) materialize(d *Document, path string, all bool) (string, err
 		if err = writeImageExclusive(filepath.Join(dir, name), b); err != nil {
 			return "", err
 		}
-		targets[dest] = url.PathEscape(assetDir) + "/" + name
+		targets[dest] = assetDir + "/" + name
 	}
 	out := rewriteImages(d.Content, targets)
 	if err := validateRewrittenImages(out, targets); err != nil {
@@ -480,7 +495,7 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 		if e = writeImageExclusive(target, b); e != nil {
 			return ExportResult{}, e
 		}
-		targets[dest] = url.PathEscape(assetDir) + "/" + name
+		targets[dest] = assetDir + "/" + name
 		cacheDir := filepath.Join(w.root, "assets", d.ID)
 		if e = os.MkdirAll(cacheDir, 0700); e != nil {
 			return ExportResult{}, e
@@ -605,17 +620,4 @@ func (w *Workspace) Export(id, path string, allowMissing bool) (ExportResult, er
 	}
 	r.Path = path
 	return r, nil
-}
-func (w *Workspace) AssetHTTP(id, dest string) ([]byte, string, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	d := w.docs[id]
-	if d == nil {
-		return nil, "", os.ErrNotExist
-	}
-	p, err := w.imagePath(d, dest)
-	if err != nil {
-		return nil, "", err
-	}
-	return picture(p)
 }

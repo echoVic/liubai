@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 import sys
 import tempfile
+import time
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -328,7 +329,9 @@ def run(page):
         and request.post_data_json.get("method") == "ReadImage"
     ):
         page.reload()  # Clear A's image cache and hold its first backend read.
-    page.wait_for_timeout(50)  # Let Playwright's Python route callback retain it.
+    deadline = time.monotonic() + 7
+    while not stale_reads and time.monotonic() < deadline:
+        page.wait_for_timeout(10)
     assert stale_reads, "document A ReadImage was not held"
     expect(page.locator("#preview h1")).to_have_text("图片晚到重试")
     open_recent(page, original["title"])
@@ -408,7 +411,7 @@ def run(page):
             assert geometry["right"]["x"] >= geometry["left"]["x"] + geometry["left"]["w"] - 2, geometry
         page.screenshot(path=str(ARTIFACTS / f"split-{width}.png"))
 
-    print("PASS: rendering, readonly tasks, modes/history, soft follow, IME guard, reload/new-document/Recent persistence, stale image isolation, themes, local images/HTML export, responsive layout")
+    print("PASS: rendering, readonly tasks, modes/history, soft follow, synthetic composition guard, reload/new-document/Recent persistence, stale image isolation, themes, local images/HTML export, responsive layout")
 
 
 with sync_playwright() as playwright:

@@ -296,6 +296,10 @@ export async function runPreviewChecks(): Promise<string> {
  const oversizedHTML=oversizedCode.root.innerHTML;
  await highlightCodeBlocks(oversizedCode.root,()=>true);
  equal(oversizedCode.root.innerHTML,oversizedHTML,'oversized code was changed');
+ const footnoteDelivery=renderDelivery({title:'t',content:'正文[^1]\n\n---\n\n[^1]: 注释',images:{},missing:[],external:0});
+ equal(footnoteDelivery.querySelectorAll('hr').length,2,'delivery thematic break and footnote separator');
+ assert([...footnoteDelivery.querySelectorAll('hr')].every(hr=>/border-top:1px solid/.test(hr.getAttribute('style')||'')),'delivery separator keeps the browser default style');
+ assert(!/border/.test(footnoteDelivery.querySelector('section.footnotes')?.getAttribute('style')||''),'delivery footnotes have a second separator');
  const deliveryCode=renderDelivery({title:'t',content:'```ts\nconst a = 1\n```',images:{},missing:[],external:0});
  assert(!deliveryCode.querySelector('code span'),'delivery code was highlighted');
  const plainSanitizeCalls=sanitizeStats.calls;

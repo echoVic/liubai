@@ -5,6 +5,7 @@ import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
 import {GFM} from '@lezer/markdown';
 import {frontMatterRange,headings} from '../src/editing';
 import {inlineDecorations,blockDecorations} from '../src/editor';
+import {highlightCodeBlocks} from '../src/highlight';
 
 function assert(condition: unknown, message: string): asserts condition {
  if (!condition) throw new Error(message);
@@ -274,5 +275,28 @@ export async function runPreviewChecks(): Promise<string> {
  equal(normalized.root.querySelector('img')?.getAttribute('src'),localURL,'HTML image source was not normalized');
  const deliveryAnchors=renderDelivery({title:'t',content:'# 同一标题\n\n# 同一标题',images:{},missing:[],external:0});
  equal(deliveryAnchors.querySelectorAll('h1')[1]?.id,'同一标题-1','duplicate delivery heading slug');
+ const code=renderMarkdown('```ts\nconst a: number = 1 // note\n```',{resolve:()=>undefined,external:'load'});
+ await highlightCodeBlocks(code.root,()=>true);
+ assert(code.root.querySelector('pre code .tok-keyword'),'code block was not highlighted');
+ equal(code.root.querySelector('pre code')?.textContent,'const a: number = 1 // note\n','highlighting changed the code text');
+ const staleCode=renderMarkdown('```ts\nconst b = 2\n```',{resolve:()=>undefined,external:'load'});
+ await highlightCodeBlocks(staleCode.root,()=>false);
+ assert(!staleCode.root.querySelector('.tok-keyword'),'stale render was highlighted');
+ const pendingCode=renderMarkdown('```ts\nconst c = 3\n```',noMeta);
+ let active=true;
+ const highlighting=highlightCodeBlocks(pendingCode.root,()=>active);
+ active=false;
+ await highlighting;
+ assert(!pendingCode.root.querySelector('.tok-keyword'),'render invalidated during language loading was highlighted');
+ const plainCode=renderMarkdown('```liubai-unknown-language\nunchanged\n```\n\n```\nconst plain = 1\n```',noMeta);
+ const plainHTML=plainCode.root.innerHTML;
+ await highlightCodeBlocks(plainCode.root,()=>true);
+ equal(plainCode.root.innerHTML,plainHTML,'unknown or unlabelled code was changed');
+ const oversizedCode=renderMarkdown('```ts\n//'+'x'.repeat(99999)+'\n```',noMeta);
+ const oversizedHTML=oversizedCode.root.innerHTML;
+ await highlightCodeBlocks(oversizedCode.root,()=>true);
+ equal(oversizedCode.root.innerHTML,oversizedHTML,'oversized code was changed');
+ const deliveryCode=renderDelivery({title:'t',content:'```ts\nconst a = 1\n```',images:{},missing:[],external:0});
+ assert(!deliveryCode.querySelector('code span'),'delivery code was highlighted');
  return 'shared renderer and delivery DOM checks passed';
 }

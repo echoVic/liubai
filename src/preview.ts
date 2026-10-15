@@ -1,4 +1,5 @@
 import {renderMarkdown,headingSlug,type MarkdownRender} from './markdown';
+import {highlightCodeBlocks} from './highlight';
 
 export interface PreviewControllerOptions {
  host: HTMLElement;
@@ -105,6 +106,7 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
   current?.dispose();
   current=next;
   options.host.replaceChildren(next.root);
+  void highlightCodeBlocks(next.root,()=>id===documentID&&generation===renderGeneration);
   installHeadingAnchors();
   restore(saved);
   dirty=false;
@@ -212,6 +214,7 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
    if(missingImages)retryAfterSave(saveEpoch);
   },
   dispose(){
+   renderGeneration++;
    clearTimeout(renderTimer);
    clearTimeout(followTimer);
    current?.dispose();

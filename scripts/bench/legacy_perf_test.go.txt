@@ -1,0 +1,168 @@
+//go:build perf
+
+package main
+
+// Legacy twin of perf_bench_test.go for the 0.3.0 tree (copied in by scripts/bench/run.sh).
+// Same scenarios, expressed with the APIs 0.3.0 had: the idle poll was State() and a
+// cursor or scroll change was a full Update with unchanged content.
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+)
+
+var (
+	fixtureOnce sync.Once
+	fixtureRoot string
+	fixtureFile string
+)
+
+var benchPara = strings.Repeat("这是一段用于测试的中文正文，包含 English words 和标点。", 20) + "\n\n"
+
+// fixture builds one data dir with 300 drafts of about 30 KB each plus a 2 MB
+// file-backed document that is current, shared by the read-only benchmarks.
+func fixture(b *testing.B) (string, string) {
+	b.Helper()
+	fixtureOnce.Do(func() {
+		root, _ := os.MkdirTemp("", "liubai-bench-root-")
+		dir, _ := os.MkdirTemp("", "liubai-bench-files-")
+		w, err := openWorkspace(root)
+		if err != nil {
+			panic(err)
+		}
+		body := strings.Repeat(benchPara, 30*1024/len(benchPara)+1)
+		for i := 0; i < 300; i++ {
+			s, err := w.New()
+			if err != nil {
+				panic(err)
+			}
+			if _, err := w.Update(Edit{ID: s.Current.ID, Revision: s.Current.Revision, Content: fmt.Sprintf("# 草稿 %d\n\n%s", i, body)}); err != nil {
+				panic(err)
+			}
+		}
+		p := filepath.Join(dir, "big.md")
+		if err := os.WriteFile(p, []byte(strings.Repeat(benchPara, 2<<20/len(benchPara))), 0644); err != nil {
+			panic(err)
+		}
+		if _, err := w.Open(p); err != nil {
+			panic(err)
+		}
+		fixtureRoot, fixtureFile = root, p
+	})
+	return fixtureRoot, fixtureFile
+}
+
+// TestMain removes the shared fixture once every benchmark has run.
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if fixtureRoot != "" {
+		os.RemoveAll(fixtureRoot)
+		os.RemoveAll(filepath.Dir(fixtureFile))
+	}
+	os.Exit(code)
+}
+
+func openFixture(b *testing.B) (*Workspace, Document) {
+	b.Helper()
+	root, _ := fixture(b)
+	w, err := openWorkspace(root)
+	if err != nil {
+		b.Fatal(err)
+	}
+	return w, w.State().Current
+}
+
+// What the window does every 2 seconds while idle.
+func BenchmarkIdlePoll(b *testing.B) {
+	w, cur := openFixture(b)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = cur
+		w.State()
+	}
+}
+
+// Opening 最近文稿 (the full state with 300 summaries).
+func BenchmarkRecentList(b *testing.B) {
+	w, _ := openFixture(b)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		w.State()
+	}
+}
+
+func BenchmarkStartup300Drafts(b *testing.B) {
+	root, _ := fixture(b)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := openWorkspace(root); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkSaveSmallDraft(b *testing.B) {
+	w, err := openWorkspace(b.TempDir())
+	if err != nil {
+		b.Fatal(err)
+	}
+	d := w.State().Current
+	content := strings.Repeat(benchPara, 5)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		content += "字"
+		got, err := w.Update(Edit{ID: d.ID, Revision: d.Revision, Content: content})
+		if err != nil {
+			b.Fatal(err)
+		}
+		d = got
+	}
+}
+
+func fileDocument(b *testing.B) (*Workspace, Document) {
+	b.Helper()
+	w, err := openWorkspace(b.TempDir())
+	if err != nil {
+		b.Fatal(err)
+	}
+	p := filepath.Join(b.TempDir(), "big.md")
+	if err := os.WriteFile(p, []byte(strings.Repeat(benchPara, 2<<20/len(benchPara))), 0644); err != nil {
+		b.Fatal(err)
+	}
+	s, err := w.Open(p)
+	if err != nil {
+		b.Fatal(err)
+	}
+	return w, s.Current
+}
+
+func BenchmarkSaveFile2MB(b *testing.B) {
+	w, d := fileDocument(b)
+	content := d.Content
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		content += "字"
+		got, err := w.Update(Edit{ID: d.ID, Revision: d.Revision, Content: content})
+		if err != nil {
+			b.Fatal(err)
+		}
+		d = got
+	}
+}
+
+// Moving the cursor or scrolling a 2 MB file-backed document.
+func BenchmarkCursorMove2MB(b *testing.B) {
+	w, d := fileDocument(b)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		got, err := w.Update(Edit{ID: d.ID, Revision: d.Revision, Content: d.Content, Position: Position{Anchor: i % 1000, Head: i % 1000, Scroll: float64(i)}})
+		if err != nil {
+			b.Fatal(err)
+		}
+		d = got
+	}
+}

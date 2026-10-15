@@ -18,7 +18,9 @@
     "@codemirror/view": "^6.36.5",
     "@lezer/highlight": "^1.2.1",
     "@lezer/markdown": "^1.4.3",
-    "markdown-it": "^14.1.0"
+    "dompurify": "3.4.16",
+    "markdown-it": "^14.1.0",
+    "markdown-it-footnote": "4.0.0"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.1.2",

@@ -9,6 +9,10 @@ export function renderDelivery(data:Delivery){
  for(const el of root.querySelectorAll('.task-list, .task-list-item')){
   el.classList.remove('task-list','task-list-item');if(!el.className)el.removeAttribute('class');
  }
+ for(const el of root.querySelectorAll('[class]')){
+  for(const className of [...el.classList])if(className.startsWith('md-'))el.classList.remove(className);
+  if(!el.className)el.removeAttribute('class');
+ }
  for(const el of root.querySelectorAll('[data-line], [data-line-end]')){el.removeAttribute('data-line');el.removeAttribute('data-line-end')}
  for(const a of root.querySelectorAll('a')){a.rel='noopener noreferrer'}
  const styles:Record<string,string>={h1:'font-size:30px;line-height:1.5;margin:24px 0 18px',h2:'font-size:24px;line-height:1.5;margin:24px 0 14px',h3:'font-size:20px;line-height:1.6',p:'line-height:1.9;margin:14px 0',blockquote:'border-left:3px solid #809387;padding-left:16px;color:#45574c',pre:'background:#f1f2ef;padding:16px;white-space:pre-wrap;font-family:monospace;font-size:13px',table:'border-collapse:collapse;width:100%;margin:20px 0',th:'border:1px solid #cdd2cc;padding:9px;text-align:left;background:#edf0e9',td:'border:1px solid #cdd2cc;padding:9px;text-align:left',code:'font-family:monospace',a:'color:#315f82;text-decoration:underline'};

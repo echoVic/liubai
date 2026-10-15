@@ -34,44 +34,70 @@ const lineMapPlugin:PluginSimple=md=>{
   const info=token.info?md.utils.unescapeAll(token.info).trim():'';
   const language=info.split(/\s+/g)[0];
   const className=language?` class="${options.langPrefix}${md.utils.escapeHtml(language)}"`:'';
-  return `<pre${lineAttributes(token.map)}><code${className}>${md.utils.escapeHtml(token.content)}</code></pre>\n`;
+  return `<pre class="md-pre"${lineAttributes(token.map)}><code${className}>${md.utils.escapeHtml(token.content)}</code></pre>\n`;
  };
  md.renderer.rules.code_block=(tokens,index)=>
-  `<pre${lineAttributes(tokens[index].map)}><code>${md.utils.escapeHtml(tokens[index].content)}</code></pre>\n`;
+  `<pre class="md-pre"${lineAttributes(tokens[index].map)}><code>${md.utils.escapeHtml(tokens[index].content)}</code></pre>\n`;
 };
 
 const taskPlugin:PluginSimple=md=>{
  md.core.ruler.after('inline','liubai_task_items',state=>{
-  const items:number[]=[];
+  const items:{index:number;level:number;seenParagraph:boolean;inFirstParagraph:boolean}[]=[];
   const lists:number[]=[];
   for(let index=0;index<state.tokens.length;index++){
    const token=state.tokens[index];
    if(token.type==='bullet_list_open'||token.type==='ordered_list_open')lists.push(index);
    else if(token.type==='bullet_list_close'||token.type==='ordered_list_close')lists.pop();
-   else if(token.type==='list_item_open')items.push(index);
+   else if(token.type==='list_item_open')items.push({index,level:token.level,seenParagraph:false,inFirstParagraph:false});
    else if(token.type==='list_item_close')items.pop();
-   else if(token.type==='inline'&&items.length){
+   else if(items.length&&token.type==='paragraph_open'){
+    const item=items[items.length-1];
+    if(token.level===item.level+1&&!item.seenParagraph){
+     item.seenParagraph=true;
+     item.inFirstParagraph=true;
+    }
+   }else if(items.length&&token.type==='paragraph_close'){
+    const item=items[items.length-1];
+    if(token.level===item.level+1)item.inFirstParagraph=false;
+   }else if(token.type==='inline'&&items.length&&items[items.length-1].inFirstParagraph){
     const match=/^\[([ xX])\]\s+/.exec(token.content);
     const first=token.children?.[0];
     if(!match||first?.type!=='text'||!first.content.startsWith(match[0]))continue;
     first.content=first.content.slice(match[0].length);
     token.content=token.content.slice(match[0].length);
-    const item=state.tokens[items[items.length-1]];
+    const checked=match[1].toLowerCase()==='x';
+    const checkbox=new state.Token('html_inline','',0);
+    checkbox.content=`<input type="checkbox" disabled${checked?' checked':''} aria-label="${checked?'已完成':'未完成'}"> `;
+    token.children?.unshift(checkbox);
+    const item=state.tokens[items[items.length-1].index];
+    item.attrJoin('class','md-task');
     item.meta={...item.meta,liubaiTask:match[1].toLowerCase()==='x'};
     item.attrJoin('class','task-list-item');
     if(lists.length)state.tokens[lists[lists.length-1]].attrJoin('class','task-list');
    }
   }
  });
- md.renderer.rules.list_item_open=(tokens,index,options,env,self)=>{
-  const checked=tokens[index].meta?.liubaiTask===true;
-  const task=tokens[index].meta?.liubaiTask===false||checked;
-  const checkbox=task?`<input type="checkbox" disabled${checked?' checked':''} aria-label="${checked?'已完成':'未完成'}"> `:'';
-  return self.renderToken(tokens,index,options)+checkbox;
- };
 };
 
-parser.use(lineMapPlugin).use(taskPlugin);
+const semanticClassPlugin:PluginSimple=md=>{
+ md.core.ruler.after('liubai_task_items','liubai_semantic_classes',state=>{
+  for(const token of state.tokens){
+   if(token.type==='heading_open')token.attrJoin('class',`md-${token.tag}`);
+   else if(token.type==='paragraph_open')token.attrJoin('class','md-p');
+   else if(token.type==='blockquote_open')token.attrJoin('class','md-quote');
+   else if(token.type==='table_open')token.attrJoin('class','md-table');
+   else if(token.type==='bullet_list_open')token.attrJoin('class','md-ul');
+   else if(token.type==='ordered_list_open')token.attrJoin('class','md-ol');
+   for(const child of token.children||[]){
+    if(child.type==='code_inline')child.attrJoin('class','md-inline-code');
+    else if(child.type==='link_open')child.attrJoin('class','md-link');
+    else if(child.type==='image')child.attrJoin('class','md-image');
+   }
+  }
+ });
+};
+
+parser.use(lineMapPlugin).use(taskPlugin).use(semanticClassPlugin);
 const imageRule:NonNullable<(typeof parser.renderer.rules)['image']>=(tokens,index,options,env,self)=>{
  const token=tokens[index];
  const source=token.attrGet('src')||'';

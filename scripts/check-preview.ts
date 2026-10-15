@@ -77,6 +77,58 @@ export async function runPreviewChecks(): Promise<string> {
  equal(rendered.root.querySelector('img')?.getAttribute('src'),localURL,'synchronous image was not installed before return');
  await rendered.ready;
 
+ const continuationSource='- first\n\n  [ ] continuation';
+ const continuation=renderMarkdown(continuationSource,{resolve:()=>undefined,external:'load'});
+ equal(continuationSource,'- first\n\n  [ ] continuation','continuation rendering changed the source Markdown');
+ assert(!continuation.root.querySelector('input[type=checkbox]'),'continuation marker became a task checkbox');
+ equal(continuation.root.querySelectorAll('p')[1]?.textContent,'[ ] continuation','continuation marker was removed from plain text');
+
+ const looseTaskSource='- [ ] first\n\n  continuation';
+ const looseTask=renderMarkdown(looseTaskSource,{resolve:()=>undefined,external:'load'});
+ equal(looseTaskSource,'- [ ] first\n\n  continuation','loose task rendering changed the source Markdown');
+ const looseCheckbox=looseTask.root.querySelector<HTMLInputElement>('input[type=checkbox]');
+ assert(looseCheckbox?.disabled,'loose task checkbox is missing or editable');
+ equal(looseCheckbox.parentElement,looseTask.root.querySelector('li > p'),'loose task checkbox is not inside the first paragraph');
+ assert(!looseTask.root.querySelector('li > input[type=checkbox]'),'loose task checkbox was inserted outside its paragraph');
+
+ const codeTaskSource='- `[ ] code`';
+ const codeTask=renderMarkdown(codeTaskSource,{resolve:()=>undefined,external:'load'});
+ equal(codeTaskSource,'- `[ ] code`','code task rendering changed the source Markdown');
+ assert(!codeTask.root.querySelector('input[type=checkbox]'),'code token became a task checkbox');
+ equal(codeTask.root.querySelector('code')?.textContent,'[ ] code','code token content changed');
+
+ const semantic=renderMarkdown([
+  '# H1',
+  '## H2',
+  '### H3',
+  '#### H4',
+  '##### H5',
+  '###### H6',
+  '',
+  'Paragraph with `code` and [link](https://example.invalid).',
+  '',
+  '> Quote',
+  '',
+  '```',
+  'block',
+  '```',
+  '',
+  '| A |',
+  '| - |',
+  '| B |',
+  '',
+  '- bullet',
+  '',
+  '1. ordered',
+  '',
+  '- [ ] task',
+  '',
+  '![image](image.png)',
+ ].join('\n'),{resolve:()=>localURL,external:'load'});
+ for(let level=1;level<=6;level++)assert(semantic.root.querySelector(`h${level}.md-h${level}`),`heading ${level} semantic class is missing`);
+ const semanticSelectors=['p.md-p','blockquote.md-quote','pre.md-pre','code.md-inline-code','table.md-table','ul.md-ul','ol.md-ol','li.md-task','a.md-link','img.md-image'];
+ for(const selector of semanticSelectors)assert(semantic.root.querySelector(selector),`${selector} semantic class is missing`);
+
  const pending=deferred<string|undefined>();
  const stale=renderMarkdown('![旧图](旧图.png)',{resolve:()=>pending.promise,external:'load'});
  const staleImage=stale.root.querySelector('img')!;
@@ -101,7 +153,7 @@ export async function runPreviewChecks(): Promise<string> {
 
  const delivery=renderDelivery({
   title:'Renderer check',
-  content:'# 交付标题\n\n- [x] 已完成\n\n![本地图](<图片 目录/示例(一).png>)\n\n![外链图](https://example.invalid/image.png)\n',
+  content:'# 交付标题\n\n正文含有 `代码` 和 [链接](https://example.invalid/page)。\n\n> 引用\n\n```\n代码块\n```\n\n| 表格 |\n| --- |\n| 内容 |\n\n- 列表\n\n1. 有序列表\n\n- [x] 已完成\n\n![本地图](<图片 目录/示例(一).png>)\n\n![外链图](https://example.invalid/image.png)\n',
   images:{'图片 目录/示例(一).png':localURL},
   missing:[],
   external:1,
@@ -111,9 +163,10 @@ export async function runPreviewChecks(): Promise<string> {
  assert(task.disabled&&task.checked, 'completed task checkbox must be checked and readonly');
  equal(delivery.querySelector('img')?.getAttribute('src'),localURL,'delivery local image was not installed synchronously');
  assert(!delivery.querySelector('img[src^="http"]'),'delivery started an external image request');
- equal(delivery.querySelector<HTMLAnchorElement>('a[href^="https://example.invalid"]')?.textContent,'外链图（联网查看）','delivery external image was not converted to a link');
- assert(delivery.querySelector('a[href^="https://example.invalid"]')?.parentElement?.classList.contains('delivery-image-note'),'delivery image notice styling changed');
+ equal(delivery.querySelector<HTMLAnchorElement>('a[href="https://example.invalid/image.png"]')?.textContent,'外链图（联网查看）','delivery external image was not converted to a link');
+ assert(delivery.querySelector('a[href="https://example.invalid/image.png"]')?.parentElement?.classList.contains('delivery-image-note'),'delivery image notice styling changed');
  assert(!delivery.querySelector('.markdown-document, .markdown-image-note, .task-list, .task-list-item'),'preview classes leaked into delivery');
+ assert(!delivery.querySelector('.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6, .md-p, .md-quote, .md-pre, .md-inline-code, .md-table, .md-ul, .md-ol, .md-task, .md-link, .md-image'),'preview semantic classes leaked into delivery');
  equal(delivery.querySelector('h1')?.getAttribute('style'),'font-size:30px;line-height:1.5;margin:24px 0 18px;','delivery heading print styles changed');
  assert(delivery.style.fontFamily.includes('PingFang SC'),'delivery root print styles changed');
  return 'shared renderer and delivery DOM checks passed';

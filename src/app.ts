@@ -1,7 +1,7 @@
 import {call,desktop,type Doc,type DocStatus,type WorkspaceState,type Appearance,type ImageResult,type ExportResult} from './types';
 import {createEditor,mode,richExtensions,setFocus,undo,redo,openSearchPanel,EditorState,type EditorView} from './editor';
 import {Transaction,Compartment,StateEffect} from '@codemirror/state';
-import {blockFormat,wrapSelection,codeBlock,linkAt,makeLink,safeLink,tableAt,parseTable,serializeTable,headings,type BlockKind} from './editing';
+import {blockFormat,wrapSelection,codeBlock,linkAt,makeLink,safeLink,localDocumentLink,tableAt,parseTable,serializeTable,headings,type BlockKind} from './editing';
 import {isolateHistory} from '@codemirror/commands';
 import {applyIcons,icon} from './icons';
 import {renderDelivery,waitImages,copyRich,type Delivery} from './delivery';
@@ -64,7 +64,7 @@ function load(next:WorkspaceState){
  loading=true;if(view){sessions.set(doc.id,view.state);view.destroy()}
  if(appearance)next.appearance=appearance;else appearance=next.appearance;
  state=next;doc=next.current;source=!!appearance.source;dirty=false;generation=0;savedPosition=JSON.stringify(doc.position);
- view=createEditor($('#editor'),doc,resolveImage,changed,insertImages,composition,openLink,openTable);
+ view=createEditor($('#editor'),doc,resolveImage,changed,insertImages,composition,openLink,openTable,files=>{if(!desktop&&files[0])void importFile(files[0])});
  view.dispatch({effects:StateEffect.appendConfig.of(editLock.of(EditorState.readOnly.of(false)))});
  const cached=sessions.get(doc.id);if(cached&&cached.doc.toString()===doc.content)view.setState(cached);
  view.dispatch({effects:editLock.reconfigure(EditorState.readOnly.of(busy))});
@@ -203,9 +203,14 @@ async function action(id:string){
  if(id==='image'){$('#image-input').click();return}if(id==='close'){await closeApp();return}
  await run(async()=>{switch(id){case 'new':if(await saveForAction())load(await call<WorkspaceState>('New'));break;case 'open':if(!await saveForAction())break;if(desktop)load(await call<WorkspaceState>('Open'));else $('#open-input').click();break;case 'save':case 'retry':if(id==='retry')savedPosition='';await save(true);if(!doc.path&&id==='save')await saveAs();break;case 'saveAs':await saveAs();break;case 'export':await exportDoc();break;case 'pdf':case 'copyRich':case 'html':await prepareDelivery(id);break;case 'reload':if(await saveForAction())load(await call<WorkspaceState>('Reload',doc.id));break;case 'overwrite':if(!await saveForAction())break;const title=doc.title;load(await call<WorkspaceState>('Overwrite',doc.id));toast('已用当前版本覆盖磁盘文件；原磁盘内容另存为「'+title+' · 磁盘版本」');break;}})
 }
+function jumpToHeading(slug:string){
+ const h=headings(view.state).find(h=>h.slug===slug||h.text===slug);if(h){view.dispatch({selection:{anchor:h.from},scrollIntoView:true});view.focus()}else toast('没有找到这个标题');
+}
 function openLink(url:string){
+ const local=localDocumentLink(url);
+ if(local){void run(async()=>{if(!await saveForAction())return;load(await call<WorkspaceState>('OpenLinked',doc.id,url));if(local.fragment)jumpToHeading(local.fragment)});return}
  if(!safeLink(url)){toast('不支持打开此类链接');return}
- if(url.startsWith('#')){let slug=url.slice(1);try{slug=decodeURIComponent(slug)}catch{}const h=headings(view.state).find(h=>h.slug===slug||h.text===slug);if(h){view.dispatch({selection:{anchor:h.from},scrollIntoView:true});view.focus()}else toast('没有找到这个标题');return}
+ if(url.startsWith('#')){let slug=url.slice(1);try{slug=decodeURIComponent(slug)}catch{}jumpToHeading(slug);return}
  if(desktop)void call('OpenLink',url).catch(e=>toast(errorText(e)));else window.open(url,'_blank','noopener,noreferrer');
 }
 function openLinkEditor(){
@@ -238,7 +243,12 @@ $$('[data-deliver]').forEach(b=>b.onclick=()=>{closeDialog('delivery-dialog');vo
 applyIcons();
 $$('[data-action]').forEach(b=>b.onclick=()=>void action(b.dataset.action!));
 $('#rename-form').onsubmit=e=>{e.preventDefault();const title=$<HTMLInputElement>('#rename-input').value.trim();if(!title)return;void run(async()=>{if(!await saveForAction())return;const result=await call<WorkspaceState>('Rename',doc.id,title);result.appearance=appearance;doc.title=result.current.title;state=result;header();closeDialog('rename-dialog')})};
-$('#open-input').onchange=async()=>{const f=$<HTMLInputElement>('#open-input').files?.[0];if(!f)return;await run(async()=>{const content=await f.text();load(await call<WorkspaceState>('New'));view.dispatch({changes:{from:0,to:view.state.doc.length,insert:content}});await save()});$<HTMLInputElement>('#open-input').value=''};
+async function importFile(file:File){await run(async()=>{if(!await saveForAction())return;const content=await file.text();load(await call<WorkspaceState>('New'));view.dispatch({changes:{from:0,to:view.state.doc.length,insert:content}});await save()})}
+$('#open-input').onchange=async()=>{const f=$<HTMLInputElement>('#open-input').files?.[0];if(!f)return;await importFile(f);$<HTMLInputElement>('#open-input').value=''};
+if(!desktop){
+ window.addEventListener('dragover',e=>{if(e.dataTransfer?.types.includes('Files'))e.preventDefault()});
+ window.addEventListener('drop',e=>{if(e.dataTransfer?.files.length)e.preventDefault()});
+}
 document.addEventListener('keydown',e=>{
  if(e.isComposing)return;if(e.key==='Escape'&&!document.querySelector('dialog[open]')){if(focusMode)void action('focus');$('#drawer').hidden=true;view?.focus()}
  if(!(e.metaKey||e.ctrlKey))return;const k=e.key.toLowerCase();let id='';if(document.querySelector('dialog[open]'))return;if(k==='p')id='pdf';if(k==='l')id='link';if(k==='f'&&e.shiftKey)id='focus';if(k==='b')id='bold';if(k==='n')id='new';if(k==='o')id='open';if(k==='s')id=e.shiftKey?'saveAs':'save';if(k==='k')id='commands';if(!desktop&&k==='\\')id='layout';if(!desktop&&k==='m'&&e.shiftKey)id='source';if(id){e.preventDefault();void action(id)}

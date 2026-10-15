@@ -33,3 +33,14 @@ console.log('字数统计检查通过');
 assert.equal(countWords('かな カナ 한글 中文 hello-world café 42 don’t'),13);
 assert.equal(countWords('<!-- 不计\n注释 -->\n[ref]: https://example.com/不计\n\n[正文][ref]\n| --- | :---: |\n1. [ ] 完成 www.example.com/不计'),4);
 assert.equal(countWords('---\r\ntitle: 不计\r\n...\r\n\r\n正文\n~~~ts\nconst a = 1\n~~~'),5);
+
+const {localDocumentLink}=await import('../src/editing');
+assert.deepEqual(localDocumentLink('docs/guide.md#安装'),{path:'docs/guide.md',fragment:'安装'});
+assert.deepEqual(localDocumentLink('docs/%E5%AE%89%E8%A3%85.md#%E5%AE%89%E8%A3%85'),{path:'docs/%E5%AE%89%E8%A3%85.md',fragment:'安装'});
+assert.deepEqual(localDocumentLink('./a b.markdown'),{path:'./a b.markdown',fragment:''});
+for(const href of ['https://example.com/a.md','#标题','images/a.png','mailto:a@b.c','//cdn.example.com/a.md'])assert.equal(localDocumentLink(href),null,href);
+for(const path of ['a.MD','a.MDOWN','a.mkd','a.txt','docs/a%2Emd','100%25.md','bad%ZZ.md'])assert.deepEqual(localDocumentLink(path+'?raw=1#%E6%A0%87%E9%A2%98'),{path,fragment:'标题'});
+assert.deepEqual(localDocumentLink('a.md#bad%ZZ'),{path:'a.md',fragment:'bad%ZZ'});
+assert.deepEqual(localDocumentLink('a.md?next=other.md#one#two'),{path:'a.md',fragment:'one#two'});
+for(const href of ['', '?file=a.md', 'a.png?file=a.md', 'a.md.exe', 'javascript:a.md', 'file:///a.md'])assert.equal(localDocumentLink(href),null,href);
+console.log('相对文稿链接识别检查通过');

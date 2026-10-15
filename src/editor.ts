@@ -10,7 +10,7 @@ import { GFM } from '@lezer/markdown';
 import type { SyntaxNode } from '@lezer/common';
 import MarkdownIt from 'markdown-it';
 import type { Doc } from './types';
-import {safeLink,frontMatterRange} from './editing';
+import {safeLink,localDocumentLink,frontMatterRange} from './editing';
 
 const md=new MarkdownIt({html:false,linkify:false});
 export const mode=new Compartment();
@@ -140,7 +140,7 @@ export function richExtensions(resolve:(dest:string)=>Promise<string>,editTable?
  },{decorations:plugin=>plugin.decorations});
  return [createBlockField(resolve,editTable),inlinePlugin];
 }
-export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onTable:()=>void){
+export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onTable:()=>void,onOpenFiles:(files:File[])=>void){
  const state=EditorState.create({doc:doc.content,selection:{anchor:Math.min(doc.position.anchor||0,doc.content.length),head:Math.min(doc.position.head||0,doc.content.length)},extensions:[
   history(),composing,focusField,focusDecorations,markdown({base:markdownLanguage,codeLanguages:languages,extensions:GFM}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),
   EditorView.editorAttributes.of(view=>({class:view.state.field(focusField)?'cm-focus-on':''})),
@@ -151,8 +151,13 @@ export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>P
   EditorView.domEventHandlers({
    compositionstart:(_e,v)=>{v.dispatch({effects:setComposing.of(true)});onCompose(true);return false},
    compositionend:(_e,v)=>{setTimeout(()=>{if(v.dom.isConnected){v.dispatch({effects:setComposing.of(false)});onCompose(false)}},0);return false},
-   click:(event)=>{const a=(event.target as HTMLElement).closest<HTMLElement>('[data-href]');if(a&&(event.metaKey||event.ctrlKey)&&safeLink(a.dataset.href||'')){event.preventDefault();onLink(a.dataset.href!);return true}return false},
-   paste:(event)=>{const files=Array.from(event.clipboardData?.files||[]).filter(f=>f.type.startsWith('image/'));if(files.length){event.preventDefault();onImage(files);return true}return false},drop:(event,view)=>{const files=Array.from(event.dataTransfer?.files||[]).filter(f=>f.type.startsWith('image/'));if(files.length){event.preventDefault();onImage(files,view.posAtCoords({x:event.clientX,y:event.clientY})??undefined);return true}return false}})
+   click:(event)=>{const a=(event.target as HTMLElement).closest<HTMLElement>('[data-href]');if(a&&(event.metaKey||event.ctrlKey)&&(safeLink(a.dataset.href||'')||localDocumentLink(a.dataset.href||''))){event.preventDefault();onLink(a.dataset.href!);return true}return false},
+   paste:(event)=>{const files=Array.from(event.clipboardData?.files||[]).filter(f=>f.type.startsWith('image/'));if(files.length){event.preventDefault();onImage(files);return true}return false},
+   drop:(event,view)=>{
+    const files=Array.from(event.dataTransfer?.files||[]),documents=files.filter(f=>/\.(md|markdown|mdown|mkd|txt)$/i.test(f.name));
+    if(documents.length){event.preventDefault();onOpenFiles(documents);return true}
+    const images=files.filter(f=>f.type.startsWith('image/'));if(images.length){event.preventDefault();onImage(images,view.posAtCoords({x:event.clientX,y:event.clientY})??undefined);return true}return false;
+   }})
  ]});return new EditorView({state,parent});
 }
 export {undo,redo,openSearchPanel,EditorState,EditorView};

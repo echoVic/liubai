@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -715,6 +716,45 @@ func (w *Workspace) writeOriginal(d *Document, b []byte) error {
 	d.recordDiskInfo(info)
 	d.Conflict = false
 	return nil
+}
+func markdownPath(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".md", ".markdown", ".mdown", ".mkd", ".txt":
+		return true
+	}
+	return false
+}
+func (w *Workspace) OpenLinked(fromID, href string) (WorkspaceState, error) {
+	w.mu.Lock()
+	d := w.docs[fromID]
+	if d == nil {
+		w.mu.Unlock()
+		return WorkspaceState{}, errors.New("文稿不存在")
+	}
+	source := d.Path
+	w.mu.Unlock()
+	if source == "" {
+		return WorkspaceState{}, errors.New("草稿还没有保存位置，无法打开相对链接")
+	}
+	u, err := url.Parse(href)
+	if err != nil || u.Scheme != "" || u.Host != "" || u.Path == "" {
+		return WorkspaceState{}, errors.New("不支持的链接")
+	}
+	path, err := url.PathUnescape(u.EscapedPath())
+	if err != nil {
+		return WorkspaceState{}, errors.New("不支持的链接")
+	}
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(filepath.Dir(source), path)
+	}
+	if !markdownPath(path) {
+		return WorkspaceState{}, errors.New("只能打开 Markdown 文稿链接")
+	}
+	info, err := os.Stat(path)
+	if err != nil || !info.Mode().IsRegular() {
+		return WorkspaceState{}, errors.New("链接的文稿不存在")
+	}
+	return w.Open(path)
 }
 func (w *Workspace) Open(path string) (WorkspaceState, error) {
 	w.mu.Lock()

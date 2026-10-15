@@ -78,6 +78,9 @@ func (d *Desktop) ImportImage(id, name, data string) (ImageResult, error) {
 func (d *Desktop) ReadImage(id, dest string) (ImageResult, error)  { return d.w.ReadImage(id, dest) }
 func (d *Desktop) Reload(id string) (WorkspaceState, error)        { return d.w.Reload(id) }
 func (d *Desktop) Rename(id, title string) (WorkspaceState, error) { return d.w.Rename(id, title) }
+func (d *Desktop) OpenLinked(id, href string) (WorkspaceState, error) {
+	return d.w.OpenLinked(id, href)
+}
 func (d *Desktop) Open(ctx context.Context) (WorkspaceState, error) {
 	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "打开 Markdown 文稿", Filters: []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md", "markdown", "txt"}}}})
 	if err != nil {
@@ -264,6 +267,21 @@ func main() {
 		}
 		d.win = mygo.NewWindow(mygo.WindowOptions{Title: "留白", URL: "/", Width: 1120, Height: 820, MinWidth: 680, MinHeight: 540, Hidden: true, TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: bg, StateKey: "liubai-editor"})
 		d.win.OnReadyToShow(func() { d.win.Show() })
+		d.win.OnFileDrop(func(e *mygo.FileDropEvent) {
+			var paths []string
+			for _, path := range e.Paths {
+				if markdownPath(path) {
+					paths = append(paths, path)
+				} else if !strings.HasPrefix(mime.TypeByExtension(strings.ToLower(filepath.Ext(path))), "image/") {
+					_ = openFailed.Broadcast(OpenFailure{Path: path, Error: "仅支持打开 Markdown 文稿"})
+				}
+			}
+			go func() {
+				for i := len(paths) - 1; i >= 0; i-- {
+					d.openPath(paths[i])
+				}
+			}()
+		})
 		d.win.OnClose(func(e *mygo.CloseEvent) {
 			if quitAllowed(d.allowClose.Load(), d.pending.Load()) {
 				d.allowClose.Store(true)
@@ -410,6 +428,15 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			e = arg(0, &x)
 			if e == nil {
 				e = d.Appearance(x)
+			}
+		case "OpenLinked":
+			var id, href string
+			e = arg(0, &id)
+			if e == nil {
+				e = arg(1, &href)
+			}
+			if e == nil {
+				value, e = d.OpenLinked(id, href)
 			}
 		case "Rename":
 			var id, title string

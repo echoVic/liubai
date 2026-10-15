@@ -35,6 +35,15 @@ export function safeLink(raw:string):boolean {
  const value=raw.trim();if(!value||/[\u0000-\u0020\u007f<>]/.test(value))return false;
  return /^(https?:\/\/|mailto:|#)/i.test(value);
 }
+export function localDocumentLink(href:string):{path:string;fragment:string}|null {
+ if(href.startsWith('#')||href.startsWith('//')||/^[a-z][a-z\d+.-]*:/i.test(href))return null;
+ const path=href.split(/[?#]/,1)[0];let decoded=path;
+ try{decoded=decodeURIComponent(path)}catch{}
+ if(!/\.(md|markdown|mdown|mkd|txt)$/i.test(decoded))return null;
+ const hash=href.indexOf('#');let fragment=hash<0?'':href.slice(hash+1);
+ try{fragment=decodeURIComponent(fragment)}catch{}
+ return {path,fragment};
+}
 export function linkAt(state:EditorState){
  let n=syntaxTree(state).resolveInner(state.selection.main.head,-1);
  for(;n;n=n.parent!){if(n.name==='Link'){

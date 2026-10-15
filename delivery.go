@@ -38,7 +38,7 @@ func (w *Workspace) Delivery(id string) (Delivery, error) {
 			result.Missing = append(result.Missing, dest)
 			continue
 		}
-		b, format, e := picture(path)
+		b, info, e := picture(path)
 		if e != nil {
 			result.Missing = append(result.Missing, dest)
 			continue
@@ -47,7 +47,7 @@ func (w *Workspace) Delivery(id string) (Delivery, error) {
 		if total > 48<<20 {
 			return Delivery{}, errors.New("图文超过 48 MB，请用 ZIP 带走文稿与图片")
 		}
-		result.Images[dest] = "data:image/" + format + ";base64," + base64.StdEncoding.EncodeToString(b)
+		result.Images[dest] = "data:" + info.MIME + ";base64," + base64.StdEncoding.EncodeToString(b)
 	}
 	return result, nil
 }

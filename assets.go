@@ -6,10 +6,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
 	"maps"
 	"net/url"
 	"os"
@@ -108,16 +104,16 @@ func (w *Workspace) imagePath(d *Document, dest string) (string, error) {
 	}
 	return p, nil
 }
-func picture(path string) ([]byte, string, error) {
+func picture(path string) ([]byte, imageInfo, error) {
 	b, err := readLimited(path, maxPicture)
 	if err != nil {
-		return nil, "", err
+		return nil, imageInfo{}, err
 	}
-	config, format, err := image.DecodeConfig(bytes.NewReader(b))
-	if err != nil || config.Width > 16000 || config.Height > 16000 {
-		return nil, "", errors.New("图片格式或尺寸不受支持")
+	info, err := sniffImage(b)
+	if err != nil {
+		return nil, imageInfo{}, err
 	}
-	return b, format, nil
+	return b, info, nil
 }
 func (w *Workspace) ImportImage(id, name, encoded string) (ImageResult, error) {
 	w.mu.Lock()
@@ -133,11 +129,11 @@ func (w *Workspace) ImportImage(id, name, encoded string) (ImageResult, error) {
 	if err != nil {
 		return ImageResult{}, err
 	}
-	c, format, err := image.DecodeConfig(bytes.NewReader(b))
-	if err != nil || c.Width > 16000 || c.Height > 16000 {
-		return ImageResult{}, errors.New("请选择 PNG、JPEG 或 GIF 图片，最长边不超过 16000 像素")
+	info, err := sniffImage(b)
+	if err != nil {
+		return ImageResult{}, errors.New("请选择 PNG、JPEG、GIF、WebP、SVG、AVIF 或 BMP 图片，最长边不超过 16000 像素")
 	}
-	name = digest(b)[:24] + "." + format
+	name = digest(b)[:24] + "." + info.Format
 	dir := filepath.Join(w.root, "assets", id)
 	if err = os.MkdirAll(dir, 0700); err != nil {
 		return ImageResult{}, err
@@ -165,7 +161,7 @@ func (w *Workspace) ImportImage(id, name, encoded string) (ImageResult, error) {
 			return ImageResult{}, err
 		}
 	}
-	return ImageResult{Destination: dest, URL: "data:image/" + format + ";base64," + base64.StdEncoding.EncodeToString(b), Name: name, Markdown: markdownDestination(dest)}, nil
+	return ImageResult{Destination: dest, URL: "data:" + info.MIME + ";base64," + base64.StdEncoding.EncodeToString(b), Name: name, Markdown: markdownDestination(dest)}, nil
 }
 func (w *Workspace) ReadImage(id, dest string) (ImageResult, error) {
 	w.mu.Lock()
@@ -190,11 +186,11 @@ func (w *Workspace) ReadImage(id, dest string) (ImageResult, error) {
 	if err != nil {
 		return ImageResult{}, err
 	}
-	b, format, err := picture(p)
+	b, info, err := picture(p)
 	if err != nil {
 		return ImageResult{}, err
 	}
-	return ImageResult{Destination: dest, URL: "data:image/" + format + ";base64," + base64.StdEncoding.EncodeToString(b), Name: filepath.Base(p), Markdown: markdownDestination(target)}, nil
+	return ImageResult{Destination: dest, URL: "data:" + info.MIME + ";base64," + base64.StdEncoding.EncodeToString(b), Name: filepath.Base(p), Markdown: markdownDestination(target)}, nil
 }
 
 // Rewrites destination tokens only, preserving Markdown and fenced/inline code.
@@ -355,11 +351,11 @@ func (w *Workspace) copyAssets(from, to *Document) error {
 		if err != nil {
 			continue
 		}
-		b, format, err := picture(p)
+		b, info, err := picture(p)
 		if err != nil {
 			continue
 		}
-		name := digest(b)[:24] + "." + format
+		name := digest(b)[:24] + "." + info.Format
 		dir := filepath.Join(w.root, "assets", to.ID)
 		if err = os.MkdirAll(dir, 0700); err != nil {
 			return err
@@ -411,7 +407,7 @@ func (w *Workspace) materialize(d *Document, path string, all bool) (string, err
 		if err != nil {
 			return "", err
 		}
-		b, format, err := picture(source)
+		b, info, err := picture(source)
 		if err != nil {
 			return "", fmt.Errorf("图片缺失或无法读取：%s", dest)
 		}
@@ -419,7 +415,7 @@ func (w *Workspace) materialize(d *Document, path string, all bool) (string, err
 		if err = os.MkdirAll(dir, 0755); err != nil {
 			return "", err
 		}
-		name := digest(b)[:24] + "." + format
+		name := digest(b)[:24] + "." + info.Format
 		if err = writeImageExclusive(filepath.Join(dir, name), b); err != nil {
 			return "", err
 		}
@@ -527,7 +523,7 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 			missing = append(missing, dest)
 			continue
 		}
-		b, format, e := picture(source)
+		b, info, e := picture(source)
 		if e != nil {
 			missing = append(missing, dest)
 			continue
@@ -539,11 +535,11 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 		if e = os.MkdirAll(dir, 0755); e != nil {
 			return ExportResult{}, e
 		}
-		name := digest(b)[:24] + "." + format
+		name := digest(b)[:24] + "." + info.Format
 		if internal {
 			if existing, e := os.ReadFile(filepath.Join(dir, name)); e == nil {
 				if !bytes.Equal(existing, b) {
-					name = uid() + "." + format
+					name = uid() + "." + info.Format
 				}
 			}
 		} else {
@@ -560,7 +556,7 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 		if e = os.MkdirAll(cacheDir, 0700); e != nil {
 			return ExportResult{}, e
 		}
-		cacheName := digest(b)[:24] + "." + format
+		cacheName := digest(b)[:24] + "." + info.Format
 		if e = atomicWrite(filepath.Join(cacheDir, cacheName), b, 0600); e != nil {
 			return ExportResult{}, e
 		}
@@ -626,12 +622,12 @@ func (w *Workspace) Export(id, path string, allowMissing bool) (ExportResult, er
 			r.Missing = append(r.Missing, dest)
 			continue
 		}
-		b, format, err := picture(p)
+		b, info, err := picture(p)
 		if err != nil {
 			r.Missing = append(r.Missing, dest)
 			continue
 		}
-		name := "images/" + digest(b)[:24] + "." + format
+		name := "images/" + digest(b)[:24] + "." + info.Format
 		targets[dest] = name
 		assets[name] = b
 	}

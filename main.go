@@ -68,6 +68,7 @@ func (d *Desktop) Update(e Edit) (Document, error)             { return d.w.Upda
 func (d *Desktop) SavePosition(id string, p Position) error    { return d.w.SavePosition(id, p) }
 func (d *Desktop) New() (WorkspaceState, error)                { return d.w.New() }
 func (d *Desktop) Activate(id string) (WorkspaceState, error)  { return d.w.Activate(id) }
+func (d *Desktop) Delete(id string) (WorkspaceState, error)    { return d.w.Delete(id) }
 func (d *Desktop) Status(id string) (DocStatus, error)         { return d.w.Status(id) }
 func (d *Desktop) Overwrite(id string) (WorkspaceState, error) { return d.w.Overwrite(id) }
 func (d *Desktop) Appearance(p Appearance) error               { return d.w.Appearance(p) }
@@ -361,7 +362,7 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			if e == nil {
 				e = d.SavePosition(id, p)
 			}
-		case "Activate", "Reload", "Status", "Overwrite":
+		case "Activate", "Reload", "Status", "Overwrite", "Delete":
 			var id string
 			e = arg(0, &id)
 			if e == nil {
@@ -374,6 +375,8 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 					value, e = d.Status(id)
 				case "Overwrite":
 					value, e = d.Overwrite(id)
+				case "Delete":
+					value, e = d.Delete(id)
 				}
 			}
 		case "Appearance":

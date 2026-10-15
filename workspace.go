@@ -271,16 +271,92 @@ func openWorkspace(root string) (*Workspace, error) {
 		w.current = d.ID
 	}
 	if w.docs[w.current] == nil {
-		for id, d := range w.docs {
-			if current := w.docs[w.current]; current == nil || d.Updated > current.Updated || d.Updated == current.Updated && id < current.ID {
-				w.current = id
-			}
+		w.current = w.latest().ID
+	}
+	// Cleanup is best effort: it must never keep the app from starting.
+	_ = w.purgeTrash()
+	for id, d := range w.docs {
+		if id != w.current && disposable(d) {
+			_ = w.trash(d)
 		}
 	}
-	if err := w.saveIndex(); err != nil {
+	if err := errors.Join(w.flushPositions(), w.saveIndex()); err != nil {
 		return nil, err
 	}
 	return w, nil
+}
+func disposable(d *Document) bool {
+	return d.Path == "" && !d.CustomTitle && strings.TrimSpace(d.Content) == ""
+}
+func (w *Workspace) latest() *Document {
+	var latest *Document
+	for _, d := range w.docs {
+		if latest == nil || d.Updated > latest.Updated || d.Updated == latest.Updated && d.ID < latest.ID {
+			latest = d
+		}
+	}
+	return latest
+}
+func (w *Workspace) purgeTrash() error {
+	dir := filepath.Join(w.root, "trash")
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	cutoff := time.Now().Add(-30 * 24 * time.Hour)
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if info.ModTime().Before(cutoff) {
+			if err := os.RemoveAll(filepath.Join(dir, entry.Name())); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+func (w *Workspace) trash(d *Document) error {
+	dir := filepath.Join(w.root, "trash")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	target := filepath.Join(dir, time.Now().Format("20060102-150405")+"-"+d.ID)
+	if err := os.Mkdir(target, 0700); err != nil {
+		return err
+	}
+	assets := filepath.Join(w.root, "assets", d.ID)
+	movedAssets := false
+	if err := os.Rename(assets, filepath.Join(target, "assets")); err == nil {
+		movedAssets = true
+	} else if !errors.Is(err, os.ErrNotExist) {
+		_ = os.Remove(target)
+		return err
+	}
+	if err := os.Rename(filepath.Join(w.root, "drafts", d.ID+".json"), filepath.Join(target, "draft.json")); err != nil {
+		if movedAssets {
+			err = errors.Join(err, os.Rename(filepath.Join(target, "assets"), assets))
+		}
+		_ = os.Remove(target)
+		return err
+	}
+	delete(w.docs, d.ID)
+	delete(w.positions, d.ID)
+	w.positionsDirty = true
+	return nil
+}
+func (w *Workspace) activate(d *Document) (WorkspaceState, error) {
+	if current := w.docs[w.current]; current != nil && current.ID != d.ID && disposable(current) {
+		_ = w.trash(current) // best effort: an empty draft that cannot move stays listed
+	}
+	w.current = d.ID
+	w.check(d, true)
+	err := errors.Join(w.flushPositions(), w.saveIndex())
+	return w.snapshot(), err
 }
 func (w *Workspace) quarantine(path string, backup []byte) error {
 	dir := filepath.Join(w.root, "quarantine")
@@ -475,8 +551,28 @@ func (w *Workspace) New() (WorkspaceState, error) {
 	if err != nil {
 		return WorkspaceState{}, err
 	}
-	w.current = d.ID
-	err = w.saveIndex()
+	return w.activate(d)
+}
+func (w *Workspace) Delete(id string) (WorkspaceState, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	d := w.docs[id]
+	if d == nil {
+		return WorkspaceState{}, errors.New("文稿不存在")
+	}
+	if len(w.docs) == 1 {
+		if _, err := w.newLocked(""); err != nil {
+			return WorkspaceState{}, err
+		}
+	}
+	if err := w.trash(d); err != nil {
+		return WorkspaceState{}, err
+	}
+	if w.current == id {
+		w.current = w.latest().ID
+		w.check(w.docs[w.current], true)
+	}
+	err := errors.Join(w.flushPositions(), w.saveIndex())
 	return w.snapshot(), err
 }
 func (w *Workspace) Activate(id string) (WorkspaceState, error) {
@@ -486,10 +582,7 @@ func (w *Workspace) Activate(id string) (WorkspaceState, error) {
 	if d == nil {
 		return WorkspaceState{}, errors.New("文稿不存在")
 	}
-	w.current = id
-	w.check(d, true)
-	err := w.saveIndex()
-	return w.snapshot(), err
+	return w.activate(d)
 }
 func clampPosition(content string, p Position) Position {
 	length := 0
@@ -634,11 +727,9 @@ func (w *Workspace) Open(path string) (WorkspaceState, error) {
 	if err != nil {
 		return WorkspaceState{}, err
 	}
-	for id, d := range w.docs {
+	for _, d := range w.docs {
 		if d.Path == p {
-			w.current = id
-			w.check(d, true)
-			return w.snapshot(), w.saveIndex()
+			return w.activate(d)
 		}
 	}
 	b, err := readLimited(p, maxDocument)
@@ -656,8 +747,7 @@ func (w *Workspace) Open(path string) (WorkspaceState, error) {
 		return WorkspaceState{}, err
 	}
 	w.docs[d.ID] = d
-	w.current = d.ID
-	return w.snapshot(), w.saveIndex()
+	return w.activate(d)
 }
 func (w *Workspace) Appearance(p Appearance) error {
 	w.mu.Lock()

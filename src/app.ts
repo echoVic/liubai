@@ -16,6 +16,7 @@ let timer:ReturnType<typeof setTimeout>,toastTimer:ReturnType<typeof setTimeout>
 let wordCountTimer:ReturnType<typeof setTimeout>;
 let generation=0,drawerMode='recent',savedPosition='',closeRequested=false;
 let quarantineReveal='';
+let removeID='',removeUntil=0,removeTimer:ReturnType<typeof setTimeout>;
 let appearanceQueue:Promise<void>=Promise.resolve();
 let preview:PreviewController;
 const editLock=new Compartment();
@@ -101,13 +102,31 @@ function closeDialog(id:string){$<HTMLDialogElement>('#'+id).close();triggers.ge
 $$('[data-close]').forEach(b=>b.onclick=()=>{const id=b.dataset.close!;if(id==='drawer'){$('#drawer').hidden=true;view.focus()}else closeDialog(id)});
 $$('dialog').forEach(el=>{const d=el as HTMLDialogElement;d.addEventListener('close',()=>triggers.get(d.id)?.focus());d.addEventListener('click',e=>{const r=d.getBoundingClientRect();if(e.target===d&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))closeDialog(d.id)})});
 function renderDrawer(){
+ const focusedRemove=(document.activeElement as HTMLElement)?.dataset.remove;
  const list=$('#drawer-list');list.replaceChildren();$('#drawer-title').textContent=drawerMode==='recent'?'最近文稿':'文稿大纲';$('#recent-search').hidden=drawerMode!=='recent';
  if(drawerMode==='outline'){
   for(const h of headings(view.state)){const b=node('button','outline-item',h.text);b.style.paddingLeft=(10+h.level*10)+'px';b.onclick=()=>{view.dispatch({selection:{anchor:h.from},scrollIntoView:true});view.focus()};list.append(b)}
   if(!list.childElementCount)list.append(node('p','dialog-note','输入 # 标题后，大纲会出现在这里。'));return;
  }
- const q=$<HTMLInputElement>('#recent-search').value.trim().toLowerCase();for(const d of state.recent){if(!(d.title+' '+d.excerpt).toLowerCase().includes(q))continue;const b=node('button','recent-item'+(d.id===doc.id?' active':''));b.append(node('b','',d.title),node('p','',d.excerpt||'一篇等待开始的文稿'),node('small','',new Date(d.updated).toLocaleString('zh-CN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})));b.onclick=()=>void run(async()=>{if(await saveForAction()){load(await call<WorkspaceState>('Activate',d.id));$('#drawer').hidden=true}});list.append(b)}
+ const q=$<HTMLInputElement>('#recent-search').value.trim().toLowerCase();for(const d of state.recent){if(!(d.title+' '+d.excerpt).toLowerCase().includes(q))continue;const b=node('button','recent-item'+(d.id===doc.id?' active':''));b.append(node('b','',d.title),node('p','',d.excerpt||'一篇等待开始的文稿'),node('small','',new Date(d.updated).toLocaleString('zh-CN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})));b.onclick=()=>void run(async()=>{if(await saveForAction()){load(await call<WorkspaceState>('Activate',d.id));$('#drawer').hidden=true}});
+  const armed=removeID===d.id&&Date.now()<removeUntil,row=node('div','recent-row'),remove=node('button','recent-remove'+(armed?' armed':''),armed?'确认移除':'×');remove.dataset.remove=d.id;remove.setAttribute('aria-label','从最近文稿移除');remove.title='从最近文稿移除';remove.onclick=()=>confirmRemove(d.id);row.append(b,remove);list.append(row);if(focusedRemove===d.id)remove.focus()
+ }
  if(!list.childElementCount)list.append(node('p','dialog-note','没有找到这篇文稿。'))
+}
+function confirmRemove(id:string,command=false){
+ if(busy)return;if(compositionActive){toast('请先确认输入法候选');return}
+ if(removeID===id&&Date.now()<removeUntil){clearTimeout(removeTimer);removeID='';void run(async()=>{try{await removeDocument(id)}finally{if(!$('#drawer').hidden)renderDrawer()}});return}
+ clearTimeout(removeTimer);removeID=id;removeUntil=Date.now()+3000;if(!$('#drawer').hidden)renderDrawer();
+ removeTimer=setTimeout(()=>{removeID='';if(!$('#drawer').hidden)renderDrawer()},3000);
+ if(command)toast('3 秒内再选一次以确认移除')
+}
+async function removeDocument(id:string){
+ const removed=state.recent.find(d=>d.id===id);if(!removed)return;
+ if(id===doc.id&&!await saveForAction())return;
+ const next=await call<WorkspaceState>('Delete',id);next.appearance=appearance;
+ if(next.current.id!==doc.id)load(next);else state=next;
+ sessions.delete(id);for(const key of imageCache.keys())if(key.startsWith(id+':'))imageCache.delete(key);
+ renderDrawer();toast(removed.path?'已从最近文稿移除，磁盘文件未改动':'已移除，草稿在废纸篓目录保留 30 天')
 }
 $('#recent-search').oninput=renderDrawer;
 async function toggleLayout(){const pending=setAppearance({layout:split()?'single':'split'});applyLayout();await pending;view.focus()}
@@ -157,7 +176,7 @@ $('#ready-go').onclick=()=>{if(!prepared)return;const root=prepared;
 async function closeApp(){if(compositionActive){pendingClose=true;toast('请先确认输入法候选，完成后会保存并退出');return}if(busy){pendingClose=true;return}if(closeRequested)return;closeRequested=true;try{await appearanceQueue.catch(()=>{});const ok=await save();if(!ok||dirty){dialog('close-dialog');return}if(desktop)await call('Close');else toast('文稿已保存在本地，可以关闭此页面')}finally{closeRequested=false}}
 $('#discard-close').onclick=()=>{if(desktop)void call('Close');else closeDialog('close-dialog')};
 const commands=[
- ['new','新建文稿','⌘ N'],['rename','为草稿命名',''],['open','打开本地文稿','⌘ O'],['save','保存','⌘ S'],['saveAs','另存为…','⌘ ⇧ S'],['deliver','带走文稿',''],['export','文稿与图片 ZIP','ZIP'],['pdf','导出 PDF',''],['copyRich','复制富文本',''],['html','下载 HTML',''],['focus','段落专注','⌘ ⇧ F'],['recent','最近文稿',''],['outline','文稿大纲',''],['find','查找正文','⌘ F'],['layout','即时排版 / 分栏预览','⌘ \\'],['source','左侧源码 / 即时排版','⌘ ⇧ M'],['image','插入图片',''],['theme','外观与主题',''],...names.map(t=>['theme:'+t.id,'切换主题 · '+t.name,'']),['bold','加粗选中文字','⌘ B'],['italic','斜体选中文字',''],['heading','插入二级标题',''],['quote','插入引用',''],['task','插入任务列表',''],['code','插入代码块',''],['table','插入 / 编辑表格',''],['link','插入 / 编辑链接','⌘ L'],['bullet','无序列表',''],['ordered','有序列表',''],['undo','撤销','⌘ Z'],['redo','重做','⌘ ⇧ Z']
+ ['new','新建文稿','⌘ N'],['rename','为草稿命名',''],['open','打开本地文稿','⌘ O'],['save','保存','⌘ S'],['saveAs','另存为…','⌘ ⇧ S'],['deliver','带走文稿',''],['export','文稿与图片 ZIP','ZIP'],['pdf','导出 PDF',''],['copyRich','复制富文本',''],['html','下载 HTML',''],['focus','段落专注','⌘ ⇧ F'],['recent','最近文稿',''],['remove','从最近文稿移除当前文稿',''],['outline','文稿大纲',''],['find','查找正文','⌘ F'],['layout','即时排版 / 分栏预览','⌘ \\'],['source','左侧源码 / 即时排版','⌘ ⇧ M'],['image','插入图片',''],['theme','外观与主题',''],...names.map(t=>['theme:'+t.id,'切换主题 · '+t.name,'']),['bold','加粗选中文字','⌘ B'],['italic','斜体选中文字',''],['heading','插入二级标题',''],['quote','插入引用',''],['task','插入任务列表',''],['code','插入代码块',''],['table','插入 / 编辑表格',''],['link','插入 / 编辑链接','⌘ L'],['bullet','无序列表',''],['ordered','有序列表',''],['undo','撤销','⌘ Z'],['redo','重做','⌘ ⇧ Z']
 ];
 function renderCommands(){const q=$<HTMLInputElement>('#command-search').value.trim();const list=$('#command-list');list.replaceChildren();commands.filter(c=>c[1].includes(q)).forEach(([id,title,key])=>{const b=node('button','command');b.append(node('span','',title),node('kbd','',key));b.onclick=()=>{closeDialog('commands');void action(id)};list.append(b)})}
 $('#command-search').oninput=renderCommands;$('#command-search').onkeydown=e=>{if(e.key==='ArrowDown'){e.preventDefault();$('#command-list button')?.focus()}if(e.key==='Enter'){e.preventDefault();$('#command-list button')?.click()}};
@@ -179,6 +198,7 @@ async function action(id:string){
  if(id==='theme'){dialog('appearance');requestAnimationFrame(()=>$('#themes [aria-checked=true]').focus());return}
  if(id==='commands'){renderCommands();dialog('commands');$<HTMLInputElement>('#command-search').value='';renderCommands();$('#command-search').focus();return}
  if(id==='recent'||id==='outline'){drawerMode=id;$('#drawer').hidden=false;await refreshRecent();return}
+ if(id==='remove'){confirmRemove(doc.id,true);return}
  if(id==='image'){$('#image-input').click();return}if(id==='close'){await closeApp();return}
  await run(async()=>{switch(id){case 'new':if(await saveForAction())load(await call<WorkspaceState>('New'));break;case 'open':if(!await saveForAction())break;if(desktop)load(await call<WorkspaceState>('Open'));else $('#open-input').click();break;case 'save':case 'retry':if(id==='retry')savedPosition='';await save(true);if(!doc.path&&id==='save')await saveAs();break;case 'saveAs':await saveAs();break;case 'export':await exportDoc();break;case 'pdf':case 'copyRich':case 'html':await prepareDelivery(id);break;case 'reload':if(await saveForAction())load(await call<WorkspaceState>('Reload',doc.id));break;case 'overwrite':if(!await saveForAction())break;const title=doc.title;load(await call<WorkspaceState>('Overwrite',doc.id));toast('已用当前版本覆盖磁盘文件；原磁盘内容另存为「'+title+' · 磁盘版本」');break;}})
 }

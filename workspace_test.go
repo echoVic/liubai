@@ -87,7 +87,8 @@ func TestPreserveUneditedCRLFBOMAndConflict(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if r.Current.Content != "external" || len(r.Recent) != 3 {
+	// Opening the file cleans the initial empty draft, leaving the file and recovery copy.
+	if r.Current.Content != "external" || len(r.Recent) != 2 {
 		t.Fatalf("reload lost recovery copy %+v", r.Recent)
 	}
 }

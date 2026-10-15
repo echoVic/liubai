@@ -157,6 +157,8 @@ func (d *Desktop) PDF(ctx context.Context, title string) (ExportResult, error) {
 	if err != nil {
 		return ExportResult{}, err
 	}
+	// CoreGraphics records CJK radical code points for shared glyphs; fix the text layer.
+	b = fixPDFTextMapping(b)
 	if err = atomicWrite(path, b, 0644); err != nil {
 		return ExportResult{}, err
 	}

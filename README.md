@@ -5,25 +5,32 @@
 ## 日常使用
 
 - 打开即写，未命名内容自动保留为本地草稿。
+- 在 Finder 中双击 `.md` / `.markdown` / `.mdown` / `.mkd` 文件、使用「打开方式」或把 Markdown 文件拖进窗口，都会作为文稿打开；拖入不会把内容插入当前文稿。
+- `⌘⇧R` 进入阅读模式，只显示成品视图；编辑区隐藏且只读，再按一次回到原来的布局。
+- 阅读视图与「带走文稿」渲染消毒后的内联 HTML（README 常见的居中 logo、`<details>`、`<kbd>` 等），front matter 折叠为「文稿属性」（导出时省略），支持脚注、GitHub 提示块、带协议或 `www.` 的裸链接，代码块按语言高亮。`README.md` 这类文件名不会被识别成链接。
+- 阅读视图点击、编辑区 ⌘ 点击相对 `.md` 链接会打开对应文稿并跳到 `#标题`；草稿还没有保存位置时会说明原因。
 - 格式工具栏支持标题、强调、引用、列表、任务、代码、链接、图片和表格；也可以使用操作搜索。
 - 链接面板可编辑文字与地址，⌘/Ctrl 点击打开；任务可直接勾选，表格面板支持编辑单元格、增加行列与整次撤销。
 - `⌘/Ctrl+\` 在单栏即时排版与分栏预览之间切换；分栏左侧可用 `⌘/Ctrl+Shift+M` 切换即时排版与完整源码，文字和撤销记录共用。
 - 分栏右侧是只读成品视图。光标跨段时会跟随到对应内容块，手动滚动阅读区不会反向带动编辑区；窗口窄于 820px 时两栏改为上下排列。
-- 点击「留白」打开最近文稿，支持搜索；点击顶部草稿标题命名，大纲和操作搜索按需展开。
-- 粘贴或拖入 PNG / JPEG / GIF，光标移开后显示图片预览。
+- 点击「留白」打开最近文稿，支持搜索；悬停文稿可「从最近文稿移除」（需再点一次确认）：草稿移到数据目录的 `trash/` 保留 30 天，已有文件只从列表移除、磁盘文件不动。空的未命名草稿在切走时自动清理。点击顶部草稿标题命名，大纲和操作搜索按需展开。
+- 粘贴或拖入 PNG / JPEG / GIF / WebP / SVG / AVIF / BMP，光标移开后显示图片预览。中文或带空格路径的本地图片（包括 Typora 生成的 `文稿名.assets/`）可以正常显示。
 - 「带走文稿」集中提供 Markdown、图片 ZIP、PDF、富文本复制和含本地图片的 HTML。交付使用整篇文稿，不受编辑器可视区域限制。
 - 布局、分栏左侧编辑方式、主题、字号和行宽都是全局偏好，对新文稿和最近文稿继续生效。纸白、暖纸、雾绿、夜墨四主题首次跟随系统，手动选择后记住选择。
 - 段落专注突出正在写的段落，淡化其余文字与工具；按 Esc 返回。
+- 字数按中文字、日文假名和韩文字逐个计、其他文字按词计，不计 Markdown 标记、链接地址、HTML 标签和 front matter，输入停顿后更新。
 
-常用快捷键：⌘N 新建、⌘O 打开、⌘S 保存、⌘⇧S 另存、⌘K 操作搜索、⌘F 查找、⌘\ 切换主布局、⌘⇧M 切换分栏左侧源码、⌘B 加粗、⌘L 编辑链接、⌘⇧F 段落专注、⌘P 导出 PDF、⌘Z 撤销。Windows/Linux 浏览器开发时使用对应的 Ctrl 组合键。
+常用快捷键：⌘N 新建、⌘O 打开、⌘S 保存、⌘⇧S 另存、⌘K 操作搜索、⌘F 查找、⌘\ 切换主布局、⌘⇧R 阅读模式、⌘⇧M 切换分栏左侧源码、⌘B 加粗、⌘L 编辑链接、⌘⇧F 段落专注、⌘P 导出 PDF、⌘Z 撤销（在输入框里只撤销输入框）、⌘W 关闭窗口、⌘H 隐藏、⌘M 最小化、⌃⌘F 全屏。Windows/Linux 浏览器开发时使用对应的 Ctrl 组合键。
 
 ## 文件和恢复
 
-草稿保存在 `~/Library/Application Support/Liubai/` 下，索引、文稿及图片分离存储，原子写入。已保存文件继续写回原路径；草稿保存成功与原文件写入失败会分别说明。外部文件变化会暂停自动覆盖，允许将当前文稿另存或载入磁盘版本，载入前保存恢复副本。
+草稿保存在 `~/Library/Application Support/Liubai/` 下，索引、文稿及图片分离存储，原子写入；光标和滚动位置单独写入小文件 `positions.json`，不会因阅读或移动光标重写整篇草稿。无法读取的草稿或索引会移到 `quarantine/`，应用照常启动并提示，可在 Finder 中查看。
 
-普通关闭不会删除草稿。中文组合输入期间暂缓保存和排版，候选确认后再保存；仅移动光标不会显示正文正在保存。退出前先保存最新内容；保存失败时保留编辑器，提供重试、保存当前恢复副本、继续编辑或明确放弃。恢复副本携带可读取的本地图片，不覆盖原文稿。
+已保存文件继续写回原路径，写回时保留 Finder 标签等扩展属性和创建时间（文件 inode 仍会变化，硬链接不保留）；草稿保存成功与原文件写入失败会分别说明，⌘S 或「重试保存」会重新写入原文件。文件在外部被修改（如 git pull、其他编辑器）而本地没有改动时，自动载入新版本；两边都改过时暂停自动写入，可以载入磁盘版本（本地改动先存为恢复副本）或「用当前版本覆盖」（磁盘内容先存为「· 磁盘版本」草稿）。文件大小、修改时间和 inode 都没变时不读取文件，窗口不可见时不检查。
 
-图片以内容摘要命名，先随草稿保留。保存 .md 时放入 `文稿名.assets/`，使用相对路径；打包使用独立副本与 `images/`，不修改原文件。删除图片引用保留资源以支持撤销。恢复和撤销资源目前不自动清理。
+普通关闭不会删除草稿。中文组合输入期间暂缓保存和排版，候选确认后再保存；仅移动光标不会显示正文正在保存。没有未保存输入时，退出、关窗和系统关机会直接放行；仍有未保存输入时先保存，保存失败才保留编辑器，提供重试、保存当前恢复副本、继续编辑或明确放弃。文件冲突或原文件写入失败不会阻止退出（草稿已保存）。恢复副本携带可读取的本地图片，不覆盖原文稿。
+
+粘贴的图片以内容摘要命名，先随草稿保留。保存 .md 时放入 `文稿名.assets/`，使用可读的相对路径（含空格或括号时写成 `<…>`）。另存到原目录（包括原路径）时不改动已有的图片引用；另存到其他目录时把读得到的本地图片复制到 `新文稿名.assets/` 并保留原文件名（重名依次加 `-2`、`-3`）；缺失的图片不会阻止另存，引用保持原样。打包使用独立副本与 `images/`，内联 HTML 图片按原相对路径放入 ZIP，不修改原文件。删除图片引用保留资源以支持撤销。恢复和撤销资源目前不自动清理。
 
 支持 UTF-8、UTF-8 BOM、LF 和 CRLF 文稿。未修改的文件不会只因改变选区、主题或编辑视图而被重写。文稿上限 8 MB；单图片 20 MB、最长边 16000 像素。
 
@@ -44,6 +51,7 @@ node_modules/.bin/tsc --noEmit
 node scripts/check-editor.mjs
 npx --yes bun@1.4.3 scripts/check-editing.ts
 npx --yes bun@1.4.3 scripts/check-rendering.ts
+npx --yes bun@1.4.3 scripts/check-performance.ts
 python3 scripts/check-preview.py
 node scripts/build.mjs
 go build -o /tmp/liubai-preview-acceptance .
@@ -51,6 +59,10 @@ data_dir="$(mktemp -d /tmp/liubai-preview-data.XXXXXX)"
 python3 $WEBAPP_TESTING/scripts/with_server.py \
   --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4195 -data-dir $data_dir" \
   --port 4195 -- python3 scripts/check-split-preview.py http://127.0.0.1:4195
+reader_dir="$(mktemp -d /tmp/liubai-reader-data.XXXXXX)"
+python3 $WEBAPP_TESTING/scripts/with_server.py \
+  --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4196 -data-dir $reader_dir" \
+  --port 4196 -- python3 scripts/check-reader.py http://127.0.0.1:4196
 ```
 
 Python 浏览器回归使用已安装的 Chrome channel，不下载 Playwright Chromium。应用依赖 macOS 13 或以上。
@@ -58,6 +70,10 @@ Python 浏览器回归使用已安装的 Chrome channel，不下载 Playwright C
 构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.3.0.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
 
 签名与公证验证：对应用运行 `codesign --verify --deep --strict` 和 `spctl -a -t exec -vv`，对 DMG 运行 `spctl -a -t open --context context:primary-signature -vv`；分别运行 `xcrun stapler validate` 检查应用和 DMG 的公证票据。`scripts/package-macos.sh` 仅生成未公证的临时预览 ZIP，会重新签名，不应用于正式签名的应用。
+
+## 阅读器基础（开发分支，未发布）
+
+`feat/reader-foundation` 在 0.3.0 之上修复评审中复现的 6 个可靠性问题（中文/空格图片路径、坏草稿导致闪退、写回丢 Finder 标签、另存为改写图片引用、外部修改处理、退出打断关机），降低长文与多草稿下的开销（10 万字每键即时排版约 3 ms），并补齐阅读器入口与渲染。设计见 [规格](docs/superpowers/specs/2026-10-15-reader-foundation-design.md)，命令、实测数据与原生验证边界见 [验证记录](docs/superpowers/validation/2026-10-15-reader-foundation.md)。版本号仍为 0.3.0，未重新打正式包。
 
 ## 0.3.0 验证边界
 

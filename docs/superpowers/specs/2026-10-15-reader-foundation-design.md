@@ -1,9 +1,10 @@
 # 留白 0.4：可靠性、性能与阅读器基础 设计
 
 **日期**：2026-10-15
-**状态**：已确认，实施中（用户指示「按照评审建议开发，用本机 Codex 实现」）
+**状态**：已实现并验证（实现由本机 Codex 逐任务完成，编排审查与验证见验证记录）
 **基线**：`feat/split-preview` @ `9fa3cf6`（0.3.0）
 **实施计划**：[2026-10-15-reader-foundation.md](../plans/2026-10-15-reader-foundation.md)
+**验证记录**：[2026-10-15-reader-foundation.md](../validation/2026-10-15-reader-foundation.md)
 
 ## 背景
 

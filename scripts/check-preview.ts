@@ -241,6 +241,9 @@ export async function runPreviewChecks(): Promise<string> {
  equal(alertBlock?.querySelector('.markdown-alert-title')?.textContent,'说明','GitHub alert title missing');
  assert(!alertBlock?.textContent?.includes('[!NOTE]'),'alert marker left in the text');
  await reader.ready;
+ // Draft images use the internal liubai-asset: scheme; sanitizing must keep the source so it can resolve.
+ const draftImage=renderMarkdown('![草稿图](liubai-asset:abc.png)',{resolve:destination=>destination==='liubai-asset:abc.png'?localURL:undefined,external:'load'});
+ equal(draftImage.root.querySelector('img')?.getAttribute('src'),localURL,'draft image source was stripped by the sanitizer');
  const exported=renderDelivery({title:'t',content:'---\ntitle: 周报\n---\n\n# 正文',images:{},missing:[],external:0});
  assert(!exported.textContent?.includes('title: 周报'),'front matter leaked into delivery');
  equal(exported.querySelector('h1')?.id,'正文','delivery heading has no anchor id');

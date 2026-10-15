@@ -200,7 +200,7 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
  const rendered=parser.render(meta.body,{lineOffset:meta.lines});
  const properties=meta.raw!==null&&options.frontMatter!=='hide'?`<details class="md-front-matter" data-line="0" data-line-end="${meta.lines-1}"><summary>文稿属性</summary><pre>${parser.utils.escapeHtml(meta.raw)}</pre></details>`:'';
  const template=document.createElement('template');
- template.innerHTML=DOMPurify.sanitize(properties+rendered,{ALLOWED_TAGS:allowedTags,ALLOWED_ATTR:allowedAttributes,ALLOW_DATA_ATTR:false,FORBID_ATTR:['style']});
+ template.innerHTML=DOMPurify.sanitize(properties+rendered,{ALLOWED_TAGS:allowedTags,ALLOWED_ATTR:allowedAttributes,ADD_URI_SAFE_ATTR:['data-image-source','data-line','data-line-end'],ALLOW_DATA_ATTR:false,FORBID_ATTR:['style']});
  for(const input of template.content.querySelectorAll('input')){
   if(input.type!=='checkbox')input.remove();
   else input.disabled=true;

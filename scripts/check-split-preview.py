@@ -77,6 +77,33 @@ def scroll_top(locator):
     return locator.evaluate("(element) => element.scrollTop")
 
 
+def reset_preview_renders(page):
+    page.evaluate("window.__liubaiPreviewRenders = 0")
+
+
+def assert_preview_renders(page, expected=1):
+    page.wait_for_function(
+        "(count) => window.__liubaiPreviewRenders >= count", arg=expected
+    )
+    actual = page.evaluate("window.__liubaiPreviewRenders")
+    assert actual == expected, f"preview rendered {actual} times, expected {expected}"
+
+
+def wait_preview_scroll_settled(page):
+    page.evaluate("""() => new Promise(resolve => {
+      const reader=document.querySelector('#preview .preview-scroll');
+      let previous=reader.scrollTop, stable=0;
+      function sample() {
+        const current=reader.scrollTop;
+        stable=Math.abs(current-previous)<0.5 ? stable+1 : 0;
+        previous=current;
+        if (stable>=6) resolve();
+        else requestAnimationFrame(sample);
+      }
+      requestAnimationFrame(sample);
+    })""")
+
+
 def stability_sample(page):
     # Observe a complete debounce interval, proving the absence of unwanted jumps.
     return page.evaluate("""() => new Promise(resolve => {
@@ -165,6 +192,37 @@ def run(page):
     expect(page.locator("#preview article")).to_contain_text("段内")
     assert stability_sample(page)["movedRight"] < 2
 
+    # A top-level separator has no exact mapped block. After a different block
+    # was followed and the reader was moved away, follow its preceding block.
+    reader.hover()
+    page.mouse.wheel(0, 100000)
+    separator_line = TEXT.split("\n").index("这是第 6 段正文。") + 1
+    page.wait_for_function("""() => {
+      const reader=document.querySelector('#preview .preview-scroll');
+      const target=[...reader.querySelectorAll('p')].find(el => el.textContent === '这是第 6 段正文。');
+      if (!target) return false;
+      const viewport=reader.getBoundingClientRect(), box=target.getBoundingClientRect();
+      return box.bottom <= viewport.top || box.top >= viewport.bottom;
+    }""")
+    content.focus()
+    page.keyboard.press("Meta+Home")
+    for _ in range(separator_line):
+        page.keyboard.press("ArrowDown")
+    assert page.evaluate("""() => {
+      const node=getSelection()?.anchorNode;
+      const line=(node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement)
+        ?.closest?.('.cm-line');
+      return line?.textContent ?? null;
+    }""") == ""
+    page.wait_for_function("""() => {
+      const reader=document.querySelector('#preview .preview-scroll');
+      const target=[...reader.querySelectorAll('p')].find(el => el.textContent === '这是第 6 段正文。');
+      if (!target) return false;
+      const viewport=reader.getBoundingClientRect(), box=target.getBoundingClientRect();
+      return box.bottom > viewport.top + 12 && box.top < viewport.bottom - 12;
+    }""")
+    wait_preview_scroll_settled(page)
+
     # Composition events deliberately exercise our guard, not an OS input method.
     content.dispatch_event("compositionstart")
     page.keyboard.insert_text("组合候选")
@@ -177,8 +235,18 @@ def run(page):
     expect(page.locator("#save-status")).to_have_text(re.compile("^(草稿已保存|文件已保存)$"))
     page.reload()
     expect(page.locator("#preview h1")).to_have_text("分栏验收")
+    assert_preview_renders(page)
     assert workspace(page)["appearance"]["source"] is True
     expect(page.locator(".paper")).to_have_class(re.compile("source-mode"))
+    reset_preview_renders(page)
+    before_new = workspace(page)["current"]["id"]
+    with page.expect_response(
+        lambda response: response.url.endswith("/api")
+        and '"New"' in (response.request.post_data or "")
+    ):
+        page.locator('[data-action="new"]').click()
+    assert_preview_renders(page)
+    assert workspace(page)["current"]["id"] != before_new
     import_text(page, "# 第二篇\n\n另一篇正文", "第二篇.md")
     expect(page.locator("#preview h1")).to_have_text("第二篇")
     assert workspace(page)["current"]["id"] != original_id
@@ -305,9 +373,11 @@ def run(page):
     assert reopened["current"]["id"] == original_id
     original_content = reopened["current"]["content"]
     expect(page.locator("#preview h1")).to_have_text("分栏验收")
+    reset_preview_renders(page)
     open_recent(page, image_title)
     assert workspace(page)["current"]["id"] == image_id
     expect(page.locator("#preview h1")).to_have_text("图片晚到重试")
+    assert_preview_renders(page)
 
     # A deferred image result from document A must not affect document B after
     # switching through Recent. This is a synthetic network race, not native I/O.
@@ -411,7 +481,30 @@ def run(page):
             assert geometry["right"]["x"] >= geometry["left"]["x"] + geometry["left"]["w"] - 2, geometry
         page.screenshot(path=str(ARTIFACTS / f"split-{width}.png"))
 
-    print("PASS: rendering, readonly tasks, modes/history, soft follow, synthetic composition guard, reload/new-document/Recent persistence, stale image isolation, themes, local images/HTML export, responsive layout")
+    # ReloadDisk also calls load() with the same document ID. A synthetic
+    # same-ID New response exercises that controller path without native I/O.
+    same_id = workspace(page)
+    same_id["current"]["content"] = "# 同 ID 重载\n\n磁盘内容"
+    same_id["current"]["title"] = "同 ID 重载"
+
+    def fulfill_same_id(route):
+        if route.request.post_data_json.get("method") == "New":
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps({"value": same_id}),
+            )
+        else:
+            route.continue_()
+
+    page.route(BASE + "/api", fulfill_same_id)
+    reset_preview_renders(page)
+    page.locator('[data-action="new"]').click()
+    expect(page.locator("#preview h1")).to_have_text("同 ID 重载")
+    assert_preview_renders(page)
+    page.unroute(BASE + "/api", fulfill_same_id)
+
+    print("PASS: rendering, readonly tasks, modes/history, separator soft follow, one-render reload/new/Recent/same-ID load, synthetic composition guard, stale image isolation, themes, local images/HTML export, responsive layout")
 
 
 with sync_playwright() as playwright:
@@ -419,6 +512,14 @@ with sync_playwright() as playwright:
         headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome")
     )
     page = browser.new_page(viewport={"width": 1120, "height": 820})
+    page.add_init_script("""(() => {
+      window.__liubaiPreviewRenders = 0;
+      const replaceChildren = Element.prototype.replaceChildren;
+      Element.prototype.replaceChildren = function(...nodes) {
+        if (this.id === 'preview-content') window.__liubaiPreviewRenders++;
+        return replaceChildren.apply(this, nodes);
+      };
+    })()""")
     page.set_default_timeout(7000)
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))

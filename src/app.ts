@@ -57,7 +57,7 @@ function load(next:WorkspaceState){
  const cached=sessions.get(doc.id);if(cached&&cached.doc.toString()===doc.content)view.setState(cached);
  view.dispatch({effects:editLock.reconfigure(EditorState.readOnly.of(busy))});
  reconfigure();
- loading=false;view.dispatch({effects:setFocus.of(focusMode)});applyTheme();preview.setDocument(doc.id);applyLayout();preview.refresh();header();if(doc.conflict||doc.status.includes('失败'))banner(doc.status,doc.conflict);else banner();
+ loading=false;view.dispatch({effects:setFocus.of(focusMode)});applyTheme();const changedPreviewDocument=preview.setDocument(doc.id);applyLayout();if(!changedPreviewDocument)preview.refresh();header();if(doc.conflict||doc.status.includes('失败'))banner(doc.status,doc.conflict);else banner();
  requestAnimationFrame(()=>{$('.editor-pane').scrollTop=doc.position.scroll||0;view.focus()});
  if(!$('#drawer').hidden)renderDrawer();
 }
@@ -109,7 +109,7 @@ $('#image-input').onchange=()=>{const input=$<HTMLInputElement>('#image-input');
 function setBusy(value:boolean){busy=value;if(view)view.dispatch({effects:editLock.reconfigure(EditorState.readOnly.of(value))});if(!value){if(pendingClose){pendingClose=false;void closeApp()}else if(openedQueue.length)setTimeout(()=>void processOpened(),500)}}
 async function run(fn:()=>Promise<void>){if(busy)return;setBusy(true);try{await fn()}catch(e){toast(errorText(e))}finally{setBusy(false)}}
 async function processOpened(){if(busy||compositionActive||!openedQueue.length)return;const id=openedQueue.shift()!;await run(async()=>{if(await saveForAction())load(await call<WorkspaceState>('Activate',id));else toast('当前文稿尚未保存，请先处理；打开的文件可从最近文稿进入')})}
-async function saveAs(){if(!await saveForAction()){await rescue();return;}if(!desktop){download(doc.title+'.md',view.state.doc.toString(),'text/markdown');toast('浏览器已下载 Markdown；含图片请使用“带走文稿”');return}const r=await call<ExportResult>('SaveAs',doc.id);if(r.cancelled)return;const old=view.state.doc.toString();doc=r.document;loading=true;if(old!==doc.content)view.dispatch({changes:r.changes||[],annotations:Transaction.addToHistory.of(false)});loading=false;imageCache.clear();reconfigure();const next=await call<WorkspaceState>('State');next.appearance=appearance;state=next;dirty=false;savedPosition='';preview.setDocument(doc.id);preview.refresh();header();banner();toast('文稿和图片已保存：'+r.path)}
+async function saveAs(){if(!await saveForAction()){await rescue();return;}if(!desktop){download(doc.title+'.md',view.state.doc.toString(),'text/markdown');toast('浏览器已下载 Markdown；含图片请使用“带走文稿”');return}const r=await call<ExportResult>('SaveAs',doc.id);if(r.cancelled)return;const old=view.state.doc.toString();doc=r.document;loading=true;if(old!==doc.content)view.dispatch({changes:r.changes||[],annotations:Transaction.addToHistory.of(false)});loading=false;imageCache.clear();reconfigure();const next=await call<WorkspaceState>('State');next.appearance=appearance;state=next;dirty=false;savedPosition='';if(!preview.setDocument(doc.id))preview.refresh();header();banner();toast('文稿和图片已保存：'+r.path)}
 async function rescue(){
  if(desktop){try{const r=await call<ExportResult>('Rescue',doc.id,view.state.doc.toString());if(!r.cancelled)toast('当前内容与图片已另存：'+r.path)}catch(e){toast(errorText(e))}}
  else {download(doc.title+'-恢复副本.md',view.state.doc.toString(),'text/markdown');toast('当前正文已下载；图片仍保留在本机')}

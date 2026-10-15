@@ -10,7 +10,7 @@ export interface PreviewControllerOptions {
 
 export interface PreviewController {
  setVisible: (visible:boolean)=>void;
- setDocument: (documentID:string)=>void;
+ setDocument: (documentID:string)=>boolean;
  changed: (content:boolean,line:number)=>void;
  composition: (active:boolean)=>void;
  refresh: ()=>void;
@@ -39,14 +39,21 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
 
  const mappedElements=()=>Array.from(options.scroll.querySelectorAll<HTMLElement>('[data-line][data-line-end]'));
  const elementForLine=(line:number)=>{
-  let best:HTMLElement|undefined;
+  let containing:HTMLElement|undefined;
+  let preceding:HTMLElement|undefined;
   for(const element of mappedElements()){
    const range=rangeOf(element);
-   if(!range||line<range.start||line>range.end)continue;
-   const bestRange=best&&rangeOf(best);
-   if(!bestRange||range.end-range.start<=bestRange.end-bestRange.start)best=element;
+   if(!range)continue;
+   if(line>=range.start&&line<=range.end){
+    const current=containing&&rangeOf(containing);
+    if(!current||range.end-range.start<=current.end-current.start)containing=element;
+    continue;
+   }
+   if(range.end>line)continue;
+   const current=preceding&&rangeOf(preceding);
+   if(!current||range.end>current.end||(range.end===current.end&&range.start>=current.start))preceding=element;
   }
-  return best;
+  return containing||preceding;
  };
  const anchor=():ViewAnchor=>{
   const top=options.scroll.getBoundingClientRect().top;
@@ -174,7 +181,7 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
    else if(!next)cancelFollow();
   },
   setDocument(next){
-   if(next===documentID)return;
+   if(next===documentID)return false;
    documentID=next;
    renderGeneration++;
    saveEpoch=0;
@@ -185,6 +192,7 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
    options.scroll.scrollTop=0;
    dirty=true;
    if(visible)render();
+   return true;
   },
   changed(content,line){
    if(content)scheduleRender();

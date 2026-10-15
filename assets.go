@@ -436,6 +436,24 @@ func (w *Workspace) materialize(d *Document, path string, all bool) (string, err
 	}
 	return out, nil
 }
+func uniqueAssetName(dir, base string, data []byte) (string, error) {
+	ext := filepath.Ext(base)
+	stem := strings.TrimSuffix(base, ext)
+	for n := 1; ; n++ {
+		name := base
+		if n > 1 {
+			name = fmt.Sprintf("%s-%d%s", stem, n, ext)
+		}
+		old, err := os.ReadFile(filepath.Join(dir, name))
+		if os.IsNotExist(err) || err == nil && bytes.Equal(old, data) {
+			return name, nil
+		}
+		if err != nil {
+			return "", err
+		}
+	}
+}
+
 func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -462,7 +480,19 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 	if err = os.MkdirAll(filepath.Dir(p), 0755); err != nil {
 		return ExportResult{}, err
 	}
+	sameDir := false
+	if d.Path != "" {
+		oldDir, newDir := filepath.Dir(d.Path), filepath.Dir(p)
+		if resolved, e := filepath.EvalSymlinks(oldDir); e == nil {
+			oldDir = resolved
+		}
+		if resolved, e := filepath.EvalSymlinks(newDir); e == nil {
+			newDir = resolved
+		}
+		sameDir = filepath.Clean(oldDir) == filepath.Clean(newDir)
+	}
 	targets := map[string]string{}
+	missing := []string{}
 	aliases := maps.Clone(d.ImageAliases)
 	if aliases == nil {
 		aliases = map[string]string{}
@@ -472,27 +502,57 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 		if external(dest) {
 			continue
 		}
+		internal := strings.HasPrefix(dest, "liubai-asset:")
+		originalPath := canonicalDestination(dest)
+		if u, e := url.Parse(dest); e == nil {
+			originalPath = canonicalDestination(u.Path)
+		}
+		if !internal {
+			if filepath.IsAbs(originalPath) {
+				continue
+			}
+			aliased := false
+			for key := range d.ImageAliases {
+				if canonicalDestination(key) == canonicalDestination(dest) {
+					aliased = true
+					break
+				}
+			}
+			if d.Path == "" && !aliased {
+				continue
+			}
+		}
 		source, e := w.imagePath(d, dest)
 		if e != nil {
-			return ExportResult{}, e
+			missing = append(missing, dest)
+			continue
 		}
 		b, format, e := picture(source)
 		if e != nil {
-			return ExportResult{Missing: []string{dest}}, fmt.Errorf("图片缺失或无法读取：%s", dest)
+			missing = append(missing, dest)
+			continue
+		}
+		if sameDir && !internal {
+			continue
 		}
 		dir := filepath.Join(filepath.Dir(p), assetDir)
 		if e = os.MkdirAll(dir, 0755); e != nil {
 			return ExportResult{}, e
 		}
 		name := digest(b)[:24] + "." + format
-		target := filepath.Join(dir, name)
-		if existing, e := os.ReadFile(target); e == nil {
-			if !bytes.Equal(existing, b) {
-				name = uid() + "." + format
-				target = filepath.Join(dir, name)
+		if internal {
+			if existing, e := os.ReadFile(filepath.Join(dir, name)); e == nil {
+				if !bytes.Equal(existing, b) {
+					name = uid() + "." + format
+				}
+			}
+		} else {
+			name, e = uniqueAssetName(dir, filepath.Base(originalPath), b)
+			if e != nil {
+				return ExportResult{}, e
 			}
 		}
-		if e = writeImageExclusive(target, b); e != nil {
+		if e = writeImageExclusive(filepath.Join(dir, name), b); e != nil {
 			return ExportResult{}, e
 		}
 		targets[dest] = assetDir + "/" + name
@@ -542,7 +602,7 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 	if err = w.persist(d); err != nil {
 		d.Status = "文件已保存，恢复记录更新失败"
 	}
-	return ExportResult{Path: p, Document: *d, Changes: changes}, err
+	return ExportResult{Path: p, Missing: missing, Document: *d, Changes: changes}, err
 }
 func (w *Workspace) Export(id, path string, allowMissing bool) (ExportResult, error) {
 	w.mu.Lock()

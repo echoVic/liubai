@@ -1,0 +1,15 @@
+#preview{grid-area:preview;min-width:0;min-height:0;background:var(--card);border:1px solid var(--border);border-radius:7px;overflow:hidden;box-shadow:0 16px 60px #25282210}
+.preview-head{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid var(--border);color:var(--muted-foreground);font-size:12px}
+.preview-pill{padding:4px 8px;border-radius:999px;background:var(--accent);color:var(--accent-foreground);font-size:10px;letter-spacing:.05em}
+.preview-scroll{height:calc(100% - 48px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--input) transparent}
+.markdown-document{width:min(var(--paper-width),100%);margin:0 auto;padding:42px clamp(28px,6vw,68px) 72px;color:var(--foreground);font:var(--editor-size)/1.9 'Iowan Old Style','Songti SC','Noto Serif CJK SC',Georgia,serif;overflow-wrap:anywhere}
+.markdown-document h1,.markdown-document h2,.markdown-document h3,.markdown-document h4,.markdown-document h5,.markdown-document h6{font-family:'Iowan Old Style','Songti SC','Noto Serif CJK SC',Georgia,serif;line-height:1.45;margin:1.5em 0 .65em}
+.markdown-document h1{font-size:1.9em}.markdown-document h2{font-size:1.5em}.markdown-document h3{font-size:1.2em}
+.markdown-document p{margin:0 0 1em}.markdown-document a{color:var(--link);text-decoration:underline;text-underline-offset:3px}
+.markdown-document blockquote{margin:1.2em 0;padding:.1em 0 .1em 16px;border-left:2px solid var(--quote);color:var(--quote)}
+.markdown-document pre{max-width:100%;overflow:auto;padding:15px 17px;border-radius:6px;background:var(--code);font:13px/1.75 'SFMono-Regular',Consolas,monospace;white-space:pre}
+.markdown-document :not(pre)>code{padding:2px 4px;border-radius:4px;background:var(--code);font:.84em/1.6 'SFMono-Regular',Consolas,monospace}
+.markdown-document img{display:block;max-width:100%;max-height:70vh;margin:20px auto;border-radius:5px;object-fit:contain}
+.markdown-document table{margin:1.3em 0;font-size:.9em;table-layout:fixed}.markdown-document th,.markdown-document td{overflow-wrap:anywhere}.markdown-document ul,.markdown-document ol{padding-left:1.7em}
+.markdown-document input[type=checkbox]{accent-color:var(--primary);margin:0 7px 0 0}.markdown-document .task-list{list-style:none;padding-left:.2em}
+.markdown-image-note{display:block;padding:12px 14px;border:1px dashed var(--border);border-radius:5px;color:var(--muted-foreground);font:12px/1.7 -apple-system,sans-serif}

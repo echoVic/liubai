@@ -109,6 +109,9 @@ func readLimited(path string, n int64) ([]byte, error) {
 	return b, e
 }
 func atomicWrite(path string, data []byte, mode os.FileMode) error {
+	return atomicWriteHook(path, data, mode, nil)
+}
+func atomicWriteHook(path string, data []byte, mode os.FileMode, beforeRename func(tmp string) error) error {
 	f, err := os.CreateTemp(filepath.Dir(path), ".liubai-*")
 	if err != nil {
 		return err
@@ -127,6 +130,11 @@ func atomicWrite(path string, data []byte, mode os.FileMode) error {
 	}
 	if err != nil {
 		return err
+	}
+	if beforeRename != nil {
+		if err = beforeRename(name); err != nil {
+			return err
+		}
 	}
 	if err = os.Rename(name, path); err != nil {
 		return err
@@ -477,7 +485,7 @@ func (w *Workspace) writeOriginal(d *Document, b []byte) error {
 	if err != nil {
 		return err
 	}
-	if err = atomicWrite(d.Path, b, info.Mode().Perm()); err != nil {
+	if err = replaceFile(d.Path, b, info.Mode().Perm()); err != nil {
 		return err
 	}
 	d.DiskHash = digest(b)

@@ -527,11 +527,12 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 			return ExportResult{}, errors.New("存在无法转换的图片语法，请将图片引用单独放在一行后再保存")
 		}
 	}
-	mode := os.FileMode(0644)
 	if info, e := os.Stat(p); e == nil {
-		mode = info.Mode().Perm()
+		err = replaceFile(p, content, info.Mode().Perm())
+	} else {
+		err = atomicWrite(p, content, 0644)
 	}
-	if err = atomicWrite(p, content, mode); err != nil {
+	if err != nil {
 		return ExportResult{}, err
 	}
 	clone.DiskHash = digest(content)

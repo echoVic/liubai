@@ -27,6 +27,8 @@ type Appearance struct {
 	FontSize     int    `json:"fontSize,omitempty"`
 	LineWidth    string `json:"lineWidth,omitempty"`
 	FollowSystem bool   `json:"followSystem"`
+	Layout       string `json:"layout"`
+	Source       bool   `json:"source"`
 }
 type Position struct {
 	Anchor int     `json:"anchor"`
@@ -167,11 +169,17 @@ func inferredTitle(s string) string {
 	return "未命名文稿"
 }
 func validTheme(s string) bool { return s == "paper" || s == "warm" || s == "mist" || s == "ink" }
+func normalizeLayout(s string) string {
+	if s == "split" {
+		return s
+	}
+	return "single"
+}
 func openWorkspace(root string) (*Workspace, error) {
 	if err := os.MkdirAll(filepath.Join(root, "drafts"), 0700); err != nil {
 		return nil, err
 	}
-	w := &Workspace{root: root, docs: map[string]*Document{}, appearance: Appearance{Theme: "paper", FollowSystem: true}}
+	w := &Workspace{root: root, docs: map[string]*Document{}, appearance: Appearance{Theme: "paper", FollowSystem: true, Layout: "single"}}
 	if b, err := readLimited(filepath.Join(root, "workspace.json"), 1<<20); err == nil {
 		var x index
 		if json.Unmarshal(b, &x) != nil || x.Version != 1 {
@@ -179,6 +187,7 @@ func openWorkspace(root string) (*Workspace, error) {
 		}
 		w.current = x.Current
 		if validTheme(x.Appearance.Theme) {
+			x.Appearance.Layout = normalizeLayout(x.Appearance.Layout)
 			w.appearance = x.Appearance
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -436,6 +445,10 @@ func (w *Workspace) Appearance(p Appearance) error {
 	if p.LineWidth != "" && p.LineWidth != "normal" && p.LineWidth != "wide" {
 		return errors.New("未知行宽")
 	}
+	if p.Layout != "" && p.Layout != "single" && p.Layout != "split" {
+		return errors.New("未知布局")
+	}
+	p.Layout = normalizeLayout(p.Layout)
 	old := w.appearance
 	w.appearance = p
 	if err := w.saveIndex(); err != nil {

@@ -1,30 +1,19 @@
-import MarkdownIt from 'markdown-it';
+import {normalizeImageDestination,renderMarkdown} from './markdown';
 export interface Delivery {title:string;content:string;images:Record<string,string>;missing:string[];external:number}
-const parser=new MarkdownIt({html:false,linkify:false,typographer:false});
-// Move image destinations out of src before creating DOM, so detached images
-// cannot start network requests during the short interval before replacement.
-const imageRule=parser.renderer.rules.image!;
-parser.renderer.rules.image=(tokens,index,options,env,self)=>{
- const token=tokens[index],src=token.attrGet('src')||'';token.attrSet('data-image-source',src);
- token.attrs=token.attrs?.filter(([name])=>name!=='src')||null;
- return imageRule(tokens,index,options,env,self);
-};
 export function renderDelivery(data:Delivery){
- const root=document.createElement('article');root.className='delivery-document';root.innerHTML=parser.render(data.content);
- const images=new Map(Object.entries(data.images).map(([src,value])=>[parser.normalizeLink(src),value]));
- for(const img of root.querySelectorAll('img')){
-  const src=img.getAttribute('data-image-source')||'';const local=images.get(src);img.removeAttribute('data-image-source');
-  if(local){img.src=local;img.style.maxWidth='100%';continue}
-  // Keep external/missing resources explicit. Do not silently load URLs while
-  // printing or copying a document that has never requested those resources.
-  const label=document.createElement('span');label.className='delivery-image-note';
-  if(/^(https?:)?\/\//i.test(src)){const a=document.createElement('a');a.href=src;a.textContent=(img.alt||'外链图片')+'（联网查看）';label.append(a)}
-  else label.textContent='图片缺失：'+(img.alt||src)+' · '+src;
-  img.replaceWith(label);
+ const images=new Map(Object.entries(data.images).map(([src,value])=>[normalizeImageDestination(src),value]));
+ const {root}=renderMarkdown(data.content,{resolve:destination=>images.get(destination),external:'link'});
+ root.className='delivery-document';
+ for(const img of root.querySelectorAll('img')){img.removeAttribute('data-image-source');img.style.maxWidth='100%'}
+ for(const note of root.querySelectorAll('.markdown-image-note'))note.className='delivery-image-note';
+ for(const el of root.querySelectorAll('.task-list, .task-list-item')){
+  el.classList.remove('task-list','task-list-item');if(!el.className)el.removeAttribute('class');
  }
+ for(const el of root.querySelectorAll('[data-line], [data-line-end]')){el.removeAttribute('data-line');el.removeAttribute('data-line-end')}
  for(const a of root.querySelectorAll('a')){a.rel='noopener noreferrer'}
  const styles:Record<string,string>={h1:'font-size:30px;line-height:1.5;margin:24px 0 18px',h2:'font-size:24px;line-height:1.5;margin:24px 0 14px',h3:'font-size:20px;line-height:1.6',p:'line-height:1.9;margin:14px 0',blockquote:'border-left:3px solid #809387;padding-left:16px;color:#45574c',pre:'background:#f1f2ef;padding:16px;white-space:pre-wrap;font-family:monospace;font-size:13px',table:'border-collapse:collapse;width:100%;margin:20px 0',th:'border:1px solid #cdd2cc;padding:9px;text-align:left;background:#edf0e9',td:'border:1px solid #cdd2cc;padding:9px;text-align:left',code:'font-family:monospace',a:'color:#315f82;text-decoration:underline'};
  for(const [tag,style]of Object.entries(styles))root.querySelectorAll(tag).forEach(el=>el.setAttribute('style',style+';'+(el.getAttribute('style')||'')));
+ root.querySelectorAll('input[type=checkbox]').forEach(el=>el.setAttribute('style','margin:0 8px 0 0;vertical-align:middle'));
  root.style.cssText='font-family:PingFang SC,Noto Sans CJK SC,sans-serif;font-size:16px;line-height:1.9;color:#242523;background:#fff;overflow-wrap:anywhere';
  return root;
 }

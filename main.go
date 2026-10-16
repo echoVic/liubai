@@ -341,7 +341,8 @@ func main() {
 		}
 		return
 	}
-	mygo.Use(updater.Plugin)
+	// Check every 4 hours instead of the default day, so a new release shows up the same day.
+	mygo.Use(updater.New(updater.Options{Interval: 4 * time.Hour}))
 	nativeLocaleChoice.Store(w.localePreference)
 	d.native = newDesktopIntegration(w)
 	defer d.native.cancel()

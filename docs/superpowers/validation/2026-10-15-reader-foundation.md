@@ -217,43 +217,43 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 - 在其他应用置前时用全局快捷键呼出随手记：为了不把按键发给用户正在使用的应用，只在测试应用置前时验证了快捷键（第 28 项）。
 - 从 Word、Google Docs 等应用实际复制后粘贴：原生只测了写入系统剪贴板的网页 HTML（第 27 项），Word 与 Google Docs 的格式由 `check-paste.ts` 用样例 HTML 覆盖。
 
-## 0.4.0 正式发布（2026-10-16）
+## 0.1.0 正式发布（2026-10-16）
 
-版本号改为 0.4.0（`mygo.json`、`package.json`、关于面板），仓库以 MIT 许可开源。
+仓库以 MIT 许可开源，首个公开版本定为 0.1.0（`mygo.json`、`package.json`、关于面板）。此前的 0.2.0、0.3.0 是未公开的内部版本；版本号最初改为 0.4.0 并打过包，未发布，改为 0.1.0 后重新构建。
 
 公开前重写了 git 历史：每一版 `bun.lock` 里锁定的内部 npm 镜像地址改为空（按使用者配置的源安装），README 和验证记录中的本机路径改为 `$WEBAPP_TESTING`、`$TMPDIR` 等占位。所有提交号因此改变；记录、基准脚本的默认基线和原始数据中的提交号已按改写映射更新。`bun install --frozen-lockfile` 从 npmjs 干净安装，得到的依赖版本与改写前完全相同。浏览器回归改由 `scripts/e2e.sh` 启动临时服务，不再依赖本机路径。
 
 正式构建：
 
 ```sh
-go tool mygo build -platform darwin/universal -o build/release-0.4.0 .
+go tool mygo build -platform darwin/universal -o build/release-0.1.0 .
 ```
 
-- 构建提交：`ecb399d`（标签 `v0.4.0`）；程序内记录的 `vcs.revision` 与之一致，`vcs.modified=false`
-- 安装包：`build/release-0.4.0/darwin-universal/Liubai 0.4.0.dmg`，9,482,696 字节
-- 应用标识 `app.liubai.desktop`；版本与构建版本均为 `0.4.0`；架构 `arm64`、`x86_64`；最低 macOS 13.0
-- 签名：`Developer ID Application: Zijie Hu (8LH7PFQJ89)`，启用 hardened runtime；安全时间戳 2026-10-16 20:12:01
+- 构建提交：`b317b9d`（标签 `v0.1.0`）；程序内记录的 `vcs.revision` 与之一致，`vcs.modified=false`
+- 安装包：`build/release-0.1.0/darwin-universal/Liubai 0.1.0.dmg`，9,482,552 字节
+- 应用标识 `app.liubai.desktop`；版本与构建版本均为 `0.1.0`；架构 `arm64`、`x86_64`；最低 macOS 13.0
+- 签名：`Developer ID Application: Zijie Hu (8LH7PFQJ89)`，启用 hardened runtime；安全时间戳 2026-10-16 21:01:27
 
 以下命令均以退出码 0 完成：
 
 ```sh
-package_dir=build/release-0.4.0/darwin-universal
+package_dir=build/release-0.1.0/darwin-universal
 codesign --verify --deep --strict --verbose=2 "$package_dir/Liubai.app"
 spctl -a -t exec -vv "$package_dir/Liubai.app"
 xcrun stapler validate "$package_dir/Liubai.app"
-codesign --verify --strict --verbose=2 "$package_dir/Liubai 0.4.0.dmg"
-spctl -a -t open --context context:primary-signature -vv "$package_dir/Liubai 0.4.0.dmg"
-xcrun stapler validate "$package_dir/Liubai 0.4.0.dmg"
-hdiutil verify "$package_dir/Liubai 0.4.0.dmg"
+codesign --verify --strict --verbose=2 "$package_dir/Liubai 0.1.0.dmg"
+spctl -a -t open --context context:primary-signature -vv "$package_dir/Liubai 0.1.0.dmg"
+xcrun stapler validate "$package_dir/Liubai 0.1.0.dmg"
+hdiutil verify "$package_dir/Liubai 0.1.0.dmg"
 ```
 
 Gatekeeper 对应用和 DMG 都返回 `accepted`、`source=Notarized Developer ID`。DMG SHA-256：
 
 ```text
-7b3928fa3ccd62f974c9e28a57b2928e89b020edca623ad720b2926cc4675ddf
+2de6fbb126243bbb1087f0d961580bfd550168c1803f66d786c660d5f60707de
 ```
 
-0.2.0、0.3.0 的安装包与应用二进制在构建前后 SHA-256 不变。正式包没有在本机安装或启动：它会使用真实的数据目录。
+内部版本 0.2.0、0.3.0 的安装包与应用二进制在构建前后 SHA-256 不变。正式包没有在本机安装或启动：它会使用真实的数据目录。
 
 ## 已知限制与后续
 

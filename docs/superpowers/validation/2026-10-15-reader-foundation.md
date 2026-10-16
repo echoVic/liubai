@@ -131,6 +131,8 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 | 25 | 最近文稿与文件路径 | 「打开最近使用」出现并记录了打开的文件；窗口的 `AXDocument` 为该文件 |
 | 26 | 未保存圆点 | 目录不可写导致保存失败时，关闭按钮立即出现圆点、状态为「草稿已保留，文件保存失败」；恢复权限并撤销后圆点消失。正常自动保存不出现圆点 |
 | 27 | 富文本与纯文本粘贴 | 系统剪贴板放入网页 HTML 后在应用内粘贴，得到 `## 标题`、`**粗体**`、链接、列表和表格；⇧⌘V 原样粘贴含 `*`、`[]`、`\` 的文字。测试前后备份并还原了用户剪贴板 |
+| 28 | 随手记 | `ce3d069` 打包。测试应用在前台时按 ⌃⌥⌘N（系统级按键事件；菜单里的「随手记」没有快捷键，所以由全局快捷键触发），在面板中分别用 ABC 键盘输入英文、用微信输入法拼音输入 `nihao` 并选词，各按 ⌘↩ | 新增两篇草稿，分别为「panel note from ABC」和「你好」；主窗口当前文稿「原文」未变；主窗口提示「随手记已存为草稿「你好」」并提供「打开」。输入法在测试后恢复为微信输入法 |
+| 29 | 英文界面 | `ce3d069` 打包。只对测试包设置 `AppleLanguages` 为英文后启动，读取菜单和界面并截图 | 菜单为 Liubai / File / Edit / View / Window；顶栏为 Sidebar、Edit / Split / Read、Export、More；状态「Draft saved」，格式栏「Body」，页脚「Your documents stay on this Mac」。测试后删除了该设置 |
 
 ## 只读文件与复查修正（2026-10-16）
 
@@ -150,6 +152,12 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 - `check-reader.py`、`check-english.py`：中英文提示条的文字与按钮。
 
 编排者的修正：提示条按钮原来用的是另一条「另存」文案，改为与菜单一致的「另存为…」，并删除多出的目录条目（现为 408 条）。
+
+原生实测（`ce3d069` 打包的隔离测试包，用户同意后运行）：
+
+| # | 项目 | 做法 | 结果 |
+|---|---|---|---|
+| 30 | 只读文件 | 用 `open -g` 打开 `chmod 444` 的 `ro.md`，按格式栏「加粗」制造修改；再改回 `644` 后按「重试保存」。共跑两遍 | 文稿正常打开并显示内容。修改后状态和提示条都显示「文件为只读，修改保留在草稿中」，只有「重试保存」「另存为…」两个按钮；文件的 MD5 和修改时间不变、仍为 444；关闭按钮出现圆点（`AXEdited=1`）。改回可写并重试后状态为「文件已保存」，提示条和圆点消失，文件写入了修改，权限保持 644 |
 
 ## 性能
 
@@ -206,6 +214,7 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 
 - 从 Finder 拖文件进窗口（`OnFileDrop`）：需要真实鼠标拖放，会占用用户正在使用的光标，未做。浏览器模式的拖入由 `check-reader.py` 覆盖，拖入后的打开逻辑与第 5 项的 Finder 打开共用 `openPath`。
 - 真正的关机/注销：只验证了系统在关机时发送的退出 Apple Event。
+- 在其他应用置前时用全局快捷键呼出随手记：为了不把按键发给用户正在使用的应用，只在测试应用置前时验证了快捷键（第 28 项）。
 - 从 Word、Google Docs 等应用实际复制后粘贴：原生只测了写入系统剪贴板的网页 HTML（第 27 项），Word 与 Google Docs 的格式由 `check-paste.ts` 用样例 HTML 覆盖。
 
 ## 已知限制与后续

@@ -98,7 +98,7 @@ const source = appearance.layout === 'split' && appearance.source === true;
 - [x] 导出 HTML/共享富文本 DOM 保持打印样式、本地图片内嵌、外链无抓取、整篇输出；原生 PDF、输入法和跨应用粘贴明确列为未覆盖。
 - [x] 更新使用说明、实施记录、构建 `web/` 与 bindings。版本沿设计为 0.3.0，保留已有签名配置。
 - [x] 提交 Task 3 验证、文档、版本和生成产物；不推送或发布远端 Release。
-- [x] Parent：最终整分支差异审查；`81185a4` 修复空白行定位与重复渲染，定向复核通过。
+- [x] Parent：最终整分支差异审查；`4cfbabb` 修复空白行定位与重复渲染，定向复核通过。
 - [x] Parent：生成正式签名的 darwin/universal 安装包。
 - [x] Parent：验证 codesign、spctl、stapler、公证与架构。
 

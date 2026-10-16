@@ -1,7 +1,7 @@
 # 阅读器基础（0.4 开发分支）验证记录
 
 **日期**：2026-10-15
-**分支**：`feat/reader-foundation`（基于 `feat/split-preview` @ `9fa3cf6`）
+**分支**：`feat/reader-foundation`（基于 `feat/split-preview` @ `29925c3`）
 **规格**：[2026-10-15-reader-foundation-design.md](../specs/2026-10-15-reader-foundation-design.md)
 **计划**：[2026-10-15-reader-foundation.md](../plans/2026-10-15-reader-foundation.md)
 **实施方式**：每个任务由本机 Codex CLI（0.162.1，`codex exec -s workspace-write`，无网络）实现；编排者逐任务审查 diff、在沙箱外重跑全部检查和浏览器回归后提交。互不重叠的任务并行执行，`web/` 在提交时按各自源码单独构建，保证每个提交的前端产物与源码一致。
@@ -49,27 +49,27 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 
 | 任务 | 提交 | 关键回归测试 |
 |---|---|---|
-| 1 图片路径规范化 | `f890ea4` | `images_test.go`：markdown-it 规范化路径、旧 `%E5…` 写法、可读的新路径、`<…>` 写法 |
-| 2 损坏数据隔离、打开失败提示 | `1219f93` | `startup_test.go`：坏草稿/坏索引/新版本索引不阻止启动，提示只交付一次 |
-| 3 写回保留元数据 | `99145ec` `642acae` | `replace_darwin_test.go`：Finder 标签、自定义 xattr、创建时间、权限 |
-| 4 另存为保留图片引用 | `a7e3955` | `saveas_test.go`：同目录不改写、跨目录保留原名、重名、缺图不阻止 |
-| 5 外部修改与状态轮询 | `6013fb5` | `external_test.go`：干净自动载入、冲突、按需备份、覆盖磁盘、stat 快路径 |
-| 6 退出与关机 | `ad8abe3` | `quit_test.go` |
-| 7 即时排版性能 | `623ecf4` `dc30c05` | `check-rendering.ts`、`check-performance.ts` |
-| 8 位置、摘要、字数 | `d96c197` | `positions_test.go`、`summary_test.go`、`check-editing.ts` 字数统计 |
-| 9 移除文稿、清理空草稿 | `c3191e4` | `trash_test.go` |
-| 10 菜单、本地化、HTML 保存 | `570ccb8` | `menu_test.go`；临时签名包的 Info.plist 与 `.lproj` |
-| 11 文件关联、拖入、相对链接 | `f59a4d7` | `links_test.go`、`check-editing.ts` 链接识别；包内 `CFBundleDocumentTypes` |
-| 12 阅读渲染 | `894514a` `a8b7e11` `995dfd4` | `html_images_test.go`、`check-preview.ts`（消毒、front matter、行号偏移、脚注、提示块、裸链接、草稿图片） |
-| 13 代码高亮 | `a165f40` | `check-preview.ts` 高亮与过期渲染 |
-| 14 图片格式 | `db2844c` `2729b11` | `imageformat_test.go` |
-| 15 阅读模式 | `5a1e1a5` | `workspace_preview_test.go`；`check-reader.py` |
-| 原生测试发现的界面问题 | `dd6561f` | `check-reader.py`：隔离提示只显示「在 Finder 中显示」 |
-| 预览按需消毒（性能） | `eb71662` | `check-preview.ts`：纯 Markdown 不调用消毒器；含原始 HTML 仍消毒；两条路径都保留表格对齐；`javascript:`/`data:` 链接与图片 alt 中的标签保持转义 |
-| 顶栏改版 | `6de72dd` | `check-toolbar.py`：顺序与名称、编辑/分栏/阅读与快捷键同步、侧栏两个标签、··· 菜单键盘操作与禁用项、导出、1440–680px 无溢出；`menu_test.go` 菜单名称 |
-| PDF 文字层 | `cf84fe7` | `pdf_text_test.go`：真实导出 PDF 修正前后、增量更新结构、幂等、CMap 各种写法、异常输入原样返回；模糊测试 |
-| PDF 标题分页 | `2feb91c` | `check-pdf.py`：离屏 WebKit 打印 40 节文稿，无标题留在页底、文字可搜索、修正前后像素一致 |
-| 格式栏改版 | `ce13a36` `e06a9fd` | `check-editing.ts` 标题级别与删除线/行内代码；`check-toolbar.py` 分组、标题菜单随光标、源码开关、换行不隐藏按钮 |
+| 1 图片路径规范化 | `3bd3353` | `images_test.go`：markdown-it 规范化路径、旧 `%E5…` 写法、可读的新路径、`<…>` 写法 |
+| 2 损坏数据隔离、打开失败提示 | `15abade` | `startup_test.go`：坏草稿/坏索引/新版本索引不阻止启动，提示只交付一次 |
+| 3 写回保留元数据 | `6cf464e` `57a7ac7` | `replace_darwin_test.go`：Finder 标签、自定义 xattr、创建时间、权限 |
+| 4 另存为保留图片引用 | `ff376e1` | `saveas_test.go`：同目录不改写、跨目录保留原名、重名、缺图不阻止 |
+| 5 外部修改与状态轮询 | `f543701` | `external_test.go`：干净自动载入、冲突、按需备份、覆盖磁盘、stat 快路径 |
+| 6 退出与关机 | `af3fa56` | `quit_test.go` |
+| 7 即时排版性能 | `cfc7bb3` `3e5d3e9` | `check-rendering.ts`、`check-performance.ts` |
+| 8 位置、摘要、字数 | `8609f58` | `positions_test.go`、`summary_test.go`、`check-editing.ts` 字数统计 |
+| 9 移除文稿、清理空草稿 | `758cf9c` | `trash_test.go` |
+| 10 菜单、本地化、HTML 保存 | `b997efd` | `menu_test.go`；临时签名包的 Info.plist 与 `.lproj` |
+| 11 文件关联、拖入、相对链接 | `c0f96ee` | `links_test.go`、`check-editing.ts` 链接识别；包内 `CFBundleDocumentTypes` |
+| 12 阅读渲染 | `c4c4b34` `74646b6` `311ec12` | `html_images_test.go`、`check-preview.ts`（消毒、front matter、行号偏移、脚注、提示块、裸链接、草稿图片） |
+| 13 代码高亮 | `ab99aea` | `check-preview.ts` 高亮与过期渲染 |
+| 14 图片格式 | `7e2a072` `6f9dc57` | `imageformat_test.go` |
+| 15 阅读模式 | `3b9409b` | `workspace_preview_test.go`；`check-reader.py` |
+| 原生测试发现的界面问题 | `93294ca` | `check-reader.py`：隔离提示只显示「在 Finder 中显示」 |
+| 预览按需消毒（性能） | `03c1bc6` | `check-preview.ts`：纯 Markdown 不调用消毒器；含原始 HTML 仍消毒；两条路径都保留表格对齐；`javascript:`/`data:` 链接与图片 alt 中的标签保持转义 |
+| 顶栏改版 | `411fcc5` | `check-toolbar.py`：顺序与名称、编辑/分栏/阅读与快捷键同步、侧栏两个标签、··· 菜单键盘操作与禁用项、导出、1440–680px 无溢出；`menu_test.go` 菜单名称 |
+| PDF 文字层 | `0696d5e` | `pdf_text_test.go`：真实导出 PDF 修正前后、增量更新结构、幂等、CMap 各种写法、异常输入原样返回；模糊测试 |
+| PDF 标题分页 | `4d64ef5` | `check-pdf.py`：离屏 WebKit 打印 40 节文稿，无标题留在页底、文字可搜索、修正前后像素一致 |
+| 格式栏改版 | `92688fd` `7a3c575` | `check-editing.ts` 标题级别与删除线/行内代码；`check-toolbar.py` 分组、标题菜单随光标、源码开关、换行不隐藏按钮 |
 
 ## 编排者在 Codex 实现之上的修正
 
@@ -96,7 +96,7 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 - 格式栏原为横向滚动。在分栏中左栏较窄，「源码」开关被挤出可视区，需要横向滚动才能看到；改为换行显示，回归检查断言各宽度、各布局下没有按钮超出格式栏。
 - 视图三选一的选中状态改为由当前布局推导，布局值缺省时也有一项被选中。
 - `check-pdf.py` 改用系统临时目录和默认 Go 缓存（Codex 沙箱里写死了路径）；`check-toolbar.py` 修正两处错误断言（空文稿会显示占位文字；680px 时格式栏不一定溢出）。
-- 原生复测发现标题菜单向按钮左侧展开、超出纸面：菜单改为在窗口左半边时左对齐、右半边时右对齐，回归检查断言两个菜单的位置；导出对话框和缺图提示里残留的「带走」「打包」措辞一并改掉（`e06a9fd`）。
+- 原生复测发现标题菜单向按钮左侧展开、超出纸面：菜单改为在窗口左半边时左对齐、右半边时右对齐，回归检查断言两个菜单的位置；导出对话框和缺图提示里残留的「带走」「打包」措辞一并改掉（`7a3c575`）。
 - 为 PDF 修正补充模糊测试 `FuzzFixPDFTextMapping`：任何输入要么原样返回，要么以原文件为前缀；本机跑了约 74 万次，没有出错。
 
 ## MyGo 0.5 升级与新功能（2026-10-16）
@@ -105,12 +105,12 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 
 | 项目 | 提交 | 要点 |
 |---|---|---|
-| 升级到 MyGo 0.5.5 | `cfaa4b8` | 代码不用改；0.4/0.5 的不兼容改动只涉及原生控件、终端插件和安装包文件名 |
-| 系统集成 | `fc9bb08` | 用 FSEvents 监听当前文件，桌面版轮询放宽到 10 秒；`AddRecentDocument` 与「文件 → 打开最近使用」；保存失败或 1.5 秒仍未保存时关闭按钮显示圆点；窗口带上文件路径 |
-| Documents 迁移评估 | `f2cb18f` | 结论不迁移，见 [评估](../specs/2026-10-16-mygo-documents-evaluation.md) |
-| 富文本粘贴 | `48f47c2` | turndown + GFM 插件；Word 列表、Google Docs 样式、CJK 强调边界、代码编辑器内容原样保留；内嵌图片走现有导入；⇧⌘V 纯文本 |
-| 随手记 | `12e51a6` | 全局快捷键 ⌃⌥⌘N（可改）呼出不激活应用的浮动面板，⌘↩ 存为新草稿且不改变主窗口当前文稿；设置可录制快捷键、登录时后台启动 |
-| 英文界面 | `4d5e35c` | MyGo 目录 407 条消息（简中为源、英文翻译）；文稿状态改为结构化代码；「显示 → 语言」即时切换；`check-i18n.mjs` 防止代码里出现未翻译文案 |
+| 升级到 MyGo 0.5.5 | `3a4379e` | 代码不用改；0.4/0.5 的不兼容改动只涉及原生控件、终端插件和安装包文件名 |
+| 系统集成 | `b2e84f3` | 用 FSEvents 监听当前文件，桌面版轮询放宽到 10 秒；`AddRecentDocument` 与「文件 → 打开最近使用」；保存失败或 1.5 秒仍未保存时关闭按钮显示圆点；窗口带上文件路径 |
+| Documents 迁移评估 | `518bc70` | 结论不迁移，见 [评估](../specs/2026-10-16-mygo-documents-evaluation.md) |
+| 富文本粘贴 | `7071fc8` | turndown + GFM 插件；Word 列表、Google Docs 样式、CJK 强调边界、代码编辑器内容原样保留；内嵌图片走现有导入；⇧⌘V 纯文本 |
+| 随手记 | `c0e10ea` | 全局快捷键 ⌃⌥⌘N（可改）呼出不激活应用的浮动面板，⌘↩ 存为新草稿且不改变主窗口当前文稿；设置可录制快捷键、登录时后台启动 |
+| 英文界面 | `4876052` | MyGo 目录 407 条消息（简中为源、英文翻译）；文稿状态改为结构化代码；「显示 → 语言」即时切换；`check-i18n.mjs` 防止代码里出现未翻译文案 |
 
 编排者的判断与修正：
 
@@ -131,8 +131,8 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 | 25 | 最近文稿与文件路径 | 「打开最近使用」出现并记录了打开的文件；窗口的 `AXDocument` 为该文件 |
 | 26 | 未保存圆点 | 目录不可写导致保存失败时，关闭按钮立即出现圆点、状态为「草稿已保留，文件保存失败」；恢复权限并撤销后圆点消失。正常自动保存不出现圆点 |
 | 27 | 富文本与纯文本粘贴 | 系统剪贴板放入网页 HTML 后在应用内粘贴，得到 `## 标题`、`**粗体**`、链接、列表和表格；⇧⌘V 原样粘贴含 `*`、`[]`、`\` 的文字。测试前后备份并还原了用户剪贴板 |
-| 28 | 随手记 | `ce3d069` 打包。测试应用在前台时按 ⌃⌥⌘N（系统级按键事件；菜单里的「随手记」没有快捷键，所以由全局快捷键触发），在面板中分别用 ABC 键盘输入英文、用微信输入法拼音输入 `nihao` 并选词，各按 ⌘↩ | 新增两篇草稿，分别为「panel note from ABC」和「你好」；主窗口当前文稿「原文」未变；主窗口提示「随手记已存为草稿「你好」」并提供「打开」。输入法在测试后恢复为微信输入法 |
-| 29 | 英文界面 | `ce3d069` 打包。只对测试包设置 `AppleLanguages` 为英文后启动，读取菜单和界面并截图 | 菜单为 Liubai / File / Edit / View / Window；顶栏为 Sidebar、Edit / Split / Read、Export、More；状态「Draft saved」，格式栏「Body」，页脚「Your documents stay on this Mac」。测试后删除了该设置 |
+| 28 | 随手记 | `7f0acf4` 打包。测试应用在前台时按 ⌃⌥⌘N（系统级按键事件；菜单里的「随手记」没有快捷键，所以由全局快捷键触发），在面板中分别用 ABC 键盘输入英文、用微信输入法拼音输入 `nihao` 并选词，各按 ⌘↩ | 新增两篇草稿，分别为「panel note from ABC」和「你好」；主窗口当前文稿「原文」未变；主窗口提示「随手记已存为草稿「你好」」并提供「打开」。输入法在测试后恢复为微信输入法 |
+| 29 | 英文界面 | `7f0acf4` 打包。只对测试包设置 `AppleLanguages` 为英文后启动，读取菜单和界面并截图 | 菜单为 Liubai / File / Edit / View / Window；顶栏为 Sidebar、Edit / Split / Read、Export、More；状态「Draft saved」，格式栏「Body」，页脚「Your documents stay on this Mac」。测试后删除了该设置 |
 
 ## 只读文件与复查修正（2026-10-16）
 
@@ -140,9 +140,9 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 
 | 项目 | 提交 | 要点 |
 |---|---|---|
-| 只读文件不再被覆盖 | `b784a5f` | 写回前用 `access(2)` 检查文件本身可写，ACL 和锁定标志也算在内。只读时不改文件，修改留在草稿，状态显示「文件为只读，修改保留在草稿中」，提示条提供「重试保存」和「另存为…」，关闭按钮显示未保存圆点；文件恢复可写后，「重试保存」或下一次编辑会正常写回。「用当前版本覆盖」、另存为、ZIP/PDF/HTML 导出和恢复副本遇到已存在的只读目标时提示「「文件名」是只读文件，请选择其他位置」，不写入；应用自己的数据目录不受影响 |
-| 编辑器小部件反复判断界面语言 | `ccbdb29` | 英文界面提交（`4d5e35c`）让每个图片、表格、任务框小部件在创建时都调用一次 `pageLocale()`，而每次按键都会重建全篇的块级小部件。桌面应用里这只是读取 `window.mygo.locale`，影响很小；浏览器模式要读存储、构造 `Intl.Locale`，`check-performance.ts` 所用的 Bun 中还会两次抛出并捕获异常，性能预算检查因此失败。在 Bun 中单独计时 30 万字文稿的块级装饰：英文界面之前约 4.2 ms，之后约 7.5 ms；改为读取切换语言时与文案一起缓存的结果后为 4.5 ms。`check-performance.ts` 回到 10 万字 2.4 ms、30 万字 9.1 ms（预算 5 / 15 ms） |
-| 检查与基准在高负载下不可靠 | `ccbdb29` `ce3d069` `6cf6092` | `check-rendering.ts` 在补完语法树之前就读取了装饰：初次解析只有 20 ms，机器繁忙时解析不到末尾的图片，检查就会失败；改为补完语法树后再读。`check-performance.ts` 和性能基准 `scripts/bench/editor.ts` 中，如果某批按键因解析超时只留下不完整的语法树，这一批会显得过快；现在会补完语法树后重测这一批。修正后的基准与性能报告的数据相符，见报告中的「后续复查」 |
+| 只读文件不再被覆盖 | `524b395` | 写回前用 `access(2)` 检查文件本身可写，ACL 和锁定标志也算在内。只读时不改文件，修改留在草稿，状态显示「文件为只读，修改保留在草稿中」，提示条提供「重试保存」和「另存为…」，关闭按钮显示未保存圆点；文件恢复可写后，「重试保存」或下一次编辑会正常写回。「用当前版本覆盖」、另存为、ZIP/PDF/HTML 导出和恢复副本遇到已存在的只读目标时提示「「文件名」是只读文件，请选择其他位置」，不写入；应用自己的数据目录不受影响 |
+| 编辑器小部件反复判断界面语言 | `9037969` | 英文界面提交（`4876052`）让每个图片、表格、任务框小部件在创建时都调用一次 `pageLocale()`，而每次按键都会重建全篇的块级小部件。桌面应用里这只是读取 `window.mygo.locale`，影响很小；浏览器模式要读存储、构造 `Intl.Locale`，`check-performance.ts` 所用的 Bun 中还会两次抛出并捕获异常，性能预算检查因此失败。在 Bun 中单独计时 30 万字文稿的块级装饰：英文界面之前约 4.2 ms，之后约 7.5 ms；改为读取切换语言时与文案一起缓存的结果后为 4.5 ms。`check-performance.ts` 回到 10 万字 2.4 ms、30 万字 9.1 ms（预算 5 / 15 ms） |
+| 检查与基准在高负载下不可靠 | `9037969` `7f0acf4` `3d7f5e1` | `check-rendering.ts` 在补完语法树之前就读取了装饰：初次解析只有 20 ms，机器繁忙时解析不到末尾的图片，检查就会失败；改为补完语法树后再读。`check-performance.ts` 和性能基准 `scripts/bench/editor.ts` 中，如果某批按键因解析超时只留下不完整的语法树，这一批会显得过快；现在会补完语法树后重测这一批。修正后的基准与性能报告的数据相符，见报告中的「后续复查」 |
 
 测试：
 
@@ -153,7 +153,7 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 
 编排者的修正：提示条按钮原来用的是另一条「另存」文案，改为与菜单一致的「另存为…」，并删除多出的目录条目（现为 408 条）。
 
-原生实测（`ce3d069` 打包的隔离测试包，用户同意后运行）：
+原生实测（`7f0acf4` 打包的隔离测试包，用户同意后运行）：
 
 | # | 项目 | 做法 | 结果 |
 |---|---|---|---|
@@ -173,7 +173,7 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 | 纯 Markdown 预览，10 万字（Chrome） | 22.9 ms | 26.4 ms |
 | 含原始 HTML 的预览，10 万字（Chrome） | 21.5 ms（HTML 按文字显示） | 95.6 ms（渲染并消毒） |
 
-保存与启动和 0.3.0 持平。本分支唯一变慢的场景是含原始 HTML 的文稿：0.3.0 把这些标签当文字显示；本分支会渲染它们，所以要整篇经过 DOMPurify。纯 Markdown 文稿从 `eb71662` 起跳过消毒。
+保存与启动和 0.3.0 持平。本分支唯一变慢的场景是含原始 HTML 的文稿：0.3.0 把这些标签当文字显示；本分支会渲染它们，所以要整篇经过 DOMPurify。纯 Markdown 文稿从 `03c1bc6` 起跳过消毒。
 
 前端 bundle：`web/app.js` 由 1,804,852 字节增至 1,854,040 字节（DOMPurify 与脚注插件）。
 
@@ -181,17 +181,17 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 
 用户退出常驻实例后，在本机 macOS 26.6.2（Apple M2 Pro）上用真实 WKWebView 应用逐项实测。
 
-**隔离方式**：用 `go tool mygo build -sign - -skip-dmg -skip-notarize -platform darwin/arm64` 分别打出本分支和 0.3.0（`9fa3cf6`）的临时签名包，改名为「留白测试」/`LiubaiTest.app`（`app.liubai.desktop.nativetest`）与 `LiubaiBase.app`，各用 `-data-dir` 指向 `/tmp` 下的独立目录。真实存档 `~/Library/Application Support/Liubai` 未被读写。
+**隔离方式**：用 `go tool mygo build -sign - -skip-dmg -skip-notarize -platform darwin/arm64` 分别打出本分支和 0.3.0（`29925c3`）的临时签名包，改名为「留白测试」/`LiubaiTest.app`（`app.liubai.desktop.nativetest`）与 `LiubaiBase.app`，各用 `-data-dir` 指向 `/tmp` 下的独立目录。真实存档 `~/Library/Application Support/Liubai` 未被读写。
 
 **驱动方式**：Swift 写的辅助工具通过辅助功能 API（AXUIElement）读取界面、按按钮和菜单；System Events 把测试应用置前；键盘事件用 CGEvent 发送，每次发送前确认测试应用在最前，否则中止；窗口截图用 `screencapture -l` 并逐张查看。中文输入法用例使用本机微信输入法拼音，其余用例临时切到 ABC 键盘，结束后恢复。第 17–19 项在最终提交上复测，当时用户正在使用电脑，所以只用辅助功能操作，不发送键盘事件：打开文稿用 `open -g`，滚动用 `AXScrollToVisible`，切换文稿用相对链接和最近文稿。
 
 | # | 项目 | 做法 | 结果 |
 |---|---|---|---|
-| 1 | 坏草稿不阻止启动 | 数据目录预置截断的草稿 JSON 后启动 | 正常启动；坏文件移入 `quarantine/`；提示「有 1 份草稿无法读取，已移到隔离目录」和「在 Finder 中显示」。发现提示条多余地显示「重试保存」「另存」，已在 `dd6561f` 修复并原生复测 |
+| 1 | 坏草稿不阻止启动 | 数据目录预置截断的草稿 JSON 后启动 | 正常启动；坏文件移入 `quarantine/`；提示「有 1 份草稿无法读取，已移到隔离目录」和「在 Finder 中显示」。发现提示条多余地显示「重试保存」「另存」，已在 `93294ca` 修复并原生复测 |
 | 2 | 中文菜单与本地化 | 读取整个菜单栏 | 留白/文件/编辑/显示/窗口全部中文，系统补充项（隐藏其他、全部显示、退出并保留窗口、全部关闭、自动填充、开始听写、表情与符号）也为中文 |
 | 3 | 输入与自动保存 | 新文稿中键入文字 | 自动保存，标题按首行推断 |
 | 4 | 弹窗内 ⌘Z | 重命名框中改字后 ⌘Z | 只撤销输入框，恢复为「原生测试」，正文不变 |
-| 5 | Finder 方式打开与阅读模式 | `open -a` 打开 README，菜单「显示 → 阅读模式」 | front matter 折叠为「文稿属性」，HTML 中居中的 SVG 标志、裸链接、提示块、代码高亮在 WebKit 中正常；WebP/AVIF/BMP 本地图片显示。发现阅读区获得焦点时有一圈蓝色焦点框，已在 `dd6561f` 去掉并原生复测 |
+| 5 | Finder 方式打开与阅读模式 | `open -a` 打开 README，菜单「显示 → 阅读模式」 | front matter 折叠为「文稿属性」，HTML 中居中的 SVG 标志、裸链接、提示块、代码高亮在 WebKit 中正常；WebP/AVIF/BMP 本地图片显示。发现阅读区获得焦点时有一圈蓝色焦点框，已在 `93294ca` 去掉并原生复测 |
 | 6 | 相对文稿链接 | 阅读模式中点「安装指南」（`<docs/安装 指南.md#第二步>`） | 打开含空格的中文文件名文稿并滚动到「第二步」 |
 | 7 | 中文/空格图片路径 | 打开 `周报.md`（`周报.assets/…`） | 阅读模式和编辑区都显示两张图。同一文稿在 0.3.0 中两张图都显示「图片暂时无法读取」 |
 | 8 | 外部修改（本地无改动） | 应用打开时在磁盘上改写文件 | 自动载入新内容，不产生恢复副本 |
@@ -203,12 +203,12 @@ PASS: English chrome, dialogs, capture, save status, word plurals, live/persiste
 | 14 | 退出前保存 | 键入后、自动保存前立即退出 | 先拒绝一次、保存后退出；「退出前最后一句。」已写入磁盘 |
 | 15 | 文件关联 | `NSWorkspace.urlsForApplications(toOpen:)` 查询 `.md` 的可选应用；读取显示名 | 放在 `~/Library/Application Support` 下的包被列为 Markdown 打开方式，显示名为「留白」。`/tmp` 下的包被 LaunchServices 标为临时目录应用、不参与匹配，属系统行为。探测用副本测后已注销并删除 |
 | 16 | 真实中文输入法 | 微信输入法拼音键入 `nihao`，再按 1 选词 | 组字期间不保存、不重排；选词后提交「你好」并自动保存 |
-| 17 | 最终提交复测：含 HTML 的 README | 用 `5ccd112` 重新打包，打开 README 进入阅读模式 | 消毒路径渲染正常，无焦点框。脚注上方原来有两条线（浏览器默认的深色分隔线加 section 边框），已在 `5ccd112` 改为一条主题色细线，并原生复测 |
+| 17 | 最终提交复测：含 HTML 的 README | 用 `1598c4e` 重新打包，打开 README 进入阅读模式 | 消毒路径渲染正常，无焦点框。脚注上方原来有两条线（浏览器默认的深色分隔线加 section 边框），已在 `1598c4e` 改为一条主题色细线，并原生复测 |
 | 18 | 纯 Markdown 快速路径 | 通过相对链接打开不含原始 HTML 的 `align.md` | 表格左/中/右对齐、只读任务框、提示块、代码高亮、WebP 图片都正常；行内代码里的 `<script>` 原样显示，`javascript:` 链接保持为纯文本 |
-| 19 | PDF 导出 | `long.md`（18 节、对齐表格、代码块、BMP 图）→「导出 PDF → 保存 PDF」，保存面板以窗口表单（sheet）出现 | 6 页 A4（595×842 pt）；表格对齐、代码块、图片和最后一行都在；PDFKit 能提取全部文字。发现两个 0.3.0 就有的问题（标题落在页底、文字层是部首码位），已在 `cf84fe7` `2feb91c` 修复，见「工具栏改版与 PDF 修复」 |
-| 20 | 新顶栏 | `6de72dd` 重新打包，用辅助功能按下「分栏」「阅读」、··· 和侧栏按钮 | 三选一、··· 菜单（含快捷键与禁用提示）、两标签侧栏在 WebKit 中显示正常；切换时文稿不变 |
-| 21 | 新格式栏 | `ce13a36` 重新打包，打开标题菜单 | 分组、图标、「标题 1」随光标显示正确，菜单中当前级别已勾选。发现菜单向按钮左侧展开、超出纸面，已在 `e06a9fd` 改为左对齐在按钮下方（浏览器回归断言位置） |
-| 22 | 真实应用导出 PDF | `ce13a36` 重新打包，长文稿经「导出 → 导出 PDF → 保存 PDF」，保存面板中按「保存」 | 6 页 A4；原先落在页底的第 4、7、17 节都移到下一页开头；文字层没有部首码位，「长文导出测试」可搜索；文件含原 PDF 与一段增量更新。保存面板默认目录是应用启动时所在的仓库根目录，文件保存后立即移到 `/tmp` |
+| 19 | PDF 导出 | `long.md`（18 节、对齐表格、代码块、BMP 图）→「导出 PDF → 保存 PDF」，保存面板以窗口表单（sheet）出现 | 6 页 A4（595×842 pt）；表格对齐、代码块、图片和最后一行都在；PDFKit 能提取全部文字。发现两个 0.3.0 就有的问题（标题落在页底、文字层是部首码位），已在 `0696d5e` `4d64ef5` 修复，见「工具栏改版与 PDF 修复」 |
+| 20 | 新顶栏 | `411fcc5` 重新打包，用辅助功能按下「分栏」「阅读」、··· 和侧栏按钮 | 三选一、··· 菜单（含快捷键与禁用提示）、两标签侧栏在 WebKit 中显示正常；切换时文稿不变 |
+| 21 | 新格式栏 | `92688fd` 重新打包，打开标题菜单 | 分组、图标、「标题 1」随光标显示正确，菜单中当前级别已勾选。发现菜单向按钮左侧展开、超出纸面，已在 `7a3c575` 改为左对齐在按钮下方（浏览器回归断言位置） |
+| 22 | 真实应用导出 PDF | `92688fd` 重新打包，长文稿经「导出 → 导出 PDF → 保存 PDF」，保存面板中按「保存」 | 6 页 A4；原先落在页底的第 4、7、17 节都移到下一页开头；文字层没有部首码位，「长文导出测试」可搜索；文件含原 PDF 与一段增量更新。保存面板默认目录是应用启动时所在的仓库根目录，文件保存后立即移到 `/tmp` |
 
 ### 仍未原生验证
 

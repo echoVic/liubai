@@ -1,13 +1,13 @@
 #!/bin/sh
 # Compare performance of a base revision with the working tree on this machine.
 # Usage: scripts/bench/run.sh [base-ref] [out-dir]
-#   base-ref defaults to 9fa3cf6 (0.3.0); out-dir defaults to docs/performance/raw/<date>.
+#   base-ref defaults to 29925c3 (0.3.0); out-dir defaults to docs/performance/raw/<date>.
 #   ROUNDS (default 2) repeats every suite; base and head alternate within each round so
 #   load changes on a busy machine hit both trees, and the summary keeps the best result.
 # Requires Go, Bun 1.4.x (via npx), Python Playwright + Chrome, and installed node_modules.
 set -eu
 repo=$(cd "$(dirname "$0")/../.." && pwd)
-base_ref=${1:-9fa3cf6}
+base_ref=${1:-29925c3}
 out=${2:-$repo/docs/performance/raw/$(date +%Y-%m-%d)}
 rounds=${ROUNDS:-2}
 work=$(mktemp -d /tmp/liubai-bench.XXXXXX)

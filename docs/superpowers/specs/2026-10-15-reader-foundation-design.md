@@ -2,7 +2,7 @@
 
 **日期**：2026-10-15
 **状态**：已实现并验证（实现由本机 Codex 逐任务完成，编排审查与验证见验证记录）
-**基线**：`feat/split-preview` @ `9fa3cf6`（0.3.0）
+**基线**：`feat/split-preview` @ `29925c3`（0.3.0）
 **实施计划**：[2026-10-15-reader-foundation.md](../plans/2026-10-15-reader-foundation.md)
 **验证记录**：[2026-10-15-reader-foundation.md](../validation/2026-10-15-reader-foundation.md)
 

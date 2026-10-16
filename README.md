@@ -64,30 +64,14 @@ npx --yes bun@1.4.3 scripts/check-performance.ts
 python3 scripts/check-preview.py
 python3 scripts/check-pdf.py
 node scripts/build.mjs
-go build -o /tmp/liubai-preview-acceptance .
-data_dir="$(mktemp -d /tmp/liubai-preview-data.XXXXXX)"
-python3 $WEBAPP_TESTING/scripts/with_server.py \
-  --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4195 -data-dir $data_dir" \
-  --port 4195 -- python3 scripts/check-split-preview.py http://127.0.0.1:4195
-reader_dir="$(mktemp -d /tmp/liubai-reader-data.XXXXXX)"
-python3 $WEBAPP_TESTING/scripts/with_server.py \
-  --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4196 -data-dir $reader_dir" \
-  --port 4196 -- python3 scripts/check-reader.py http://127.0.0.1:4196
-english_dir="$(mktemp -d /tmp/liubai-english-data.XXXXXX)"
-python3 $WEBAPP_TESTING/scripts/with_server.py \
-  --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4199 -data-dir $english_dir" \
-  --port 4199 -- python3 scripts/check-english.py http://127.0.0.1:4199
-capture_dir="$(mktemp -d /tmp/liubai-capture-data.XXXXXX)"
-python3 $WEBAPP_TESTING/scripts/with_server.py \
-  --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4198 -data-dir $capture_dir" \
-  --port 4198 -- python3 scripts/check-capture.py http://127.0.0.1:4198
-toolbar_dir="$(mktemp -d /tmp/liubai-toolbar-data.XXXXXX)"
-python3 $WEBAPP_TESTING/scripts/with_server.py \
-  --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4197 -data-dir $toolbar_dir" \
-  --port 4197 -- python3 scripts/check-toolbar.py http://127.0.0.1:4197
+scripts/e2e.sh check-split-preview
+scripts/e2e.sh check-reader
+scripts/e2e.sh check-toolbar
+scripts/e2e.sh check-capture
+scripts/e2e.sh check-english
 ```
 
-Python 浏览器回归使用已安装的 Chrome channel，不下载 Playwright Chromium。应用依赖 macOS 13 或以上。
+`scripts/e2e.sh` 为每项浏览器回归编译一次程序，用新的数据目录启动本地网页服务，跑完后关闭。Python 浏览器回归使用已安装的 Chrome channel，不下载 Playwright Chromium。应用依赖 macOS 13 或以上。
 
 性能对比：`ROUNDS=2 scripts/bench/run.sh 9fa3cf6 docs/performance/raw/<日期>` 在同一台机器上交替运行 0.3.0 与当前工作区的编辑、预览、存储基准，并生成 `summary.md`，约 8 分钟。存储基准也可单独运行：`go test -tags perf -run '^$' -bench . -benchtime 20x .`，普通 `go test` 不会运行它们。
 

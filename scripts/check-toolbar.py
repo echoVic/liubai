@@ -95,6 +95,9 @@ def check_format_bar(page):
         heading.click()
         expect(menu).to_be_visible()
         expect(menu.get_by_role("menuitemradio")).to_have_text(["正文", "标题 1", "标题 2", "标题 3"])
+        # Dropdowns on the left half open left-aligned under their button.
+        button_box, menu_box = heading.bounding_box(), menu.bounding_box()
+        assert abs(menu_box["x"] - button_box["x"]) <= 1 and menu_box["y"] >= button_box["y"] + button_box["height"], (button_box, menu_box)
         expect(menu.locator('[aria-checked="true"]')).to_have_count(1)
         accessible_buttons(page)
         menu.locator(f'[data-menu-action="{action}"]').click()
@@ -261,6 +264,9 @@ def run(page):
     expect(menu).to_be_visible()
     expect(more).to_have_attribute("aria-expanded", "true")
     expect(first).to_be_focused()
+    # Dropdowns on the right half open right-aligned under their button.
+    button_box, menu_box = more.bounding_box(), menu.bounding_box()
+    assert abs((menu_box["x"] + menu_box["width"]) - (button_box["x"] + button_box["width"])) <= 1 and menu_box["y"] >= button_box["y"] + button_box["height"], (button_box, menu_box)
     accessible_buttons(page)
     expect(source).to_have_attribute("aria-disabled", "true")
     expect(source).to_contain_text("仅分栏可用")

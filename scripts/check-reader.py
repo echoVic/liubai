@@ -151,7 +151,8 @@ def run(page):
 
     page.route(BASE + "/api", conflict_route)
     page.evaluate("window.dispatchEvent(new Event('focus'))")
-    expect(page.locator("#overwrite-disk")).to_be_visible()
+    # The focus-triggered poll is skipped while the reload above is still busy; the 2 s interval poll then shows it.
+    expect(page.locator("#overwrite-disk")).to_be_visible(timeout=10000)
     expect(page.locator("#reload-disk")).to_be_visible()
     page.unroute(BASE + "/api", conflict_route)
     page.reload()

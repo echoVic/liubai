@@ -1,7 +1,8 @@
 // Reusable menu-button keyboard and dismissal behaviour; actions belong to the caller.
 export function attachMenu(button:HTMLElement,menu:HTMLElement,onSelect:(id:string)=>void){
  const items=()=>Array.from(menu.querySelectorAll<HTMLElement>('[role=menuitem],[role=menuitemcheckbox],[role=menuitemradio]')).filter(el=>!el.hidden&&el.getAttribute('aria-disabled')!=='true'&&!(el instanceof HTMLButtonElement&&el.disabled));
- function position(){const r=button.getBoundingClientRect();menu.style.top=(r.bottom+6)+'px';menu.style.right=Math.max(8,Math.min(innerWidth-r.right,innerWidth-menu.offsetWidth-8))+'px'}
+ // Open toward the middle of the window: left-aligned under buttons on the left half, right-aligned on the right half.
+ function position(){const r=button.getBoundingClientRect(),room=innerWidth-menu.offsetWidth-8;menu.style.top=(r.bottom+6)+'px';if(r.left+r.width/2<innerWidth/2){menu.style.right='auto';menu.style.left=Math.max(8,Math.min(r.left,room))+'px'}else{menu.style.left='auto';menu.style.right=Math.max(8,Math.min(innerWidth-r.right,room))+'px'}}
  function close(restore=false){menu.hidden=true;button.setAttribute('aria-expanded','false');if(restore)button.focus()}
  function open(){menu.hidden=false;button.setAttribute('aria-expanded','true');position();items()[0]?.focus()}
  button.addEventListener('click',()=>{if(menu.hidden)open();else close(true)});

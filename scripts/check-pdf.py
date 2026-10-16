@@ -45,8 +45,10 @@ def main():
         encoding="utf-8",
     )
     helper = ARTIFACTS / "check-pdf"
-    run("swiftc", "-O", "-module-cache-path", str(ARTIFACTS / "module-cache"),
-        str(PROJECT / "scripts/check-pdf.swift"), "-o", str(helper))
+    # A shared module cache: building AppKit/WebKit modules from scratch takes minutes on a busy machine.
+    cache = Path(tempfile.gettempdir()) / "liubai-check-pdf-module-cache"
+    run("swiftc", "-O", "-module-cache-path", str(cache),
+        str(PROJECT / "scripts/check-pdf.swift"), "-o", str(helper), timeout=900)
     raw, fixed = ARTIFACTS / "raw.pdf", ARTIFACTS / "fixed.pdf"
     run(str(helper), "print", str(html), str(raw), timeout=60)
     go_env = dict(os.environ, LIUBAI_PDF_IN=str(raw), LIUBAI_PDF_OUT=str(fixed))

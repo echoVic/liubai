@@ -270,6 +270,30 @@ def check_writing_sheet(page):
     page.set_viewport_size({"width": 1120, "height": 820})
 
 
+def check_split_columns(page):
+    select_view(page, "split")
+    for width, height in ((1700, 1100), (1120, 820)):
+        page.set_viewport_size({"width": width, "height": height})
+        page.evaluate("async () => {await document.fonts.ready;await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))}")
+        g = page.evaluate("""() => {
+          const pane=document.querySelector('.editor-pane'), paper=document.querySelector('.paper'), footer=document.querySelector('.paper-bottom');
+          const p=pane.getBoundingClientRect(), r=paper.getBoundingClientRect(), f=footer.getBoundingClientRect();
+          return {pane:p.width,preview:document.querySelector('#preview').getBoundingClientRect().width,paper:r.width,
+            paperBottom:r.bottom,footerBottom:f.bottom,text:document.querySelector('.cm-content').getBoundingClientRect().width,
+            contentBottom:p.top+pane.clientTop+pane.clientHeight-parseFloat(getComputedStyle(pane).paddingBottom),
+            scroll:pane.scrollHeight-pane.clientHeight};
+        }""")
+        # Editor and reading view share the width; the sheet fills its column and its height.
+        assert abs(g["pane"] - g["preview"]) <= 2 and abs(g["paper"] - g["pane"]) <= 2, g
+        assert abs(g["paperBottom"] - g["contentBottom"]) <= 2 and g["paperBottom"] - 80 <= g["footerBottom"] <= g["paperBottom"], g
+        assert g["scroll"] == 0, g
+        if width == 1700:
+            # 舒适 still caps the text inside the wider column.
+            assert g["text"] <= 760 - 100 + 2, g
+    page.set_viewport_size({"width": 1120, "height": 820})
+    select_view(page, "single")
+
+
 def run(page):
     page.goto(BASE)
     expect(page.locator(".cm-content")).to_be_visible()
@@ -289,6 +313,7 @@ def run(page):
 
     check_format_bar(page)
     check_writing_sheet(page)
+    check_split_columns(page)
 
     # Use the real New action and autosave before checking sidebar headings/recent.
     with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
@@ -474,7 +499,7 @@ def run(page):
             page.locator("#format-bar").screenshot(path=str(ARTIFACTS / f"format-bar-{width}-{view}.png"))
         page.locator('[data-view="single"]').click()
         page.locator(".topbar").screenshot(path=str(ARTIFACTS / f"toolbar-{width}.png"))
-    print("PASS: paper height/footer/no-scroll/long-document/click-to-write, full/normal/wide widths/reload/reading/split, format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
+    print("PASS: paper height/footer/no-scroll/long-document/click-to-write, split equal columns/filled sheet, full/normal/wide widths/reload/reading/split, format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
 
 
 with sync_playwright() as playwright:

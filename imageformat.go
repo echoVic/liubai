@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/xml"
-	"errors"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -46,10 +45,10 @@ func sniffImage(b []byte) (imageInfo, error) {
 		}
 	}
 	if info.Format == "" {
-		return imageInfo{}, errors.New("图片格式不受支持")
+		return imageInfo{}, messageError("bImageFormatUnsupported", nil)
 	}
 	if info.Width > 16000 || info.Height > 16000 {
-		return imageInfo{}, errors.New("图片尺寸超过 16000 像素")
+		return imageInfo{}, messageError("bImageDimensionsTooLarge", nil)
 	}
 	return info, nil
 }

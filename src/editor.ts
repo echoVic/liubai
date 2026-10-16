@@ -1,3 +1,4 @@
+import {messages,pageLocale} from './i18n';
 import { EditorState, Compartment, RangeSetBuilder, StateEffect, StateField, type Extension } from '@codemirror/state';
 import { EditorView, Decoration, WidgetType, ViewPlugin, type DecorationSet, type ViewUpdate, keymap, placeholder } from '@codemirror/view';
 import { history,historyKeymap,defaultKeymap,indentWithTab,undo,redo } from '@codemirror/commands';
@@ -5,7 +6,7 @@ import { markdown,markdownLanguage,markdownKeymap } from '@codemirror/lang-markd
 import { languages } from '@codemirror/language-data';
 import { syntaxTree,syntaxHighlighting,HighlightStyle,bracketMatching,indentOnInput } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
-import { searchKeymap,highlightSelectionMatches,openSearchPanel } from '@codemirror/search';
+import { searchKeymap,highlightSelectionMatches,openSearchPanel,closeSearchPanel } from '@codemirror/search';
 import { GFM } from '@lezer/markdown';
 import type { SyntaxNode } from '@lezer/common';
 import MarkdownIt from 'markdown-it';
@@ -15,6 +16,11 @@ import {htmlToMarkdown,pasteText,replacePasteImage,type PasteImage} from './past
 
 const md=new MarkdownIt({html:false,linkify:false});
 export const mode=new Compartment();
+export const editorLocale=new Compartment();
+export function localizedEditor(){return [placeholder(messages.fStartWithASentence()),EditorView.contentAttributes.of({'aria-label':messages.fDocumentText(),'spellcheck':'false'}),EditorState.phrases.of({
+ 'next':messages.fNext(),'previous':messages.fPrevious(),'all':messages.fAll(),'match case':messages.fMatchCase(),'regexp':messages.fRegexp(),'by word':messages.fWholeWord(),'replace':messages.fReplace(),'replace all':messages.fReplaceAll(),'Go to line':messages.fGoToLine(),'go':messages.fGo(),'current match':messages.fCurrentMatch(),'on line':messages.fOnLine(),'replaced match on line $':messages.fReplacedOnLine('$'),'replaced $ matches':messages.fReplacements('$'),
+ 'Find':messages.fFind(),'Replace':messages.fReplace(),'Next':messages.fNext(),'Previous':messages.fPrevious(),'All':messages.fAll(),'Match case':messages.fMatchCase(),'Regular expression':messages.fRegexp(),'By word':messages.fWholeWord(),'Replace all':messages.fReplaceAll(),'close':messages.fClose(),'Find:':messages.fFindLabel(),'Replace:':messages.fReplaceLabel(),
+})]}
 export const setComposing=StateEffect.define<boolean>();
 export const composing=StateField.define<boolean>({create:()=>false,update:(v,tr)=>tr.effects.reduce((a,e)=>e.is(setComposing)?e.value:a,v)});
 export const setFocus=StateEffect.define<boolean>();
@@ -36,9 +42,10 @@ const focusDecorations=StateField.define<DecorationSet>({
  provide:field=>EditorView.decorations.from(field)
 });
 class TaskWidget extends WidgetType {
+ readonly locale=pageLocale();
  constructor(readonly from:number,readonly checked:boolean){super()}
- eq(o:TaskWidget){return o.from===this.from&&o.checked===this.checked}
- toDOM(view:EditorView){const input=document.createElement('input');input.type='checkbox';input.checked=this.checked;input.className='task-check';input.setAttribute('aria-label',this.checked?'标记为未完成':'标记为已完成');input.onmousedown=e=>e.preventDefault();input.onchange=()=>{if(view.state.readOnly){input.checked=this.checked;return}view.dispatch({changes:{from:this.from,to:this.from+3,insert:input.checked?'[x]':'[ ]'},userEvent:'input.task'});view.focus()};return input}
+ eq(o:TaskWidget){return o.locale===this.locale&&o.from===this.from&&o.checked===this.checked}
+ toDOM(view:EditorView){const input=document.createElement('input');input.type='checkbox';input.checked=this.checked;input.className='task-check';input.setAttribute('aria-label',this.checked?messages.fMarkAsIncomplete():messages.fMarkAsComplete());input.onmousedown=e=>e.preventDefault();input.onchange=()=>{if(view.state.readOnly){input.checked=this.checked;return}view.dispatch({changes:{from:this.from,to:this.from+3,insert:input.checked?'[x]':'[ ]'},userEvent:'input.task'});view.focus()};return input}
  ignoreEvent(){return true}
 }
 
@@ -52,15 +59,17 @@ const colours=HighlightStyle.define([
  {tag:[tags.number,tags.atom],color:'var(--primary)'}
 ]);
 class ImageWidget extends WidgetType{
+ readonly locale=pageLocale();
  constructor(readonly dest:string,readonly alt:string,readonly resolve:(dest:string)=>Promise<string>){super()}
- eq(o:ImageWidget){return o.dest===this.dest&&o.alt===this.alt}
- toDOM(){const wrap=document.createElement('figure');wrap.className='inline-image';const img=new Image();img.alt=this.alt;img.loading='lazy';wrap.append(img);this.resolve(this.dest).then(url=>{img.src=url}).catch(()=>{const msg=document.createElement('span');msg.textContent='图片暂时无法读取 · '+this.alt;wrap.replaceChildren(msg)});img.onerror=()=>{wrap.textContent='图片资源缺失 · '+this.alt};return wrap}
+ eq(o:ImageWidget){return o.locale===this.locale&&o.dest===this.dest&&o.alt===this.alt}
+ toDOM(){const wrap=document.createElement('figure');wrap.className='inline-image';const img=new Image();img.alt=this.alt;img.loading='lazy';wrap.append(img);this.resolve(this.dest).then(url=>{img.src=url}).catch(()=>{const msg=document.createElement('span');msg.textContent=messages.fImageTemporarilyUnreadable(this.alt);wrap.replaceChildren(msg)});img.onerror=()=>{wrap.textContent=messages.fImageResourceMissing(this.alt)};return wrap}
  ignoreEvent(){return false}
 }
 class TableWidget extends WidgetType{
+ readonly locale=pageLocale();
  constructor(readonly raw:string,readonly from:number,readonly edit?:()=>void){super()}
- eq(o:TableWidget){return o.raw===this.raw&&o.from===this.from}
- toDOM(view:EditorView){const el=document.createElement('div');el.className='rendered-table';el.innerHTML=md.render(this.raw);const b=document.createElement('button');b.className='table-edit';b.textContent='编辑表格';b.onmousedown=e=>e.preventDefault();b.onclick=()=>{view.dispatch({selection:{anchor:this.from+1}});this.edit?.()};el.append(b);return el}
+ eq(o:TableWidget){return o.locale===this.locale&&o.raw===this.raw&&o.from===this.from}
+ toDOM(view:EditorView){const el=document.createElement('div');el.className='rendered-table';el.innerHTML=md.render(this.raw);const b=document.createElement('button');b.className='table-edit';b.textContent=messages.fEditTable();b.onmousedown=e=>e.preventDefault();b.onclick=()=>{view.dispatch({selection:{anchor:this.from+1}});this.edit?.()};el.append(b);return el}
  ignoreEvent(){return true}
 }
 function selectedLines(state:EditorState){
@@ -84,7 +93,7 @@ export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promis
   if(n.name==='Paragraph')for(const image of n.node.getChildren('Image')){
    if(touched(image.from,image.to)||!imageOnLine(state,image))continue;
    const dest=destination(state,image),end=image.getChildren('LinkMark')[1];
-   if(dest)builder.add(image.from,image.to,Decoration.replace({widget:new ImageWidget(dest,end?state.sliceDoc(image.from+2,end.from):'图片',resolve),block:true}));
+   if(dest)builder.add(image.from,image.to,Decoration.replace({widget:new ImageWidget(dest,end?state.sliceDoc(image.from+2,end.from):messages.fImage(),resolve),block:true}));
   }
   return false;
  }});
@@ -119,7 +128,7 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
    if(name==='Blockquote')lineClass(n.from,n.to,'md-quote');
    if(name==='FencedCode')lineClass(n.from,n.to,'md-code-line');
    const add=(dec:Decoration)=>{const key=n.from+':'+n.to+':'+name;if(!marked.has(key)){marked.add(key);decorations.push({from:n.from,to:n.to,dec})}};
-   if(name==='Link')add(Decoration.mark({class:'md-link',attributes:{'data-href':destination(state,n.node),title:'⌘ / Ctrl 点击打开链接'}}));
+   if(name==='Link')add(Decoration.mark({class:'md-link',attributes:{'data-href':destination(state,n.node),title:messages.fCtrlClickToOpenTheLink()}}));
    if(name==='InlineCode')add(Decoration.mark({class:'md-inline-code'}));
    if(!touched(n.from,n.to)){
     if(name==='TaskMarker'){add(Decoration.replace({widget:new TaskWidget(n.from,state.sliceDoc(n.from,n.to).toLowerCase()==='[x]')}));return false}
@@ -146,8 +155,7 @@ export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>P
   history(),composing,focusField,focusDecorations,markdown({base:markdownLanguage,codeLanguages:languages,extensions:GFM}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),
   EditorView.editorAttributes.of(view=>({class:view.state.field(focusField)?'cm-focus-on':''})),
   keymap.of([...markdownKeymap,...historyKeymap,...searchKeymap,...defaultKeymap,indentWithTab]),
-  mode.of(doc.position.source?[]:richExtensions(resolve,onTable)),EditorView.lineWrapping,placeholder('从一句话开始……'),
-  EditorView.contentAttributes.of({'aria-label':'文稿正文','spellcheck':'false'}),
+  mode.of(doc.position.source?[]:richExtensions(resolve,onTable)),EditorView.lineWrapping,editorLocale.of(localizedEditor()),
   EditorView.updateListener.of(u=>{if(u.docChanged||u.selectionSet)onChange(u.docChanged)}),
   EditorView.domEventHandlers({
    compositionstart:(_e,v)=>{v.dispatch({effects:setComposing.of(true)});onCompose(true);return false},
@@ -176,4 +184,4 @@ export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>P
    }})
  ]});return new EditorView({state,parent});
 }
-export {undo,redo,openSearchPanel,EditorState,EditorView};
+export {undo,redo,openSearchPanel,closeSearchPanel,EditorState,EditorView};

@@ -517,7 +517,7 @@ with sync_playwright() as playwright:
     browser = playwright.chromium.launch(
         headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome")
     )
-    page = browser.new_page(viewport={"width": 1120, "height": 820})
+    page = browser.new_page(locale="zh-CN", viewport={"width": 1120, "height": 820})
     page.add_init_script("""(() => {
       window.__liubaiPreviewRenders = 0;
       const replaceChildren = Element.prototype.replaceChildren;

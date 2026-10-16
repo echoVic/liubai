@@ -4,6 +4,8 @@ import (
 	"regexp"
 	"strings"
 	"unicode/utf8"
+
+	"liubai/locales"
 )
 
 func frontMatterEnd(s string) int {
@@ -36,6 +38,13 @@ var summaryRule = regexp.MustCompile(`^(?:\*\s*){3,}$|^(?:-\s*){3,}$|^(?:_\s*){3
 var summaryTable = regexp.MustCompile(`^\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?$`)
 
 func inferredTitle(s string) string {
+	if title := inferredContentTitle(s); title != "" {
+		return title
+	}
+	return locales.BUntitled()
+}
+
+func inferredContentTitle(s string) string {
 	if end := frontMatterEnd(s); end > 0 {
 		for line := range strings.Lines(s[:end]) {
 			if value, ok := strings.CutPrefix(strings.TrimSpace(line), "title:"); ok {
@@ -79,7 +88,7 @@ func inferredTitle(s string) string {
 			return shortTitle(line)
 		}
 	}
-	return "未命名文稿"
+	return ""
 }
 
 func shortTitle(s string) string {

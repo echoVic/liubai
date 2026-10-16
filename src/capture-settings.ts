@@ -1,3 +1,4 @@
+import {messages,pageLocale,onPageLocaleChange} from './i18n';
 import {call,desktop,type CaptureSettings} from './types';
 import {recordCaptureShortcut,displayCaptureShortcut} from './capture-input';
 type CaptureStatus={settings:CaptureSettings;error:string};
@@ -15,7 +16,7 @@ export function captureSettingsDialog(show:()=>void){
  }
  enabled.onchange=()=>update({enabled:enabled.checked});
  login.onchange=()=>update({openAtLogin:login.checked});
- shortcut.onfocus=()=>{recording=true;shortcut.value='';shortcut.placeholder='按下快捷键…'};
+ shortcut.onfocus=()=>{recording=true;shortcut.value='';shortcut.placeholder=messages.fPressAShortcut()};
  shortcut.onblur=()=>{recording=false;if(settings)render()};
  shortcut.onkeydown=e=>{
   if(!recording)return;
@@ -25,6 +26,12 @@ export function captureSettingsDialog(show:()=>void){
   e.preventDefault();e.stopPropagation();const key=recordCaptureShortcut(e);
   if(key){update({shortcut:key});shortcut.blur()}
  };
+ onPageLocaleChange(()=>{
+  shortcut.placeholder=messages.fPressAShortcut();
+  if(!document.querySelector<HTMLDialogElement>('#capture-settings')?.open)return;
+  const locale=pageLocale();
+  void queue.catch(()=>{}).then(()=>call<CaptureStatus>('GetCaptureSettings')).then(status=>{if(pageLocale()===locale)error.textContent=status.error}).catch(()=>{});
+ });
  return async()=>{
   await queue;const status=await call<CaptureStatus>('GetCaptureSettings');settings=status.settings;error.textContent=status.error;render();show();
  };

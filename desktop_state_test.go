@@ -121,3 +121,17 @@ func TestEditedIndicatorShowsConflictOrSaveFailureImmediately(t *testing.T) {
 		}
 	}
 }
+
+func TestNativeSaveFailureUsesStatusCodeAcrossLanguages(t *testing.T) {
+	for _, code := range []string{"saveFailed", "fileSaveFailed", "imageSaveFailed", "reloadRecoveryFailed", "recoveryUpdateFailed"} {
+		for _, prose := range []string{"File saved", "草稿已保存", "", "another language"} {
+			doc := Document{StatusCode: code, Status: prose}
+			if edited, _ := (editedIndicator{}).decision(time.Now(), false, doc.saveFailed()); !edited {
+				t.Fatalf("code %s with prose %q cleared edited marker", code, prose)
+			}
+		}
+	}
+	if (Document{StatusCode: "fileSaved", Status: "保存失败"}).saveFailed() {
+		t.Fatal("native state interpreted localized prose")
+	}
+}

@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"html"
 	"maps"
@@ -135,12 +134,12 @@ func (w *Workspace) imagePath(d *Document, dest string) (string, error) {
 	if strings.HasPrefix(dest, "liubai-asset:") {
 		name := strings.TrimPrefix(dest, "liubai-asset:")
 		if filepath.Base(name) != name || strings.ContainsAny(name, "/\\") || name == "" {
-			return "", errors.New("无效图片引用")
+			return "", messageError("bInvalidImageReference", nil)
 		}
 		return filepath.Join(w.root, "assets", d.ID, name), nil
 	}
 	if u.Scheme != "" || u.Host != "" {
-		return "", errors.New("仅支持本地图片引用")
+		return "", messageError("bLocalImagesOnly", nil)
 	}
 	p, err := url.PathUnescape(u.Path)
 	if err != nil {
@@ -148,7 +147,7 @@ func (w *Workspace) imagePath(d *Document, dest string) (string, error) {
 	}
 	if !filepath.IsAbs(p) {
 		if d.Path == "" {
-			return "", errors.New("相对路径缺少文稿目录")
+			return "", messageError("bImageNeedsDocumentDirectory", nil)
 		}
 		p = filepath.Join(filepath.Dir(d.Path), filepath.FromSlash(p))
 	}
@@ -170,10 +169,10 @@ func (w *Workspace) ImportImage(id, name, encoded string) (ImageResult, error) {
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil {
-		return ImageResult{}, errors.New("文稿不存在")
+		return ImageResult{}, messageError("bDocumentMissing", nil)
 	}
 	if len(encoded) > maxPicture*4/3+8 {
-		return ImageResult{}, errors.New("图片超过 20 MB")
+		return ImageResult{}, messageError("bImageTooLarge", nil)
 	}
 	b, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
@@ -181,7 +180,7 @@ func (w *Workspace) ImportImage(id, name, encoded string) (ImageResult, error) {
 	}
 	info, err := sniffImage(b)
 	if err != nil {
-		return ImageResult{}, errors.New("请选择 PNG、JPEG、GIF、WebP、SVG、AVIF 或 BMP 图片，最长边不超过 16000 像素")
+		return ImageResult{}, messageError("bUnsupportedImage", nil)
 	}
 	name = digest(b)[:24] + "." + info.Format
 	dir := filepath.Join(w.root, "assets", id)
@@ -218,7 +217,7 @@ func (w *Workspace) ReadImage(id, dest string) (ImageResult, error) {
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil {
-		return ImageResult{}, errors.New("文稿不存在")
+		return ImageResult{}, messageError("bDocumentMissing", nil)
 	}
 	allowed := false
 	target := ""
@@ -230,7 +229,7 @@ func (w *Workspace) ReadImage(id, dest string) (ImageResult, error) {
 		}
 	}
 	if !allowed {
-		return ImageResult{}, errors.New("图片未被文稿引用")
+		return ImageResult{}, messageError("bImageNotReferenced", nil)
 	}
 	p, err := w.imagePath(d, target)
 	if err != nil {
@@ -389,7 +388,7 @@ func validateRewrittenImages(source string, targets map[string]string) error {
 		}
 		dest := ref.Dest
 		if replacement, ok := targets[dest]; ok && replacement != dest {
-			return errors.New("图片引用无法转换，请将图片放在独立段落")
+			return messageError("bImageReferenceConversion", nil)
 		}
 	}
 	return nil
@@ -428,7 +427,7 @@ func writeImageExclusive(path string, b []byte) error {
 		if bytes.Equal(old, b) {
 			return nil
 		}
-		return errors.New("同名图片已存在且内容不同")
+		return messageError("bImageNameConflict", nil)
 	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
@@ -467,7 +466,7 @@ func (w *Workspace) materialize(d *Document, path string, all bool) (string, err
 		}
 		b, info, err := picture(source)
 		if err != nil {
-			return "", fmt.Errorf("图片缺失或无法读取：%s", dest)
+			return "", messageError("bImageUnreadable", map[string]any{"path": dest})
 		}
 		dir := filepath.Join(filepath.Dir(path), assetDir)
 		if err = os.MkdirAll(dir, 0755); err != nil {
@@ -489,7 +488,7 @@ func (w *Workspace) materialize(d *Document, path string, all bool) (string, err
 		}
 		dest := ref.Dest
 		if strings.HasPrefix(dest, "liubai-asset:") {
-			return "", errors.New("图片引用无法转换，请将图片放在独立段落")
+			return "", messageError("bImageReferenceConversion", nil)
 		}
 	}
 	return out, nil
@@ -517,7 +516,7 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil {
-		return ExportResult{}, errors.New("文稿不存在")
+		return ExportResult{}, messageError("bDocumentMissing", nil)
 	}
 	p, err := filepath.Abs(path)
 	if err != nil {
@@ -527,12 +526,12 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 		p += ".md"
 	}
 	if info, e := os.Lstat(p); e == nil && info.Mode()&os.ModeSymlink != 0 {
-		return ExportResult{}, errors.New("请选择普通文件路径，避免替换符号链接")
+		return ExportResult{}, messageError("bRegularFilePathRequired", nil)
 	}
 	if p == d.Path {
 		w.check(d, false)
 		if d.Conflict {
-			return ExportResult{}, errors.New("文件存在外部冲突，请选择新文件名")
+			return ExportResult{}, messageError("bExternalConflict", nil)
 		}
 	}
 	if err = os.MkdirAll(filepath.Dir(p), 0755); err != nil {
@@ -640,8 +639,9 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 	}
 	clone.Path = p
 	clone.Title = filepath.Base(p)
+	clone.GeneratedTitleSuffix = ""
 	clone.Conflict = false
-	clone.Status = "文件已保存"
+	clone.setStatus("fileSaved")
 	clone.Revision++
 	content := diskBytes(&clone)
 	for _, ref := range imageRefs(clone.Content) {
@@ -650,7 +650,7 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 		}
 		dest := ref.Dest
 		if strings.HasPrefix(dest, "liubai-asset:") {
-			return ExportResult{}, errors.New("存在无法转换的图片语法，请将图片引用单独放在一行后再保存")
+			return ExportResult{}, messageError("bUnsupportedImageSyntax", nil)
 		}
 	}
 	if info, e := os.Stat(p); e == nil {
@@ -668,7 +668,7 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 	clone.ImageAliases = aliases
 	*d = clone
 	if err = w.persist(d); err != nil {
-		d.Status = "文件已保存，恢复记录更新失败"
+		d.setStatus("recoveryUpdateFailed")
 	}
 	return ExportResult{Path: p, Missing: missing, Document: *d, Changes: changes}, err
 }
@@ -677,7 +677,7 @@ func (w *Workspace) Export(id, path string, allowMissing bool) (ExportResult, er
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil {
-		return ExportResult{}, errors.New("文稿不存在")
+		return ExportResult{}, messageError("bDocumentMissing", nil)
 	}
 	r := ExportResult{Missing: []string{}, Document: *d}
 	targets := map[string]string{}
@@ -694,7 +694,7 @@ func (w *Workspace) Export(id, path string, allowMissing bool) (ExportResult, er
 			if err == nil && u.Scheme == "" && u.Host == "" {
 				name = filepath.Clean(filepath.FromSlash(u.Path))
 			}
-			if name == "" || name == "." || filepath.IsAbs(name) || name == ".." || strings.HasPrefix(name, ".."+string(filepath.Separator)) || name == "文稿.md" {
+			if name == "" || name == "." || filepath.IsAbs(name) || name == ".." || strings.HasPrefix(name, ".."+string(filepath.Separator)) || name == "文稿.md" { // i18n-ignore: stable ZIP archive entry name
 				r.Missing = append(r.Missing, dest)
 				continue
 			}
@@ -738,7 +738,7 @@ func (w *Workspace) Export(id, path string, allowMissing bool) (ExportResult, er
 		_, e = item.Write(b)
 		return e
 	}
-	if err = write("文稿.md", []byte(body)); err == nil {
+	if err = write("文稿.md", []byte(body)); err == nil { // i18n-ignore: preserve exported archive entry name
 		for name, b := range assets {
 			if err = write(name, b); err != nil {
 				break

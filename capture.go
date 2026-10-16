@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 	"unicode/utf8"
+
+	"liubai/locales"
 )
 
 const defaultCaptureShortcut = "Ctrl+Alt+Cmd+N"
@@ -98,12 +100,12 @@ func (w *Workspace) Capture(text string) (Summary, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if strings.TrimSpace(text) == "" {
-		return Summary{}, errors.New("随手记是空的")
+		return Summary{}, messageError("bCaptureEmpty", nil)
 	}
 	if len(text) > maxDocument || !utf8.ValidString(text) {
-		return Summary{}, errors.New("文稿超过 8 MB 或编码无效")
+		return Summary{}, messageError("bInvalidDocument", nil)
 	}
-	d := &Document{ID: uid(), Content: text, Title: inferredTitle(text), Updated: time.Now().UnixMilli(), Status: "草稿已保存"}
+	d := &Document{ID: uid(), Content: text, Title: inferredTitle(text), Updated: time.Now().UnixMilli(), StatusCode: "draftSaved", Status: locales.In("zh-Hans").BStatusDraftSaved()}
 	// Millisecond resolution can tie during rapid captures. Keep newest-first deterministic.
 	for id, other := range w.docs {
 		if id != d.ID && other.Updated >= d.Updated {
@@ -146,11 +148,13 @@ type captureController struct {
 	toggle         func()
 	setOpenAtLogin func(bool) error
 	errorText      string
+	lastError      error
 }
 
 type CaptureStatus struct {
-	Settings CaptureSettings `json:"settings"`
-	Error    string          `json:"error"`
+	Settings   CaptureSettings `json:"settings"`
+	Error      string          `json:"error"`
+	errorCause error
 }
 
 func (c *captureController) apply(p CaptureSettings) error {
@@ -161,7 +165,7 @@ func (c *captureController) apply(p CaptureSettings) error {
 	}
 	if p.Enabled && c.registered == "" {
 		if err := c.registrar.Register(p.Shortcut, c.toggle); err != nil {
-			shortcutErr = fmt.Errorf("快捷键 %s 已被其他应用占用", p.Shortcut)
+			shortcutErr = messageError("bShortcutUnavailable", map[string]any{"shortcut": p.Shortcut})
 		} else {
 			c.registered = p.Shortcut
 		}
@@ -174,6 +178,7 @@ func (c *captureController) apply(p CaptureSettings) error {
 		}
 	}
 	err := errors.Join(shortcutErr, loginErr)
+	c.lastError = err
 	c.errorText = ""
 	if err != nil {
 		c.errorText = err.Error()

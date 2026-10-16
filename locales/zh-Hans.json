@@ -1,0 +1,1786 @@
+{
+  "@@locale": "zh-Hans",
+  "mygo.appName": "留白",
+  "mygo.appDescription": "Markdown 写作与阅读",
+  "@mygo.appName": {
+    "description": "Localized application identity shown by the operating system."
+  },
+  "@mygo.appDescription": {
+    "description": "Localized application identity shown by the operating system."
+  },
+  "fPaper": "纸白",
+  "@fPaper": {
+    "description": "Interface text for Paper."
+  },
+  "fAClearNeutralPage": "清晰的中性纸面",
+  "@fAClearNeutralPage": {
+    "description": "Interface text for A clear, neutral page."
+  },
+  "fWarm": "暖纸",
+  "@fWarm": {
+    "description": "Interface text for Warm."
+  },
+  "fSoftWarmIvory": "柔和的米纸暖调",
+  "@fSoftWarmIvory": {
+    "description": "Interface text for Soft, warm ivory."
+  },
+  "fMist": "雾绿",
+  "@fMist": {
+    "description": "Interface text for Mist."
+  },
+  "fAQuietGrayGreenSetting": "沉静的灰绿环境",
+  "@fAQuietGrayGreenSetting": {
+    "description": "Interface text for A quiet gray-green setting."
+  },
+  "fInk": "夜墨",
+  "@fInk": {
+    "description": "Interface text for Ink."
+  },
+  "fAMutedCharcoalNight": "克制的深炭夜色",
+  "@fAMutedCharcoalNight": {
+    "description": "Interface text for A muted charcoal night."
+  },
+  "fLocalDevelopmentSeparateDrafts": "本地开发版 · 独立草稿存档",
+  "@fLocalDevelopmentSeparateDrafts": {
+    "description": "Interface text for Local Development · Separate Drafts."
+  },
+  "fTyping": "正在输入",
+  "@fTyping": {
+    "description": "Interface text for Typing."
+  },
+  "fUnsaved": "待保存",
+  "@fUnsaved": {
+    "description": "Interface text for Unsaved."
+  },
+  "fADraftForThisMoment": "此刻 · 一篇草稿",
+  "@fADraftForThisMoment": {
+    "description": "Interface text for A Draft for This Moment."
+  },
+  "fBody": "正文",
+  "@fBody": {
+    "description": "Interface text for Body."
+  },
+  "fSaving": "正在保存",
+  "@fSaving": {
+    "description": "Interface text for Saving."
+  },
+  "fSaveFailedYourTextIsStillHere": "保存失败 · 当前输入仍在",
+  "@fSaveFailedYourTextIsStillHere": {
+    "description": "Interface text for Save Failed · Your Text Is Still Here."
+  },
+  "fTrySavingAgainYourTextIsStillHere": "请先重试保存，当前输入仍保留",
+  "@fTrySavingAgainYourTextIsStillHere": {
+    "description": "Interface text for Try saving again. Your text is still here.."
+  },
+  "fAPageToWriteOn": "一页写作桌",
+  "@fAPageToWriteOn": {
+    "description": "Interface text for A Page to Write On."
+  },
+  "fGiveEachSentenceTimeToArrive": "让一句话，有时间抵达。",
+  "@fGiveEachSentenceTimeToArrive": {
+    "description": "Interface text for Give each sentence time to arrive.."
+  },
+  "fContinueReading": "继续阅读",
+  "@fContinueReading": {
+    "description": "Interface text for Continue Reading."
+  },
+  "fAddAHeadingToSeeTheOutlineHere": "输入 # 标题后，大纲会出现在这里。",
+  "@fAddAHeadingToSeeTheOutlineHere": {
+    "description": "Interface text for Add a # heading to see the outline here.."
+  },
+  "fADocumentWaitingToBegin": "一篇等待开始的文稿",
+  "@fADocumentWaitingToBegin": {
+    "description": "Interface text for A document waiting to begin."
+  },
+  "fConfirmRemoval": "确认移除",
+  "@fConfirmRemoval": {
+    "description": "Interface text for Confirm Removal."
+  },
+  "fRemoveFromRecentDocuments": "从最近文稿移除",
+  "@fRemoveFromRecentDocuments": {
+    "description": "Interface text for Remove from Recent Documents."
+  },
+  "fNoDocumentsFound": "没有找到这篇文稿。",
+  "@fNoDocumentsFound": {
+    "description": "Interface text for No documents found.."
+  },
+  "fFinishComposingYourTextFirst": "请先确认输入法候选",
+  "@fFinishComposingYourTextFirst": {
+    "description": "Interface text for Finish composing your text first.."
+  },
+  "fChooseAgainWithin3SecondsToRemove": "3 秒内再选一次以确认移除",
+  "@fChooseAgainWithin3SecondsToRemove": {
+    "description": "Interface text for Choose again within 3 seconds to remove.."
+  },
+  "fRemovedFromRecentDocumentsTheFileIsUnchanged": "已从最近文稿移除，磁盘文件未改动",
+  "@fRemovedFromRecentDocumentsTheFileIsUnchanged": {
+    "description": "Interface text for Removed from Recent Documents. The file is unchanged.."
+  },
+  "fRemovedTheDraftStaysInTheTrashFolderFor": "已移除，草稿在废纸篓目录保留 30 天",
+  "@fRemovedTheDraftStaysInTheTrashFolderFor": {
+    "description": "Interface text for Removed. The draft stays in the trash folder for 30 days.."
+  },
+  "fMarkdownSourceIsAvailableInSplitView": "Markdown 源码仅在分栏中可用",
+  "@fMarkdownSourceIsAvailableInSplitView": {
+    "description": "Interface text for Markdown source is available in Split View.."
+  },
+  "fTheImageExceeds20MB": "图片超过 20 MB",
+  "@fTheImageExceeds20MB": {
+    "description": "Interface text for The image exceeds 20 MB.."
+  },
+  "fTheImageCouldNotBeRead": "图片无法读取",
+  "@fTheImageCouldNotBeRead": {
+    "description": "Interface text for The image could not be read.."
+  },
+  "fTheDocumentChangedInsertTheImageAgain": "文稿已切换，请重新插入",
+  "@fTheDocumentChangedInsertTheImageAgain": {
+    "description": "Interface text for The document changed. Insert the image again.."
+  },
+  "fPastedImage": "粘贴图片",
+  "@fPastedImage": {
+    "description": "Interface text for Pasted Image."
+  },
+  "fEditingIsUnavailableInReadingModePressRTo": "阅读模式下不能编辑，⌘⇧R 返回编辑",
+  "@fEditingIsUnavailableInReadingModePressRTo": {
+    "description": "Interface text for Editing is unavailable in Reading Mode. Press ⌘⇧R to return to editing.."
+  },
+  "fImage": "图片",
+  "@fImage": {
+    "description": "Interface text for Image."
+  },
+  "fSaveTheCurrentDocumentFirstFindTheOpenedFile": "当前文稿尚未保存，请先处理；打开的文件可从最近文稿进入",
+  "@fSaveTheCurrentDocumentFirstFindTheOpenedFile": {
+    "description": "Interface text for Save the current document first. Find the opened file in Recent Documents.."
+  },
+  "fMarkdownDownloadedUseExportToIncludeImages": "浏览器已下载 Markdown；含图片请使用“导出”",
+  "@fMarkdownDownloadedUseExportToIncludeImages": {
+    "description": "Interface text for Markdown downloaded. Use Export to include images.."
+  },
+  "fTextDownloadedImagesRemainOnThisMac": "当前正文已下载；图片仍保留在本机",
+  "@fTextDownloadedImagesRemainOnThisMac": {
+    "description": "Interface text for Text downloaded. Images remain on this Mac.."
+  },
+  "fTheDocumentArchiveIsNotReady": "文稿包尚未准备好",
+  "@fTheDocumentArchiveIsNotReady": {
+    "description": "Interface text for The document archive is not ready.."
+  },
+  "fDocumentArchiveDownloaded": "文稿包已下载",
+  "@fDocumentArchiveDownloaded": {
+    "description": "Interface text for Document archive downloaded."
+  },
+  "fMissingImageReferencesPreserved": " · 保留了缺失图片引用",
+  "@fMissingImageReferencesPreserved": {
+    "description": "Interface text for · Missing image references preserved."
+  },
+  "fExternalImagesNeedAnInternetConnection": " · 外链图片仍需联网",
+  "@fExternalImagesNeedAnInternetConnection": {
+    "description": "Interface text for · External images need an internet connection."
+  },
+  "fExportTheCompleteFormattedDocument": "将导出整篇排版。",
+  "@fExportTheCompleteFormattedDocument": {
+    "description": "Interface text for Export the complete formatted document.."
+  },
+  "fCopyTheTextAndBasicFormatting": "复制正文和基本格式。",
+  "@fCopyTheTextAndBasicFormatting": {
+    "description": "Interface text for Copy the text and basic formatting.."
+  },
+  "fDownloadHTMLWithLocalImagesEmbedded": "下载包含本地图片的 HTML。",
+  "@fDownloadHTMLWithLocalImagesEmbedded": {
+    "description": "Interface text for Download HTML with local images embedded.."
+  },
+  "fMissingImagesWillShowANote": " 缺失图片将显示提示。",
+  "@fMissingImagesWillShowANote": {
+    "description": "Interface text for Missing images will show a note.."
+  },
+  "fExternalImagesRemainAsLinks": " 外链图片保留为链接。",
+  "@fExternalImagesRemainAsLinks": {
+    "description": "Interface text for External images remain as links.."
+  },
+  "fCopyRichText": "复制富文本",
+  "@fCopyRichText": {
+    "description": "Interface text for Copy Rich Text."
+  },
+  "fSavePDF": "保存 PDF",
+  "@fSavePDF": {
+    "description": "Interface text for Save PDF."
+  },
+  "fPrintSaveAsPDF": "打印 / 另存为 PDF",
+  "@fPrintSaveAsPDF": {
+    "description": "Interface text for Print / Save as PDF."
+  },
+  "fDownloadHTML": "下载 HTML",
+  "@fDownloadHTML": {
+    "description": "Interface text for Download HTML."
+  },
+  "fRichTextCopiedImageSupportDependsOnTheReceiving": "已复制富文本；图片显示取决于接收应用",
+  "@fRichTextCopiedImageSupportDependsOnTheReceiving": {
+    "description": "Interface text for Rich text copied. Image support depends on the receiving app.."
+  },
+  "fFinishComposingYourTextToSaveAndQuit": "请先确认输入法候选，完成后会保存并退出",
+  "@fFinishComposingYourTextToSaveAndQuit": {
+    "description": "Interface text for Finish composing your text to save and quit.."
+  },
+  "fYourDocumentIsSavedLocallyYouCanCloseThis": "文稿已保存在本地，可以关闭此页面",
+  "@fYourDocumentIsSavedLocallyYouCanCloseThis": {
+    "description": "Interface text for Your document is saved locally. You can close this page.."
+  },
+  "fQuickNote": "随手记",
+  "@fQuickNote": {
+    "description": "Interface text for Quick Note."
+  },
+  "fQuickNoteSettings": "随手记设置…",
+  "@fQuickNoteSettings": {
+    "description": "Interface text for Quick Note Settings…."
+  },
+  "fNewDocument": "新建文稿",
+  "@fNewDocument": {
+    "description": "Interface text for New Document."
+  },
+  "fRename": "重命名…",
+  "@fRename": {
+    "description": "Interface text for Rename…."
+  },
+  "fOpenDocument": "打开文稿…",
+  "@fOpenDocument": {
+    "description": "Interface text for Open Document…."
+  },
+  "fSave": "保存",
+  "@fSave": {
+    "description": "Interface text for Save."
+  },
+  "fSaveAs": "另存为…",
+  "@fSaveAs": {
+    "description": "Interface text for Save As…."
+  },
+  "fExport": "导出…",
+  "@fExport": {
+    "description": "Interface text for Export…."
+  },
+  "fDocumentAndImagesZIP": "文稿与图片 ZIP",
+  "@fDocumentAndImagesZIP": {
+    "description": "Interface text for Document and Images ZIP."
+  },
+  "fExportPDF": "导出 PDF",
+  "@fExportPDF": {
+    "description": "Interface text for Export PDF."
+  },
+  "fPasteAsPlainText": "粘贴为纯文本",
+  "@fPasteAsPlainText": {
+    "description": "Interface text for Paste as Plain Text."
+  },
+  "fFocusMode": "专注模式",
+  "@fFocusMode": {
+    "description": "Interface text for Focus Mode."
+  },
+  "fRecentDocuments": "最近文稿",
+  "@fRecentDocuments": {
+    "description": "Interface text for Recent Documents."
+  },
+  "fRemoveCurrentDocumentFromRecents": "从最近文稿移除当前文稿",
+  "@fRemoveCurrentDocumentFromRecents": {
+    "description": "Interface text for Remove Current Document from Recents."
+  },
+  "fOutline": "大纲",
+  "@fOutline": {
+    "description": "Interface text for Outline."
+  },
+  "fFindInDocument": "查找正文",
+  "@fFindInDocument": {
+    "description": "Interface text for Find in Document."
+  },
+  "fToggleSplitView": "切换分栏",
+  "@fToggleSplitView": {
+    "description": "Interface text for Toggle Split View."
+  },
+  "fReadingMode": "阅读模式",
+  "@fReadingMode": {
+    "description": "Interface text for Reading Mode."
+  },
+  "fShowMarkdownSource": "显示 Markdown 源码",
+  "@fShowMarkdownSource": {
+    "description": "Interface text for Show Markdown Source."
+  },
+  "fInsertImage": "插入图片",
+  "@fInsertImage": {
+    "description": "Interface text for Insert Image."
+  },
+  "fAppearanceAndTypography": "外观与排版…",
+  "@fAppearanceAndTypography": {
+    "description": "Interface text for Appearance and Typography…."
+  },
+  "fAllCommands": "所有操作…",
+  "@fAllCommands": {
+    "description": "Interface text for All Commands…."
+  },
+  "fBoldSelection": "加粗选中文字",
+  "@fBoldSelection": {
+    "description": "Interface text for Bold Selection."
+  },
+  "fItalicizeSelection": "斜体选中文字",
+  "@fItalicizeSelection": {
+    "description": "Interface text for Italicize Selection."
+  },
+  "fHeading1": "标题 1",
+  "@fHeading1": {
+    "description": "Interface text for Heading 1."
+  },
+  "fHeading2": "标题 2",
+  "@fHeading2": {
+    "description": "Interface text for Heading 2."
+  },
+  "fHeading3": "标题 3",
+  "@fHeading3": {
+    "description": "Interface text for Heading 3."
+  },
+  "fStrikethrough": "删除线",
+  "@fStrikethrough": {
+    "description": "Interface text for Strikethrough."
+  },
+  "fInlineCode": "行内代码",
+  "@fInlineCode": {
+    "description": "Interface text for Inline Code."
+  },
+  "fInsertBlockquote": "插入引用",
+  "@fInsertBlockquote": {
+    "description": "Interface text for Insert Blockquote."
+  },
+  "fInsertTaskList": "插入任务列表",
+  "@fInsertTaskList": {
+    "description": "Interface text for Insert Task List."
+  },
+  "fInsertCodeBlock": "插入代码块",
+  "@fInsertCodeBlock": {
+    "description": "Interface text for Insert Code Block."
+  },
+  "fInsertEditTable": "插入 / 编辑表格",
+  "@fInsertEditTable": {
+    "description": "Interface text for Insert / Edit Table."
+  },
+  "fInsertEditLink": "插入 / 编辑链接",
+  "@fInsertEditLink": {
+    "description": "Interface text for Insert / Edit Link."
+  },
+  "fBulletedList": "无序列表",
+  "@fBulletedList": {
+    "description": "Interface text for Bulleted List."
+  },
+  "fNumberedList": "有序列表",
+  "@fNumberedList": {
+    "description": "Interface text for Numbered List."
+  },
+  "fUndo": "撤销",
+  "@fUndo": {
+    "description": "Interface text for Undo."
+  },
+  "fRedo": "重做",
+  "@fRedo": {
+    "description": "Interface text for Redo."
+  },
+  "fUseSaveAsToGiveAnExistingFileA": "已有文件可通过“另存为”设置新名称",
+  "@fUseSaveAsToGiveAnExistingFileA": {
+    "description": "Interface text for Use Save As to give an existing file a new name.."
+  },
+  "fUntitledDocument": "未命名文稿",
+  "@fUntitledDocument": {
+    "description": "Interface text for Untitled Document."
+  },
+  "fQuickNoteIsAvailableInTheDesktopApp": "随手记只在桌面版可用",
+  "@fQuickNoteIsAvailableInTheDesktopApp": {
+    "description": "Interface text for Quick Note is available in the desktop app.."
+  },
+  "fHeadingNotFound": "没有找到这个标题",
+  "@fHeadingNotFound": {
+    "description": "Interface text for Heading not found.."
+  },
+  "fThisTypeOfLinkIsNotSupported": "不支持打开此类链接",
+  "@fThisTypeOfLinkIsNotSupported": {
+    "description": "Interface text for This type of link is not supported.."
+  },
+  "fTheDocumentChangedReopenTheEditingPanel": "文稿已变化，请重新打开编辑面板",
+  "@fTheDocumentChangedReopenTheEditingPanel": {
+    "description": "Interface text for The document changed. Reopen the editing panel.."
+  },
+  "fItem": "项目",
+  "@fItem": {
+    "description": "Interface text for Item."
+  },
+  "fNote": "说明",
+  "@fNote": {
+    "description": "Interface text for Note."
+  },
+  "fEditLargeTablesInMarkdownSource": "大表格请在源码中编辑",
+  "@fEditLargeTablesInMarkdownSource": {
+    "description": "Interface text for Edit large tables in Markdown source.."
+  },
+  "fBold": "加粗",
+  "@fBold": {
+    "description": "Interface text for Bold."
+  },
+  "fItalic": "斜体",
+  "@fItalic": {
+    "description": "Interface text for Italic."
+  },
+  "fBlockquote": "引用",
+  "@fBlockquote": {
+    "description": "Interface text for Blockquote."
+  },
+  "fTaskList": "任务列表",
+  "@fTaskList": {
+    "description": "Interface text for Task List."
+  },
+  "fLink": "链接",
+  "@fLink": {
+    "description": "Interface text for Link."
+  },
+  "fTable": "表格",
+  "@fTable": {
+    "description": "Interface text for Table."
+  },
+  "fCodeBlock": "代码块",
+  "@fCodeBlock": {
+    "description": "Interface text for Code Block."
+  },
+  "fSource": "源码",
+  "@fSource": {
+    "description": "Interface text for Source."
+  },
+  "fShowMarkdownSourceM": "显示 Markdown 源码 ⌘⇧M",
+  "@fShowMarkdownSourceM": {
+    "description": "Interface text for Show Markdown Source ⌘⇧M."
+  },
+  "fOpen": "打开",
+  "@fOpen": {
+    "description": "Interface text for Open."
+  },
+  "fLoadedTheLatestVersionFromDisk": "已载入磁盘上的新版本",
+  "@fLoadedTheLatestVersionFromDisk": {
+    "description": "Interface text for Loaded the Latest Version from Disk."
+  },
+  "fPressAShortcut": "按下快捷键…",
+  "@fPressAShortcut": {
+    "description": "Interface text for Press a shortcut…."
+  },
+  "fSaveAsDraftEscClose": "⌘↩ 存为草稿 · Esc 关闭",
+  "@fSaveAsDraftEscClose": {
+    "description": "Interface text for ⌘↩ Save as Draft · Esc Close."
+  },
+  "fSavedAsDraft": "已存为草稿",
+  "@fSavedAsDraft": {
+    "description": "Interface text for Saved as Draft."
+  },
+  "fTheImageCouldNotBeDecoded": "图片无法解码",
+  "@fTheImageCouldNotBeDecoded": {
+    "description": "Interface text for The image could not be decoded.."
+  },
+  "fTheImageTookTooLongToLoad": "图片加载超时",
+  "@fTheImageTookTooLongToLoad": {
+    "description": "Interface text for The image took too long to load.."
+  },
+  "fClipboardUnavailableDownloadHTMLInstead": "剪贴板不可用，请下载 HTML",
+  "@fClipboardUnavailableDownloadHTMLInstead": {
+    "description": "Interface text for Clipboard unavailable. Download HTML instead.."
+  },
+  "fEnterAnHttpsHttpMailtoOrHeadingLink": "请输入 https://、http://、mailto: 或 #标题 链接",
+  "@fEnterAnHttpsHttpMailtoOrHeadingLink": {
+    "description": "Interface text for Enter an https://, http://, mailto:, or #heading link.."
+  },
+  "fATableNeedsAtLeastOneColumn": "表格至少需要一列",
+  "@fATableNeedsAtLeastOneColumn": {
+    "description": "Interface text for A table needs at least one column.."
+  },
+  "fMarkAsIncomplete": "标记为未完成",
+  "@fMarkAsIncomplete": {
+    "description": "Interface text for Mark as Incomplete."
+  },
+  "fMarkAsComplete": "标记为已完成",
+  "@fMarkAsComplete": {
+    "description": "Interface text for Mark as Complete."
+  },
+  "fEditTable": "编辑表格",
+  "@fEditTable": {
+    "description": "Interface text for Edit Table."
+  },
+  "fCtrlClickToOpenTheLink": "⌘ / Ctrl 点击打开链接",
+  "@fCtrlClickToOpenTheLink": {
+    "description": "Interface text for ⌘ / Ctrl-click to open the link."
+  },
+  "fStartWithASentence": "从一句话开始……",
+  "@fStartWithASentence": {
+    "description": "Interface text for Start with a sentence…."
+  },
+  "fDocumentText": "文稿正文",
+  "@fDocumentText": {
+    "description": "Interface text for Document Text."
+  },
+  "fComplete": "已完成",
+  "@fComplete": {
+    "description": "Interface text for Complete."
+  },
+  "fIncomplete": "未完成",
+  "@fIncomplete": {
+    "description": "Interface text for Incomplete."
+  },
+  "fTip": "提示",
+  "@fTip": {
+    "description": "Interface text for Tip."
+  },
+  "fImportant": "重要",
+  "@fImportant": {
+    "description": "Interface text for Important."
+  },
+  "fWarning": "警告",
+  "@fWarning": {
+    "description": "Interface text for Warning."
+  },
+  "fCaution": "注意",
+  "@fCaution": {
+    "description": "Interface text for Caution."
+  },
+  "fExternalImage": "外链图片",
+  "@fExternalImage": {
+    "description": "Interface text for External Image."
+  },
+  "fViewOnline": "（联网查看）",
+  "@fViewOnline": {
+    "description": "Interface text for (View Online)."
+  },
+  "fMissingImage": "图片缺失：",
+  "@fMissingImage": {
+    "description": "Interface text for Missing Image:."
+  },
+  "fUnreadableImage": "图片无法读取：",
+  "@fUnreadableImage": {
+    "description": "Interface text for Unreadable Image:."
+  },
+  "fDocumentProperties": "文稿属性",
+  "@fDocumentProperties": {
+    "description": "Interface text for Document Properties."
+  },
+  "fTheLocalServiceIsUnavailableKeepThisWindowOpen": "本地服务暂时不可用，请保留当前窗口",
+  "@fTheLocalServiceIsUnavailableKeepThisWindowOpen": {
+    "description": "Interface text for The local service is unavailable. Keep this window open.."
+  },
+  "fLiubai": "留白",
+  "@fLiubai": {
+    "description": "Interface text for Liubai."
+  },
+  "fSidebarRecentDocumentsAndOutline": "侧栏：最近文稿与大纲",
+  "@fSidebarRecentDocumentsAndOutline": {
+    "description": "Interface text for Sidebar: Recent Documents and Outline."
+  },
+  "fSidebar": "侧栏",
+  "@fSidebar": {
+    "description": "Interface text for Sidebar."
+  },
+  "fRename2": "重命名",
+  "@fRename2": {
+    "description": "Interface text for Rename."
+  },
+  "fOpening": "正在打开",
+  "@fOpening": {
+    "description": "Interface text for Opening."
+  },
+  "fView": "视图",
+  "@fView": {
+    "description": "Interface text for View."
+  },
+  "fShowTheEditor": "只显示编辑区",
+  "@fShowTheEditor": {
+    "description": "Interface text for Show the editor."
+  },
+  "fEdit": "编辑",
+  "@fEdit": {
+    "description": "Interface text for Edit."
+  },
+  "fShowTheEditorAndReadingViewSideBySide": "编辑区和阅读视图并排 ⌘\\",
+  "@fShowTheEditorAndReadingViewSideBySide": {
+    "description": "Interface text for Show the editor and reading view side by side ⌘\\."
+  },
+  "fSplit": "分栏",
+  "@fSplit": {
+    "description": "Interface text for Split."
+  },
+  "fShowTheFormattedDocumentR": "只显示排好版的文稿 ⌘⇧R",
+  "@fShowTheFormattedDocumentR": {
+    "description": "Interface text for Show the formatted document ⌘⇧R."
+  },
+  "fRead": "阅读",
+  "@fRead": {
+    "description": "Interface text for Read."
+  },
+  "fAppearanceAndTypography2": "外观与排版",
+  "@fAppearanceAndTypography2": {
+    "description": "Interface text for Appearance and Typography."
+  },
+  "fExportPDFHTMLZIPOrCopyRichText": "导出 PDF、HTML、ZIP 或复制富文本",
+  "@fExportPDFHTMLZIPOrCopyRichText": {
+    "description": "Interface text for Export PDF, HTML, ZIP, or copy rich text."
+  },
+  "fExport2": "导出",
+  "@fExport2": {
+    "description": "Interface text for Export."
+  },
+  "fMore": "更多",
+  "@fMore": {
+    "description": "Interface text for More."
+  },
+  "fSplitViewOnly": "仅分栏可用",
+  "@fSplitViewOnly": {
+    "description": "Interface text for Split View only."
+  },
+  "fHeadingLevel": "标题级别",
+  "@fHeadingLevel": {
+    "description": "Interface text for Heading Level."
+  },
+  "fRetrySave": "重试保存",
+  "@fRetrySave": {
+    "description": "Interface text for Retry Save."
+  },
+  "fSaveAs2": "另存",
+  "@fSaveAs2": {
+    "description": "Interface text for Save As."
+  },
+  "fViewDiskVersion": "查看磁盘版本",
+  "@fViewDiskVersion": {
+    "description": "Interface text for View Disk Version."
+  },
+  "fOverwriteWithCurrentVersion": "用当前版本覆盖",
+  "@fOverwriteWithCurrentVersion": {
+    "description": "Interface text for Overwrite with Current Version."
+  },
+  "fShowInFinder": "在 Finder 中显示",
+  "@fShowInFinder": {
+    "description": "Interface text for Show in Finder."
+  },
+  "fEditor": "编辑区",
+  "@fEditor": {
+    "description": "Interface text for Editor."
+  },
+  "fFormat": "格式",
+  "@fFormat": {
+    "description": "Interface text for Format."
+  },
+  "fDocumentEditor": "文稿编辑区",
+  "@fDocumentEditor": {
+    "description": "Interface text for Document Editor."
+  },
+  "fWriteThisMoment": "写下这一刻。",
+  "@fWriteThisMoment": {
+    "description": "Interface text for Write this moment.."
+  },
+  "f0Words": "0 字",
+  "@f0Words": {
+    "description": "Interface text for 0 words."
+  },
+  "fReadingPreview": "阅读预览",
+  "@fReadingPreview": {
+    "description": "Interface text for Reading Preview."
+  },
+  "fReadingView": "阅读视图",
+  "@fReadingView": {
+    "description": "Interface text for Reading View."
+  },
+  "fReadOnly": "只读",
+  "@fReadOnly": {
+    "description": "Interface text for Read Only."
+  },
+  "fYourDocumentsStayOnThisMac": "文稿留在本机",
+  "@fYourDocumentsStayOnThisMac": {
+    "description": "Interface text for Your documents stay on this Mac."
+  },
+  "fAutomaticDraftsPickUpAnytime": "自动草稿 · 随时续写",
+  "@fAutomaticDraftsPickUpAnytime": {
+    "description": "Interface text for Automatic Drafts · Pick Up Anytime."
+  },
+  "fL": "白",
+  "@fL": {
+    "description": "Interface text for L."
+  },
+  "fNewDocumentN": "新建文稿 ⌘N",
+  "@fNewDocumentN": {
+    "description": "Interface text for New Document ⌘N."
+  },
+  "fCloseSidebar": "关闭侧栏",
+  "@fCloseSidebar": {
+    "description": "Interface text for Close Sidebar."
+  },
+  "fFindADocument": "找一篇文稿…",
+  "@fFindADocument": {
+    "description": "Interface text for Find a document…."
+  },
+  "fSearchRecentDocuments": "搜索最近文稿",
+  "@fSearchRecentDocuments": {
+    "description": "Interface text for Search Recent Documents."
+  },
+  "fOpenLocalMarkdown": "打开本地 Markdown",
+  "@fOpenLocalMarkdown": {
+    "description": "Interface text for Open Local Markdown."
+  },
+  "fColorsForThisMoment": "适合此刻的颜色",
+  "@fColorsForThisMoment": {
+    "description": "Interface text for Colors for This Moment."
+  },
+  "fCloseAppearance": "关闭外观",
+  "@fCloseAppearance": {
+    "description": "Interface text for Close Appearance."
+  },
+  "fTheme": "主题",
+  "@fTheme": {
+    "description": "Interface text for Theme."
+  },
+  "fFollowSystem": "跟随系统",
+  "@fFollowSystem": {
+    "description": "Interface text for Follow System."
+  },
+  "fPaperForLightModeInkForDarkMode": "浅色用纸白，深色用夜墨",
+  "@fPaperForLightModeInkForDarkMode": {
+    "description": "Interface text for Paper for light mode, Ink for dark mode."
+  },
+  "fFontSize": "字号",
+  "@fFontSize": {
+    "description": "Interface text for Font Size."
+  },
+  "fBodyFontSize": "正文字号",
+  "@fBodyFontSize": {
+    "description": "Interface text for Body Font Size."
+  },
+  "fLineWidth": "行宽",
+  "@fLineWidth": {
+    "description": "Interface text for Line Width."
+  },
+  "fBodyLineWidth": "正文行宽",
+  "@fBodyLineWidth": {
+    "description": "Interface text for Body Line Width."
+  },
+  "fComfortable": "舒适",
+  "@fComfortable": {
+    "description": "Interface text for Comfortable."
+  },
+  "fWide": "宽阔",
+  "@fWide": {
+    "description": "Interface text for Wide."
+  },
+  "fChangesApplyImmediatelyYourDocumentAndEditingPositionAre": "选择即应用。你的文稿和编辑位置会保持原样。",
+  "@fChangesApplyImmediatelyYourDocumentAndEditingPositionAre": {
+    "description": "Interface text for Changes apply immediately. Your document and editing position are preserved.."
+  },
+  "fCloseQuickNoteSettings": "关闭随手记设置",
+  "@fCloseQuickNoteSettings": {
+    "description": "Interface text for Close Quick Note Settings."
+  },
+  "fEnableQuickNote": "启用随手记",
+  "@fEnableQuickNote": {
+    "description": "Interface text for Enable Quick Note."
+  },
+  "fKeyboardShortcut": "快捷键",
+  "@fKeyboardShortcut": {
+    "description": "Interface text for Keyboard Shortcut."
+  },
+  "fOpenLiubaiInTheBackgroundAtLogin": "登录时在后台打开留白",
+  "@fOpenLiubaiInTheBackgroundAtLogin": {
+    "description": "Interface text for Open Liubai in the background at login."
+  },
+  "fUseTheShortcutInAnyAppToWriteA": "在任何应用里按快捷键，写一句话，⌘↩ 存为草稿。",
+  "@fUseTheShortcutInAnyAppToWriteA": {
+    "description": "Interface text for Use the shortcut in any app to write a note. Press ⌘↩ to save it as a draft.."
+  },
+  "fNameDraft": "为草稿命名",
+  "@fNameDraft": {
+    "description": "Interface text for Name Draft."
+  },
+  "fGiveThisPageAName": "给这一页一个名字",
+  "@fGiveThisPageAName": {
+    "description": "Interface text for Give This Page a Name."
+  },
+  "fDocumentName": "文稿名称",
+  "@fDocumentName": {
+    "description": "Interface text for Document Name."
+  },
+  "fCancel": "取消",
+  "@fCancel": {
+    "description": "Interface text for Cancel."
+  },
+  "fSaveName": "保存名称",
+  "@fSaveName": {
+    "description": "Interface text for Save Name."
+  },
+  "fAllCommands2": "所有操作",
+  "@fAllCommands2": {
+    "description": "Interface text for All Commands."
+  },
+  "fSearchCommandsAndThemes": "搜索操作、主题…",
+  "@fSearchCommandsAndThemes": {
+    "description": "Interface text for Search commands and themes…."
+  },
+  "fSearchCommands": "搜索操作",
+  "@fSearchCommands": {
+    "description": "Interface text for Search Commands."
+  },
+  "fStartWritingOrUseAShortcut": "直接写，也可以用快捷键",
+  "@fStartWritingOrUseAShortcut": {
+    "description": "Interface text for Start writing, or use a shortcut."
+  },
+  "fEscClose": "esc 关闭",
+  "@fEscClose": {
+    "description": "Interface text for esc Close."
+  },
+  "fDocumentNotSaved": "文稿保存未完成",
+  "@fDocumentNotSaved": {
+    "description": "Interface text for Document Not Saved."
+  },
+  "fSaveThisPageFirst": "先把这一页留住",
+  "@fSaveThisPageFirst": {
+    "description": "Interface text for Save This Page First."
+  },
+  "fYourLatestChangesHaveNotBeenSavedToThe": "最新修改还没有保存到草稿，当前内容仍在编辑器里。",
+  "@fYourLatestChangesHaveNotBeenSavedToThe": {
+    "description": "Interface text for Your latest changes have not been saved to the draft. The text is still in the editor.."
+  },
+  "fKeepEditing": "继续编辑",
+  "@fKeepEditing": {
+    "description": "Interface text for Keep Editing."
+  },
+  "fRetryAndQuit": "重试并退出",
+  "@fRetryAndQuit": {
+    "description": "Interface text for Retry and Quit."
+  },
+  "fSaveACopy": "保存当前副本",
+  "@fSaveACopy": {
+    "description": "Interface text for Save a Copy."
+  },
+  "fDiscardChangesAndQuit": "放弃未保存修改并退出",
+  "@fDiscardChangesAndQuit": {
+    "description": "Interface text for Discard Changes and Quit."
+  },
+  "fMissingImages": "图片缺失",
+  "@fMissingImages": {
+    "description": "Interface text for Missing Images."
+  },
+  "fSomeImagesCouldNotBeFound": "有几张图片没有找到",
+  "@fSomeImagesCouldNotBeFound": {
+    "description": "Interface text for Some Images Could Not Be Found."
+  },
+  "fGoBack": "返回处理",
+  "@fGoBack": {
+    "description": "Interface text for Go Back."
+  },
+  "fExportWithOriginalReferences": "保留原引用继续导出",
+  "@fExportWithOriginalReferences": {
+    "description": "Interface text for Export with Original References."
+  },
+  "fEditLink": "编辑链接",
+  "@fEditLink": {
+    "description": "Interface text for Edit Link."
+  },
+  "fCloseLinkPanel": "关闭链接面板",
+  "@fCloseLinkPanel": {
+    "description": "Interface text for Close Link Panel."
+  },
+  "fDisplayText": "显示文字",
+  "@fDisplayText": {
+    "description": "Interface text for Display Text."
+  },
+  "fLinkText": "链接文字",
+  "@fLinkText": {
+    "description": "Interface text for Link Text."
+  },
+  "fLinkURL": "链接地址",
+  "@fLinkURL": {
+    "description": "Interface text for Link URL."
+  },
+  "fHttpsOrHeading": "https:// 或 #标题",
+  "@fHttpsOrHeading": {
+    "description": "Interface text for https:// or #heading."
+  },
+  "fOpenLink": "打开链接",
+  "@fOpenLink": {
+    "description": "Interface text for Open Link."
+  },
+  "fRemoveLink": "移除链接",
+  "@fRemoveLink": {
+    "description": "Interface text for Remove Link."
+  },
+  "fApplyLink": "应用链接",
+  "@fApplyLink": {
+    "description": "Interface text for Apply Link."
+  },
+  "fCloseTablePanel": "关闭表格面板",
+  "@fCloseTablePanel": {
+    "description": "Interface text for Close Table Panel."
+  },
+  "fTheFirstRowIsTheHeaderPressTabTo": "第一行是表头。用 Tab 切换单元格，应用后可撤销整次修改。",
+  "@fTheFirstRowIsTheHeaderPressTabTo": {
+    "description": "Interface text for The first row is the header. Press Tab to move between cells. You can undo the entire change after applying it.."
+  },
+  "fAddRow": "增加一行",
+  "@fAddRow": {
+    "description": "Interface text for Add Row."
+  },
+  "fAddColumn": "增加一列",
+  "@fAddColumn": {
+    "description": "Interface text for Add Column."
+  },
+  "fApplyTable": "应用表格",
+  "@fApplyTable": {
+    "description": "Interface text for Apply Table."
+  },
+  "fExportThisPage": "导出这一页",
+  "@fExportThisPage": {
+    "description": "Interface text for Export This Page."
+  },
+  "fCloseExportPanel": "关闭导出面板",
+  "@fCloseExportPanel": {
+    "description": "Interface text for Close Export Panel."
+  },
+  "fSaveMarkdown": "保存 Markdown",
+  "@fSaveMarkdown": {
+    "description": "Interface text for Save Markdown."
+  },
+  "fAStandardMdFileForFurtherEditing": "普通 .md 文件，继续编辑",
+  "@fAStandardMdFileForFurtherEditing": {
+    "description": "Interface text for A standard .md file for further editing."
+  },
+  "fIncludeLocalImages": "连同本地图片一起导出",
+  "@fIncludeLocalImages": {
+    "description": "Interface text for Include local images."
+  },
+  "fFullyFormattedForReadingAndSharing": "完整排版，适合阅读与发送",
+  "@fFullyFormattedForReadingAndSharing": {
+    "description": "Interface text for Fully formatted for reading and sharing."
+  },
+  "fPasteIntoEmailOrDocumentsWithBasicFormatting": "粘贴到邮件或文档，保留基本格式",
+  "@fPasteIntoEmailOrDocumentsWithBasicFormatting": {
+    "description": "Interface text for Paste into email or documents with basic formatting."
+  },
+  "fEmbeddedLocalImagesForOfflineReading": "内嵌本地图片，离线阅读",
+  "@fEmbeddedLocalImagesForOfflineReading": {
+    "description": "Interface text for Embedded local images for offline reading."
+  },
+  "fExternalImagesRemainAsLinksRichTextImageSupport": "外链图片保留链接；富文本图片显示取决于接收应用。",
+  "@fExternalImagesRemainAsLinksRichTextImageSupport": {
+    "description": "Interface text for External images remain as links. Rich text image support depends on the receiving app.."
+  },
+  "fDocumentReady": "文稿已准备",
+  "@fDocumentReady": {
+    "description": "Interface text for Document Ready."
+  },
+  "fYourDocumentIsReady": "文稿已准备好",
+  "@fYourDocumentIsReady": {
+    "description": "Interface text for Your Document Is Ready."
+  },
+  "fBackToEditing": "返回编辑",
+  "@fBackToEditing": {
+    "description": "Interface text for Back to Editing."
+  },
+  "fContinue": "继续",
+  "@fContinue": {
+    "description": "Interface text for Continue."
+  },
+  "fExitFocus": "退出专注",
+  "@fExitFocus": {
+    "description": "Interface text for Exit Focus."
+  },
+  "fQuickNoteLiubai": "随手记 · 留白",
+  "@fQuickNoteLiubai": {
+    "description": "Interface text for Quick Note · Liubai."
+  },
+  "fCaptureThisMoment": "记下这一刻……",
+  "@fCaptureThisMoment": {
+    "description": "Interface text for Capture this moment…."
+  },
+  "fSaveAsDraft": "存为草稿",
+  "@fSaveAsDraft": {
+    "description": "Interface text for Save as Draft."
+  },
+  "fLanguage": "语言",
+  "@fLanguage": {
+    "description": "Interface text for Language."
+  },
+  "fSimplifiedChinese": "简体中文",
+  "@fSimplifiedChinese": {
+    "description": "Interface text for 简体中文."
+  },
+  "fEnglish": "English",
+  "@fEnglish": {
+    "description": "Interface text for English."
+  },
+  "bStatusDraftSaved": "草稿已保存",
+  "@bStatusDraftSaved": {
+    "description": "Document status: draftSaved"
+  },
+  "bStatusFileSaved": "文件已保存",
+  "@bStatusFileSaved": {
+    "description": "Document status: fileSaved"
+  },
+  "bStatusFileUnavailable": "文件不可访问，草稿已保留",
+  "@bStatusFileUnavailable": {
+    "description": "Document status: fileUnavailable"
+  },
+  "bStatusDiskUnreadable": "磁盘文件无法读取，草稿已保留",
+  "@bStatusDiskUnreadable": {
+    "description": "Document status: diskUnreadable"
+  },
+  "bStatusDiskReloaded": "已载入磁盘上的新版本",
+  "@bStatusDiskReloaded": {
+    "description": "Document status: diskReloaded"
+  },
+  "bStatusReloadRecoveryFailed": "已载入磁盘新版本，恢复记录更新失败",
+  "@bStatusReloadRecoveryFailed": {
+    "description": "Document status: reloadRecoveryFailed"
+  },
+  "bStatusDiskConflict": "磁盘内容已变化，自动写入已暂停",
+  "@bStatusDiskConflict": {
+    "description": "Document status: diskConflict"
+  },
+  "bStatusImageSaveFailed": "草稿已保留，图片保存失败",
+  "@bStatusImageSaveFailed": {
+    "description": "Document status: imageSaveFailed"
+  },
+  "bStatusFileSaveFailed": "草稿已保留，文件保存失败",
+  "@bStatusFileSaveFailed": {
+    "description": "Document status: fileSaveFailed"
+  },
+  "bStatusSaveFailed": "保存失败，内容仍在编辑器",
+  "@bStatusSaveFailed": {
+    "description": "Document status: saveFailed"
+  },
+  "bStatusRecoveryUpdateFailed": "文件已保存，恢复记录更新失败",
+  "@bStatusRecoveryUpdateFailed": {
+    "description": "Document status: recoveryUpdateFailed"
+  },
+  "bDocumentMissing": "文稿不存在",
+  "@bDocumentMissing": {
+    "description": "Backend interface: Document does not exist"
+  },
+  "bFileTooLarge": "文件超过支持大小",
+  "@bFileTooLarge": {
+    "description": "Backend interface: File exceeds the supported size"
+  },
+  "bUTF8Only": "仅支持 UTF-8 文本文件",
+  "@bUTF8Only": {
+    "description": "Backend interface: Only UTF-8 text files are supported"
+  },
+  "bDocumentChanged": "文稿已变化，请重新载入，当前输入尚未保存",
+  "@bDocumentChanged": {
+    "description": "Backend interface: The document changed. Reload it; your current input has not been saved"
+  },
+  "bInvalidDocument": "文稿超过 8 MB 或编码无效",
+  "@bInvalidDocument": {
+    "description": "Backend interface: Document exceeds 8 MB or has invalid encoding"
+  },
+  "bDiskChanged": "磁盘文件已变化",
+  "@bDiskChanged": {
+    "description": "Backend interface: Disk file has changed"
+  },
+  "bRelativeLinkWithoutFile": "草稿还没有保存位置，无法打开相对链接",
+  "@bRelativeLinkWithoutFile": {
+    "description": "Backend interface: Save the draft before opening relative links"
+  },
+  "bUnsupportedLink": "不支持的链接",
+  "@bUnsupportedLink": {
+    "description": "Backend interface: Unsupported link"
+  },
+  "bMarkdownLinksOnly": "只能打开 Markdown 文稿链接",
+  "@bMarkdownLinksOnly": {
+    "description": "Backend interface: Only Markdown document links can be opened"
+  },
+  "bLinkedDocumentMissing": "链接的文稿不存在",
+  "@bLinkedDocumentMissing": {
+    "description": "Backend interface: Linked document does not exist"
+  },
+  "bUnknownTheme": "未知主题",
+  "@bUnknownTheme": {
+    "description": "Backend interface: Unknown theme"
+  },
+  "bInvalidFontSize": "字号应为 15 至 22",
+  "@bInvalidFontSize": {
+    "description": "Backend interface: Font size must be between 15 and 22"
+  },
+  "bUnknownLineWidth": "未知行宽",
+  "@bUnknownLineWidth": {
+    "description": "Backend interface: Unknown line width"
+  },
+  "bUnknownLayout": "未知布局",
+  "@bUnknownLayout": {
+    "description": "Backend interface: Unknown layout"
+  },
+  "bDocumentWithoutFile": "文稿没有对应文件",
+  "@bDocumentWithoutFile": {
+    "description": "Backend interface: Document has no associated file"
+  },
+  "bNameRequired": "请输入名称",
+  "@bNameRequired": {
+    "description": "Backend interface: Enter a name"
+  },
+  "bRenameExistingFile": "已有文件请通过另存命名",
+  "@bRenameExistingFile": {
+    "description": "Backend interface: Use Save As to rename an existing file"
+  },
+  "bDeliveryTooLarge": "图文超过 48 MB，请用 ZIP 带走文稿与图片",
+  "@bDeliveryTooLarge": {
+    "description": "Backend interface: Document and images exceed 48 MB. Export them as ZIP"
+  },
+  "bInvalidRecoveryDocument": "文稿大小或编码无效",
+  "@bInvalidRecoveryDocument": {
+    "description": "Backend interface: Invalid document size or encoding"
+  },
+  "bRecoveryNeedsNewName": "恢复副本请使用新的文件名",
+  "@bRecoveryNeedsNewName": {
+    "description": "Backend interface: Use a new filename for the recovery copy"
+  },
+  "bRegularFileRequired": "请选择普通文件",
+  "@bRegularFileRequired": {
+    "description": "Backend interface: Choose a regular file"
+  },
+  "bCaptureEmpty": "随手记是空的",
+  "@bCaptureEmpty": {
+    "description": "Backend interface: Quick Capture is empty"
+  },
+  "bCopyTooLarge": "复制内容过大，请导出文稿",
+  "@bCopyTooLarge": {
+    "description": "Backend interface: Content is too large to copy. Export the document"
+  },
+  "bDesktopPDFOnly": "请在桌面版导出 PDF",
+  "@bDesktopPDFOnly": {
+    "description": "Backend interface: Export PDF in the desktop app"
+  },
+  "bHTMLTooLarge": "HTML 过大，请改用 ZIP 导出",
+  "@bHTMLTooLarge": {
+    "description": "Backend interface: HTML is too large. Export as ZIP"
+  },
+  "bMarkdownOnly": "仅支持打开 Markdown 文稿",
+  "@bMarkdownOnly": {
+    "description": "Backend interface: Only Markdown documents can be opened"
+  },
+  "bInvalidImageReference": "无效图片引用",
+  "@bInvalidImageReference": {
+    "description": "Backend interface: Invalid image reference"
+  },
+  "bLocalImagesOnly": "仅支持本地图片引用",
+  "@bLocalImagesOnly": {
+    "description": "Backend interface: Only local image references are supported"
+  },
+  "bImageNeedsDocumentDirectory": "相对路径缺少文稿目录",
+  "@bImageNeedsDocumentDirectory": {
+    "description": "Backend interface: Relative path has no document directory"
+  },
+  "bImageTooLarge": "图片超过 20 MB",
+  "@bImageTooLarge": {
+    "description": "Backend interface: Image exceeds 20 MB"
+  },
+  "bUnsupportedImage": "请选择 PNG、JPEG、GIF、WebP、SVG、AVIF 或 BMP 图片，最长边不超过 16000 像素",
+  "@bUnsupportedImage": {
+    "description": "Backend interface: Choose a PNG, JPEG, GIF, WebP, SVG, AVIF or BMP image, with no side longer than 16000 pixels"
+  },
+  "bImageNotReferenced": "图片未被文稿引用",
+  "@bImageNotReferenced": {
+    "description": "Backend interface: Image is not referenced by the document"
+  },
+  "bImageReferenceConversion": "图片引用无法转换，请将图片放在独立段落",
+  "@bImageReferenceConversion": {
+    "description": "Backend interface: Image reference cannot be converted. Place the image in its own paragraph"
+  },
+  "bImageNameConflict": "同名图片已存在且内容不同",
+  "@bImageNameConflict": {
+    "description": "Backend interface: An image with this name already exists with different content"
+  },
+  "bRegularFilePathRequired": "请选择普通文件路径，避免替换符号链接",
+  "@bRegularFilePathRequired": {
+    "description": "Backend interface: Choose a regular file path to avoid replacing a symbolic link"
+  },
+  "bExternalConflict": "文件存在外部冲突，请选择新文件名",
+  "@bExternalConflict": {
+    "description": "Backend interface: File has an external conflict. Choose a new filename"
+  },
+  "bUnsupportedImageSyntax": "存在无法转换的图片语法，请将图片引用单独放在一行后再保存",
+  "@bUnsupportedImageSyntax": {
+    "description": "Backend interface: Some image syntax cannot be converted. Place each image reference on its own line before saving"
+  },
+  "bMenuAppName": "留白",
+  "@bMenuAppName": {
+    "description": "Native menu label: AppName"
+  },
+  "bMenuAbout": "关于留白",
+  "@bMenuAbout": {
+    "description": "Native menu label: About"
+  },
+  "bMenuHide": "隐藏留白",
+  "@bMenuHide": {
+    "description": "Native menu label: Hide"
+  },
+  "bMenuHideOthers": "隐藏其他",
+  "@bMenuHideOthers": {
+    "description": "Native menu label: HideOthers"
+  },
+  "bMenuShowAll": "全部显示",
+  "@bMenuShowAll": {
+    "description": "Native menu label: ShowAll"
+  },
+  "bMenuQuit": "退出留白",
+  "@bMenuQuit": {
+    "description": "Native menu label: Quit"
+  },
+  "bMenuFile": "文件",
+  "@bMenuFile": {
+    "description": "Native menu label: File"
+  },
+  "bMenuNew": "新建文稿",
+  "@bMenuNew": {
+    "description": "Native menu label: New"
+  },
+  "bMenuOpen": "打开文稿…",
+  "@bMenuOpen": {
+    "description": "Native menu label: Open"
+  },
+  "bMenuOpenRecent": "打开最近使用",
+  "@bMenuOpenRecent": {
+    "description": "Native menu label: OpenRecent"
+  },
+  "bMenuCapture": "随手记",
+  "@bMenuCapture": {
+    "description": "Native menu label: Capture"
+  },
+  "bMenuSave": "保存",
+  "@bMenuSave": {
+    "description": "Native menu label: Save"
+  },
+  "bMenuSaveAs": "另存为…",
+  "@bMenuSaveAs": {
+    "description": "Native menu label: SaveAs"
+  },
+  "bMenuExport": "导出…",
+  "@bMenuExport": {
+    "description": "Native menu label: Export"
+  },
+  "bMenuExportPDF": "导出 PDF…",
+  "@bMenuExportPDF": {
+    "description": "Native menu label: ExportPDF"
+  },
+  "bMenuCloseWindow": "关闭窗口",
+  "@bMenuCloseWindow": {
+    "description": "Native menu label: CloseWindow"
+  },
+  "bMenuEdit": "编辑",
+  "@bMenuEdit": {
+    "description": "Native menu label: Edit"
+  },
+  "bMenuUndo": "撤销",
+  "@bMenuUndo": {
+    "description": "Native menu label: Undo"
+  },
+  "bMenuRedo": "重做",
+  "@bMenuRedo": {
+    "description": "Native menu label: Redo"
+  },
+  "bMenuCut": "剪切",
+  "@bMenuCut": {
+    "description": "Native menu label: Cut"
+  },
+  "bMenuCopy": "拷贝",
+  "@bMenuCopy": {
+    "description": "Native menu label: Copy"
+  },
+  "bMenuPaste": "粘贴",
+  "@bMenuPaste": {
+    "description": "Native menu label: Paste"
+  },
+  "bMenuPastePlain": "粘贴为纯文本",
+  "@bMenuPastePlain": {
+    "description": "Native menu label: PastePlain"
+  },
+  "bMenuSelectAll": "全选",
+  "@bMenuSelectAll": {
+    "description": "Native menu label: SelectAll"
+  },
+  "bMenuFind": "查找",
+  "@bMenuFind": {
+    "description": "Native menu label: Find"
+  },
+  "bMenuView": "显示",
+  "@bMenuView": {
+    "description": "Native menu label: View"
+  },
+  "bMenuFocus": "专注模式",
+  "@bMenuFocus": {
+    "description": "Native menu label: Focus"
+  },
+  "bMenuAppearance": "外观与排版…",
+  "@bMenuAppearance": {
+    "description": "Native menu label: Appearance"
+  },
+  "bMenuLayout": "切换分栏",
+  "@bMenuLayout": {
+    "description": "Native menu label: Layout"
+  },
+  "bMenuRead": "阅读模式",
+  "@bMenuRead": {
+    "description": "Native menu label: Read"
+  },
+  "bMenuSource": "显示 Markdown 源码",
+  "@bMenuSource": {
+    "description": "Native menu label: Source"
+  },
+  "bMenuCommands": "所有操作…",
+  "@bMenuCommands": {
+    "description": "Native menu label: Commands"
+  },
+  "bMenuFullscreen": "切换全屏",
+  "@bMenuFullscreen": {
+    "description": "Native menu label: Fullscreen"
+  },
+  "bMenuWindow": "窗口",
+  "@bMenuWindow": {
+    "description": "Native menu label: Window"
+  },
+  "bMenuMinimize": "最小化",
+  "@bMenuMinimize": {
+    "description": "Native menu label: Minimize"
+  },
+  "bMenuZoom": "缩放",
+  "@bMenuZoom": {
+    "description": "Native menu label: Zoom"
+  },
+  "bMenuFront": "前置全部窗口",
+  "@bMenuFront": {
+    "description": "Native menu label: Front"
+  },
+  "bMenuLanguage": "语言",
+  "@bMenuLanguage": {
+    "description": "Native menu label: Language"
+  },
+  "bMenuFollowSystem": "跟随系统",
+  "@bMenuFollowSystem": {
+    "description": "Native menu label: FollowSystem"
+  },
+  "bMenuChinese": "简体中文",
+  "@bMenuChinese": {
+    "description": "Native menu label: Chinese"
+  },
+  "bMenuEnglish": "English",
+  "@bMenuEnglish": {
+    "description": "Native menu label: English"
+  },
+  "bOpenMarkdown": "打开 Markdown 文稿",
+  "@bOpenMarkdown": {
+    "description": "Backend interface: Open Markdown Document"
+  },
+  "bSaveMarkdown": "保存 Markdown",
+  "@bSaveMarkdown": {
+    "description": "Backend interface: Save Markdown"
+  },
+  "bExportZIP": "导出文稿与图片（ZIP）",
+  "@bExportZIP": {
+    "description": "Backend interface: Export Document and Images (ZIP)"
+  },
+  "bSaveRecovery": "保存当前恢复副本",
+  "@bSaveRecovery": {
+    "description": "Backend interface: Save Current Recovery Copy"
+  },
+  "bRecoveryFilename": "留白恢复副本.md",
+  "@bRecoveryFilename": {
+    "description": "Backend interface: Liubai Recovery.md"
+  },
+  "bExportPDF": "导出 PDF",
+  "@bExportPDF": {
+    "description": "Backend interface: Export PDF"
+  },
+  "bSaveHTML": "保存 HTML",
+  "@bSaveHTML": {
+    "description": "Backend interface: Save HTML"
+  },
+  "bStartupFailed": "留白无法启动",
+  "@bStartupFailed": {
+    "description": "Backend interface: Liubai Could Not Start"
+  },
+  "bStorageUnavailable": "无法打开文稿存储目录",
+  "@bStorageUnavailable": {
+    "description": "Backend interface: Could not open the document storage directory"
+  },
+  "bExit": "退出",
+  "@bExit": {
+    "description": "Backend interface: Quit"
+  },
+  "bUntitled": "未命名文稿",
+  "@bUntitled": {
+    "description": "Backend interface: Untitled Document"
+  },
+  "bDefaultFilename": "留白文稿",
+  "@bDefaultFilename": {
+    "description": "Backend interface: Liubai Document"
+  },
+  "bRecoverySuffix": " · 恢复副本",
+  "@bRecoverySuffix": {
+    "description": "Backend interface:  · Recovery Copy"
+  },
+  "bDiskVersionSuffix": " · 磁盘版本",
+  "@bDiskVersionSuffix": {
+    "description": "Backend interface:  · Disk Version"
+  },
+  "bNewerIndex": "工作区索引来自更新版本的留白，已备份到隔离目录",
+  "@bNewerIndex": {
+    "description": "Backend interface: The workspace index is from a newer Liubai version and was backed up to quarantine"
+  },
+  "bRebuiltIndex": "工作区索引无法读取，已重建，原文件在隔离目录",
+  "@bRebuiltIndex": {
+    "description": "Backend interface: The workspace index could not be read and was rebuilt. The original is in quarantine"
+  },
+  "bInvalidLocale": "不支持的语言",
+  "@bInvalidLocale": {
+    "description": "Backend interface: Unsupported language"
+  },
+  "bCorruptDrafts": "有 {count} 份草稿无法读取，已移到隔离目录",
+  "@bCorruptDrafts": {
+    "description": "Workspace recovery notice",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bShortcutUnavailable": "快捷键 {shortcut} 已被其他应用占用",
+  "@bShortcutUnavailable": {
+    "description": "Global shortcut registration error",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
+  "bImageUnreadable": "图片缺失或无法读取：{path}",
+  "@bImageUnreadable": {
+    "description": "Image export error",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "bOpenFailed": "无法打开「{name}」：{error}",
+  "@bOpenFailed": {
+    "description": "Open document failure notice",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "fAppName": "留白",
+  "@fAppName": {
+    "description": "Interface message: AppName."
+  },
+  "fLocalDocument": "本地文稿 · {title}",
+  "@fLocalDocument": {
+    "description": "Interface message: LocalDocument.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "fHeading": "标题 {level}",
+  "@fHeading": {
+    "description": "Interface message: Heading.",
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "fWordCount": "{count, number} 字",
+  "@fWordCount": {
+    "description": "Interface message: WordCount.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fSaveError": "保存失败：{error}",
+  "@fSaveError": {
+    "description": "Interface message: SaveError.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "fPreferencesError": "本次已应用，偏好未能保存：{error}",
+  "@fPreferencesError": {
+    "description": "Interface message: PreferencesError.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "fSavedWithImages": "文稿和图片已保存：{path}{missing, plural, =0 {} other { · # 张图片未找到，引用保持原样}}",
+  "@fSavedWithImages": {
+    "description": "Interface message: SavedWithImages.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "missing": {
+        "type": "int"
+      }
+    }
+  },
+  "fRecoverySaved": "当前内容与图片已另存：{path}",
+  "@fRecoverySaved": {
+    "description": "Interface message: RecoverySaved.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "fRecoveryFilename": "{title}-恢复副本.md",
+  "@fRecoveryFilename": {
+    "description": "Interface message: RecoveryFilename.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "fArchiveSaved": "文稿已打包：{path}",
+  "@fArchiveSaved": {
+    "description": "Interface message: ArchiveSaved.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "fHTMLSaved": "HTML 已保存：{path}",
+  "@fHTMLSaved": {
+    "description": "Interface message: HTMLSaved.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "fPDFSaved": "PDF 已保存：{path}",
+  "@fPDFSaved": {
+    "description": "Interface message: PDFSaved.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "fSwitchTheme": "切换主题 · {name}",
+  "@fSwitchTheme": {
+    "description": "Interface message: SwitchTheme.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "fClipboardError": "无法读取剪贴板：{error}",
+  "@fClipboardError": {
+    "description": "Interface message: ClipboardError.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "fOverwritten": "已用当前版本覆盖磁盘文件；原磁盘内容另存为「{title} · 磁盘版本」",
+  "@fOverwritten": {
+    "description": "Interface message: Overwritten.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "fTableHeaderCell": "表头 第{column}列",
+  "@fTableHeaderCell": {
+    "description": "Interface message: TableHeaderCell.",
+    "placeholders": {
+      "column": {
+        "type": "int"
+      }
+    }
+  },
+  "fTableCell": "第{row}行 第{column}列",
+  "@fTableCell": {
+    "description": "Interface message: TableCell.",
+    "placeholders": {
+      "row": {
+        "type": "int"
+      },
+      "column": {
+        "type": "int"
+      }
+    }
+  },
+  "fCaptured": "随手记已存为草稿「{title}」",
+  "@fCaptured": {
+    "description": "Interface message: Captured.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "fOpenFailed": "无法打开「{name}」：{error}",
+  "@fOpenFailed": {
+    "description": "Interface message: OpenFailed.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "fDocumentOpenError": "无法打开文稿：{error}",
+  "@fDocumentOpenError": {
+    "description": "Interface message: DocumentOpenError.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "fImageTemporarilyUnreadable": "图片暂时无法读取 · {alt}",
+  "@fImageTemporarilyUnreadable": {
+    "description": "Interface message: ImageTemporarilyUnreadable.",
+    "placeholders": {
+      "alt": {
+        "type": "String"
+      }
+    }
+  },
+  "fImageResourceMissing": "图片资源缺失 · {alt}",
+  "@fImageResourceMissing": {
+    "description": "Interface message: ImageResourceMissing.",
+    "placeholders": {
+      "alt": {
+        "type": "String"
+      }
+    }
+  },
+  "fLanguageSystem": "跟随系统",
+  "@fLanguageSystem": {
+    "description": "Interface message: LanguageSystem."
+  },
+  "fLanguageChinese": "简体中文",
+  "@fLanguageChinese": {
+    "description": "Interface message: LanguageChinese."
+  },
+  "fLanguageEnglish": "English",
+  "@fLanguageEnglish": {
+    "description": "Interface message: LanguageEnglish."
+  },
+  "fFind": "查找",
+  "@fFind": {
+    "description": "Interface message: Find."
+  },
+  "fReplace": "替换",
+  "@fReplace": {
+    "description": "Interface message: Replace."
+  },
+  "fNext": "下一个",
+  "@fNext": {
+    "description": "Interface message: Next."
+  },
+  "fPrevious": "上一个",
+  "@fPrevious": {
+    "description": "Interface message: Previous."
+  },
+  "fAll": "全部",
+  "@fAll": {
+    "description": "Interface message: All."
+  },
+  "fMatchCase": "区分大小写",
+  "@fMatchCase": {
+    "description": "Interface message: MatchCase."
+  },
+  "fRegexp": "正则表达式",
+  "@fRegexp": {
+    "description": "Interface message: Regexp."
+  },
+  "fWholeWord": "全字匹配",
+  "@fWholeWord": {
+    "description": "Interface message: WholeWord."
+  },
+  "fReplaceAll": "全部替换",
+  "@fReplaceAll": {
+    "description": "Interface message: ReplaceAll."
+  },
+  "fClose": "关闭",
+  "@fClose": {
+    "description": "Interface message: Close."
+  },
+  "fFindLabel": "查找：",
+  "@fFindLabel": {
+    "description": "Interface message: FindLabel."
+  },
+  "fReplaceLabel": "替换：",
+  "@fReplaceLabel": {
+    "description": "Interface message: ReplaceLabel."
+  },
+  "bImageFormatUnsupported": "图片格式不受支持",
+  "@bImageFormatUnsupported": {
+    "description": "Image validation error: Unsupported image format"
+  },
+  "bImageDimensionsTooLarge": "图片尺寸超过 16000 像素",
+  "@bImageDimensionsTooLarge": {
+    "description": "Image validation error: Image dimensions exceed 16000 pixels"
+  },
+  "bCaptureWindowTitle": "随手记 · 留白",
+  "@bCaptureWindowTitle": {
+    "description": "Native quick note panel window title"
+  },
+  "bWebHelp": "仅在回环地址运行本地开发版",
+  "bDataDirHelp": "独立文稿存储目录",
+  "@bWebHelp": {
+    "description": "Command-line help for the local development server."
+  },
+  "@bDataDirHelp": {
+    "description": "Command-line help for the separate document storage directory."
+  },
+  "fGoToLine": "跳转到行",
+  "@fGoToLine": {
+    "description": "CodeMirror search interface. String arguments preserve the editor library dollar substitution token until announcement."
+  },
+  "fGo": "跳转",
+  "@fGo": {
+    "description": "CodeMirror search interface. String arguments preserve the editor library dollar substitution token until announcement."
+  },
+  "fCurrentMatch": "当前匹配",
+  "@fCurrentMatch": {
+    "description": "CodeMirror search interface. String arguments preserve the editor library dollar substitution token until announcement."
+  },
+  "fOnLine": "所在行",
+  "@fOnLine": {
+    "description": "CodeMirror search interface. String arguments preserve the editor library dollar substitution token until announcement."
+  },
+  "fReplacedOnLine": "已替换第 {line} 行的匹配",
+  "@fReplacedOnLine": {
+    "description": "CodeMirror search interface. String arguments preserve the editor library dollar substitution token until announcement.",
+    "placeholders": {
+      "line": {
+        "type": "String"
+      }
+    }
+  },
+  "fReplacements": "替换次数：{count}",
+  "@fReplacements": {
+    "description": "CodeMirror search interface. String arguments preserve the editor library dollar substitution token until announcement.",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  }
+}

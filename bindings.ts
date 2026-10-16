@@ -37,12 +37,14 @@ export interface DocStatus {
   revision: number;
   conflict: boolean;
   status: string;
+  statusCode: string;
 }
 
 export interface Document {
   id: string;
   title: string;
   customTitle?: boolean;
+  generatedTitleSuffix?: string;
   content: string;
   excerpt?: string;
   path: string;
@@ -58,6 +60,7 @@ export interface Document {
   crlf: boolean;
   conflict: boolean;
   status: string;
+  statusCode: string;
   imageAliases?: Record<string, string>;
 }
 
@@ -82,6 +85,16 @@ export interface ImageResult {
   url: string;
   name: string;
   markdown: string;
+}
+
+/**
+ * localeMessage retains message identity until the destination language is known.
+ * It never rewrites document content, titles chosen by the user, or system errors.
+ */
+export interface LocaleMessage {
+  key?: string;
+  args?: Record<string, unknown>;
+  text?: string;
 }
 
 export interface OpenFailure {
@@ -116,6 +129,7 @@ export interface WorkspaceState {
   recent: Summary[];
   appearance: Appearance;
   notices?: string[];
+  noticeMessages?: LocaleMessage[];
   quarantineDir?: string;
 }
 
@@ -202,6 +216,13 @@ export const Desktop = {
   },
   setCaptureSettings(p: CaptureSettings): Promise<void> {
     return call("Desktop.SetCaptureSettings", p);
+  },
+  /**
+   * SetLocale changes the native app's persisted preference. Browser pages keep
+   * their own preference and send it with each request instead of mutating App.
+   */
+  setLocale(tag: string): Promise<void> {
+    return call("Desktop.SetLocale", tag);
   },
   setPending(pending: boolean): Promise<void> {
     return call("Desktop.SetPending", pending);

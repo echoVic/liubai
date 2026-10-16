@@ -5,11 +5,13 @@ import (
 	"strings"
 	"testing"
 
+	"liubai/locales"
+
 	"github.com/egoist/mygo"
 )
 
 func TestMenuTemplateUsesChineseLabelsAndStandardItems(t *testing.T) {
-	items := menuTemplate(func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
+	items := menuTemplateIn(locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
 	labels := map[mygo.MenuRole]string{}
 	var walk func([]*mygo.MenuItem)
 	walk = func(list []*mygo.MenuItem) {
@@ -56,7 +58,7 @@ func TestMenuUsesToolbarNamesAndShortcuts(t *testing.T) {
 			walk(item.Submenu)
 		}
 	}
-	walk(menuTemplate(func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }))
+	walk(menuTemplateIn(locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }))
 	for label, key := range map[string]string{
 		"导出…": "", "专注模式": "CmdOrCtrl+Shift+F", "外观与排版…": "",
 		"切换分栏": "CmdOrCtrl+\\", "阅读模式": "CmdOrCtrl+Shift+R",
@@ -69,7 +71,7 @@ func TestMenuUsesToolbarNamesAndShortcuts(t *testing.T) {
 }
 
 func TestFileMenuOffersOpenRecentAfterOpen(t *testing.T) {
-	for _, menu := range menuTemplate(func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
+	for _, menu := range menuTemplateIn(locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
 		if menu.Label != "文件" {
 			continue
 		}
@@ -86,7 +88,7 @@ func TestFileMenuOffersOpenRecentAfterOpen(t *testing.T) {
 }
 
 func TestEditMenuOffersPastePlainAfterPaste(t *testing.T) {
-	for _, menu := range menuTemplate(func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
+	for _, menu := range menuTemplateIn(locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
 		if menu.Label != "编辑" {
 			continue
 		}
@@ -103,7 +105,7 @@ func TestEditMenuOffersPastePlainAfterPaste(t *testing.T) {
 }
 
 func TestFileMenuOffersCaptureAfterOpenRecent(t *testing.T) {
-	for _, menu := range menuTemplate(func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
+	for _, menu := range menuTemplateIn(locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
 		if menu.Label != "文件" {
 			continue
 		}
@@ -117,4 +119,45 @@ func TestFileMenuOffersCaptureAfterOpenRecent(t *testing.T) {
 		}
 	}
 	t.Fatal("文件菜单的打开最近使用之后应为随手记，无快捷键")
+}
+
+func TestMenuTemplateEnglishLabelsAndLanguageChoices(t *testing.T) {
+	items := menuTemplateIn(locales.In("en"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
+	labels := map[string]*mygo.MenuItem{}
+	var walk func([]*mygo.MenuItem)
+	walk = func(items []*mygo.MenuItem) {
+		for _, item := range items {
+			labels[item.Label] = item
+			walk(item.Submenu)
+		}
+	}
+	walk(items)
+	for _, label := range []string{"File", "Edit", "View", "Window", "New Document", "Open Recent", "Paste as Plain Text", "Quick Note", "Follow System", "简体中文", "English"} {
+		if labels[label] == nil {
+			t.Errorf("missing English menu label %q", label)
+		}
+	}
+	for _, label := range []string{"Follow System", "简体中文", "English"} {
+		if item := labels[label]; item != nil && item.Type != mygo.MenuItemRadio {
+			t.Errorf("language %q is not a radio item", label)
+		}
+	}
+}
+
+func TestLanguageChoicesAreInsideViewMenu(t *testing.T) {
+	items := menuTemplateIn(locales.In("en"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
+	for _, item := range items {
+		if item.Label == "Language" {
+			t.Fatal("Language must be inside View")
+		}
+		if item.Label != "View" {
+			continue
+		}
+		for _, child := range item.Submenu {
+			if child.Label == "Language" && len(child.Submenu) == 3 {
+				return
+			}
+		}
+	}
+	t.Fatal("View > Language must contain three choices")
 }

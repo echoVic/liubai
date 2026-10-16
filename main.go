@@ -3,25 +3,25 @@ package main
 import (
 	"context"
 	"embed"
-	"errors"
-	"mime"
-	"net/url"
-	"sync"
-
 	"encoding/json"
 	"flag"
 	"io/fs"
 	"log"
+	"mime"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
+	"liubai/locales"
+
 	"github.com/egoist/mygo"
-	_ "github.com/egoist/mygo/locales/zh-Hans"
+	"github.com/egoist/mygo/i18n"
 	"github.com/egoist/mygo/transfer"
 )
 
@@ -41,6 +41,7 @@ type Desktop struct {
 	capturePanel *mygo.Window
 	w            *Workspace
 	win          *mygo.Window
+	menuAction   func(string) func(*mygo.MenuItem, *mygo.Window)
 	native       *desktopIntegration
 	allowClose   atomic.Bool
 	pending      atomic.Bool
@@ -52,7 +53,7 @@ func (d *Desktop) openPath(path string) {
 	state, err := d.w.Open(path)
 	if err != nil {
 		if !d.pageReady.Load() || d.native == nil {
-			d.w.Notify("无法打开「" + filepath.Base(path) + "」：" + err.Error())
+			d.w.notifyMessage(localeMessage{Key: "bOpenFailed", Args: map[string]any{"name": filepath.Base(path), "error": err.Error()}})
 		} else {
 			_ = openFailed.Broadcast(OpenFailure{Path: path, Error: err.Error()})
 		}
@@ -71,12 +72,12 @@ func (d *Desktop) openPath(path string) {
 func (d *Desktop) State() WorkspaceState {
 	d.pageReady.Store(true)
 	defer d.syncNative("")
-	return d.w.State()
+	return valueIn(d.w.State(), i18n.Locale()).(WorkspaceState)
 }
 func (d *Desktop) Update(e Edit) (Document, error) {
 	doc, err := d.w.Update(e)
 	d.savedNative(e.ID, err)
-	return doc, err
+	return documentIn(doc, i18n.Locale()), err
 }
 func (d *Desktop) SavePosition(id string, p Position) error { return d.w.SavePosition(id, p) }
 func (d *Desktop) New() (WorkspaceState, error) {
@@ -93,7 +94,8 @@ func (d *Desktop) Delete(id string) (WorkspaceState, error) {
 }
 func (d *Desktop) Status(id string) (DocStatus, error) {
 	defer d.syncNative("")
-	return d.w.Status(id)
+	status, err := d.w.Status(id)
+	return valueIn(status, i18n.Locale()).(DocStatus), err
 }
 func (d *Desktop) Overwrite(id string) (WorkspaceState, error) {
 	s, err := d.w.Overwrite(id)
@@ -120,14 +122,17 @@ func (d *Desktop) Reload(id string) (WorkspaceState, error) {
 	}
 	return d.currentResult(s, err, false)
 }
-func (d *Desktop) Rename(id, title string) (WorkspaceState, error) { return d.w.Rename(id, title) }
+func (d *Desktop) Rename(id, title string) (WorkspaceState, error) {
+	s, err := d.w.Rename(id, title)
+	return d.currentResult(s, err, false)
+}
 func (d *Desktop) OpenLinked(id, href string) (WorkspaceState, error) {
 	s, err := d.w.OpenLinked(id, href)
 	return d.currentResult(s, err, true)
 }
 func (d *Desktop) Open(ctx context.Context) (WorkspaceState, error) {
 	defer d.syncNative("")
-	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "打开 Markdown 文稿", Filters: []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md", "markdown", "txt"}}}})
+	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: locales.BOpenMarkdown(), Filters: []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md", "markdown", "txt"}}}})
 	if err != nil {
 		return WorkspaceState{}, err
 	}
@@ -140,8 +145,8 @@ func (d *Desktop) Open(ctx context.Context) (WorkspaceState, error) {
 func (d *Desktop) SaveAs(ctx context.Context, id string) (ExportResult, error) {
 	defer d.syncNative("")
 	state := d.w.State()
-	name := documentFilename(state.Current.Title, ".md")
-	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "保存 Markdown", DefaultPath: name, Filters: []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md"}}}})
+	name := documentFilename(documentIn(state.Current, i18n.Locale()).Title, ".md")
+	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: locales.BSaveMarkdown(), DefaultPath: name, Filters: []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md"}}}})
 	if err != nil {
 		return ExportResult{}, err
 	}
@@ -163,11 +168,11 @@ func (d *Desktop) Export(ctx context.Context, id string, allowMissing bool) (Exp
 	doc := d.w.docs[id]
 	if doc == nil {
 		d.w.mu.Unlock()
-		return ExportResult{}, errors.New("文稿不存在")
+		return ExportResult{}, messageError("bDocumentMissing", nil)
 	}
-	name := documentFilename(doc.Title, ".zip")
+	name := documentFilename(documentIn(*doc, i18n.Locale()).Title, ".zip")
 	d.w.mu.Unlock()
-	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "导出文稿与图片（ZIP）", DefaultPath: name, Filters: []mygo.FileFilter{{Name: "ZIP", Extensions: []string{"zip"}}}})
+	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: locales.BExportZIP(), DefaultPath: name, Filters: []mygo.FileFilter{{Name: "ZIP", Extensions: []string{"zip"}}}})
 	if err != nil {
 		return ExportResult{}, err
 	}
@@ -179,7 +184,7 @@ func (d *Desktop) Export(ctx context.Context, id string, allowMissing bool) (Exp
 func (d *Desktop) Delivery(id string) (Delivery, error) { return d.w.Delivery(id) }
 func (d *Desktop) CopyRich(html, text string) error {
 	if len(html)+len(text) > 64<<20 {
-		return errors.New("复制内容过大，请导出文稿")
+		return messageError("bCopyTooLarge", nil)
 	}
 	return mygo.Clipboard.Write(transfer.New(transfer.NewItem(transfer.Bytes(transfer.HTML, []byte(html)), transfer.Bytes(transfer.Text, []byte(text)))))
 }
@@ -190,12 +195,12 @@ func (d *Desktop) ClipboardText() (string, error) {
 func (d *Desktop) OpenLink(raw string) error {
 	u, e := url.Parse(raw)
 	if e != nil || (u.Scheme != "https" && u.Scheme != "http" && u.Scheme != "mailto") {
-		return errors.New("不支持的链接")
+		return messageError("bUnsupportedLink", nil)
 	}
 	return mygo.Shell.OpenExternal(raw)
 }
 func (d *Desktop) Rescue(ctx context.Context, id, content string) (ExportResult, error) {
-	path, e := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "保存当前恢复副本", DefaultPath: "留白恢复副本.md", Filters: []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md"}}}})
+	path, e := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: locales.BSaveRecovery(), DefaultPath: locales.BRecoveryFilename(), Filters: []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md"}}}})
 	if e != nil {
 		return ExportResult{}, e
 	}
@@ -206,9 +211,9 @@ func (d *Desktop) Rescue(ctx context.Context, id, content string) (ExportResult,
 }
 func (d *Desktop) PDF(ctx context.Context, title string) (ExportResult, error) {
 	if d.native == nil || d.win == nil {
-		return ExportResult{}, errors.New("请在桌面版导出 PDF")
+		return ExportResult{}, messageError("bDesktopPDFOnly", nil)
 	}
-	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "导出 PDF", DefaultPath: documentFilename(title, ".pdf"), Filters: []mygo.FileFilter{{Name: "PDF", Extensions: []string{"pdf"}}}})
+	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: locales.BExportPDF(), DefaultPath: documentFilename(title, ".pdf"), Filters: []mygo.FileFilter{{Name: "PDF", Extensions: []string{"pdf"}}}})
 	if err != nil {
 		return ExportResult{}, err
 	}
@@ -228,9 +233,9 @@ func (d *Desktop) PDF(ctx context.Context, title string) (ExportResult, error) {
 }
 func (d *Desktop) SaveHTML(ctx context.Context, title, html string) (ExportResult, error) {
 	if len(html) > 64<<20 {
-		return ExportResult{}, errors.New("HTML 过大，请改用 ZIP 导出")
+		return ExportResult{}, messageError("bHTMLTooLarge", nil)
 	}
-	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: "保存 HTML", DefaultPath: documentFilename(title, ".html"), Filters: []mygo.FileFilter{{Name: "HTML", Extensions: []string{"html"}}}})
+	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: locales.BSaveHTML(), DefaultPath: documentFilename(title, ".html"), Filters: []mygo.FileFilter{{Name: "HTML", Extensions: []string{"html"}}}})
 	if err != nil {
 		return ExportResult{}, err
 	}
@@ -263,25 +268,28 @@ func (d *Desktop) requestClose()      { _ = desktopAction.Broadcast("close") }
 func quitAllowed(allowClose, pending bool) bool { return allowClose || !pending }
 
 func menuTemplate(action func(string) func(*mygo.MenuItem, *mygo.Window)) []*mygo.MenuItem {
+	return menuTemplateIn(locales.In(i18n.Locale()), action)
+}
+
+func menuTemplateIn(msgs locales.Messages, action func(string) func(*mygo.MenuItem, *mygo.Window)) []*mygo.MenuItem {
 	return []*mygo.MenuItem{
-		{Label: "留白", Submenu: []*mygo.MenuItem{{Label: "关于留白", Click: func(*mygo.MenuItem, *mygo.Window) {
-			mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: "留白", ApplicationVersion: "0.3.0"})
-		}}, mygo.Separator(), {Role: mygo.RoleHide, Label: "隐藏留白"}, {Role: mygo.RoleHideOthers, Label: "隐藏其他"}, {Role: mygo.RoleUnhide, Label: "全部显示"}, mygo.Separator(), {Role: mygo.RoleQuit, Label: "退出留白"}}},
-		{Label: "文件", Submenu: []*mygo.MenuItem{{Label: "新建文稿", Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: "打开文稿…", Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Role: mygo.RoleOpenRecent, Label: "打开最近使用"}, {Label: "随手记", Click: action("capture")}, mygo.Separator(), {Label: "保存", Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: "另存为…", Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, mygo.Separator(), {Label: "导出…", Click: action("deliver")}, {Label: "导出 PDF…", Accelerator: "CmdOrCtrl+P", Click: action("pdf")}, mygo.Separator(), {Role: mygo.RoleClose, Label: "关闭窗口"}}},
-		{Label: "编辑", Submenu: []*mygo.MenuItem{{Label: "撤销", Accelerator: "CmdOrCtrl+Z", Click: action("undo")}, {Label: "重做", Accelerator: "CmdOrCtrl+Shift+Z", Click: action("redo")}, mygo.Separator(), {Role: mygo.RoleCut, Label: "剪切"}, {Role: mygo.RoleCopy, Label: "拷贝"}, {Role: mygo.RolePaste, Label: "粘贴"}, {Label: "粘贴为纯文本", Accelerator: "CmdOrCtrl+Shift+V", Click: action("pastePlain")}, {Role: mygo.RoleSelectAll, Label: "全选"}, mygo.Separator(), {Label: "查找", Accelerator: "CmdOrCtrl+F", Click: action("find")}}},
-		{Label: "显示", Submenu: []*mygo.MenuItem{{Label: "专注模式", Accelerator: "CmdOrCtrl+Shift+F", Click: action("focus")}, {Label: "外观与排版…", Click: action("theme")}, {Label: "切换分栏", Accelerator: "CmdOrCtrl+\\", Click: action("layout")}, {Label: "阅读模式", Accelerator: "CmdOrCtrl+Shift+R", Click: action("read")}, {Label: "显示 Markdown 源码", Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: "所有操作…", Accelerator: "CmdOrCtrl+K", Click: action("commands")}, mygo.Separator(), {Role: mygo.RoleToggleFullScreen, Label: "切换全屏"}}},
-		{Label: "窗口", Submenu: []*mygo.MenuItem{{Role: mygo.RoleMinimize, Label: "最小化"}, {Role: mygo.RoleZoom, Label: "缩放"}, mygo.Separator(), {Role: mygo.RoleFront, Label: "前置全部窗口"}}},
+		{Label: msgs.BMenuAppName(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuAbout(), Click: func(*mygo.MenuItem, *mygo.Window) {
+			mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: msgs.BMenuAppName(), ApplicationVersion: "0.3.0"})
+		}}, mygo.Separator(), {Role: mygo.RoleHide, Label: msgs.BMenuHide()}, {Role: mygo.RoleHideOthers, Label: msgs.BMenuHideOthers()}, {Role: mygo.RoleUnhide, Label: msgs.BMenuShowAll()}, mygo.Separator(), {Role: mygo.RoleQuit, Label: msgs.BMenuQuit()}}},
+		{Label: msgs.BMenuFile(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuNew(), Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: msgs.BMenuOpen(), Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Role: mygo.RoleOpenRecent, Label: msgs.BMenuOpenRecent()}, {Label: msgs.BMenuCapture(), Click: action("capture")}, mygo.Separator(), {Label: msgs.BMenuSave(), Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: msgs.BMenuSaveAs(), Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, mygo.Separator(), {Label: msgs.BMenuExport(), Click: action("deliver")}, {Label: msgs.BMenuExportPDF(), Accelerator: "CmdOrCtrl+P", Click: action("pdf")}, mygo.Separator(), {Role: mygo.RoleClose, Label: msgs.BMenuCloseWindow()}}},
+		{Label: msgs.BMenuEdit(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuUndo(), Accelerator: "CmdOrCtrl+Z", Click: action("undo")}, {Label: msgs.BMenuRedo(), Accelerator: "CmdOrCtrl+Shift+Z", Click: action("redo")}, mygo.Separator(), {Role: mygo.RoleCut, Label: msgs.BMenuCut()}, {Role: mygo.RoleCopy, Label: msgs.BMenuCopy()}, {Role: mygo.RolePaste, Label: msgs.BMenuPaste()}, {Label: msgs.BMenuPastePlain(), Accelerator: "CmdOrCtrl+Shift+V", Click: action("pastePlain")}, {Role: mygo.RoleSelectAll, Label: msgs.BMenuSelectAll()}, mygo.Separator(), {Label: msgs.BMenuFind(), Accelerator: "CmdOrCtrl+F", Click: action("find")}}},
+		{Label: msgs.BMenuView(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuFocus(), Accelerator: "CmdOrCtrl+Shift+F", Click: action("focus")}, {Label: msgs.BMenuAppearance(), Click: action("theme")}, {Label: msgs.BMenuLayout(), Accelerator: "CmdOrCtrl+\\", Click: action("layout")}, {Label: msgs.BMenuRead(), Accelerator: "CmdOrCtrl+Shift+R", Click: action("read")}, {Label: msgs.BMenuSource(), Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: msgs.BMenuCommands(), Accelerator: "CmdOrCtrl+K", Click: action("commands")}, mygo.Separator(), {Role: mygo.RoleToggleFullScreen, Label: msgs.BMenuFullscreen()}, mygo.Separator(), {Label: msgs.BMenuLanguage(), Submenu: languageMenu(msgs, action)}}},
+		{Label: msgs.BMenuWindow(), Submenu: []*mygo.MenuItem{{Role: mygo.RoleMinimize, Label: msgs.BMenuMinimize()}, {Role: mygo.RoleZoom, Label: msgs.BMenuZoom()}, mygo.Separator(), {Role: mygo.RoleFront, Label: msgs.BMenuFront()}}},
 	}
 }
 
 func main() {
-	webAddr := flag.String("web", "", "仅在回环地址运行本地开发版")
-	dataDir := flag.String("data-dir", "", "独立文稿存储目录")
+	webAddr := flag.String("web", "", locales.BWebHelp())
+	dataDir := flag.String("data-dir", "", locales.BDataDirHelp())
 	flag.Parse()
 	if *webAddr == "" {
-		mygo.App.SetName("留白")
+		mygo.App.SetName(locales.BMenuAppName())
 		mygo.App.SetVersion("0.3.0")
-		mygo.App.SetLanguages("zh-Hans")
 	}
 	web, _ := fs.Sub(frontend, "web")
 	if *webAddr == "" && os.Getenv("MYGO_GENERATE") != "" {
@@ -311,7 +319,7 @@ func main() {
 			log.Fatal(err)
 		}
 		mygo.App.WhenReady(func() {
-			_, _ = mygo.Dialog.Message(mygo.MessageOptions{Type: mygo.MessageError, Title: "留白无法启动", Message: "无法打开文稿存储目录", Detail: root + "\n" + err.Error(), Buttons: []string{"退出"}})
+			_, _ = mygo.Dialog.Message(mygo.MessageOptions{Type: mygo.MessageError, Title: locales.BStartupFailed(), Message: locales.BStorageUnavailable(), Detail: root + "\n" + err.Error(), Buttons: []string{locales.BExit()}})
 			mygo.App.Quit()
 		})
 		if err := mygo.App.Run(); err != nil {
@@ -326,6 +334,7 @@ func main() {
 		}
 		return
 	}
+	nativeLocaleChoice.Store(w.localePreference)
 	d.native = newDesktopIntegration(w)
 	defer d.native.cancel()
 	mygo.SetFrontend(web)
@@ -349,7 +358,7 @@ func main() {
 		if dark {
 			bg = "#191b1a"
 		}
-		d.win = mygo.NewWindow(mygo.WindowOptions{Title: "留白", URL: "/", Width: 1120, Height: 820, MinWidth: 680, MinHeight: 540, Hidden: true, TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: bg, StateKey: "liubai-editor"})
+		d.win = mygo.NewWindow(mygo.WindowOptions{Title: locales.BMenuAppName(), URL: "/", Width: 1120, Height: 820, MinWidth: 680, MinHeight: 540, Hidden: true, TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: bg, StateKey: "liubai-editor"})
 		go d.native.run(d.win)
 		openedAtLogin := mygo.App.WasOpenedAtLogin()
 		d.win.OnReadyToShow(func() {
@@ -366,7 +375,7 @@ func main() {
 				if markdownPath(path) {
 					paths = append(paths, path)
 				} else if !strings.HasPrefix(mime.TypeByExtension(strings.ToLower(filepath.Ext(path))), "image/") {
-					_ = openFailed.Broadcast(OpenFailure{Path: path, Error: "仅支持打开 Markdown 文稿"})
+					_ = openFailed.Broadcast(OpenFailure{Path: path, Error: locales.BMarkdownOnly()})
 				}
 			}
 			go func() {
@@ -385,6 +394,11 @@ func main() {
 		})
 		action := func(s string) func(*mygo.MenuItem, *mygo.Window) {
 			return func(*mygo.MenuItem, *mygo.Window) {
+				if strings.HasPrefix(s, "locale:") {
+					_ = d.SetLocale(strings.TrimPrefix(s, "locale:"))
+					d.refreshLocale()
+					return
+				}
 				if s == "capture" {
 					d.ShowCapture()
 					return
@@ -392,7 +406,9 @@ func main() {
 				_ = desktopAction.Emit(d.win, s)
 			}
 		}
-		mygo.App.SetMenu(mygo.NewMenu(menuTemplate(action)))
+		d.menuAction = action
+		d.refreshLocale()
+		mygo.App.OnLocaleChanged(func(string) { d.refreshLocale() })
 		mygo.App.OnActivate(func(bool) { d.win.Show(); d.win.Focus() })
 		d.win.Page().OnWillNavigate(func(e *mygo.NavigateEvent) { e.PreventDefault() })
 	})
@@ -468,6 +484,7 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			return
 		}
 		var req struct {
+			Locale string            `json:"locale"`
 			Method string            `json:"method"`
 			Args   []json.RawMessage `json:"args"`
 		}
@@ -486,6 +503,12 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 		switch req.Method {
 		case "State":
 			value = d.State()
+		case "SetLocale":
+			var tag string
+			e = arg(0, &tag)
+			if e == nil {
+				e = d.SetLocale(tag)
+			}
 		case "Capture":
 			var text string
 			e = arg(0, &text)
@@ -613,7 +636,7 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 							delete(downloads, key)
 						}
 					}
-					downloads[token] = ticket{p, documentFilename(result.Document.Title, ".zip"), time.Now()}
+					downloads[token] = ticket{p, documentFilename(documentIn(result.Document, req.Locale).Title, ".zip"), time.Now()}
 					downloadMu.Unlock()
 					value = map[string]any{"url": "/download/" + token, "missing": result.Missing, "external": result.External}
 				} else if e == nil {
@@ -623,13 +646,17 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 		default:
 			e = os.ErrInvalid
 		}
-		out := map[string]any{"value": value}
+		out := map[string]any{"value": valueIn(value, req.Locale)}
 		if e != nil {
-			out["error"] = strings.TrimSpace(e.Error())
+			out["error"] = strings.TrimSpace(errorIn(e, req.Locale))
+			if catalog, ok := e.(*catalogError); ok {
+				out["errorCode"] = catalog.Key
+				out["errorArgs"] = catalog.Args
+			}
 		}
 		_ = json.NewEncoder(w).Encode(out)
 	})
 	s := http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
-	log.Print("留白本地开发版已启动，使用独立存档")
+	log.Print("留白本地开发版已启动，使用独立存档") // i18n-ignore: diagnostic log, not interface text
 	return s.ListenAndServe()
 }

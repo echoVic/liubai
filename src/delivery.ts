@@ -1,3 +1,4 @@
+import {messages} from './i18n';
 import {normalizeImageDestination,renderMarkdown,headingSlug} from './markdown';
 export interface Delivery {title:string;content:string;images:Record<string,string>;missing:string[];external:number}
 export function renderDelivery(data:Delivery){
@@ -25,12 +26,12 @@ export function renderDelivery(data:Delivery){
  root.style.cssText='font-family:PingFang SC,Noto Sans CJK SC,sans-serif;font-size:16px;line-height:1.9;color:#242523;background:#fff;overflow-wrap:anywhere';
  return root;
 }
-export async function waitImages(root:HTMLElement){await Promise.all([...root.querySelectorAll('img')].map(img=>new Promise<void>((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(Error('图片无法解码'));return}const timeout=setTimeout(()=>reject(Error('图片加载超时')),10000);img.onload=()=>{clearTimeout(timeout);resolve()};img.onerror=()=>{clearTimeout(timeout);reject(Error('图片无法解码'))}})))}
+export async function waitImages(root:HTMLElement){await Promise.all([...root.querySelectorAll('img')].map(img=>new Promise<void>((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(Error(messages.fTheImageCouldNotBeDecoded()));return}const timeout=setTimeout(()=>reject(Error(messages.fTheImageTookTooLongToLoad())),10000);img.onload=()=>{clearTimeout(timeout);resolve()};img.onerror=()=>{clearTimeout(timeout);reject(Error(messages.fTheImageCouldNotBeDecoded()))}})))}
 export async function copyRich(root:HTMLElement){
  const html=root.outerHTML,text=root.innerText;
  if(navigator.clipboard?.write&&typeof ClipboardItem!=='undefined'){
   await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([text],{type:'text/plain'})})]);return;
  }
  const listener=(e:ClipboardEvent)=>{e.preventDefault();e.clipboardData?.setData('text/html',html);e.clipboardData?.setData('text/plain',text)};
- document.addEventListener('copy',listener);try{if(!document.execCommand('copy'))throw Error('剪贴板不可用，请下载 HTML')}finally{document.removeEventListener('copy',listener)}
+ document.addEventListener('copy',listener);try{if(!document.execCommand('copy'))throw Error(messages.fClipboardUnavailableDownloadHTMLInstead())}finally{document.removeEventListener('copy',listener)}
 }

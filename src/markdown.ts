@@ -1,3 +1,4 @@
+import {messages} from './i18n';
 import MarkdownIt from 'markdown-it';
 import DOMPurify from 'dompurify';
 import footnote from 'markdown-it-footnote';
@@ -110,7 +111,7 @@ const taskPlugin:PluginSimple=md=>{
     const checked=match[1].toLowerCase()==='x';
     const checkbox=new state.Token('html_inline','',0);
     checkbox.meta={...checkbox.meta,liubai:true};
-    checkbox.content=`<input type="checkbox" disabled${checked?' checked':''} aria-label="${checked?'已完成':'未完成'}"> `;
+    checkbox.content=`<input type="checkbox" disabled${checked?' checked':''} aria-label="${checked?messages.fComplete():messages.fIncomplete()}"> `;
     token.children?.unshift(checkbox);
     const item=state.tokens[items[items.length-1].index];
     item.attrJoin('class','md-task');
@@ -142,7 +143,7 @@ const semanticClassPlugin:PluginSimple=md=>{
 
 const githubAlerts:PluginSimple=md=>{
  md.core.ruler.after('inline','liubai_github_alerts',state=>{
-  const titles:Record<string,string>={note:'说明',tip:'提示',important:'重要',warning:'警告',caution:'注意'};
+  const titles:Record<string,string>={note:messages.fNote(),tip:messages.fTip(),important:messages.fImportant(),warning:messages.fWarning(),caution:messages.fCaution()};
   for(let i=state.tokens.length-1;i>=0;i--){
    const open=state.tokens[i],paragraph=state.tokens[i+1],inline=state.tokens[i+2];
    if(open.type!=='blockquote_open'||paragraph?.type!=='paragraph_open'||inline?.type!=='inline')continue;
@@ -182,10 +183,10 @@ function imageNotice(image:HTMLImageElement,source:string,kind:'missing'|'error'
  if(kind==='external'){
   const link=document.createElement('a');
   link.href=source;
-  link.textContent=(image.alt||'外链图片')+'（联网查看）';
+  link.textContent=(image.alt||messages.fExternalImage())+messages.fViewOnline();
   label.append(link);
  }else{
-  label.textContent=(kind==='missing'?'图片缺失：':'图片无法读取：')+(image.alt||source)+' · '+source;
+  label.textContent=(kind==='missing'?messages.fMissingImage():messages.fUnreadableImage())+(image.alt||source)+' · '+source;
  }
  return label;
 }
@@ -206,7 +207,7 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
  const tokens=parser.parse(meta.body,env);
  const authorHTML=tokens.some(t=>(t.type==='html_block'&&!t.meta?.liubai)||(t.children||[]).some(c=>c.type==='html_inline'&&!c.meta?.liubai));
  const rendered=parser.renderer.render(tokens,parser.options,env);
- const properties=meta.raw!==null&&options.frontMatter!=='hide'?`<details class="md-front-matter" data-line="0" data-line-end="${meta.lines-1}"><summary>文稿属性</summary><pre>${parser.utils.escapeHtml(meta.raw)}</pre></details>`:'';
+ const properties=meta.raw!==null&&options.frontMatter!=='hide'?`<details class="md-front-matter" data-line="0" data-line-end="${meta.lines-1}"><summary>${parser.utils.escapeHtml(messages.fDocumentProperties())}</summary><pre>${parser.utils.escapeHtml(meta.raw)}</pre></details>`:'';
  const template=document.createElement('template');
  if(authorHTML){
   sanitizeStats.calls++;

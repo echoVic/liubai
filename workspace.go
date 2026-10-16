@@ -18,6 +18,8 @@ import (
 	"time"
 	"unicode/utf16"
 	"unicode/utf8"
+
+	"liubai/locales"
 )
 
 const maxDocument = 8 << 20
@@ -38,25 +40,27 @@ type Position struct {
 	Source bool    `json:"source"`
 }
 type Document struct {
-	ID              string            `json:"id"`
-	Title           string            `json:"title"`
-	CustomTitle     bool              `json:"customTitle,omitempty"`
-	Content         string            `json:"content"`
-	Excerpt         string            `json:"excerpt,omitempty"`
-	Path            string            `json:"path"`
-	Updated         int64             `json:"updated"`
-	Revision        int               `json:"revision"`
-	Position        Position          `json:"position"`
-	DiskHash        string            `json:"diskHash"`
-	DiskContentHash string            `json:"diskContentHash"`
-	DiskSize        int64             `json:"diskSize,omitempty"`
-	DiskModTime     int64             `json:"diskModTime,omitempty"`
-	DiskInode       uint64            `json:"diskInode,omitempty"`
-	BOM             bool              `json:"bom"`
-	CRLF            bool              `json:"crlf"`
-	Conflict        bool              `json:"conflict"`
-	Status          string            `json:"status"`
-	ImageAliases    map[string]string `json:"imageAliases,omitempty"`
+	ID                   string            `json:"id"`
+	Title                string            `json:"title"`
+	CustomTitle          bool              `json:"customTitle,omitempty"`
+	GeneratedTitleSuffix string            `json:"generatedTitleSuffix,omitempty"`
+	Content              string            `json:"content"`
+	Excerpt              string            `json:"excerpt,omitempty"`
+	Path                 string            `json:"path"`
+	Updated              int64             `json:"updated"`
+	Revision             int               `json:"revision"`
+	Position             Position          `json:"position"`
+	DiskHash             string            `json:"diskHash"`
+	DiskContentHash      string            `json:"diskContentHash"`
+	DiskSize             int64             `json:"diskSize,omitempty"`
+	DiskModTime          int64             `json:"diskModTime,omitempty"`
+	DiskInode            uint64            `json:"diskInode,omitempty"`
+	BOM                  bool              `json:"bom"`
+	CRLF                 bool              `json:"crlf"`
+	Conflict             bool              `json:"conflict"`
+	Status               string            `json:"status"`
+	StatusCode           string            `json:"statusCode"`
+	ImageAliases         map[string]string `json:"imageAliases,omitempty"`
 }
 type Summary struct {
 	ID      string `json:"id"`
@@ -66,24 +70,29 @@ type Summary struct {
 	Excerpt string `json:"excerpt"`
 }
 type DocStatus struct {
-	ID       string `json:"id"`
-	Revision int    `json:"revision"`
-	Conflict bool   `json:"conflict"`
-	Status   string `json:"status"`
+	ID         string `json:"id"`
+	Revision   int    `json:"revision"`
+	Conflict   bool   `json:"conflict"`
+	Status     string `json:"status"`
+	StatusCode string `json:"statusCode"`
 }
 type WorkspaceState struct {
-	Capture       CaptureSettings `json:"capture"`
-	Current       Document        `json:"current"`
-	Recent        []Summary       `json:"recent"`
-	Appearance    Appearance      `json:"appearance"`
-	Notices       []string        `json:"notices,omitempty"`
-	QuarantineDir string          `json:"quarantineDir,omitempty"`
+	Capture                CaptureSettings   `json:"capture"`
+	Current                Document          `json:"current"`
+	Recent                 []Summary         `json:"recent"`
+	Appearance             Appearance        `json:"appearance"`
+	Notices                []string          `json:"notices,omitempty"`
+	NoticeMessages         []localeMessage   `json:"noticeMessages,omitempty"`
+	GeneratedTitles        map[string]bool   `json:"-"`
+	GeneratedTitleSuffixes map[string]string `json:"-"`
+	QuarantineDir          string            `json:"quarantineDir,omitempty"`
 }
 type index struct {
-	Capture    *CaptureSettings `json:"capture,omitempty"`
-	Version    int              `json:"version"`
-	Current    string           `json:"current"`
-	Appearance Appearance       `json:"appearance"`
+	Capture          *CaptureSettings `json:"capture,omitempty"`
+	LocalePreference string           `json:"localePreference,omitempty"`
+	Version          int              `json:"version"`
+	Current          string           `json:"current"`
+	Appearance       Appearance       `json:"appearance"`
 }
 type Edit struct {
 	ID       string   `json:"id"`
@@ -92,16 +101,17 @@ type Edit struct {
 	Position Position `json:"position"`
 }
 type Workspace struct {
-	mu             sync.Mutex
-	root           string
-	docs           map[string]*Document
-	positions      map[string]Position
-	positionsDirty bool
-	current        string
-	capture        CaptureSettings
-	appearance     Appearance
-	notices        []string
-	quarantineDir  string
+	mu               sync.Mutex
+	root             string
+	docs             map[string]*Document
+	positions        map[string]Position
+	positionsDirty   bool
+	current          string
+	capture          CaptureSettings
+	appearance       Appearance
+	notices          []localeMessage
+	localePreference string
+	quarantineDir    string
 }
 
 func uid() string {
@@ -120,7 +130,7 @@ func readLimited(path string, n int64) ([]byte, error) {
 	defer f.Close()
 	b, e := io.ReadAll(io.LimitReader(f, n+1))
 	if e == nil && int64(len(b)) > n {
-		e = errors.New("文件超过支持大小")
+		e = messageError("bFileTooLarge", nil)
 	}
 	return b, e
 }
@@ -186,7 +196,7 @@ func decodeFile(data []byte) (content string, bom, crlf bool, err error) {
 		data = data[3:]
 	}
 	if !utf8.Valid(data) || strings.IndexByte(string(data), 0) >= 0 {
-		return "", false, false, errors.New("仅支持 UTF-8 文本文件")
+		return "", false, false, messageError("bUTF8Only", nil)
 	}
 	crlf = strings.Contains(string(data), "\r\n")
 	content = strings.ReplaceAll(string(data), "\r\n", "\n")
@@ -231,14 +241,15 @@ func openWorkspace(root string) (*Workspace, error) {
 				return nil, err
 			}
 			w.restoreIndex(b)
-			w.notices = append(w.notices, "工作区索引来自更新版本的留白，已备份到隔离目录")
+			w.notices = append(w.notices, localeMessage{Key: "bNewerIndex"})
 		} else if json.Unmarshal(b, &x) != nil || x.Version != 1 {
 			if err := w.quarantine(indexPath, nil); err != nil {
 				return nil, err
 			}
-			w.notices = append(w.notices, "工作区索引无法读取，已重建，原文件在隔离目录")
+			w.notices = append(w.notices, localeMessage{Key: "bRebuiltIndex"})
 		} else {
 			w.current = x.Current
+			w.localePreference = x.LocalePreference
 			if x.Capture != nil {
 				w.capture = *x.Capture
 			}
@@ -268,7 +279,7 @@ func openWorkspace(root string) (*Workspace, error) {
 		w.docs[d.ID] = &d
 	}
 	if corrupt > 0 {
-		w.notices = append(w.notices, fmt.Sprintf("有 %d 份草稿无法读取，已移到隔离目录", corrupt))
+		w.notices = append(w.notices, localeMessage{Key: "bCorruptDrafts", Args: map[string]any{"count": corrupt}})
 	}
 	if len(w.docs) == 0 {
 		d, err := w.newLocked("")
@@ -432,7 +443,7 @@ func safeID(s string) bool {
 	return err == nil
 }
 func (w *Workspace) saveIndex() error {
-	b, err := json.Marshal(index{Version: 1, Current: w.current, Appearance: w.appearance, Capture: &w.capture})
+	b, err := json.Marshal(index{Version: 1, Current: w.current, LocalePreference: w.localePreference, Appearance: w.appearance, Capture: &w.capture})
 	if err != nil {
 		return err
 	}
@@ -447,7 +458,7 @@ func (w *Workspace) persist(d *Document) error {
 	return atomicWrite(filepath.Join(w.root, "drafts", d.ID+".json"), b, 0600)
 }
 func (w *Workspace) newLocked(content string) (*Document, error) {
-	d := &Document{ID: uid(), Content: content, Title: inferredTitle(content), Updated: time.Now().UnixMilli(), Status: "草稿已保存"}
+	d := &Document{ID: uid(), Content: content, Title: inferredTitle(content), Updated: time.Now().UnixMilli(), StatusCode: "draftSaved", Status: locales.In("zh-Hans").BStatusDraftSaved()}
 	if err := w.persist(d); err != nil {
 		return nil, err
 	}
@@ -469,7 +480,7 @@ func (w *Workspace) check(d *Document, reload bool) {
 	info, err := os.Stat(d.Path)
 	if err != nil {
 		d.Conflict = true
-		d.Status = "文件不可访问，草稿已保留"
+		d.setStatus("fileUnavailable")
 		return
 	}
 	if d.DiskModTime != 0 && d.DiskSize == info.Size() && d.DiskModTime == info.ModTime().UnixNano() && d.DiskInode == fileIdentity(info) && !d.Conflict {
@@ -478,7 +489,7 @@ func (w *Workspace) check(d *Document, reload bool) {
 	b, err := readLimited(d.Path, maxDocument)
 	if err != nil {
 		d.Conflict = true
-		d.Status = "文件不可访问，草稿已保留"
+		d.setStatus("fileUnavailable")
 		return
 	}
 	hash := digest(b)
@@ -486,9 +497,9 @@ func (w *Workspace) check(d *Document, reload bool) {
 		d.recordDiskInfo(info)
 		if d.Conflict {
 			d.Conflict = false
-			d.Status = "草稿已保存"
+			d.setStatus("draftSaved")
 			if digest([]byte(d.Content)) == d.DiskContentHash {
-				d.Status = "文件已保存"
+				d.setStatus("fileSaved")
 			}
 		}
 		return
@@ -497,7 +508,7 @@ func (w *Workspace) check(d *Document, reload bool) {
 		content, bom, crlf, err := decodeFile(b)
 		if err != nil {
 			d.Conflict = true
-			d.Status = "磁盘文件无法读取，草稿已保留"
+			d.setStatus("diskUnreadable")
 			return
 		}
 		d.Content, d.BOM, d.CRLF = content, bom, crlf
@@ -509,37 +520,48 @@ func (w *Workspace) check(d *Document, reload bool) {
 		d.Conflict = false
 		d.Revision++
 		d.Updated = time.Now().UnixMilli()
-		d.Status = "已载入磁盘上的新版本"
+		d.setStatus("diskReloaded")
 		if err := w.persist(d); err != nil {
-			d.Status = "已载入磁盘新版本，恢复记录更新失败"
+			d.setStatus("reloadRecoveryFailed")
 		}
 		return
 	}
 	d.Conflict = true
-	d.Status = "磁盘内容已变化，自动写入已暂停"
+	d.setStatus("diskConflict")
 }
 func (w *Workspace) snapshot() WorkspaceState {
 	list := []Summary{}
+	generatedTitles := map[string]bool{}
+	generatedTitleSuffixes := map[string]string{}
 	for _, d := range w.docs {
+		if d.GeneratedTitleSuffix != "" {
+			generatedTitleSuffixes[d.ID] = d.GeneratedTitleSuffix
+		}
+		if d.generatedTitle() {
+			generatedTitles[d.ID] = true
+		}
 		if d.Excerpt == "" {
 			d.Excerpt = excerptOf(d.Content)
 		}
 		list = append(list, Summary{d.ID, d.Title, d.Path, d.Updated, d.Excerpt})
 	}
 	sort.Slice(list, func(i, j int) bool { return list[i].Updated > list[j].Updated })
-	return WorkspaceState{Current: *w.docs[w.current], Recent: list, Appearance: w.appearance, Capture: w.capture}
+	return WorkspaceState{GeneratedTitleSuffixes: generatedTitleSuffixes, GeneratedTitles: generatedTitles, Current: *w.docs[w.current], Recent: list, Appearance: w.appearance, Capture: w.capture}
 }
 func (w *Workspace) Notify(message string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.notices = append(w.notices, message)
+	w.notices = append(w.notices, localeMessage{Text: message})
 }
 func (w *Workspace) State() WorkspaceState {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.check(w.docs[w.current], true)
 	s := w.snapshot()
-	s.Notices = append([]string(nil), w.notices...)
+	s.NoticeMessages = append([]localeMessage(nil), w.notices...)
+	for _, notice := range w.notices {
+		s.Notices = append(s.Notices, notice.render(""))
+	}
 	s.QuarantineDir = w.quarantineDir
 	w.notices = nil
 	w.quarantineDir = ""
@@ -550,10 +572,10 @@ func (w *Workspace) Status(id string) (DocStatus, error) {
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil {
-		return DocStatus{}, errors.New("文稿不存在")
+		return DocStatus{}, messageError("bDocumentMissing", nil)
 	}
 	w.check(d, true)
-	return DocStatus{d.ID, d.Revision, d.Conflict, d.Status}, nil
+	return DocStatus{d.ID, d.Revision, d.Conflict, d.Status, d.StatusCode}, nil
 }
 func (w *Workspace) New() (WorkspaceState, error) {
 	w.mu.Lock()
@@ -569,7 +591,7 @@ func (w *Workspace) Delete(id string) (WorkspaceState, error) {
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil {
-		return WorkspaceState{}, errors.New("文稿不存在")
+		return WorkspaceState{}, messageError("bDocumentMissing", nil)
 	}
 	if len(w.docs) == 1 {
 		if _, err := w.newLocked(""); err != nil {
@@ -591,7 +613,7 @@ func (w *Workspace) Activate(id string) (WorkspaceState, error) {
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil {
-		return WorkspaceState{}, errors.New("文稿不存在")
+		return WorkspaceState{}, messageError("bDocumentMissing", nil)
 	}
 	return w.activate(d)
 }
@@ -612,7 +634,7 @@ func (w *Workspace) SavePosition(id string, p Position) error {
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil {
-		return errors.New("文稿不存在")
+		return messageError("bDocumentMissing", nil)
 	}
 	return w.savePosition(d, p)
 }
@@ -645,13 +667,13 @@ func (w *Workspace) Update(e Edit) (Document, error) {
 	defer w.mu.Unlock()
 	d := w.docs[e.ID]
 	if d == nil {
-		return Document{}, errors.New("文稿不存在")
+		return Document{}, messageError("bDocumentMissing", nil)
 	}
 	if e.Revision != d.Revision {
-		return *d, errors.New("文稿已变化，请重新载入，当前输入尚未保存")
+		return *d, messageError("bDocumentChanged", nil)
 	}
 	if len(e.Content) > maxDocument || !utf8.ValidString(e.Content) {
-		return *d, errors.New("文稿超过 8 MB 或编码无效")
+		return *d, messageError("bInvalidDocument", nil)
 	}
 	if d.Content == e.Content && (d.Path == "" || digest([]byte(d.Content)) == d.DiskContentHash && !d.Conflict) {
 		err := w.savePosition(d, e.Position)
@@ -664,28 +686,29 @@ func (w *Workspace) Update(e Edit) (Document, error) {
 	d.Updated = time.Now().UnixMilli()
 	if d.Path == "" && !d.CustomTitle {
 		d.Title = inferredTitle(e.Content)
+		d.GeneratedTitleSuffix = ""
 	}
 	d.Excerpt = excerptOf(e.Content)
-	d.Status = "草稿已保存"
+	d.setStatus("draftSaved")
 	savedFile := false
 	if d.Path != "" {
 		w.check(d, false)
 		if !d.Conflict {
 			if digest([]byte(d.Content)) == d.DiskContentHash {
-				d.Status = "文件已保存"
+				d.setStatus("fileSaved")
 			} else if portable, err := w.materialize(d, d.Path, false); err != nil {
-				d.Status = "草稿已保留，图片保存失败"
+				d.setStatus("imageSaveFailed")
 			} else {
 				clone := *d
 				clone.Content = portable
 				b := diskBytes(&clone)
 				if digest(b) == d.DiskHash {
-					d.Status = "文件已保存"
+					d.setStatus("fileSaved")
 				} else if err := w.writeOriginal(d, b); err != nil {
-					d.Status = "草稿已保留，文件保存失败"
+					d.setStatus("fileSaveFailed")
 				} else {
 					savedFile = true
-					d.Status = "文件已保存"
+					d.setStatus("fileSaved")
 				}
 			}
 		}
@@ -693,10 +716,10 @@ func (w *Workspace) Update(e Edit) (Document, error) {
 	if err := w.persist(d); err != nil {
 		if !savedFile {
 			*d = before
-			d.Status = "保存失败，内容仍在编辑器"
+			d.setStatus("saveFailed")
 			return *d, err
 		}
-		d.Status = "文件已保存，恢复记录更新失败"
+		d.setStatus("recoveryUpdateFailed")
 	}
 	// A prior position-only save must not override the newer position in the draft.
 	if _, ok := w.positions[d.ID]; ok {
@@ -711,7 +734,7 @@ func (w *Workspace) writeOriginal(d *Document, b []byte) error {
 	}
 	if digest(current) != d.DiskHash {
 		d.Conflict = true
-		return errors.New("磁盘文件已变化")
+		return messageError("bDiskChanged", nil)
 	}
 	info, err := os.Stat(d.Path)
 	if err != nil {
@@ -739,30 +762,30 @@ func (w *Workspace) OpenLinked(fromID, href string) (WorkspaceState, error) {
 	d := w.docs[fromID]
 	if d == nil {
 		w.mu.Unlock()
-		return WorkspaceState{}, errors.New("文稿不存在")
+		return WorkspaceState{}, messageError("bDocumentMissing", nil)
 	}
 	source := d.Path
 	w.mu.Unlock()
 	if source == "" {
-		return WorkspaceState{}, errors.New("草稿还没有保存位置，无法打开相对链接")
+		return WorkspaceState{}, messageError("bRelativeLinkWithoutFile", nil)
 	}
 	u, err := url.Parse(href)
 	if err != nil || u.Scheme != "" || u.Host != "" || u.Path == "" {
-		return WorkspaceState{}, errors.New("不支持的链接")
+		return WorkspaceState{}, messageError("bUnsupportedLink", nil)
 	}
 	path, err := url.PathUnescape(u.EscapedPath())
 	if err != nil {
-		return WorkspaceState{}, errors.New("不支持的链接")
+		return WorkspaceState{}, messageError("bUnsupportedLink", nil)
 	}
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(filepath.Dir(source), path)
 	}
 	if !markdownPath(path) {
-		return WorkspaceState{}, errors.New("只能打开 Markdown 文稿链接")
+		return WorkspaceState{}, messageError("bMarkdownLinksOnly", nil)
 	}
 	info, err := os.Stat(path)
 	if err != nil || !info.Mode().IsRegular() {
-		return WorkspaceState{}, errors.New("链接的文稿不存在")
+		return WorkspaceState{}, messageError("bLinkedDocumentMissing", nil)
 	}
 	return w.Open(path)
 }
@@ -790,7 +813,7 @@ func (w *Workspace) Open(path string) (WorkspaceState, error) {
 	if err != nil {
 		return WorkspaceState{}, err
 	}
-	d := &Document{ID: uid(), Title: filepath.Base(p), Content: s, Path: p, Updated: time.Now().UnixMilli(), DiskHash: digest(b), DiskContentHash: digest([]byte(s)), BOM: bom, CRLF: crlf, Status: "文件已保存"}
+	d := &Document{ID: uid(), Title: filepath.Base(p), Content: s, Path: p, Updated: time.Now().UnixMilli(), DiskHash: digest(b), DiskContentHash: digest([]byte(s)), BOM: bom, CRLF: crlf, StatusCode: "fileSaved", Status: locales.In("zh-Hans").BStatusFileSaved()}
 	info, _ := os.Stat(p)
 	d.recordDiskInfo(info)
 	if err = w.persist(d); err != nil {
@@ -803,16 +826,16 @@ func (w *Workspace) Appearance(p Appearance) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if !validTheme(p.Theme) {
-		return errors.New("未知主题")
+		return messageError("bUnknownTheme", nil)
 	}
 	if p.FontSize != 0 && (p.FontSize < 15 || p.FontSize > 22) {
-		return errors.New("字号应为 15 至 22")
+		return messageError("bInvalidFontSize", nil)
 	}
 	if p.LineWidth != "" && p.LineWidth != "normal" && p.LineWidth != "wide" {
-		return errors.New("未知行宽")
+		return messageError("bUnknownLineWidth", nil)
 	}
 	if p.Layout != "" && p.Layout != "single" && p.Layout != "split" && p.Layout != "read" {
-		return errors.New("未知布局")
+		return messageError("bUnknownLayout", nil)
 	}
 	p.Layout = normalizeLayout(p.Layout)
 	old := w.appearance
@@ -828,7 +851,7 @@ func (w *Workspace) Reload(id string) (WorkspaceState, error) {
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil || d.Path == "" {
-		return WorkspaceState{}, errors.New("文稿没有对应文件")
+		return WorkspaceState{}, messageError("bDocumentWithoutFile", nil)
 	}
 	b, err := readLimited(d.Path, maxDocument)
 	if err != nil {
@@ -842,11 +865,12 @@ func (w *Workspace) Reload(id string) (WorkspaceState, error) {
 		backup := *d
 		backup.ID = uid()
 		backup.Path = ""
-		backup.Title = d.Title + " · 恢复副本"
+		backup.Title = d.Title + locales.BRecoverySuffix()
+		backup.GeneratedTitleSuffix = "recovery"
 		backup.DiskHash, backup.DiskContentHash = "", ""
 		backup.recordDiskInfo(nil)
 		backup.Conflict = false
-		backup.Status = "草稿已保存"
+		backup.setStatus("draftSaved")
 		backup.Updated = time.Now().UnixMilli()
 		if err = w.copyAssets(d, &backup); err != nil {
 			return WorkspaceState{}, err
@@ -865,7 +889,7 @@ func (w *Workspace) Reload(id string) (WorkspaceState, error) {
 	info, _ := os.Stat(d.Path)
 	d.recordDiskInfo(info)
 	d.Conflict = false
-	d.Status = "文件已保存"
+	d.setStatus("fileSaved")
 	d.Revision++
 	if err = w.persist(d); err != nil {
 		return WorkspaceState{}, err
@@ -877,7 +901,7 @@ func (w *Workspace) Overwrite(id string) (WorkspaceState, error) {
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil || d.Path == "" {
-		return WorkspaceState{}, errors.New("文稿没有对应文件")
+		return WorkspaceState{}, messageError("bDocumentWithoutFile", nil)
 	}
 	b, err := readLimited(d.Path, maxDocument)
 	if err == nil {
@@ -887,7 +911,7 @@ func (w *Workspace) Overwrite(id string) (WorkspaceState, error) {
 		}
 		if digest(b) != d.DiskHash {
 			disk := Document{Path: d.Path, Content: content}
-			backup := Document{ID: uid(), Title: d.Title + " · 磁盘版本", Content: content, Updated: time.Now().UnixMilli(), Status: "草稿已保存"}
+			backup := Document{ID: uid(), Title: d.Title + locales.BDiskVersionSuffix(), GeneratedTitleSuffix: "diskVersion", Content: content, Updated: time.Now().UnixMilli(), StatusCode: "draftSaved", Status: locales.In("zh-Hans").BStatusDraftSaved()}
 			if err = w.copyAssets(&disk, &backup); err != nil {
 				return WorkspaceState{}, err
 			}
@@ -921,9 +945,9 @@ func (w *Workspace) Overwrite(id string) (WorkspaceState, error) {
 	info, _ := os.Stat(d.Path)
 	d.recordDiskInfo(info)
 	d.Conflict = false
-	d.Status = "文件已保存"
+	d.setStatus("fileSaved")
 	if err = w.persist(d); err != nil {
-		d.Status = "文件已保存，恢复记录更新失败"
+		d.setStatus("recoveryUpdateFailed")
 		return WorkspaceState{}, err
 	}
 	return w.snapshot(), nil
@@ -933,18 +957,19 @@ func (w *Workspace) Rename(id, title string) (WorkspaceState, error) {
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil {
-		return WorkspaceState{}, errors.New("文稿不存在")
+		return WorkspaceState{}, messageError("bDocumentMissing", nil)
 	}
 	title = strings.TrimSpace(title)
 	if title == "" {
-		return WorkspaceState{}, errors.New("请输入名称")
+		return WorkspaceState{}, messageError("bNameRequired", nil)
 	}
 	if d.Path != "" {
-		return WorkspaceState{}, errors.New("已有文件请通过另存命名")
+		return WorkspaceState{}, messageError("bRenameExistingFile", nil)
 	}
 	old := *d
 	d.Title = title
 	d.CustomTitle = true
+	d.GeneratedTitleSuffix = ""
 	if err := w.persist(d); err != nil {
 		*d = old
 		return w.snapshot(), err

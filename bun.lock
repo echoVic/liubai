@@ -18,6 +18,7 @@
         "dompurify": "3.4.16",
         "markdown-it": "^14.1.0",
         "markdown-it-footnote": "4.0.0",
+        "mygo-runtime": "0.5.5",
         "turndown": "7.2.0",
         "turndown-plugin-gfm": "1.0.2",
       },
@@ -209,6 +210,8 @@
     "markdown-it-footnote": ["markdown-it-footnote@4.0.0", "", {}, "sha512-WYJ7urf+khJYl3DqofQpYfEYkZKbmXmwxQV8c8mO/hGIhgZ1wOe7R4HLFNwqx7TjILbnC98fuyeSsin19JdFcQ=="],
 
     "mdurl": ["mdurl@2.1.0", "", {}, "sha512-1+HBaOx0zi/dQWht8rNv9MYf9qqpqL/kxI0hXImU6Y547zM6Sni8BQibt7ifgMcYtQg41ao3Ivd6cnSM86inpg=="],
+
+    "mygo-runtime": ["mygo-runtime@0.5.5", "", {}, "sha512-51cwqDKMW10f0YjuoTfpd3rp3lFhP9sofSEKysqkIhRk8gheAqDyfDOhG51SCKRdJGvJDYUNpjbTe1SRxKP7Mw=="],
 
     "punycode.js": ["punycode.js@2.3.1", "", {}, "sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA=="],
 

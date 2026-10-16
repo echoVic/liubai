@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"log"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/i18n"
 )
 
 const editedGrace = 1500 * time.Millisecond
@@ -94,7 +94,7 @@ func (d *Desktop) currentResult(state WorkspaceState, err error, recent bool) (W
 		path = state.Current.Path
 	}
 	d.syncNative(path)
-	return state, err
+	return valueIn(state, i18n.Locale()).(WorkspaceState), err
 }
 
 func (n *desktopIntegration) run(win *mygo.Window) {
@@ -125,7 +125,7 @@ func (n *desktopIntegration) run(win *mygo.Window) {
 		doc := *n.w.docs[n.w.current]
 		n.w.mu.Unlock()
 		n.mu.Lock()
-		edited, delay := n.edited.decision(time.Now(), doc.Conflict, n.failed[doc.ID] || strings.Contains(doc.Status, "失败"))
+		edited, delay := n.edited.decision(time.Now(), doc.Conflict, n.failed[doc.ID] || doc.saveFailed())
 		recent := n.recent
 		n.recent = nil
 		n.mu.Unlock()
@@ -142,7 +142,7 @@ func (n *desktopIntegration) run(win *mygo.Window) {
 			due = timer.C
 		}
 		if err := watch.retarget(n.ctx, doc.ID, doc.Path); err != nil {
-			log.Printf("无法监听文稿：%v", err)
+			log.Printf("无法监听文稿：%v", err) // i18n-ignore: diagnostic log, not interface text
 		}
 		if doc.ID != lastID || doc.Path != lastPath {
 			win.SetRepresentedFile(doc.Path)
@@ -151,7 +151,7 @@ func (n *desktopIntegration) run(win *mygo.Window) {
 		win.SetDocumentEdited(edited)
 		for _, path := range recent {
 			if err := mygo.App.AddRecentDocument(path); err != nil {
-				log.Printf("无法记录最近文稿：%v", err)
+				log.Printf("无法记录最近文稿：%v", err) // i18n-ignore: diagnostic log, not interface text
 			}
 		}
 	}

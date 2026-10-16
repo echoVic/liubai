@@ -32,7 +32,7 @@ with tempfile.TemporaryDirectory(prefix="liubai-render-check-") as folder:
             headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome")
         )
         try:
-            page = browser.new_page()
+            page = browser.new_page(locale="zh-CN", )
             page.route("https://example.invalid/**", lambda route: route.abort())
             page.set_content("<!doctype html><html><body></body></html>")
             page.add_script_tag(path=str(bundle))

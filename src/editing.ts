@@ -1,3 +1,4 @@
+import {messages} from './i18n';
 import {EditorState, type TransactionSpec} from '@codemirror/state';
 import {syntaxTree} from '@codemirror/language';
 
@@ -67,7 +68,7 @@ export function linkAt(state:EditorState){
  }}return null;
 }
 export function makeLink(text:string,url:string){
- if(!safeLink(url))throw Error('请输入 https://、http://、mailto: 或 #标题 链接');
+ if(!safeLink(url))throw Error(messages.fEnterAnHttpsHttpMailtoOrHeadingLink());
  return `[${text.replace(/[\[\]\\]/g,'\\$&').replace(/\n/g,' ')}](<${url.trim()}>)`;
 }
 export function frontMatterRange(state:EditorState):{from:number;to:number}|null {
@@ -98,7 +99,7 @@ export function parseTable(raw:string){
  return {rows,aligns};
 }
 export function serializeTable(rows:string[][],aligns:string[]=[]){
- const count=rows[0]?.length||0;if(count<1)throw Error('表格至少需要一列');
+ const count=rows[0]?.length||0;if(count<1)throw Error(messages.fATableNeedsAtLeastOneColumn());
  const line=(r:string[])=>'| '+Array.from({length:count},(_,i)=>(r[i]||'').replace(/\r?\n/g,' ').replace(/(?<!\\)\|/g,'\\|')).join(' | ')+' |';
  return [line(rows[0]),line(Array.from({length:count},(_,i)=>({center:':---:',right:'---:',left:':---'}[aligns[i]]||'---'))),...rows.slice(1).map(line)].join('\n');
 }

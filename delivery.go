@@ -2,11 +2,12 @@ package main
 
 import (
 	"encoding/base64"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
+
+	"liubai/locales"
 )
 
 type Delivery struct {
@@ -24,7 +25,7 @@ func (w *Workspace) Delivery(id string) (Delivery, error) {
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil {
-		return Delivery{}, errors.New("文稿不存在")
+		return Delivery{}, messageError("bDocumentMissing", nil)
 	}
 	result := Delivery{Title: d.Title, Content: d.Content, Images: map[string]string{}, Missing: []string{}}
 	total := len(d.Content)
@@ -45,7 +46,7 @@ func (w *Workspace) Delivery(id string) (Delivery, error) {
 		}
 		total += len(b) * 4 / 3
 		if total > 48<<20 {
-			return Delivery{}, errors.New("图文超过 48 MB，请用 ZIP 带走文稿与图片")
+			return Delivery{}, messageError("bDeliveryTooLarge", nil)
 		}
 		result.Images[dest] = "data:" + info.MIME + ";base64," + base64.StdEncoding.EncodeToString(b)
 	}
@@ -61,7 +62,7 @@ func documentFilename(title, ext string) string {
 	}, name)
 	name = strings.TrimSpace(name)
 	if name == "" || name == "." {
-		name = "留白文稿"
+		name = locales.BDefaultFilename()
 	}
 	return name + ext
 }
@@ -71,20 +72,20 @@ func (w *Workspace) SaveRecovery(id, content, path string) (ExportResult, error)
 	defer w.mu.Unlock()
 	d := w.docs[id]
 	if d == nil {
-		return ExportResult{}, errors.New("文稿不存在")
+		return ExportResult{}, messageError("bDocumentMissing", nil)
 	}
 	if len(content) > maxDocument || !utf8.ValidString(content) {
-		return ExportResult{}, errors.New("文稿大小或编码无效")
+		return ExportResult{}, messageError("bInvalidRecoveryDocument", nil)
 	}
 	p, e := filepath.Abs(path)
 	if e != nil {
 		return ExportResult{}, e
 	}
 	if p == d.Path {
-		return ExportResult{}, errors.New("恢复副本请使用新的文件名")
+		return ExportResult{}, messageError("bRecoveryNeedsNewName", nil)
 	}
 	if info, e := os.Lstat(p); e == nil && info.Mode()&os.ModeSymlink != 0 {
-		return ExportResult{}, errors.New("请选择普通文件")
+		return ExportResult{}, messageError("bRegularFileRequired", nil)
 	}
 	clone := *d
 	clone.Content = content

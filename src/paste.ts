@@ -1,3 +1,4 @@
+import {messages} from './i18n';
 import TurndownService from 'turndown';
 import {gfm} from 'turndown-plugin-gfm';
 import type {EditorState,TransactionSpec} from '@codemirror/state';
@@ -16,7 +17,7 @@ export function replacePasteImage(state:EditorState,placeholder:string,text:stri
 export interface PasteImage {placeholder:string;dataUrl:string;alt:string}
 // The page's CSP (connect-src 'self') blocks fetch() of data: URLs, so decode them here.
 export function dataUrlBlob(url:string):Blob{
- const match=/^data:([^;,]*)((?:;[^;,]*)*),(.*)$/s.exec(url);if(!match)throw Error('图片无法读取');
+ const match=/^data:([^;,]*)((?:;[^;,]*)*),(.*)$/s.exec(url);if(!match)throw Error(messages.fTheImageCouldNotBeRead());
  const bytes=/;base64/i.test(match[2])?Uint8Array.from(atob(match[3].replace(/\s/g,'')),char=>char.charCodeAt(0)):new TextEncoder().encode(decodeURIComponent(match[3]));
  return new Blob([bytes],{type:match[1]||'application/octet-stream'});
 }

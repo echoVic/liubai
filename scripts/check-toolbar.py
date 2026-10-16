@@ -367,7 +367,7 @@ def run(page):
 
 with sync_playwright() as playwright:
     browser = playwright.chromium.launch(headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
-    page = browser.new_page(viewport={"width": 1120, "height": 820})
+    page = browser.new_page(locale="zh-CN", viewport={"width": 1120, "height": 820})
     page.set_default_timeout(7000)
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))

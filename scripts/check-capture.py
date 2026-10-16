@@ -106,7 +106,7 @@ def run(context):
 
 with sync_playwright() as p:
     browser = p.chromium.launch(channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"), headless=True)
-    context = browser.new_context(viewport={"width": 1120, "height": 820})
+    context = browser.new_context(locale="zh-CN", viewport={"width": 1120, "height": 820})
     try:
         run(context)
         print("Evidence:", ARTIFACTS)

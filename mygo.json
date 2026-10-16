@@ -5,6 +5,7 @@
   "frontendDist": "web",
   "out": "build",
   "bindings": "bindings.ts",
+  "i18n": {"dir": "locales", "source": "zh-Hans"},
   "fileAssociations": [{"ext": ["md", "markdown", "mdown", "mkd"], "name": "Markdown 文稿", "mimeType": "text/markdown", "role": "Editor"}],
   "macos": {
     "infoPlist": {

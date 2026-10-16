@@ -1,6 +1,10 @@
 package main
 
-import "github.com/egoist/mygo"
+import (
+	"liubai/locales"
+
+	"github.com/egoist/mygo"
+)
 
 var captured = mygo.NewEvent[Summary]("liubai:captured")
 var captureAppearance = mygo.NewEvent[Appearance]("liubai:capture-appearance")
@@ -22,7 +26,8 @@ func (d *Desktop) GetCaptureSettings() CaptureStatus {
 	defer d.w.mu.Unlock()
 	status := CaptureStatus{Settings: d.w.capture}
 	if d.capture != nil {
-		status.Error = d.capture.errorText
+		status.Error = errorIn(d.capture.lastError, "")
+		status.errorCause = d.capture.lastError
 	}
 	return status
 }
@@ -73,7 +78,7 @@ func (d *Desktop) toggleCapture() {
 }
 
 func (d *Desktop) initCapture() {
-	d.capturePanel = mygo.NewWindow(mygo.WindowOptions{Panel: true, Hidden: true, Frameless: true, Transparent: true, Vibrancy: mygo.VibrancyPopover, Width: 560, Height: 240, DisableResize: true, URL: "/capture.html"})
+	d.capturePanel = mygo.NewWindow(mygo.WindowOptions{Title: locales.BCaptureWindowTitle(), Panel: true, Hidden: true, Frameless: true, Transparent: true, Vibrancy: mygo.VibrancyPopover, Width: 560, Height: 240, DisableResize: true, URL: "/capture.html"})
 	d.capturePanel.OnClose(d.handleCaptureClose)
 	d.capturePanel.OnBlur(d.HideCapture)
 	d.capturePanel.OnShow(func() {

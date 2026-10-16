@@ -70,7 +70,7 @@ func (m *fileWatchManager) retarget(ctx context.Context, id, path string) error 
 			events, err := w.Next(life)
 			if err != nil {
 				if life.Err() == nil && !errors.Is(err, io.EOF) {
-					log.Printf("监听文稿失败：%v", err)
+					log.Printf("监听文稿失败：%v", err) // i18n-ignore: diagnostic log, not interface text
 				}
 				return
 			}

@@ -51,6 +51,7 @@
 go test ./...
 go vet ./...
 node_modules/.bin/tsc --noEmit
+node scripts/check-i18n.mjs
 node scripts/check-editor.mjs
 bun scripts/check-capture-input.ts
 npx --yes bun@1.4.3 scripts/check-editing.ts
@@ -68,6 +69,10 @@ reader_dir="$(mktemp -d /tmp/liubai-reader-data.XXXXXX)"
 python3 $WEBAPP_TESTING/scripts/with_server.py \
   --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4196 -data-dir $reader_dir" \
   --port 4196 -- python3 scripts/check-reader.py http://127.0.0.1:4196
+english_dir="$(mktemp -d /tmp/liubai-english-data.XXXXXX)"
+python3 $WEBAPP_TESTING/scripts/with_server.py \
+  --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4199 -data-dir $english_dir" \
+  --port 4199 -- python3 scripts/check-english.py http://127.0.0.1:4199
 capture_dir="$(mktemp -d /tmp/liubai-capture-data.XXXXXX)"
 python3 $WEBAPP_TESTING/scripts/with_server.py \
   --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4198 -data-dir $capture_dir" \

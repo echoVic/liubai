@@ -14,7 +14,7 @@
 - 格式工具栏按标题、行内格式、列表和插入分组：标题菜单可设正文或标题 1–3，按钮随光标显示当前标题级别（1–6）；支持加粗、斜体、删除线、行内代码、引用、无序/有序/任务列表，以及链接、图片、表格和代码块。图标按钮提供中文提示，窄窗口可横向滚动；也可以从「更多」打开「所有操作…」。
 - 链接面板可编辑文字与地址，⌘/Ctrl 点击打开；任务可直接勾选，表格面板支持编辑单元格、增加行列与整次撤销。
 - `⌘/Ctrl+\` 在「编辑」与「分栏」之间切换；仅在分栏中显示格式工具栏右侧的「源码」，点击或用 `⌘/Ctrl+Shift+M` 切换左侧即时排版与完整源码，与「更多」中的「显示 Markdown 源码」同步；文字和撤销记录共用。
-- 分栏右侧是只读成品视图。光标跨段时会跟随到对应内容块，手动滚动阅读区不会反向带动编辑区；窗口窄于 820px 时两栏改为上下排列。
+- 分栏时左右两栏等宽，右侧是只读成品视图。光标跨段时会跟随到对应内容块，手动滚动阅读区不会反向带动编辑区；窗口窄于 820px 时两栏改为上下排列。
 - 点击顶部「侧栏」打开最近文稿与大纲，两个标签可切换，最近文稿支持搜索；悬停文稿可「从最近文稿移除」（需再点一次确认）：草稿移到数据目录的 `trash/` 保留 30 天，已有文件只从列表移除、磁盘文件不动。空的未命名草稿在切走时自动清理。点击顶部草稿标题命名，「更多」提供新建、打开、另存为、重命名、专注模式、显示 Markdown 源码和所有操作…。
 - 界面支持简体中文和 English，默认跟随系统语言；「显示 → 语言」可手动切换，菜单和页面立即更新。
 - 文件被其他应用修改且本地没有改动时会立即载入；打开过的文件会出现在 Dock 菜单和「文件 → 打开最近使用」里；保存失败或长时间未保存时，窗口关闭按钮显示未保存圆点。
@@ -78,7 +78,7 @@ scripts/e2e.sh check-english
 
 性能对比：`ROUNDS=2 scripts/bench/run.sh 29925c3 docs/performance/raw/<日期>` 在同一台机器上交替运行 0.3.0 与当前工作区的编辑、预览、存储基准，并生成 `summary.md`，约 8 分钟。存储基准也可单独运行：`go test -tags perf -run '^$' -bench . -benchtime 20x .`，普通 `go test` 不会运行它们。
 
-构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.1.3.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
+构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.1.4.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
 
 自动更新由 `mygo.json` 的 `updates` 配置（公钥和发布仓库）。签名更新包的私钥不在仓库和配置里，发布时通过环境变量传入：`MYGO_UPDATER_PRIVATE_KEY="$(cat <私钥文件>)" go tool mygo build -platform darwin/universal -upload .`；没有私钥时照常构建，只是不生成更新包。更新说明取自 `CHANGELOG.md` 中当前版本的段落，缺少该段落时构建失败。`go tool mygo build -platform darwin/universal -upload .` 把 DMG、更新包和更新清单上传到当前版本的 GitHub Release 草稿；发布为最新版本后，已安装的应用就会检测到更新。
 

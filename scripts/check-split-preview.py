@@ -151,7 +151,7 @@ def run(page):
     expect(checks.nth(1)).to_be_checked()
 
     # Editing mode is global; switching layout must keep one EditorView/history.
-    appearance_change(page, lambda: page.locator("#source-button").click())
+    appearance_change(page, lambda: page.locator('#format-bar [data-action="source"]').click())
     expect(page.locator(".paper")).to_have_class(re.compile("source-mode"))
     content = page.locator(".cm-content")
     content.focus()

@@ -50,11 +50,110 @@ def more_action(page, action):
 
 
 def accessible_buttons(page):
-    for button in page.locator('.topbar button:visible, #drawer button:visible, #more-menu button:visible').all():
+    for button in page.locator('.topbar button:visible, #format-bar button:visible, #heading-menu button:visible, #drawer button:visible, #more-menu button:visible').all():
         expect(button).to_have_accessible_name(re.compile(r"\S"))
         # SVG-only controls and the × recent-removal control need tooltips.
         if button.locator("svg").count() and not button.inner_text().strip() or button.inner_text().strip() == "×":
             assert button.get_attribute("title"), button.evaluate("el => el.outerHTML")
+
+
+def check_format_bar(page):
+    bar = page.locator("#format-bar")
+    heading = page.locator("#heading-button")
+    menu = page.locator("#heading-menu")
+    source = bar.locator('[data-action="source"]')
+    source_item = page.locator('#more-menu [data-menu-action="source"]')
+    expect(bar).to_have_attribute("role", "toolbar")
+    expect(bar).to_have_attribute("aria-label", "格式")
+    order = bar.evaluate("el => [...el.children].map(el => el.classList.contains('format-sep') ? '|' : el.dataset.action || el.id)")
+    assert order == ["heading-button", "|", "bold", "italic", "strike", "inlineCode", "|", "quote", "bullet", "ordered", "task", "|", "link", "image", "table", "code", "source"], order
+    for separator in bar.locator(".format-sep").all():
+        expect(separator).to_have_attribute("aria-hidden", "true")
+    expect(heading).to_have_attribute("title", "标题级别")
+    expect(heading).to_have_attribute("aria-haspopup", "menu")
+    expect(bar.locator('[data-action="bold"]')).to_have_attribute("title", "加粗 ⌘B")
+    expect(bar.locator('[data-action="link"]')).to_have_attribute("title", "链接 ⌘L")
+    expect(source).to_have_text("源码")
+    expect(source).to_have_attribute("title", "显示 Markdown 源码 ⌘⇧M")
+    expect(source).to_be_hidden()
+    expect(page.locator("#source-button, .source-toggle, .paper-top button")).to_have_count(0)
+    expect(bar.locator('[data-action="image"]')).to_have_count(1)
+    icons = bar.locator("button.tool").evaluate_all("els => els.map(el => ({action:el.dataset.action, svg:el.querySelector('svg').outerHTML}))")
+    assert len(icons) == 12
+    assert len({item["svg"] for item in icons}) == len(icons), icons
+    assert bar.locator("button.tool").evaluate_all("els => els.every(el => el.getAttribute('aria-label') && getComputedStyle(el).width === '32px' && getComputedStyle(el).height === '32px')")
+    accessible_buttons(page)
+
+    with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
+        more_action(page, "new")
+    content = page.locator('.cm-content[contenteditable="true"]')
+    # An empty document shows only the CodeMirror placeholder.
+    expect(page.locator(".cm-placeholder")).to_be_visible()
+    content.focus()
+    page.keyboard.insert_text("格式测试")
+    for action, text, label in [("h1", "# 格式测试", "标题 1"), ("h3", "### 格式测试", "标题 3"), ("paragraph", "格式测试", "正文")]:
+        heading.click()
+        expect(menu).to_be_visible()
+        expect(menu.get_by_role("menuitemradio")).to_have_text(["正文", "标题 1", "标题 2", "标题 3"])
+        expect(menu.locator('[aria-checked="true"]')).to_have_count(1)
+        accessible_buttons(page)
+        menu.locator(f'[data-menu-action="{action}"]').click()
+        expect(menu).to_be_hidden()
+        expect(content).to_be_focused()
+        expect(content).to_have_text(text)
+        expect(heading).to_have_text(label)
+        expect(menu.locator(f'[data-menu-action="{action}"]')).to_have_attribute("aria-checked", "true")
+    # Radio items use the shared menu's full keyboard navigation and dismissal.
+    heading.focus()
+    page.keyboard.press("ArrowDown")
+    expect(menu.get_by_role("menuitemradio", name="正文", exact=True)).to_be_focused()
+    page.keyboard.press("End")
+    page.keyboard.press("Enter")
+    expect(content).to_have_text("### 格式测试")
+    expect(content).to_be_focused()
+    heading.click()
+    page.keyboard.press("Escape")
+    expect(heading).to_be_focused()
+    expect(menu).to_be_hidden()
+
+    content.focus()
+    page.keyboard.press("Meta+a")
+    page.keyboard.insert_text("# 标题行\n正文行")
+    expect(heading).to_have_text("正文")
+    page.keyboard.press("Meta+Home")
+    expect(heading).to_have_text("标题 1")
+    page.keyboard.press("Meta+End")
+    expect(heading).to_have_text("正文")
+    for action, marker in [("strike", "~~"), ("inlineCode", "`")]:
+        page.keyboard.press("Meta+a")
+        page.keyboard.insert_text("选中文字")
+        page.keyboard.press("Meta+a")
+        bar.locator(f'[data-action="{action}"]').click()
+        expect(content).to_be_focused()
+        expect(content).to_have_text(marker + "选中文字" + marker)
+        bar.locator(f'[data-action="{action}"]').click()
+        expect(content).to_have_text("选中文字")
+
+    page.keyboard.press("Meta+a")
+    page.keyboard.insert_text("# 源码测试\n\n**格式标记**\n\n正文")
+    page.keyboard.press("Meta+End")
+    expect(page.locator(".cm-content .cm-line").first).not_to_contain_text("# ")
+    select_view(page, "split")
+    expect(source).to_be_visible()
+    expect(source).to_have_attribute("aria-pressed", "false")
+    appearance_change(page, lambda: source.click())
+    expect(source).to_have_attribute("aria-pressed", "true")
+    expect(source_item).to_have_attribute("aria-checked", "true")
+    expect(page.locator(".cm-content .cm-line").first).to_have_text("# 源码测试")
+    expect(content).to_contain_text("**格式标记**")
+    appearance_change(page, lambda: source.click())
+    expect(source).to_have_attribute("aria-pressed", "false")
+    expect(source_item).to_have_attribute("aria-checked", "false")
+    expect(page.locator(".cm-content .cm-line").first).not_to_contain_text("# ")
+    select_view(page, "read")
+    expect(bar).to_be_hidden()
+    select_view(page, "single")
+    expect(source).to_be_hidden()
 
 
 def run(page):
@@ -67,12 +166,14 @@ def run(page):
     expect(page.locator('.view-switch')).to_have_attribute("aria-label", "视图")
     expect(page.locator('.view-switch [role="radio"]')).to_have_count(3)
     accessible_buttons(page)
-    icons = page.locator('.topbar button, .drawer-head button').evaluate_all("""els => els.filter(el => el.querySelector('svg')).map(el => ({
+    icons = page.locator('.topbar button, .drawer-head button, #format-bar button').evaluate_all("""els => els.filter(el => el.querySelector('svg')).map(el => ({
       action:el.dataset.action || el.dataset.close || el.id, svg:el.querySelector('svg').outerHTML
     }))""")
     for i, first in enumerate(icons):
         for second in icons[i + 1:]:
             assert first["action"] == second["action"] or first["svg"] != second["svg"], (first, second)
+
+    check_format_bar(page)
 
     # Use the real New action and autosave before checking sidebar headings/recent.
     with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
@@ -85,6 +186,7 @@ def run(page):
     select_view(page, "split")
     expect(page.locator("#preview")).to_be_visible()
     select_view(page, "read")
+    expect(page.locator("#format-bar")).to_be_hidden()
     expect(page.locator(".editor-pane")).to_be_hidden()
     select_view(page, "single")
     expect(page.locator(".editor-pane")).to_be_visible()
@@ -202,6 +304,7 @@ def run(page):
     more.click()
     expect(source).to_have_attribute("aria-checked", "false" if previous == "true" else "true")
     page.keyboard.press("Escape")
+    expect(page.locator('#format-bar [data-action="source"]')).to_have_attribute("aria-pressed", "false" if previous == "true" else "true")
     more_action(page, "focus")
     expect(page.locator("body")).to_have_class(re.compile("focus-mode"))
     page.keyboard.press("Escape")
@@ -211,6 +314,9 @@ def run(page):
     page.keyboard.press("Enter")
     expect(page.locator("#commands")).to_be_visible()
     expect(page.locator("#commands")).to_have_attribute("aria-label", "所有操作")
+    for label in ("正文", "标题 1", "标题 2", "标题 3", "删除线", "行内代码"):
+        expect(page.locator("#command-list .command span").filter(has_text=re.compile("^" + re.escape(label) + "$"))).to_have_count(1)
+    expect(page.locator("#command-list")).not_to_contain_text("插入二级标题")
     page.keyboard.press("Escape")
     page.locator(".export-button").click()
     expect(page.locator("#delivery-dialog")).to_be_visible()
@@ -236,8 +342,19 @@ def run(page):
         if width == 680:
             expect(page.locator(".export-label")).to_be_hidden()
             expect(page.locator(".export-button")).to_have_accessible_name("导出")
+        # Narrow editors wrap the format bar onto another row; every control stays visible.
+        for view in ("single", "split"):
+            page.locator(f'[data-view="{view}"]').click()
+            format_geometry = page.locator("#format-bar").evaluate("""bar => {
+              const r=bar.getBoundingClientRect();
+              return {scroll:bar.scrollWidth, width:bar.clientWidth, outside:[...bar.querySelectorAll('button')].filter(b => b.offsetParent).map(b => b.getBoundingClientRect()).filter(q => q.x < r.x - 1 || q.right > r.right + 1).length};
+            }""")
+            assert format_geometry["scroll"] <= format_geometry["width"] and format_geometry["outside"] == 0, (width, view, format_geometry)
+            expect(page.locator("#format-bar .format-source")).to_be_visible() if view == "split" else None
+            page.locator("#format-bar").screenshot(path=str(ARTIFACTS / f"format-bar-{width}-{view}.png"))
+        page.locator('[data-view="single"]').click()
         page.locator(".topbar").screenshot(path=str(ARTIFACTS / f"toolbar-{width}.png"))
-    print("PASS: toolbar order/names/icons, view radios/shortcuts/reload, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
+    print("PASS: format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
 
 
 with sync_playwright() as playwright:

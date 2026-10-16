@@ -3,13 +3,40 @@ import {EditorState} from '@codemirror/state';
 import {history,undo} from '@codemirror/commands';
 import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
 import {GFM} from '@lezer/markdown';
-import {blockFormat,wrapSelection,makeLink,safeLink,serializeTable,parseTable,headings,linkAt} from '../src/editing';
+import {blockFormat,setHeading,headingLevel,wrapSelection,makeLink,safeLink,serializeTable,parseTable,headings,linkAt} from '../src/editing';
 const create=(doc:string,from=0,to=doc.length)=>EditorState.create({doc,selection:{anchor:from,head:to},extensions:[history(),markdown({base:markdownLanguage,extensions:GFM})]});
 let s=create('第一行\n第二行\n不选这行',1,8);s=s.update(blockFormat(s,'task')).state;
 assert.equal(s.doc.toString(),'- [ ] 第一行\n- [ ] 第二行\n不选这行');
 let t=s;s=s.update(blockFormat(s,'task')).state;assert.equal(s.doc.toString(),'第一行\n第二行\n不选这行');
 assert.ok(undo({state:t,dispatch:tr=>t=tr.state}));assert.equal(t.doc.toString(),'第一行\n第二行\n不选这行');
 s=create('文字',0,2);s=s.update(wrapSelection(s,'**')).state;assert.equal(s.doc.toString(),'**文字**');s=s.update(wrapSelection(s,'**')).state;assert.equal(s.doc.toString(),'文字');
+for(const marker of ['~~','`']){
+ s=create('前文字后',1,3);s=s.update(wrapSelection(s,marker)).state;
+ assert.equal(s.doc.toString(),'前'+marker+'文字'+marker+'后');assert.equal(s.sliceDoc(s.selection.main.from,s.selection.main.to),'文字');
+ s=s.update(wrapSelection(s,marker)).state;assert.equal(s.doc.toString(),'前文字后');assert.deepEqual([s.selection.main.anchor,s.selection.main.head],[1,3]);
+}
+for(let level=1;level<=6;level++){
+ s=create('标题正文',1,3);s=s.update(setHeading(s,level)).state;
+ assert.equal(s.doc.toString(),'#'.repeat(level)+' 标题正文');assert.equal(headingLevel(s),level);
+ assert.equal(s.sliceDoc(s.selection.main.from,s.selection.main.to),'题正');
+ s=s.update(setHeading(s,level===1?3:1)).state;
+ assert.equal(s.doc.toString(),(level===1?'###':'#')+' 标题正文');assert.equal(s.sliceDoc(s.selection.main.from,s.selection.main.to),'题正');
+ s=s.update(setHeading(s,0)).state;assert.equal(s.doc.toString(),'标题正文');assert.equal(headingLevel(s),0);
+ assert.deepEqual([s.selection.main.anchor,s.selection.main.head],[1,3]);
+}
+s=create('# 第一行\n### 第二行\n正文\n不选这行',2,17);s=s.update(setHeading(s,2)).state;
+assert.equal(s.doc.toString(),'## 第一行\n## 第二行\n## 正文\n不选这行');
+assert.equal(s.sliceDoc(s.selection.main.from,s.selection.main.to),'第一行\n## 第二行\n## 正文\n');
+s=s.update(setHeading(s,0)).state;assert.equal(s.doc.toString(),'第一行\n第二行\n正文\n不选这行');assert.deepEqual([s.selection.main.anchor,s.selection.main.head],[0,11]);
+s=create('  ####  标题\n正文',9,8);s=s.update(setHeading(s,2)).state;
+assert.equal(s.doc.toString(),'  ## 标题\n正文');assert.deepEqual([s.selection.main.anchor,s.selection.main.head],[6,5]);
+assert.equal(s.sliceDoc(s.selection.main.from,s.selection.main.to),'标');
+s=create('正文',0,0);s=s.update(setHeading(s,1)).state;assert.equal(s.selection.main.head,2);
+s=create('### 标题',1,1);s=s.update(setHeading(s,0)).state;assert.equal(s.selection.main.head,0);
+s=create('',0,0);s=s.update(setHeading(s,6)).state;assert.equal(s.doc.toString(),'###### ');assert.equal(s.selection.main.head,7);
+for(const [line,level] of [['正文',0],['#无空格',0],['####### 太多',0],['  ###### 标题',6],['##\t标题',2]] as const)assert.equal(headingLevel(create(line,0,0)),level);
+s=create('# 标题\n正文',0,0);assert.equal(headingLevel(s),1);s=s.update({selection:{anchor:s.doc.length}}).state;assert.equal(headingLevel(s),0);
+console.log('标题设置、级别识别、选区保持、删除线与行内代码切换检查通过');
 assert.equal(safeLink('javascript:alert(1)'),false);assert.equal(safeLink('file:///private/test'),false);assert.equal(safeLink('#标题'),true);
 const link=makeLink('中文[标题]','https://example.com/a_(b)');s=create(link,4,4);assert.equal(linkAt(s)?.url,'https://example.com/a_(b)');
 assert.equal(linkAt(s)?.text,'中文[标题]');assert.equal(makeLink(linkAt(s)!.text,linkAt(s)!.url),link);

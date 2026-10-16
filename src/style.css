@@ -17,7 +17,8 @@ dialog{padding:24px;width:470px;max-width:calc(100vw - 32px);border:1px solid va
 .cm-line{word-break:normal;line-break:strict}.cm-line.md-heading{margin:22px 0 10px;letter-spacing:.01em}.md-h1{font-size:1.9em}.md-h2{font-size:1.5em}.md-h3{font-size:1.2em}
 .md-inline-code{font:0.84em/1.6 'SFMono-Regular','Cascadia Code',Consolas,monospace;background:var(--code);padding:2px 4px;border-radius:4px;box-decoration-break:clone}
 .md-code-line{font-size:14px;line-height:1.8}.md-code-line .md-inline-code{padding:0}.md-link{cursor:text}.md-link:hover{background:var(--accent)}
-#format-bar{display:flex;align-items:center;gap:3px;padding:12px 0;margin:0 48px;border-bottom:1px solid var(--border);overflow-x:auto}#format-bar .tool{flex-shrink:0;color:var(--muted-foreground)}
+#format-bar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 3px;padding:12px 0;margin:0 48px;border-bottom:1px solid var(--border)}#format-bar .tool{flex:0 0 32px;width:32px;min-width:32px;height:32px;color:var(--muted-foreground)}
+.format-sep{flex:0 0 1px;width:1px;height:18px;background:var(--border);margin:0 5px}.format-text{display:flex;flex-shrink:0;align-items:center;justify-content:center;gap:5px;height:32px;padding:0 8px;border-radius:5px;color:var(--muted-foreground);font-size:12px;white-space:nowrap}.format-text:hover{background:var(--accent);color:var(--foreground)}#heading-button svg{display:block;width:14px;height:14px}#heading-menu{min-width:140px}#heading-menu [aria-checked=true]{background:var(--accent);color:var(--foreground)}.format-source{margin-left:auto}.format-source[aria-pressed=true]{background:var(--card);color:var(--foreground);box-shadow:0 1px 3px #0002;outline:1px solid var(--border);outline-offset:-1px}
 #editor{padding-top:16px}.paper-top{margin-top:20px}.task-check{accent-color:var(--primary);width:17px;height:17px;vertical-align:middle;cursor:pointer;margin:0 7px 0 0}
 .rendered-table{position:relative;padding-bottom:30px}.table-edit{position:absolute;bottom:0;right:0;font:12px -apple-system,sans-serif;color:var(--primary);padding:5px 8px;border-radius:5px;background:var(--accent)}
 .type-settings{display:flex;gap:16px;margin-top:18px}.type-settings label{display:flex;flex:1;align-items:center;justify-content:space-between;font-size:12px;gap:10px}select{font:inherit;background:var(--card);color:var(--foreground);border:1px solid var(--input);border-radius:5px;padding:6px 9px}select:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
@@ -41,12 +42,9 @@ dialog{padding:24px;width:470px;max-width:calc(100vw - 32px);border:1px solid va
 /* Main writing and split-reading layout */
 .desk{display:grid;grid-template-areas:'caption' 'editor' 'bottom';grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:0;overflow:hidden}
 .desk-caption{grid-area:caption}.editor-pane{grid-area:editor;min-width:0;min-height:0;overflow:auto;padding:0 0 18px;scrollbar-width:thin;scrollbar-color:var(--input) transparent}.desk-bottom{grid-area:bottom}
-.editor-pane .paper{width:min(var(--paper-width),100%)}.paper-actions{display:flex;align-items:center;gap:5px}
-.source-toggle{display:flex;align-items:center;gap:7px;height:34px;padding:0 9px;border-radius:6px;color:var(--muted-foreground);font-size:11px;white-space:nowrap}
-.source-toggle:hover,.source-toggle[aria-pressed=true]{background:var(--accent);color:var(--foreground)}
-.source-toggle svg{width:17px;height:17px}.source-toggle{display:none}
+.editor-pane .paper{width:min(var(--paper-width),100%)}
 .desk.split-layout{grid-template-areas:'caption caption' 'editor preview' 'bottom bottom';grid-template-columns:clamp(320px,45vw,640px) minmax(0,1fr);column-gap:18px}
-.split-layout .desk-caption,.split-layout .desk-bottom{width:100%;max-width:none}.split-layout .source-toggle{display:flex}
+.split-layout .desk-caption,.split-layout .desk-bottom{width:100%;max-width:none}
 .split-layout .editor-pane .paper{min-height:100%;margin:0}.split-layout #editor{padding-left:clamp(26px,4vw,50px);padding-right:clamp(26px,4vw,50px)}
 @media(max-width:819px){
  .desk.split-layout{grid-template-areas:'caption' 'editor' 'preview' 'bottom';grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) minmax(0,1fr) auto;row-gap:12px}

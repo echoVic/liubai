@@ -2,6 +2,21 @@ import {EditorState, type TransactionSpec} from '@codemirror/state';
 import {syntaxTree} from '@codemirror/language';
 
 export type BlockKind='heading'|'quote'|'bullet'|'ordered'|'task';
+export function headingLevel(state:EditorState):number {
+ const match=/^[ \t]*(#{1,6})[ \t]+/.exec(state.doc.lineAt(state.selection.main.head).text);
+ return match?match[1].length:0;
+}
+export function setHeading(state:EditorState,level:number):TransactionSpec {
+ const selection=state.selection.main;
+ const first=state.doc.lineAt(selection.from).number;
+ const last=state.doc.lineAt(Math.max(selection.from,selection.to-(selection.empty?0:1))).number;
+ const changes=state.changes(Array.from({length:last-first+1},(_,i)=>{
+  const line=state.doc.line(first+i),indent=/^[ \t]*/.exec(line.text)![0];
+  const prefix=/^#{1,6}[ \t]+/.exec(line.text.slice(indent.length))?.[0]||'';
+  return {from:line.from+indent.length,to:line.from+indent.length+prefix.length,insert:level?'#'.repeat(level)+' ':''};
+ }));
+ return {changes,selection:state.selection.map(changes,1),userEvent:'input.format'};
+}
 export function blockFormat(state:EditorState,kind:BlockKind):TransactionSpec {
  const selection=state.selection.main;
  const first=state.doc.lineAt(selection.from).number;

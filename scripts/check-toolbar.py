@@ -159,6 +159,117 @@ def check_format_bar(page):
     expect(source).to_be_hidden()
 
 
+def check_writing_sheet(page):
+    def new_document():
+        with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
+            more_action(page, "new")
+        expect(page.locator(".cm-placeholder")).to_be_visible()
+
+    def settled():
+        page.evaluate("async () => {await document.fonts.ready;await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))}")
+
+    def geometry():
+        return page.evaluate("""() => {
+          const pane=document.querySelector('.editor-pane'), paper=document.querySelector('.paper'), footer=document.querySelector('.paper-bottom');
+          const p=pane.getBoundingClientRect(), r=paper.getBoundingClientRect(), f=footer.getBoundingClientRect();
+          return {paperBottom:r.bottom,paperHeight:r.height,footerTop:f.top,footerBottom:f.bottom,
+            contentBottom:p.top+pane.clientTop+pane.clientHeight-parseFloat(getComputedStyle(pane).paddingBottom),
+            scrollHeight:pane.scrollHeight,clientHeight:pane.clientHeight};
+        }""")
+
+    def desk_width(selector):
+        return page.locator(selector).evaluate("""el => {
+          const desk=document.querySelector('.desk'), style=getComputedStyle(desk);
+          return {width:el.getBoundingClientRect().width,deskWidth:desk.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)};
+        }""")
+
+    select_view(page, "single")
+    new_document()
+    for width, height in ((1700, 1100), (1120, 820)):
+        page.set_viewport_size({"width": width, "height": height})
+        settled()
+        g = geometry()
+        assert abs(g["paperBottom"] - g["contentBottom"]) <= 2, g
+        assert g["paperBottom"] - 80 <= g["footerTop"] < g["footerBottom"] <= g["paperBottom"], g
+        assert g["scrollHeight"] == g["clientHeight"], g
+
+    page.set_viewport_size({"width": 1700, "height": 1100})
+    content = page.locator('.cm-content[contenteditable="true"]')
+    content.focus()
+    page.keyboard.insert_text("第一行\n第二行\n第三行")
+    expect(content.locator(".cm-line")).to_have_text(["第一行", "第二行", "第三行"])
+    page.keyboard.press("Meta+Home")
+    settled()
+    page.locator('[data-action="theme"]').focus()
+    footer = page.locator(".paper-bottom").bounding_box()
+    page.mouse.click(footer["x"] + footer["width"] / 2, footer["y"] - 60)
+    expect(content).to_be_focused()
+    page.keyboard.insert_text("尾")
+    expect(content.locator(".cm-line")).to_have_text(["第一行", "第二行", "第三行尾"])
+    expect(page.locator("#save-status")).to_have_text("草稿已保存")
+    assert api(page, "State")["current"]["content"] == "第一行\n第二行\n第三行尾"
+    g = geometry()
+    assert g["scrollHeight"] == g["clientHeight"], g
+
+    page.keyboard.press("Meta+a")
+    page.keyboard.insert_text("\n".join(f"长文第{i}行" for i in range(1, 121)))
+    page.locator(".paper-bottom").scroll_into_view_if_needed()
+    last = content.locator(".cm-line", has_text=re.compile("^长文第120行$"))
+    expect(last).to_be_visible()
+    settled()
+    g = geometry()
+    assert g["paperHeight"] > g["clientHeight"] and g["scrollHeight"] > g["clientHeight"], g
+    line = last.bounding_box()
+    assert g["footerTop"] >= line["y"] + line["height"], (g, line)
+
+    new_document()
+    page.locator('[data-action="theme"]').click()
+    expect(page.locator('#line-width option[value="full"]')).to_have_text("全宽")
+    appearance_change(page, lambda: page.locator("#line-width").select_option(label="全宽"))
+    page.keyboard.press("Escape")
+    settled()
+    g = desk_width(".paper")
+    assert abs(g["width"] - g["deskWidth"]) <= 2, g
+    for selector in (".desk-caption", ".desk-bottom"):
+        g = desk_width(selector)
+        assert abs(g["width"] - g["deskWidth"]) <= 2, (selector, g)
+    assert api(page, "State")["appearance"]["lineWidth"] == "full"
+    page.reload()
+    expect(content).to_be_visible()
+    settled()
+    g = desk_width(".paper")
+    assert abs(g["width"] - g["deskWidth"]) <= 2, g
+    page.locator('[data-action="theme"]').click()
+    expect(page.locator("#line-width")).to_have_value("full")
+    page.keyboard.press("Escape")
+    select_view(page, "read")
+    settled()
+    for selector in ("#preview", ".read-layout .markdown-document"):
+        g = desk_width(selector)
+        # The reading document is inside the preview's 1px borders.
+        assert abs(g["width"] - g["deskWidth"]) <= 2, (selector, g)
+    select_view(page, "split")
+    settled()
+    split_width = page.locator(".paper").bounding_box()["width"]
+    page.locator('[data-action="theme"]').click()
+    appearance_change(page, lambda: page.locator("#line-width").select_option(label="舒适"))
+    page.keyboard.press("Escape")
+    settled()
+    assert abs(page.locator(".paper").bounding_box()["width"] - split_width) <= 2
+    select_view(page, "single")
+    settled()
+    assert abs(page.locator(".paper").bounding_box()["width"] - 760) <= 2
+    page.locator('[data-action="theme"]').click()
+    appearance_change(page, lambda: page.locator("#line-width").select_option(label="宽阔"))
+    page.keyboard.press("Escape")
+    settled()
+    assert abs(page.locator(".paper").bounding_box()["width"] - 920) <= 2
+    page.locator('[data-action="theme"]').click()
+    appearance_change(page, lambda: page.locator("#line-width").select_option(label="舒适"))
+    page.keyboard.press("Escape")
+    page.set_viewport_size({"width": 1120, "height": 820})
+
+
 def run(page):
     page.goto(BASE)
     expect(page.locator(".cm-content")).to_be_visible()
@@ -177,6 +288,7 @@ def run(page):
             assert first["action"] == second["action"] or first["svg"] != second["svg"], (first, second)
 
     check_format_bar(page)
+    check_writing_sheet(page)
 
     # Use the real New action and autosave before checking sidebar headings/recent.
     with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
@@ -362,7 +474,7 @@ def run(page):
             page.locator("#format-bar").screenshot(path=str(ARTIFACTS / f"format-bar-{width}-{view}.png"))
         page.locator('[data-view="single"]').click()
         page.locator(".topbar").screenshot(path=str(ARTIFACTS / f"toolbar-{width}.png"))
-    print("PASS: format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
+    print("PASS: paper height/footer/no-scroll/long-document/click-to-write, full/normal/wide widths/reload/reading/split, format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
 
 
 with sync_playwright() as playwright:

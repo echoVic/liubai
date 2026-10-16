@@ -73,6 +73,7 @@ def english(context):
     page.locator('[data-action="theme"]').click()
     expect(page.locator("#appearance h2")).to_have_text("Appearance and Typography")
     expect(page.locator("#themes")).to_contain_text("Paper")
+    expect(page.locator('#line-width option[value="full"]')).to_have_text("Full Width")
     chrome_is_english(page)
     page.keyboard.press("Escape")
 
@@ -208,7 +209,7 @@ with sync_playwright() as playwright:
                 raise
         with browser.new_context(locale="zh-CN", viewport={"width": 1120, "height": 820}) as context:
             chinese(context)
-        print("PASS: English chrome, dialogs, capture, save status, word plurals, live/persisted language switching, undo, Chinese browser matching")
+        print("PASS: English chrome, dialogs/full width option, capture, save status, word plurals, live/persisted language switching, undo, Chinese browser matching")
     finally:
         print(f"Evidence: {ARTIFACTS}")
         browser.close()

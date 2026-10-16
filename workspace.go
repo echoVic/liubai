@@ -425,7 +425,7 @@ func (w *Workspace) restoreIndex(b []byte) {
 	if json.Unmarshal(x.Appearance["fontSize"], &size) == nil && (size == 0 || size >= 15 && size <= 22) {
 		p.FontSize = size
 	}
-	if json.Unmarshal(x.Appearance["lineWidth"], &width) == nil && (width == "" || width == "normal" || width == "wide") {
+	if json.Unmarshal(x.Appearance["lineWidth"], &width) == nil && (width == "" || width == "normal" || width == "wide" || width == "full") {
 		p.LineWidth = width
 	}
 	if json.Unmarshal(x.Appearance["layout"], &layout) == nil && (layout == "" || layout == "single" || layout == "split" || layout == "read") {
@@ -838,7 +838,7 @@ func (w *Workspace) Appearance(p Appearance) error {
 	if p.FontSize != 0 && (p.FontSize < 15 || p.FontSize > 22) {
 		return messageError("bInvalidFontSize", nil)
 	}
-	if p.LineWidth != "" && p.LineWidth != "normal" && p.LineWidth != "wide" {
+	if p.LineWidth != "" && p.LineWidth != "normal" && p.LineWidth != "wide" && p.LineWidth != "full" {
 		return messageError("bUnknownLineWidth", nil)
 	}
 	if p.Layout != "" && p.Layout != "single" && p.Layout != "split" && p.Layout != "read" {

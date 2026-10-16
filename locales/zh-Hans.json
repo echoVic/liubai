@@ -756,6 +756,10 @@
   "@fWide": {
     "description": "Interface text for Wide."
   },
+  "fFullWidth": "全宽",
+  "@fFullWidth": {
+    "description": "Line width option that uses the full desk width."
+  },
   "fChangesApplyImmediatelyYourDocumentAndEditingPositionAre": "选择即应用。你的文稿和编辑位置会保持原样。",
   "@fChangesApplyImmediatelyYourDocumentAndEditingPositionAre": {
     "description": "Interface text for Changes apply immediately. Your document and editing position are preserved.."

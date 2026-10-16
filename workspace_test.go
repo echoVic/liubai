@@ -55,6 +55,34 @@ func TestDraftRecoveryRevisionAndAppearance(t *testing.T) {
 		t.Fatal("recovery lost state")
 	}
 }
+func TestLineWidthAppearancePersistsAndRejectsUnknown(t *testing.T) {
+	for _, width := range []string{"normal", "wide", "full"} {
+		t.Run(width, func(t *testing.T) {
+			w := workspace(t)
+			p := w.State().Appearance
+			p.LineWidth = width
+			if err := w.Appearance(p); err != nil {
+				t.Fatal(err)
+			}
+			reopened, err := openWorkspace(w.root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := reopened.State().Appearance; got != p {
+				t.Fatalf("appearance did not persist: %+v, want %+v", got, p)
+			}
+			invalid := p
+			invalid.LineWidth = "unknown"
+			err = reopened.Appearance(invalid)
+			if e, ok := err.(*catalogError); !ok || e.Key != "bUnknownLineWidth" {
+				t.Fatalf("unknown line width error: %v", err)
+			}
+			if got := reopened.State().Appearance; got != p {
+				t.Fatalf("invalid request changed appearance: %+v", got)
+			}
+		})
+	}
+}
 func TestPreserveUneditedCRLFBOMAndConflict(t *testing.T) {
 	w := workspace(t)
 	p := filepath.Join(t.TempDir(), "note.md")

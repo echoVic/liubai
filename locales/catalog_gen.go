@@ -2734,6 +2734,20 @@ func (msgs Messages) FWide() string {
 	return Catalog.Format(msgs.locale, "fWide", nil)
 }
 
+// FFullWidth says "全宽"
+// in the language the app shows.
+//
+// Line width option that uses the full desk width.
+func FFullWidth() string { return In(i18n.Locale()).FFullWidth() }
+
+// FFullWidth says "全宽"
+// in the language of msgs.
+//
+// Line width option that uses the full desk width.
+func (msgs Messages) FFullWidth() string {
+	return Catalog.Format(msgs.locale, "fFullWidth", nil)
+}
+
 // FChangesApplyImmediatelyYourDocumentAndEditingPositionAre says "选择即应用。你的文稿和编辑位置会保持原样。"
 // in the language the app shows.
 //

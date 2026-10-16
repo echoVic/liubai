@@ -91,7 +91,7 @@ function load(next:WorkspaceState){
 }
 async function refreshRecent(){await appearanceQueue.catch(()=>{});const next=await call<WorkspaceState>('State');next.appearance=appearance;state=next;renderDrawer();if(next.notices?.length)showNotices(next)}
 function themeID(){return appearance.followSystem?(mq.matches?'ink':'paper'):appearance.theme}
-function applyTheme(){if(!appearance)return;const id=themeID();document.documentElement.dataset.liubaiTheme=id;document.documentElement.style.colorScheme=id==='ink'?'dark':'light';$('#follow-system').setAttribute('aria-checked',String(appearance.followSystem));$<HTMLInputElement>('#follow-system').checked=appearance.followSystem;document.documentElement.style.setProperty('--editor-size',(appearance.fontSize||18)+'px');document.documentElement.style.setProperty('--paper-width',appearance.lineWidth==='wide'?'920px':'760px');$<HTMLSelectElement>('#font-size').value=String(appearance.fontSize||18);$<HTMLSelectElement>('#line-width').value=appearance.lineWidth||'normal';renderThemes()}
+function applyTheme(){if(!appearance)return;const id=themeID();document.documentElement.dataset.liubaiTheme=id;document.documentElement.style.colorScheme=id==='ink'?'dark':'light';$('#follow-system').setAttribute('aria-checked',String(appearance.followSystem));$<HTMLInputElement>('#follow-system').checked=appearance.followSystem;document.documentElement.style.setProperty('--editor-size',(appearance.fontSize||18)+'px');document.documentElement.style.setProperty('--paper-width',appearance.lineWidth==='full'&&!split()?'100%':appearance.lineWidth==='wide'?'920px':'760px');$<HTMLSelectElement>('#font-size').value=String(appearance.fontSize||18);$<HTMLSelectElement>('#line-width').value=appearance.lineWidth||'normal';renderThemes()}
 function applyLayout(){
  const scroll=$('.editor-pane').scrollTop;
  $('.desk').classList.toggle('split-layout',split());
@@ -113,7 +113,7 @@ function renderThemes(){const list=$('#themes');list.replaceChildren();names().f
  })}
 mq.addEventListener('change',applyTheme);
 $('#font-size').onchange=()=>void setAppearance({...appearance,fontSize:Number($<HTMLSelectElement>('#font-size').value)});
-$('#line-width').onchange=()=>void setAppearance({...appearance,lineWidth:$<HTMLSelectElement>('#line-width').value as 'normal'|'wide'});
+$('#line-width').onchange=()=>void setAppearance({...appearance,lineWidth:$<HTMLSelectElement>('#line-width').value as Appearance['lineWidth']});
 $('#follow-system').onchange=()=>{void setAppearance({theme:themeID(),followSystem:$<HTMLInputElement>('#follow-system').checked})};
 const triggers=new Map<string,HTMLElement>();
 function dialog(id:string){triggers.set(id,document.activeElement as HTMLElement);($<HTMLDialogElement>('#'+id)).showModal()}
@@ -329,6 +329,12 @@ if(!desktop){
 document.addEventListener('keydown',e=>{
  if(e.isComposing||e.defaultPrevented)return;if(e.key==='Escape'&&!document.querySelector('dialog[open]')){if(focusMode)void action('focus');const drawerOpen=!$('#drawer').hidden;closeDrawer();if(drawerOpen)$('#sidebar-button').focus();else if(view)focusContent()}
  if(!(e.metaKey||e.ctrlKey))return;const k=e.key.toLowerCase();let id='';if(document.querySelector('dialog[open]'))return;if(k==='p')id='pdf';if(k==='l')id='link';if(k==='f'&&e.shiftKey)id='focus';if(k==='b')id='bold';if(k==='n')id='new';if(k==='o')id='open';if(k==='s')id=e.shiftKey?'saveAs':'save';if(k==='k')id='commands';if(!desktop&&k==='\\')id='layout';if(!desktop&&k==='m'&&e.shiftKey)id='source';if(!desktop&&k==='r'&&e.shiftKey)id='read';if(!desktop&&k==='v'&&e.shiftKey)id='pastePlain';if(id){e.preventDefault();void action(id)}
+});
+$('.paper').addEventListener('mousedown',e=>{
+ if(e.button!==0||e.shiftKey||e.metaKey||e.ctrlKey||e.altKey||!view||view.state.readOnly||compositionActive)return;
+ if(![$('.paper'),$('#editor'),view.dom,view.scrollDOM,view.contentDOM].includes(e.target as HTMLElement))return;
+ if(e.clientY<view.documentTop+view.lineBlockAt(view.state.doc.length).bottom)return;
+ e.preventDefault();view.dispatch({selection:{anchor:view.state.doc.length},userEvent:'select.pointer'});view.focus();
 });
 $('.editor-pane').addEventListener('scroll',()=>{if(loading||!doc)return;clearTimeout(timer);timer=setTimeout(()=>void save(),500)},{passive:true});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});

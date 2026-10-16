@@ -123,6 +123,25 @@ func TestNewerIndexPreservesValidSettingsAndOriginalBytes(t *testing.T) {
 	}
 }
 
+func TestStartupLineWidthValidation(t *testing.T) {
+	for _, test := range []struct{ stored, want string }{{"normal", "normal"}, {"wide", "wide"}, {"full", "full"}, {"unknown", ""}} {
+		t.Run(test.stored, func(t *testing.T) {
+			w := workspace(t)
+			contents := `{"version":2,"appearance":{"theme":"paper","lineWidth":"` + test.stored + `"}}`
+			if err := os.WriteFile(filepath.Join(w.root, "workspace.json"), []byte(contents), 0600); err != nil {
+				t.Fatal(err)
+			}
+			reopened, err := openWorkspace(w.root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := reopened.State().Appearance.LineWidth; got != test.want {
+				t.Fatalf("line width %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
 func TestOnlyStateDeliversPendingNotices(t *testing.T) {
 	w := workspace(t)
 	w.Notify("打开失败")

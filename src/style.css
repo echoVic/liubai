@@ -43,6 +43,7 @@ dialog{padding:24px;width:470px;max-width:calc(100vw - 32px);border:1px solid va
 .desk{display:grid;grid-template-areas:'caption' 'editor' 'bottom';grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:0;overflow:hidden}
 .desk-caption{grid-area:caption}.editor-pane{grid-area:editor;min-width:0;min-height:0;overflow:auto;padding:0 0 18px;scrollbar-width:thin;scrollbar-color:var(--input) transparent}.desk-bottom{grid-area:bottom}
 .editor-pane .paper{width:min(var(--paper-width),100%)}
+.desk:not(.split-layout) .paper{min-height:100%;display:flex;flex-direction:column}.desk:not(.split-layout) #editor{flex:1 0 auto;min-height:0}.desk:not(.split-layout) .cm-content{min-height:0}
 .desk.split-layout{grid-template-areas:'caption caption' 'editor preview' 'bottom bottom';grid-template-columns:clamp(320px,45vw,640px) minmax(0,1fr);column-gap:18px}
 .split-layout .desk-caption,.split-layout .desk-bottom{width:100%;max-width:none}
 .split-layout .editor-pane .paper{min-height:100%;margin:0}.split-layout #editor{padding-left:clamp(26px,4vw,50px);padding-right:clamp(26px,4vw,50px)}

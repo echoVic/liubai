@@ -1126,6 +1126,12 @@ export interface Messages {
    */
   fWide(): string;
   /**
+   * Line width option that uses the full desk width.
+   *
+   * `全宽`
+   */
+  fFullWidth(): string;
+  /**
    * Interface text for Changes apply immediately. Your document and editing position are preserved..
    *
    * `选择即应用。你的文稿和编辑位置会保持原样。`
@@ -2654,6 +2660,7 @@ const catalog = createCatalog<Messages>({
     "fBodyLineWidth": [],
     "fComfortable": [],
     "fWide": [],
+    "fFullWidth": [],
     "fChangesApplyImmediatelyYourDocumentAndEditingPositionAre": [],
     "fCloseQuickNoteSettings": [],
     "fEnableQuickNote": [],
@@ -3066,6 +3073,7 @@ const catalog = createCatalog<Messages>({
       "fBodyLineWidth": "正文行宽",
       "fComfortable": "舒适",
       "fWide": "宽阔",
+      "fFullWidth": "全宽",
       "fChangesApplyImmediatelyYourDocumentAndEditingPositionAre": "选择即应用。你的文稿和编辑位置会保持原样。",
       "fCloseQuickNoteSettings": "关闭随手记设置",
       "fEnableQuickNote": "启用随手记",
@@ -3477,6 +3485,7 @@ const catalog = createCatalog<Messages>({
       "fBodyLineWidth": "Body Line Width",
       "fComfortable": "Comfortable",
       "fWide": "Wide",
+      "fFullWidth": "Full Width",
       "fChangesApplyImmediatelyYourDocumentAndEditingPositionAre": "Changes apply immediately. Your document and editing position are preserved.",
       "fCloseQuickNoteSettings": "Close Quick Note Settings",
       "fEnableQuickNote": "Enable Quick Note",

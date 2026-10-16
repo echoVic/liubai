@@ -67,3 +67,20 @@ func TestMenuUsesToolbarNamesAndShortcuts(t *testing.T) {
 		}
 	}
 }
+
+func TestFileMenuOffersOpenRecentAfterOpen(t *testing.T) {
+	for _, menu := range menuTemplate(func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
+		if menu.Label != "文件" {
+			continue
+		}
+		for i, item := range menu.Submenu {
+			if item.Label == "打开文稿…" && i+1 < len(menu.Submenu) {
+				next := menu.Submenu[i+1]
+				if next.Role == mygo.RoleOpenRecent && next.Label == "打开最近使用" {
+					return
+				}
+			}
+		}
+	}
+	t.Fatal("文件菜单的打开文稿…之后应为打开最近使用")
+}

@@ -293,7 +293,7 @@ document.addEventListener('keydown',e=>{
 });
 $('.editor-pane').addEventListener('scroll',()=>{if(loading||!doc)return;clearTimeout(timer);timer=setTimeout(()=>void save(),500)},{passive:true});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
-if(window.mygo){window.mygo.on<string>('liubai:action',id=>void action(id));window.mygo.on<WorkspaceState>('liubai:opened',next=>{openedQueue.push(next.current.id);void processOpened()});window.mygo.on<{path:string;error:string}>('liubai:open-failed',f=>toast('无法打开「'+(f.path.split('/').pop()||f.path)+'」：'+f.error))}
+if(window.mygo){window.mygo.on<string>('liubai:action',id=>void action(id));window.mygo.on<string>('liubai:disk-changed',id=>{if(doc?.id===id)void pollStatus()});window.mygo.on<WorkspaceState>('liubai:opened',next=>{openedQueue.push(next.current.id);void processOpened()});window.mygo.on<{path:string;error:string}>('liubai:open-failed',f=>toast('无法打开「'+(f.path.split('/').pop()||f.path)+'」：'+f.error))}
 preview=createPreviewController({
  host:$('#preview-content'),
  scroll:$('.preview-scroll'),
@@ -309,6 +309,6 @@ async function pollStatus(){
  if(s.revision!==doc.revision){await run(async()=>{load(await call<WorkspaceState>('Activate',id));toast('已载入磁盘上的新版本')});return}
  if(s.conflict!==doc.conflict||s.status!==doc.status){doc.conflict=s.conflict;doc.status=s.status;header();if(s.conflict||s.status.includes('失败'))banner(s.status,s.conflict?'conflict':'error');else banner()}
 }
-setInterval(()=>void pollStatus(),2000);
+setInterval(()=>void pollStatus(),desktop?10000:2000);
 document.addEventListener('visibilitychange',()=>void pollStatus());
 window.addEventListener('focus',()=>void pollStatus());

@@ -145,6 +145,32 @@ func TestStatusSkipsReadingWhenMetadataIsUnchanged(t *testing.T) {
 	}
 }
 
+func TestStatusAfterOwnSaveIsANoop(t *testing.T) {
+	w := workspace(t)
+	p, d := openFile(t, w, "a.md", "one\n")
+	saved, err := w.Update(Edit{ID: d.ID, Revision: d.Revision, Content: "our save\n"})
+	if err != nil || saved.Conflict || saved.Status != "文件已保存" {
+		t.Fatalf("save: %+v %v", saved, err)
+	}
+	info, err := os.Stat(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved.DiskSize != info.Size() || saved.DiskModTime != info.ModTime().UnixNano() || saved.DiskInode != fileIdentity(info) {
+		t.Fatal("save did not record the metadata used by the stat fast path")
+	}
+	if err := os.Chmod(p, 0); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(p, 0644)
+	for range 2 {
+		st, err := w.Status(d.ID)
+		if err != nil || st.Revision != saved.Revision || st.Conflict || st.Status != "文件已保存" {
+			t.Fatalf("own write caused a reload or conflict: %+v %v", st, err)
+		}
+	}
+}
+
 func TestTouchedButUnchangedFileIsNotAConflict(t *testing.T) {
 	w := workspace(t)
 	p, d := openFile(t, w, "a.md", "one\n")

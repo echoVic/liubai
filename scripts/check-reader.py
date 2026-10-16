@@ -5,6 +5,8 @@ Requires Python Playwright and Chrome (or PLAYWRIGHT_CHANNEL).
 Covers: reader rendering of a README, reading mode, focus mode, position-only
 saves and word count, status-driven reload and conflict actions, empty-draft
 cleanup and two-step removal, dropping a .md file, relative links in drafts.
+Also covers rich paste/undo in both editor modes, embedded-image import and
+fallback, and plain paste through the browser shortcut and command palette.
 """
 import json
 import os
@@ -54,6 +56,16 @@ def more_action(page, action):
     page.locator(f'#more-menu [data-menu-action="{action}"]').click()
 
 
+
+def paste_html(page, html, plain):
+    # Playwright's dispatch_event does not attach clipboardData to paste events; build a real ClipboardEvent.
+    page.evaluate("""([html, plain]) => {
+        const dt = new DataTransfer();
+        dt.setData('text/html', html);
+        dt.setData('text/plain', plain);
+        document.querySelector('.cm-content').dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true}));
+    }""", [html, plain])
+
 def run(page):
     calls = []
     page.on("request", lambda r: calls.append(r.post_data_json.get("method")) if r.url.endswith("/api") and r.method == "POST" else None)
@@ -81,6 +93,64 @@ def run(page):
     page.locator('[data-view="single"]').click()
     expect(page.locator("#preview")).to_be_hidden()
 
+    # Rich paste is one undo step in both editor modes, even after prior typing.
+    for source in (False, True):
+        new_document(page, "保留的原文")
+        if source:
+            page.locator('[data-view="split"]').click()
+            page.keyboard.press("Meta+Shift+M")
+        page.locator(".cm-content").click()
+        page.keyboard.press("Meta+End")
+        paste_html(page, '<h1>粘贴标题</h1><ul><li>列表项</li></ul><table><thead><tr><th>列名</th></tr></thead><tbody><tr><td>单元格</td></tr></tbody></table>', '粘贴标题\n列表项\n列名\n单元格')
+        expect(page.locator(".cm-content")).to_contain_text("粘贴标题")
+        page.keyboard.press("Meta+s")
+        page.wait_for_timeout(800)
+        pasted = api(page, "State")["current"]["content"]
+        assert "# 粘贴标题" in pasted and "- 列表项" in pasted, pasted
+        assert "| 列名 |" in pasted and "| --- |" in pasted and "| 单元格 |" in pasted, pasted
+        page.keyboard.press("Meta+z")
+        page.keyboard.press("Meta+s")
+        page.wait_for_timeout(800)
+        assert api(page, "State")["current"]["content"] == "保留的原文"
+        if source:
+            page.keyboard.press("Meta+Shift+M")
+            page.locator('[data-view="single"]').click()
+
+    # Embedded images use the real import API; one failure keeps alt text, and
+    # the completed import/fallback still belongs to the original paste undo.
+    new_document(page, "原文")
+    paste_html(page, '<p>图文<img src="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%221%22%20height=%221%22/%3E" alt="成功图片"><img src="data:image/png;base64,aGVsbG8=" alt="失败说明"></p>', '图文成功图片失败说明')
+    expect(page.locator(".cm-content")).to_contain_text("失败说明")
+    expect(page.locator(".cm-content")).not_to_contain_text("LIUBAI-PASTE-IMAGE-")
+    expect(page.locator("#toast")).to_contain_text("请选择 PNG")
+    page.keyboard.press("Meta+s")
+    page.wait_for_timeout(800)
+    pasted = api(page, "State")["current"]["content"]
+    assert "![成功图片](liubai-asset:" in pasted and "失败说明" in pasted, pasted
+    page.keyboard.press("Meta+z")
+    page.keyboard.press("Meta+s")
+    page.wait_for_timeout(800)
+    assert api(page, "State")["current"]["content"] == "原文"
+
+    # Exercise the browser clipboard API through both shortcut and palette.
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=BASE)
+    literal = "*原样* [方括号] \\路径"
+    page.evaluate("text => navigator.clipboard.writeText(text)", literal)
+    page.keyboard.press("Meta+Shift+V")
+    expect(page.locator(".cm-content")).to_contain_text("[方括号]")
+    page.keyboard.press("Meta+s")
+    page.wait_for_timeout(800)
+    assert literal in api(page, "State")["current"]["content"]
+    page.keyboard.press("Meta+z")
+    page.keyboard.press("Meta+k")
+    page.locator("#command-search").fill("粘贴为纯文本")
+    expect(page.locator("#command-list kbd")).to_have_text("⌘ ⇧ V")
+    page.locator("#command-list button").click()
+    expect(page.locator(".cm-content")).to_contain_text("[方括号]")
+    page.keyboard.press("Meta+s")
+    page.wait_for_timeout(800)
+    assert literal in api(page, "State")["current"]["content"]
+
     # Reader rendering through the real preview: sanitized HTML, front matter, linkify, alerts, footnotes, highlighting.
     new_document(page, README)
     page.keyboard.press("Meta+Shift+R")
@@ -96,6 +166,8 @@ def run(page):
     assert not page.evaluate("Boolean(window.__xss) || Boolean(document.querySelector('#preview-content [onerror], #preview-content script'))")
     assert api(page, "State")["appearance"]["layout"] == "read"
     page.keyboard.press("Meta+b")
+    expect(page.locator("#toast")).to_contain_text("阅读模式下不能编辑")
+    page.keyboard.press("Meta+Shift+V")
     expect(page.locator("#toast")).to_contain_text("阅读模式下不能编辑")
     page.screenshot(path=str(ARTIFACTS / "reading-mode.png"))
     page.keyboard.press("Meta+Shift+R")
@@ -195,7 +267,7 @@ def run(page):
     page.locator(".cm-content .md-link").click(modifiers=["Meta"])
     expect(page.locator("#toast")).to_contain_text("草稿还没有保存位置")
 
-    print("PASS: notice banner, reader rendering, reading mode, focus mode, position saves/word count, status reload/conflict, draft cleanup/removal, drop to open, relative links")
+    print("PASS: rich/plain paste and undo, embedded images/fallback, notice banner, reader rendering, reading mode, focus mode, position saves/word count, status reload/conflict, draft cleanup/removal, drop to open, relative links")
 
 
 with sync_playwright() as playwright:

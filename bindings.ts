@@ -116,6 +116,9 @@ export const Desktop = {
   appearance(p: Appearance): Promise<void> {
     return call("Desktop.Appearance", p);
   },
+  clipboardText(): Promise<string> {
+    return call("Desktop.ClipboardText");
+  },
   close(): Promise<void> {
     return call("Desktop.Close");
   },
@@ -194,6 +197,7 @@ export const Desktop = {
 
 /** Events sent by the Go side. Subscribe with `events.name.on(listener)`. */
 export const events = {
+  liubaiDiskChanged: event<string>("liubai:disk-changed"),
   liubaiAction: event<string>("liubai:action"),
   liubaiOpened: event<WorkspaceState>("liubai:opened"),
   liubaiOpenFailed: event<OpenFailure>("liubai:open-failed"),

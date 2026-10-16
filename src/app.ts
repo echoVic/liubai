@@ -9,6 +9,7 @@ import {renderDelivery,waitImages,copyRich,type Delivery} from './delivery';
 import {createPreviewController,type PreviewController} from './preview';
 import {normalizeImageDestination} from './markdown';
 import {countWords} from './stats';
+import {pasteText,dataUrlBlob,type PasteImage} from './paste';
 const $=<T extends HTMLElement=HTMLElement>(s:string)=>document.querySelector<T>(s)!;
 const $$=(s:string)=>Array.from(document.querySelectorAll<HTMLElement>(s));
 const node=(tag:string,cls='',text='')=>{const n=document.createElement(tag);n.className=cls;n.textContent=text;return n};
@@ -72,7 +73,7 @@ function load(next:WorkspaceState){
  loading=true;if(view){sessions.set(doc.id,view.state);view.destroy()}
  if(appearance)next.appearance=appearance;else appearance=next.appearance;
  state=next;doc=next.current;source=!!appearance.source;dirty=false;generation=0;savedPosition=JSON.stringify(doc.position);
- view=createEditor($('#editor'),doc,resolveImage,changed,insertImages,composition,openLink,openTable,files=>{if(!desktop&&files[0])void importFile(files[0])});
+ view=createEditor($('#editor'),doc,resolveImage,changed,insertImages,composition,openLink,openTable,files=>{if(!desktop&&files[0])void importFile(files[0])},importPastedImage,error=>toast(errorText(error)));
  view.dispatch({effects:StateEffect.appendConfig.of(editLock.of(EditorState.readOnly.of(false)))});
  const cached=sessions.get(doc.id);if(cached&&cached.doc.toString()===doc.content)view.setState(cached);
  view.dispatch({effects:editLock.reconfigure(EditorState.readOnly.of(busy||reading()))});
@@ -157,9 +158,26 @@ $$('[data-view]').forEach((b,i)=>{
  b.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();const next=$$('[data-view]')[(i+(e.key==='ArrowRight'?1:2))%3];next.click()}};
 });
 attachMenu($('#more-button'),$('#more-menu'),id=>void action(id));
+async function importImage(file:File,id:string):Promise<ImageResult>{
+ if(file.size>20*1024*1024)throw Error('图片超过 20 MB');
+ const data=await new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=()=>reject(Error('图片无法读取'));r.readAsDataURL(file)});
+ const image=await call<ImageResult>('ImportImage',id,file.name,data);
+ if(doc.id!==id)throw Error('文稿已切换，请重新插入');
+ imageCache.set(imageKey(id,image.destination),Promise.resolve(image.url));return image;
+}
+async function importPastedImage(image:PasteImage):Promise<string>{
+ const id=doc.id;setBusy(true);
+ try{
+  if(image.dataUrl.length>28*1024*1024)throw Error('图片超过 20 MB');
+  const blob=dataUrlBlob(image.dataUrl);
+  const imported=await importImage(new File([blob],'粘贴图片',{type:blob.type}),id);
+  const alt=image.alt.replace(/[\[\]\\]/g,'\\$&').replace(/[\r\n]/g,' ');
+  return `![${alt}](${imported.markdown})`;
+ }finally{setBusy(false)}
+}
 async function insertImages(files:File[],at?:number){
  if(reading()){toast('阅读模式下不能编辑，⌘⇧R 返回编辑');return}if(busy||!doc||compositionActive)return;const id=doc.id;let offset=at??view.state.selection.main.from;setBusy(true);
- try{for(const file of files){if(file.size>20*1024*1024)throw Error('图片超过 20 MB');const data=await new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=()=>reject(Error('图片无法读取'));r.readAsDataURL(file)});const image=await call<ImageResult>('ImportImage',id,file.name,data);if(doc.id!==id)throw Error('文稿已切换，请重新插入');imageCache.set(imageKey(id,image.destination),Promise.resolve(image.url));const alt=file.name.replace(/[\[\]\\\r\n]/g,'').replace(/\.[^.]+$/,'')||'图片';const text=`\n\n![${alt}](${image.markdown})\n\n`;view.dispatch({changes:{from:offset,insert:text},selection:{anchor:offset+text.length},userEvent:'input.paste'});offset+=text.length}await save();reconfigure();view.focus()}catch(e){toast(errorText(e))}finally{setBusy(false)}
+ try{for(const file of files){const image=await importImage(file,id);const alt=file.name.replace(/[\[\]\\\r\n]/g,'').replace(/\.[^.]+$/,'')||'图片';const text=`\n\n![${alt}](${image.markdown})\n\n`;view.dispatch({changes:{from:offset,insert:text},selection:{anchor:offset+text.length},userEvent:'input.paste'});offset+=text.length}await save();reconfigure();view.focus()}catch(e){toast(errorText(e))}finally{setBusy(false)}
 }
 $('#image-input').onchange=()=>{const input=$<HTMLInputElement>('#image-input');void insertImages(Array.from(input.files||[]));input.value=''};
 function setBusy(value:boolean){busy=value;if(view)view.dispatch({effects:editLock.reconfigure(EditorState.readOnly.of(value||reading()))});if(!value){if(pendingClose){pendingClose=false;void closeApp()}else if(openedQueue.length)setTimeout(()=>void processOpened(),500)}syncPending()}
@@ -202,19 +220,23 @@ $('#ready-go').onclick=()=>{if(!prepared)return;const root=prepared;
 async function closeApp(){if(compositionActive){pendingClose=true;toast('请先确认输入法候选，完成后会保存并退出');return}if(busy){pendingClose=true;return}if(closeRequested)return;closeRequested=true;try{await appearanceQueue.catch(()=>{});const ok=await save();if(!ok||dirty){dialog('close-dialog');return}if(desktop)await call('Close');else toast('文稿已保存在本地，可以关闭此页面')}finally{closeRequested=false}}
 $('#discard-close').onclick=()=>{if(desktop)void call('Close');else closeDialog('close-dialog')};
 const commands=[
- ['new','新建文稿','⌘ N'],['rename','重命名…',''],['open','打开文稿…','⌘ O'],['save','保存','⌘ S'],['saveAs','另存为…','⌘ ⇧ S'],['deliver','导出…',''],['export','文稿与图片 ZIP','ZIP'],['pdf','导出 PDF',''],['copyRich','复制富文本',''],['html','下载 HTML',''],['focus','专注模式','⌘ ⇧ F'],['recent','最近文稿',''],['remove','从最近文稿移除当前文稿',''],['outline','大纲',''],['find','查找正文','⌘ F'],['layout','切换分栏','⌘ \\'],['read','阅读模式','⌘ ⇧ R'],['source','显示 Markdown 源码','⌘ ⇧ M'],['image','插入图片',''],['theme','外观与排版…',''],['commands','所有操作…','⌘ K'],...names.map(t=>['theme:'+t.id,'切换主题 · '+t.name,'']),['bold','加粗选中文字','⌘ B'],['italic','斜体选中文字',''],['paragraph','正文',''],['h1','标题 1',''],['h2','标题 2',''],['h3','标题 3',''],['strike','删除线',''],['inlineCode','行内代码',''],['quote','插入引用',''],['task','插入任务列表',''],['code','插入代码块',''],['table','插入 / 编辑表格',''],['link','插入 / 编辑链接','⌘ L'],['bullet','无序列表',''],['ordered','有序列表',''],['undo','撤销','⌘ Z'],['redo','重做','⌘ ⇧ Z']
+ ['new','新建文稿','⌘ N'],['rename','重命名…',''],['open','打开文稿…','⌘ O'],['save','保存','⌘ S'],['saveAs','另存为…','⌘ ⇧ S'],['deliver','导出…',''],['export','文稿与图片 ZIP','ZIP'],['pdf','导出 PDF',''],['copyRich','复制富文本',''],['pastePlain','粘贴为纯文本','⌘ ⇧ V'],['html','下载 HTML',''],['focus','专注模式','⌘ ⇧ F'],['recent','最近文稿',''],['remove','从最近文稿移除当前文稿',''],['outline','大纲',''],['find','查找正文','⌘ F'],['layout','切换分栏','⌘ \\'],['read','阅读模式','⌘ ⇧ R'],['source','显示 Markdown 源码','⌘ ⇧ M'],['image','插入图片',''],['theme','外观与排版…',''],['commands','所有操作…','⌘ K'],...names.map(t=>['theme:'+t.id,'切换主题 · '+t.name,'']),['bold','加粗选中文字','⌘ B'],['italic','斜体选中文字',''],['paragraph','正文',''],['h1','标题 1',''],['h2','标题 2',''],['h3','标题 3',''],['strike','删除线',''],['inlineCode','行内代码',''],['quote','插入引用',''],['task','插入任务列表',''],['code','插入代码块',''],['table','插入 / 编辑表格',''],['link','插入 / 编辑链接','⌘ L'],['bullet','无序列表',''],['ordered','有序列表',''],['undo','撤销','⌘ Z'],['redo','重做','⌘ ⇧ Z']
 ];
 function renderCommands(){const q=$<HTMLInputElement>('#command-search').value.trim();const list=$('#command-list');list.replaceChildren();commands.filter(c=>c[1].includes(q)).forEach(([id,title,key])=>{const b=node('button','command');b.append(node('span','',title),node('kbd','',key));b.onclick=()=>{closeDialog('commands');void action(id)};list.append(b)})}
 $('#command-search').oninput=renderCommands;$('#command-search').onkeydown=e=>{if(e.key==='ArrowDown'){e.preventDefault();$('#command-list button')?.focus()}if(e.key==='Enter'){e.preventDefault();$('#command-list button')?.click()}};
 async function action(id:string){
  if(id==='undo'||id==='redo'){const el=document.activeElement;if(el instanceof HTMLInputElement||el instanceof HTMLTextAreaElement){document.execCommand(id);return}}
  if(!view||!doc)return;
- if(reading()&&['paragraph','h1','h2','h3','strike','inlineCode','heading','quote','bullet','ordered','task','bold','italic','code','link','table','image','undo','redo','find','source','focus'].includes(id)){toast('阅读模式下不能编辑，⌘⇧R 返回编辑');return}
+ if(reading()&&['paragraph','h1','h2','h3','strike','inlineCode','heading','quote','bullet','ordered','task','bold','italic','code','link','table','image','pastePlain','undo','redo','find','source','focus'].includes(id)){toast('阅读模式下不能编辑，⌘⇧R 返回编辑');return}
  if(busy){if(id==='close')pendingClose=true;return;}
  if(compositionActive&&id!=='close'){toast('请先确认输入法候选');return}
  if(['paragraph','h1','h2','h3'].includes(id)){view.dispatch(setHeading(view.state,id==='paragraph'?0:Number(id.slice(1))));view.focus();return}
  if(['heading','quote','bullet','ordered','task'].includes(id)){view.dispatch(blockFormat(view.state,id as BlockKind));view.focus();return}
  if(id==='bold'||id==='italic'||id==='strike'||id==='inlineCode'){view.dispatch(wrapSelection(view.state,{bold:'**',italic:'_',strike:'~~',inlineCode:'`'}[id]));view.focus();return}
+ if(id==='pastePlain'){
+  const target=view;
+  try{const text=desktop?await call<string>('ClipboardText'):await navigator.clipboard.readText();if(view!==target||view.state.readOnly||compositionActive)return;view.dispatch(pasteText(view.state,text));view.focus()}catch(error){toast('无法读取剪贴板：'+errorText(error))}return;
+ }
  if(id==='code'){view.dispatch(codeBlock(view.state));view.focus();return}
  if(id==='link'){openLinkEditor();return}if(id==='table'){openTable();return}
  if(id==='focus'){focusMode=!focusMode;document.body.classList.toggle('focus-mode',focusMode);$('#focus-exit').hidden=!focusMode;view.dispatch({effects:setFocus.of(focusMode)});$$('[data-action=focus]').forEach(b=>b.setAttribute('aria-pressed',String(focusMode)));view.focus();return}
@@ -289,7 +311,7 @@ if(!desktop){
 }
 document.addEventListener('keydown',e=>{
  if(e.isComposing||e.defaultPrevented)return;if(e.key==='Escape'&&!document.querySelector('dialog[open]')){if(focusMode)void action('focus');const drawerOpen=!$('#drawer').hidden;closeDrawer();if(drawerOpen)$('#sidebar-button').focus();else if(view)focusContent()}
- if(!(e.metaKey||e.ctrlKey))return;const k=e.key.toLowerCase();let id='';if(document.querySelector('dialog[open]'))return;if(k==='p')id='pdf';if(k==='l')id='link';if(k==='f'&&e.shiftKey)id='focus';if(k==='b')id='bold';if(k==='n')id='new';if(k==='o')id='open';if(k==='s')id=e.shiftKey?'saveAs':'save';if(k==='k')id='commands';if(!desktop&&k==='\\')id='layout';if(!desktop&&k==='m'&&e.shiftKey)id='source';if(!desktop&&k==='r'&&e.shiftKey)id='read';if(id){e.preventDefault();void action(id)}
+ if(!(e.metaKey||e.ctrlKey))return;const k=e.key.toLowerCase();let id='';if(document.querySelector('dialog[open]'))return;if(k==='p')id='pdf';if(k==='l')id='link';if(k==='f'&&e.shiftKey)id='focus';if(k==='b')id='bold';if(k==='n')id='new';if(k==='o')id='open';if(k==='s')id=e.shiftKey?'saveAs':'save';if(k==='k')id='commands';if(!desktop&&k==='\\')id='layout';if(!desktop&&k==='m'&&e.shiftKey)id='source';if(!desktop&&k==='r'&&e.shiftKey)id='read';if(!desktop&&k==='v'&&e.shiftKey)id='pastePlain';if(id){e.preventDefault();void action(id)}
 });
 $('.editor-pane').addEventListener('scroll',()=>{if(loading||!doc)return;clearTimeout(timer);timer=setTimeout(()=>void save(),500)},{passive:true});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});

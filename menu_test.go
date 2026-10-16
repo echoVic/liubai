@@ -84,3 +84,20 @@ func TestFileMenuOffersOpenRecentAfterOpen(t *testing.T) {
 	}
 	t.Fatal("文件菜单的打开文稿…之后应为打开最近使用")
 }
+
+func TestEditMenuOffersPastePlainAfterPaste(t *testing.T) {
+	for _, menu := range menuTemplate(func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
+		if menu.Label != "编辑" {
+			continue
+		}
+		for i, item := range menu.Submenu {
+			if item.Role == mygo.RolePaste && i+1 < len(menu.Submenu) {
+				next := menu.Submenu[i+1]
+				if next.Label == "粘贴为纯文本" && next.Accelerator == "CmdOrCtrl+Shift+V" {
+					return
+				}
+			}
+		}
+	}
+	t.Fatal("编辑菜单的粘贴之后应为粘贴为纯文本（CmdOrCtrl+Shift+V）")
+}

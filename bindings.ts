@@ -13,6 +13,17 @@ export interface Appearance {
   source: boolean;
 }
 
+export interface CaptureSettings {
+  enabled: boolean;
+  shortcut: string;
+  openAtLogin: boolean;
+}
+
+export interface CaptureStatus {
+  settings: CaptureSettings;
+  error: string;
+}
+
 export interface Delivery {
   title: string;
   content: string;
@@ -100,6 +111,7 @@ export interface TextChange {
 }
 
 export interface WorkspaceState {
+  capture: CaptureSettings;
   current: Document;
   recent: Summary[];
   appearance: Appearance;
@@ -115,6 +127,9 @@ export const Desktop = {
   },
   appearance(p: Appearance): Promise<void> {
     return call("Desktop.Appearance", p);
+  },
+  capture(text: string): Promise<Summary> {
+    return call("Desktop.Capture", text);
   },
   clipboardText(): Promise<string> {
     return call("Desktop.ClipboardText");
@@ -133,6 +148,12 @@ export const Desktop = {
   },
   export(id: string, allowMissing: boolean): Promise<ExportResult> {
     return call("Desktop.Export", id, allowMissing);
+  },
+  getCaptureSettings(): Promise<CaptureStatus> {
+    return call("Desktop.GetCaptureSettings");
+  },
+  hideCapture(): Promise<void> {
+    return call("Desktop.HideCapture");
   },
   importImage(id: string, name: string, data: string): Promise<ImageResult> {
     return call("Desktop.ImportImage", id, name, data);
@@ -179,8 +200,14 @@ export const Desktop = {
   savePosition(id: string, p: Position): Promise<void> {
     return call("Desktop.SavePosition", id, p);
   },
+  setCaptureSettings(p: CaptureSettings): Promise<void> {
+    return call("Desktop.SetCaptureSettings", p);
+  },
   setPending(pending: boolean): Promise<void> {
     return call("Desktop.SetPending", pending);
+  },
+  showCapture(): Promise<void> {
+    return call("Desktop.ShowCapture");
   },
   state(): Promise<WorkspaceState> {
     return call("Desktop.State");
@@ -197,6 +224,8 @@ export const Desktop = {
 
 /** Events sent by the Go side. Subscribe with `events.name.on(listener)`. */
 export const events = {
+  liubaiCaptured: event<Summary>("liubai:captured"),
+  liubaiCaptureAppearance: event<Appearance>("liubai:capture-appearance"),
   liubaiDiskChanged: event<string>("liubai:disk-changed"),
   liubaiAction: event<string>("liubai:action"),
   liubaiOpened: event<WorkspaceState>("liubai:opened"),

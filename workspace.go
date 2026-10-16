@@ -72,16 +72,18 @@ type DocStatus struct {
 	Status   string `json:"status"`
 }
 type WorkspaceState struct {
-	Current       Document   `json:"current"`
-	Recent        []Summary  `json:"recent"`
-	Appearance    Appearance `json:"appearance"`
-	Notices       []string   `json:"notices,omitempty"`
-	QuarantineDir string     `json:"quarantineDir,omitempty"`
+	Capture       CaptureSettings `json:"capture"`
+	Current       Document        `json:"current"`
+	Recent        []Summary       `json:"recent"`
+	Appearance    Appearance      `json:"appearance"`
+	Notices       []string        `json:"notices,omitempty"`
+	QuarantineDir string          `json:"quarantineDir,omitempty"`
 }
 type index struct {
-	Version    int        `json:"version"`
-	Current    string     `json:"current"`
-	Appearance Appearance `json:"appearance"`
+	Capture    *CaptureSettings `json:"capture,omitempty"`
+	Version    int              `json:"version"`
+	Current    string           `json:"current"`
+	Appearance Appearance       `json:"appearance"`
 }
 type Edit struct {
 	ID       string   `json:"id"`
@@ -96,6 +98,7 @@ type Workspace struct {
 	positions      map[string]Position
 	positionsDirty bool
 	current        string
+	capture        CaptureSettings
 	appearance     Appearance
 	notices        []string
 	quarantineDir  string
@@ -210,7 +213,7 @@ func openWorkspace(root string) (*Workspace, error) {
 	if err := os.MkdirAll(filepath.Join(root, "drafts"), 0700); err != nil {
 		return nil, err
 	}
-	w := &Workspace{root: root, docs: map[string]*Document{}, positions: map[string]Position{}, appearance: Appearance{Theme: "paper", FollowSystem: true, Layout: "single"}}
+	w := &Workspace{capture: defaultCaptureSettings(), root: root, docs: map[string]*Document{}, positions: map[string]Position{}, appearance: Appearance{Theme: "paper", FollowSystem: true, Layout: "single"}}
 	if b, err := readLimited(filepath.Join(root, "positions.json"), 64<<20); err == nil {
 		var positions map[string]Position
 		if json.Unmarshal(b, &positions) == nil && positions != nil {
@@ -236,6 +239,9 @@ func openWorkspace(root string) (*Workspace, error) {
 			w.notices = append(w.notices, "工作区索引无法读取，已重建，原文件在隔离目录")
 		} else {
 			w.current = x.Current
+			if x.Capture != nil {
+				w.capture = *x.Capture
+			}
 			if validTheme(x.Appearance.Theme) {
 				x.Appearance.Layout = normalizeLayout(x.Appearance.Layout)
 				w.appearance = x.Appearance
@@ -390,11 +396,15 @@ func (w *Workspace) quarantine(path string, backup []byte) error {
 }
 func (w *Workspace) restoreIndex(b []byte) {
 	var x struct {
+		Capture    json.RawMessage            `json:"capture"`
 		Current    json.RawMessage            `json:"current"`
 		Appearance map[string]json.RawMessage `json:"appearance"`
 	}
 	_ = json.Unmarshal(b, &x)
 	_ = json.Unmarshal(x.Current, &w.current)
+	if len(x.Capture) > 0 {
+		_ = json.Unmarshal(x.Capture, &w.capture)
+	}
 	p := &w.appearance
 	var theme, width, layout string
 	var size int
@@ -422,7 +432,7 @@ func safeID(s string) bool {
 	return err == nil
 }
 func (w *Workspace) saveIndex() error {
-	b, err := json.Marshal(index{1, w.current, w.appearance})
+	b, err := json.Marshal(index{Version: 1, Current: w.current, Appearance: w.appearance, Capture: &w.capture})
 	if err != nil {
 		return err
 	}
@@ -517,7 +527,7 @@ func (w *Workspace) snapshot() WorkspaceState {
 		list = append(list, Summary{d.ID, d.Title, d.Path, d.Updated, d.Excerpt})
 	}
 	sort.Slice(list, func(i, j int) bool { return list[i].Updated > list[j].Updated })
-	return WorkspaceState{Current: *w.docs[w.current], Recent: list, Appearance: w.appearance}
+	return WorkspaceState{Current: *w.docs[w.current], Recent: list, Appearance: w.appearance, Capture: w.capture}
 }
 func (w *Workspace) Notify(message string) {
 	w.mu.Lock()

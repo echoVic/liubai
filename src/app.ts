@@ -1,4 +1,4 @@
-import {call,desktop,type Doc,type DocStatus,type WorkspaceState,type Appearance,type ImageResult,type ExportResult} from './types';
+import {call,desktop,type Summary,type Doc,type DocStatus,type WorkspaceState,type Appearance,type ImageResult,type ExportResult} from './types';
 import {createEditor,mode,richExtensions,setFocus,undo,redo,openSearchPanel,EditorState,type EditorView} from './editor';
 import {Transaction,Compartment,StateEffect} from '@codemirror/state';
 import {blockFormat,setHeading,headingLevel,wrapSelection,codeBlock,linkAt,makeLink,safeLink,localDocumentLink,tableAt,parseTable,serializeTable,headings,type BlockKind} from './editing';
@@ -9,6 +9,7 @@ import {renderDelivery,waitImages,copyRich,type Delivery} from './delivery';
 import {createPreviewController,type PreviewController} from './preview';
 import {normalizeImageDestination} from './markdown';
 import {countWords} from './stats';
+import {captureSettingsDialog} from './capture-settings';
 import {pasteText,dataUrlBlob,type PasteImage} from './paste';
 const $=<T extends HTMLElement=HTMLElement>(s:string)=>document.querySelector<T>(s)!;
 const $$=(s:string)=>Array.from(document.querySelectorAll<HTMLElement>(s));
@@ -32,7 +33,7 @@ const mq=matchMedia('(prefers-color-scheme:dark)');
 const names:{id:Appearance['theme'];name:string;kind:string}[]=[{id:'paper',name:'纸白',kind:'清晰的中性纸面'},{id:'warm',name:'暖纸',kind:'柔和的米纸暖调'},{id:'mist',name:'雾绿',kind:'沉静的灰绿环境'},{id:'ink',name:'夜墨',kind:'克制的深炭夜色'}];
 if(desktop)document.body.classList.add('desktop');else $('#workspace-label').textContent='本地开发版 · 独立草稿存档';
 const errorText=(e:unknown)=>e instanceof Error?e.message:String(e);
-function toast(s:string){$('#toast').textContent=s;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4200)}
+function toast(s:string,label='',activate?:()=>void){$('#toast').textContent=s;if(activate){const b=node('button','',label);b.onclick=activate;$('#toast').append(b)}$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4200)}
 function banner(s='',kind:'error'|'conflict'|'notice'='error',reveal=''){$('#banner').hidden=!s;$('#banner-text').textContent=s;$('#retry-save').hidden=kind!=='error';$('#banner-save-as').hidden=kind==='notice';$('#reload-disk').hidden=kind!=='conflict';$('#overwrite-disk').hidden=kind!=='conflict';quarantineReveal=kind==='notice'?reveal:'';$('#reveal-quarantine').hidden=!desktop||!quarantineReveal}
 $('#reveal-quarantine').onclick=()=>{if(quarantineReveal)void call('Reveal',quarantineReveal).catch(e=>toast(errorText(e)))};
 const split=()=>appearance?.layout==='split';
@@ -110,6 +111,7 @@ $('#line-width').onchange=()=>void setAppearance({...appearance,lineWidth:$<HTML
 $('#follow-system').onchange=()=>{void setAppearance({theme:themeID(),followSystem:$<HTMLInputElement>('#follow-system').checked})};
 const triggers=new Map<string,HTMLElement>();
 function dialog(id:string){triggers.set(id,document.activeElement as HTMLElement);($<HTMLDialogElement>('#'+id)).showModal()}
+const openCaptureSettings=captureSettingsDialog(()=>dialog('capture-settings'));
 function closeDialog(id:string){$<HTMLDialogElement>('#'+id).close();triggers.get(id)?.focus()}
 $$('[data-close]').forEach(b=>b.onclick=()=>{const id=b.dataset.close!;if(id==='drawer'){closeDrawer();$('#sidebar-button').focus()}else closeDialog(id)});
 $$('dialog').forEach(el=>{const d=el as HTMLDialogElement;d.addEventListener('close',()=>triggers.get(d.id)?.focus());d.addEventListener('click',e=>{const r=d.getBoundingClientRect();if(e.target===d&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))closeDialog(d.id)})});
@@ -220,7 +222,7 @@ $('#ready-go').onclick=()=>{if(!prepared)return;const root=prepared;
 async function closeApp(){if(compositionActive){pendingClose=true;toast('请先确认输入法候选，完成后会保存并退出');return}if(busy){pendingClose=true;return}if(closeRequested)return;closeRequested=true;try{await appearanceQueue.catch(()=>{});const ok=await save();if(!ok||dirty){dialog('close-dialog');return}if(desktop)await call('Close');else toast('文稿已保存在本地，可以关闭此页面')}finally{closeRequested=false}}
 $('#discard-close').onclick=()=>{if(desktop)void call('Close');else closeDialog('close-dialog')};
 const commands=[
- ['new','新建文稿','⌘ N'],['rename','重命名…',''],['open','打开文稿…','⌘ O'],['save','保存','⌘ S'],['saveAs','另存为…','⌘ ⇧ S'],['deliver','导出…',''],['export','文稿与图片 ZIP','ZIP'],['pdf','导出 PDF',''],['copyRich','复制富文本',''],['pastePlain','粘贴为纯文本','⌘ ⇧ V'],['html','下载 HTML',''],['focus','专注模式','⌘ ⇧ F'],['recent','最近文稿',''],['remove','从最近文稿移除当前文稿',''],['outline','大纲',''],['find','查找正文','⌘ F'],['layout','切换分栏','⌘ \\'],['read','阅读模式','⌘ ⇧ R'],['source','显示 Markdown 源码','⌘ ⇧ M'],['image','插入图片',''],['theme','外观与排版…',''],['commands','所有操作…','⌘ K'],...names.map(t=>['theme:'+t.id,'切换主题 · '+t.name,'']),['bold','加粗选中文字','⌘ B'],['italic','斜体选中文字',''],['paragraph','正文',''],['h1','标题 1',''],['h2','标题 2',''],['h3','标题 3',''],['strike','删除线',''],['inlineCode','行内代码',''],['quote','插入引用',''],['task','插入任务列表',''],['code','插入代码块',''],['table','插入 / 编辑表格',''],['link','插入 / 编辑链接','⌘ L'],['bullet','无序列表',''],['ordered','有序列表',''],['undo','撤销','⌘ Z'],['redo','重做','⌘ ⇧ Z']
+ ['capture','随手记',''],['captureSettings','随手记设置…',''],['new','新建文稿','⌘ N'],['rename','重命名…',''],['open','打开文稿…','⌘ O'],['save','保存','⌘ S'],['saveAs','另存为…','⌘ ⇧ S'],['deliver','导出…',''],['export','文稿与图片 ZIP','ZIP'],['pdf','导出 PDF',''],['copyRich','复制富文本',''],['pastePlain','粘贴为纯文本','⌘ ⇧ V'],['html','下载 HTML',''],['focus','专注模式','⌘ ⇧ F'],['recent','最近文稿',''],['remove','从最近文稿移除当前文稿',''],['outline','大纲',''],['find','查找正文','⌘ F'],['layout','切换分栏','⌘ \\'],['read','阅读模式','⌘ ⇧ R'],['source','显示 Markdown 源码','⌘ ⇧ M'],['image','插入图片',''],['theme','外观与排版…',''],['commands','所有操作…','⌘ K'],...names.map(t=>['theme:'+t.id,'切换主题 · '+t.name,'']),['bold','加粗选中文字','⌘ B'],['italic','斜体选中文字',''],['paragraph','正文',''],['h1','标题 1',''],['h2','标题 2',''],['h3','标题 3',''],['strike','删除线',''],['inlineCode','行内代码',''],['quote','插入引用',''],['task','插入任务列表',''],['code','插入代码块',''],['table','插入 / 编辑表格',''],['link','插入 / 编辑链接','⌘ L'],['bullet','无序列表',''],['ordered','有序列表',''],['undo','撤销','⌘ Z'],['redo','重做','⌘ ⇧ Z']
 ];
 function renderCommands(){const q=$<HTMLInputElement>('#command-search').value.trim();const list=$('#command-list');list.replaceChildren();commands.filter(c=>c[1].includes(q)).forEach(([id,title,key])=>{const b=node('button','command');b.append(node('span','',title),node('kbd','',key));b.onclick=()=>{closeDialog('commands');void action(id)};list.append(b)})}
 $('#command-search').oninput=renderCommands;$('#command-search').onkeydown=e=>{if(e.key==='ArrowDown'){e.preventDefault();$('#command-list button')?.focus()}if(e.key==='Enter'){e.preventDefault();$('#command-list button')?.click()}};
@@ -247,6 +249,8 @@ async function action(id:string){
  if(id==='rename'){if(doc.path){toast('已有文件可通过“另存为”设置新名称');return}$<HTMLInputElement>('#rename-input').value=doc.title==='未命名文稿'?'':doc.title;dialog('rename-dialog');$<HTMLInputElement>('#rename-input').select();return}
  if(id==='read'){await toggleRead();return}if(id==='layout'){await toggleLayout();return}if(id==='source'){await toggleMode();return}if(id==='undo'){undo(view);view.focus();return}if(id==='redo'){redo(view);view.focus();return}if(id==='find'){openSearchPanel(view);return}
  if(id==='theme'){dialog('appearance');requestAnimationFrame(()=>$('#themes [aria-checked=true]').focus());return}
+ if(id==='captureSettings'){try{await openCaptureSettings()}catch(e){toast(errorText(e))}return}
+ if(id==='capture'){if(desktop)await call('ShowCapture');else toast('随手记只在桌面版可用');return}
  if(id==='commands'){renderCommands();dialog('commands');$<HTMLInputElement>('#command-search').value='';renderCommands();$('#command-search').focus();return}
  if(id==='sidebar'||id==='recent'||id==='outline'){await openDrawer(id==='sidebar'?drawerMode:id);return}
  if(id==='remove'){confirmRemove(doc.id,true);return}
@@ -315,7 +319,7 @@ document.addEventListener('keydown',e=>{
 });
 $('.editor-pane').addEventListener('scroll',()=>{if(loading||!doc)return;clearTimeout(timer);timer=setTimeout(()=>void save(),500)},{passive:true});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
-if(window.mygo){window.mygo.on<string>('liubai:action',id=>void action(id));window.mygo.on<string>('liubai:disk-changed',id=>{if(doc?.id===id)void pollStatus()});window.mygo.on<WorkspaceState>('liubai:opened',next=>{openedQueue.push(next.current.id);void processOpened()});window.mygo.on<{path:string;error:string}>('liubai:open-failed',f=>toast('无法打开「'+(f.path.split('/').pop()||f.path)+'」：'+f.error))}
+if(window.mygo){window.mygo.on<Summary>('liubai:captured',summary=>{if(state){state.recent=[summary,...state.recent.filter(d=>d.id!==summary.id)];if(!$('#drawer').hidden)renderDrawer()}toast('随手记已存为草稿「'+summary.title+'」','打开',()=>void run(async()=>{if(await saveForAction())load(await call<WorkspaceState>('Activate',summary.id))}))});window.mygo.on<string>('liubai:action',id=>void action(id));window.mygo.on<string>('liubai:disk-changed',id=>{if(doc?.id===id)void pollStatus()});window.mygo.on<WorkspaceState>('liubai:opened',next=>{openedQueue.push(next.current.id);void processOpened()});window.mygo.on<{path:string;error:string}>('liubai:open-failed',f=>toast('无法打开「'+(f.path.split('/').pop()||f.path)+'」：'+f.error))}
 preview=createPreviewController({
  host:$('#preview-content'),
  scroll:$('.preview-scroll'),

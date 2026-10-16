@@ -101,3 +101,20 @@ func TestEditMenuOffersPastePlainAfterPaste(t *testing.T) {
 	}
 	t.Fatal("编辑菜单的粘贴之后应为粘贴为纯文本（CmdOrCtrl+Shift+V）")
 }
+
+func TestFileMenuOffersCaptureAfterOpenRecent(t *testing.T) {
+	for _, menu := range menuTemplate(func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
+		if menu.Label != "文件" {
+			continue
+		}
+		for i, item := range menu.Submenu {
+			if item.Role == mygo.RoleOpenRecent && i+1 < len(menu.Submenu) {
+				next := menu.Submenu[i+1]
+				if next.Label == "随手记" && next.Accelerator == "" {
+					return
+				}
+			}
+		}
+	}
+	t.Fatal("文件菜单的打开最近使用之后应为随手记，无快捷键")
+}

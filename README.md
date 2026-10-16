@@ -14,6 +14,7 @@
 - `⌘/Ctrl+\` 在「编辑」与「分栏」之间切换；仅在分栏中显示格式工具栏右侧的「源码」，点击或用 `⌘/Ctrl+Shift+M` 切换左侧即时排版与完整源码，与「更多」中的「显示 Markdown 源码」同步；文字和撤销记录共用。
 - 分栏右侧是只读成品视图。光标跨段时会跟随到对应内容块，手动滚动阅读区不会反向带动编辑区；窗口窄于 820px 时两栏改为上下排列。
 - 点击顶部「侧栏」打开最近文稿与大纲，两个标签可切换，最近文稿支持搜索；悬停文稿可「从最近文稿移除」（需再点一次确认）：草稿移到数据目录的 `trash/` 保留 30 天，已有文件只从列表移除、磁盘文件不动。空的未命名草稿在切走时自动清理。点击顶部草稿标题命名，「更多」提供新建、打开、另存为、重命名、专注模式、显示 Markdown 源码和所有操作…。
+- 桌面版随手记：在任何应用里按默认快捷键 ⌃⌥⌘N，输入想法后按 ⌘↩，每次存为一篇新草稿，主窗口继续显示原来的文稿；「更多 → 随手记设置…」可改快捷键与登录后台启动。
 - 粘贴网页、文档和 Word 内容会转为 Markdown，保留表格、列表、链接、代码和图片；`⇧⌘V` 粘贴为纯文本。
 - 粘贴或拖入 PNG / JPEG / GIF / WebP / SVG / AVIF / BMP，光标移开后显示图片预览。中文或带空格路径的本地图片（包括 Typora 生成的 `文稿名.assets/`）可以正常显示。
 - 「导出」集中提供 Markdown、图片 ZIP、PDF、富文本复制和含本地图片的 HTML。交付使用整篇文稿，不受编辑器可视区域限制。
@@ -51,6 +52,7 @@ go test ./...
 go vet ./...
 node_modules/.bin/tsc --noEmit
 node scripts/check-editor.mjs
+bun scripts/check-capture-input.ts
 npx --yes bun@1.4.3 scripts/check-editing.ts
 npx --yes bun@1.4.3 scripts/check-rendering.ts
 npx --yes bun@1.4.3 scripts/check-performance.ts
@@ -66,6 +68,10 @@ reader_dir="$(mktemp -d /tmp/liubai-reader-data.XXXXXX)"
 python3 $WEBAPP_TESTING/scripts/with_server.py \
   --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4196 -data-dir $reader_dir" \
   --port 4196 -- python3 scripts/check-reader.py http://127.0.0.1:4196
+capture_dir="$(mktemp -d /tmp/liubai-capture-data.XXXXXX)"
+python3 $WEBAPP_TESTING/scripts/with_server.py \
+  --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4198 -data-dir $capture_dir" \
+  --port 4198 -- python3 scripts/check-capture.py http://127.0.0.1:4198
 toolbar_dir="$(mktemp -d /tmp/liubai-toolbar-data.XXXXXX)"
 python3 $WEBAPP_TESTING/scripts/with_server.py \
   --server "/tmp/liubai-preview-acceptance -web 127.0.0.1:4197 -data-dir $toolbar_dir" \

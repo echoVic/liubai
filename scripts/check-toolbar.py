@@ -274,6 +274,8 @@ def run(page):
     expect(menu.locator('[data-menu-action="open"]')).to_be_focused()
     page.keyboard.press("End")
     expect(menu.locator('[data-menu-action="commands"]')).to_be_focused()
+    page.keyboard.press("ArrowUp")
+    expect(menu.locator('[data-menu-action="captureSettings"]')).to_be_focused()
     page.keyboard.press("ArrowUp")  # Skip disabled source.
     expect(focus).to_be_focused()
     page.keyboard.press("Home")

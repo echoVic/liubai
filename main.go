@@ -37,12 +37,14 @@ type OpenFailure struct {
 }
 
 type Desktop struct {
-	w          *Workspace
-	win        *mygo.Window
-	native     *desktopIntegration
-	allowClose atomic.Bool
-	pending    atomic.Bool
-	pageReady  atomic.Bool
+	capture      *captureController
+	capturePanel *mygo.Window
+	w            *Workspace
+	win          *mygo.Window
+	native       *desktopIntegration
+	allowClose   atomic.Bool
+	pending      atomic.Bool
+	pageReady    atomic.Bool
 }
 
 func (d *Desktop) openPath(path string) {
@@ -98,7 +100,15 @@ func (d *Desktop) Overwrite(id string) (WorkspaceState, error) {
 	d.savedNative(id, err)
 	return d.currentResult(s, err, false)
 }
-func (d *Desktop) Appearance(p Appearance) error { return d.w.Appearance(p) }
+func (d *Desktop) Appearance(p Appearance) error {
+	if err := d.w.Appearance(p); err != nil {
+		return err
+	}
+	if d.native != nil {
+		_ = captureAppearance.Broadcast(p)
+	}
+	return nil
+}
 func (d *Desktop) ImportImage(id, name, data string) (ImageResult, error) {
 	return d.w.ImportImage(id, name, data)
 }
@@ -257,7 +267,7 @@ func menuTemplate(action func(string) func(*mygo.MenuItem, *mygo.Window)) []*myg
 		{Label: "留白", Submenu: []*mygo.MenuItem{{Label: "关于留白", Click: func(*mygo.MenuItem, *mygo.Window) {
 			mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: "留白", ApplicationVersion: "0.3.0"})
 		}}, mygo.Separator(), {Role: mygo.RoleHide, Label: "隐藏留白"}, {Role: mygo.RoleHideOthers, Label: "隐藏其他"}, {Role: mygo.RoleUnhide, Label: "全部显示"}, mygo.Separator(), {Role: mygo.RoleQuit, Label: "退出留白"}}},
-		{Label: "文件", Submenu: []*mygo.MenuItem{{Label: "新建文稿", Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: "打开文稿…", Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Role: mygo.RoleOpenRecent, Label: "打开最近使用"}, mygo.Separator(), {Label: "保存", Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: "另存为…", Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, mygo.Separator(), {Label: "导出…", Click: action("deliver")}, {Label: "导出 PDF…", Accelerator: "CmdOrCtrl+P", Click: action("pdf")}, mygo.Separator(), {Role: mygo.RoleClose, Label: "关闭窗口"}}},
+		{Label: "文件", Submenu: []*mygo.MenuItem{{Label: "新建文稿", Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: "打开文稿…", Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Role: mygo.RoleOpenRecent, Label: "打开最近使用"}, {Label: "随手记", Click: action("capture")}, mygo.Separator(), {Label: "保存", Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: "另存为…", Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, mygo.Separator(), {Label: "导出…", Click: action("deliver")}, {Label: "导出 PDF…", Accelerator: "CmdOrCtrl+P", Click: action("pdf")}, mygo.Separator(), {Role: mygo.RoleClose, Label: "关闭窗口"}}},
 		{Label: "编辑", Submenu: []*mygo.MenuItem{{Label: "撤销", Accelerator: "CmdOrCtrl+Z", Click: action("undo")}, {Label: "重做", Accelerator: "CmdOrCtrl+Shift+Z", Click: action("redo")}, mygo.Separator(), {Role: mygo.RoleCut, Label: "剪切"}, {Role: mygo.RoleCopy, Label: "拷贝"}, {Role: mygo.RolePaste, Label: "粘贴"}, {Label: "粘贴为纯文本", Accelerator: "CmdOrCtrl+Shift+V", Click: action("pastePlain")}, {Role: mygo.RoleSelectAll, Label: "全选"}, mygo.Separator(), {Label: "查找", Accelerator: "CmdOrCtrl+F", Click: action("find")}}},
 		{Label: "显示", Submenu: []*mygo.MenuItem{{Label: "专注模式", Accelerator: "CmdOrCtrl+Shift+F", Click: action("focus")}, {Label: "外观与排版…", Click: action("theme")}, {Label: "切换分栏", Accelerator: "CmdOrCtrl+\\", Click: action("layout")}, {Label: "阅读模式", Accelerator: "CmdOrCtrl+Shift+R", Click: action("read")}, {Label: "显示 Markdown 源码", Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: "所有操作…", Accelerator: "CmdOrCtrl+K", Click: action("commands")}, mygo.Separator(), {Role: mygo.RoleToggleFullScreen, Label: "切换全屏"}}},
 		{Label: "窗口", Submenu: []*mygo.MenuItem{{Role: mygo.RoleMinimize, Label: "最小化"}, {Role: mygo.RoleZoom, Label: "缩放"}, mygo.Separator(), {Role: mygo.RoleFront, Label: "前置全部窗口"}}},
@@ -321,6 +331,7 @@ func main() {
 	mygo.SetFrontend(web)
 	mygo.Bind(d)
 	mygo.App.OnWillQuit(func(*mygo.QuitEvent) {
+		mygo.GlobalShortcut.UnregisterAll()
 		d.native.cancel()
 		if err := w.Flush(); err != nil {
 			log.Print(err)
@@ -340,7 +351,15 @@ func main() {
 		}
 		d.win = mygo.NewWindow(mygo.WindowOptions{Title: "留白", URL: "/", Width: 1120, Height: 820, MinWidth: 680, MinHeight: 540, Hidden: true, TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: bg, StateKey: "liubai-editor"})
 		go d.native.run(d.win)
-		d.win.OnReadyToShow(func() { d.win.Show() })
+		openedAtLogin := mygo.App.WasOpenedAtLogin()
+		d.win.OnReadyToShow(func() {
+			if !openedAtLogin {
+				d.win.Show()
+			}
+		})
+		d.initCapture()
+		// The hidden capture panel outlives the editor window, so close the app explicitly.
+		d.win.OnClosed(func() { mygo.App.Quit() })
 		d.win.OnFileDrop(func(e *mygo.FileDropEvent) {
 			var paths []string
 			for _, path := range e.Paths {
@@ -365,7 +384,13 @@ func main() {
 			d.requestClose()
 		})
 		action := func(s string) func(*mygo.MenuItem, *mygo.Window) {
-			return func(*mygo.MenuItem, *mygo.Window) { _ = desktopAction.Broadcast(s) }
+			return func(*mygo.MenuItem, *mygo.Window) {
+				if s == "capture" {
+					d.ShowCapture()
+					return
+				}
+				_ = desktopAction.Emit(d.win, s)
+			}
 		}
 		mygo.App.SetMenu(mygo.NewMenu(menuTemplate(action)))
 		mygo.App.OnActivate(func(bool) { d.win.Show(); d.win.Focus() })
@@ -375,6 +400,8 @@ func main() {
 		if !quitAllowed(d.allowClose.Load(), d.pending.Load()) {
 			e.PreventDefault()
 			d.requestClose()
+		} else {
+			d.allowClose.Store(true)
 		}
 	})
 	mygo.App.OnOpenFile(func(path string) {
@@ -459,6 +486,24 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 		switch req.Method {
 		case "State":
 			value = d.State()
+		case "Capture":
+			var text string
+			e = arg(0, &text)
+			if e == nil {
+				value, e = d.Capture(text)
+			}
+		case "HideCapture":
+			d.HideCapture()
+		case "ShowCapture":
+			d.ShowCapture()
+		case "GetCaptureSettings":
+			value = d.GetCaptureSettings()
+		case "SetCaptureSettings":
+			var p CaptureSettings
+			e = arg(0, &p)
+			if e == nil {
+				e = d.SetCaptureSettings(p)
+			}
 		case "New":
 			value, e = d.New()
 		case "SetPending":

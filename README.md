@@ -1,6 +1,6 @@
 # 留白
 
-一页就能开始写，随时回来接着写。Mac 优先的轻量 Markdown 桌面编辑器，Go + MyGo + CodeMirror 6，界面基于确认过的「一页写作桌」原型。
+一页就能开始写，随时回来接着写。Mac 优先的轻量 Markdown 桌面编辑器，Go + MyGo + CodeMirror 6，界面以书写为主：顶栏以下整页都是纸面，正文栏居中。
 
 下载：在 [Releases](https://github.com/echoVic/liubai/releases/latest) 下载 DMG，打开后把「留白」拖进「应用程序」。需要 macOS 13 或以上，支持 Apple Silicon 和 Intel；安装包已用 Developer ID 签名并经 Apple 公证。更新记录见 [CHANGELOG](CHANGELOG.md)。
 
@@ -8,7 +8,7 @@
 
 - 打开即写，未命名内容自动保留为本地草稿。
 - 在 Finder 中双击 `.md` / `.markdown` / `.mdown` / `.mkd` 文件、使用「打开方式」或把 Markdown 文件拖进窗口，都会作为文稿打开；拖入不会把内容插入当前文稿。
-- 顶部「编辑 / 分栏 / 阅读」切换视图；「外观与排版」调整主题、字号和行宽（舒适、宽阔，或随窗口铺开的全宽）；编辑视图的纸面撑满窗口高度，点文字下方的空白处即可接着写。`⌘⇧R` 进入阅读模式，只显示成品视图；编辑区隐藏且只读，再按一次回到原来的布局。
+- 顶部「编辑 / 分栏 / 阅读」切换视图；「外观与排版」调整主题、字号和行宽（舒适、宽阔，或随窗口铺开的全宽）；格式栏在滚动时固定在上方，字数显示在右下角，点文字下方的空白处即可接着写。`⌘⇧R` 进入阅读模式，只显示成品视图；编辑区隐藏且只读，再按一次回到原来的布局。
 - 阅读视图与「导出」渲染消毒后的内联 HTML（README 常见的居中 logo、`<details>`、`<kbd>` 等），front matter 折叠为「文稿属性」（导出时省略），支持脚注、GitHub 提示块、带协议或 `www.` 的裸链接，代码块按语言高亮。`README.md` 这类文件名不会被识别成链接。
 - 阅读视图点击、编辑区 ⌘ 点击相对 `.md` 链接会打开对应文稿并跳到 `#标题`；草稿还没有保存位置时会说明原因。
 - 格式工具栏按标题、行内格式、列表和插入分组：标题菜单可设正文或标题 1–3，按钮随光标显示当前标题级别（1–6）；支持加粗、斜体、删除线、行内代码、引用、无序/有序/任务列表，以及链接、图片、表格和代码块。图标按钮提供中文提示，窄窗口可横向滚动；也可以从「更多」打开「所有操作…」。
@@ -78,7 +78,7 @@ scripts/e2e.sh check-english
 
 性能对比：`ROUNDS=2 scripts/bench/run.sh 29925c3 docs/performance/raw/<日期>` 在同一台机器上交替运行 0.3.0 与当前工作区的编辑、预览、存储基准，并生成 `summary.md`，约 8 分钟。存储基准也可单独运行：`go test -tags perf -run '^$' -bench . -benchtime 20x .`，普通 `go test` 不会运行它们。
 
-构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.1.4.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
+构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.1.5.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
 
 自动更新由 `mygo.json` 的 `updates` 配置（公钥和发布仓库）。签名更新包的私钥不在仓库和配置里，发布时通过环境变量传入：`MYGO_UPDATER_PRIVATE_KEY="$(cat <私钥文件>)" go tool mygo build -platform darwin/universal -upload .`；没有私钥时照常构建，只是不生成更新包。更新说明取自 `CHANGELOG.md` 中当前版本的段落，缺少该段落时构建失败。`go tool mygo build -platform darwin/universal -upload .` 把 DMG、更新包和更新清单上传到当前版本的 GitHub Release 草稿；发布为最新版本后，已安装的应用就会检测到更新。
 

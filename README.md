@@ -2,6 +2,8 @@
 
 一页就能开始写，随时回来接着写。Mac 优先的轻量 Markdown 桌面编辑器，Go + MyGo + CodeMirror 6，界面基于确认过的「一页写作桌」原型。
 
+下载：在 [Releases](https://github.com/echoVic/liubai/releases/latest) 下载 DMG，打开后把「留白」拖进「应用程序」。需要 macOS 13 或以上，支持 Apple Silicon 和 Intel；安装包已用 Developer ID 签名并经 Apple 公证。
+
 ## 日常使用
 
 - 打开即写，未命名内容自动保留为本地草稿。
@@ -82,6 +84,8 @@ scripts/e2e.sh check-english
 ## 0.4.0
 
 0.4.0 在 0.3.0 之上修复评审中复现的 6 个可靠性问题（中文/空格图片路径、坏草稿导致闪退、写回丢 Finder 标签、另存为改写图片引用、外部修改处理、退出打断关机），降低长文与多草稿下的开销（10 万字文稿每输入一个字由约 25 ms 降到约 2.6 ms，300 份草稿时的空闲轮询由约 65 ms 降到约 2 µs），并补齐阅读器入口与渲染；工具栏按常见写作应用重排（编辑/分栏/阅读、侧栏、导出、更多），PDF 导出修正了标题落在页底和中文复制、搜索不匹配的问题。随后升级到 MyGo 0.5.5，接入文件监听、系统最近文稿和未保存标记，新增富文本粘贴转 Markdown、随手记和英文界面，只读文件不再被自动保存覆盖；是否整体迁移到 MyGo Documents 的评估见 [评估](docs/superpowers/specs/2026-10-16-mygo-documents-evaluation.md)。设计见 [规格](docs/superpowers/specs/2026-10-15-reader-foundation-design.md)；命令、原生应用实测与剩余边界见 [验证记录](docs/superpowers/validation/2026-10-15-reader-foundation.md)；与 0.3.0 的对比数据见 [性能测试报告](docs/performance/2026-10-15-reader-foundation.md)。
+
+正式通用包 `Liubai 0.4.0.dmg`（9,482,696 字节）由 `v0.4.0` 标签所在的提交构建，已完成 Developer ID 签名与 Apple 公证，发布在 [GitHub Releases](https://github.com/echoVic/liubai/releases/tag/v0.4.0)。签名、Gatekeeper、公证票据与 DMG 完整性检查见验证记录。
 
 ## 0.3.0 验证边界
 

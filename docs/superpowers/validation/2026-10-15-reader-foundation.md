@@ -19,11 +19,17 @@ node scripts/check-editor.mjs
 npx --yes bun@1.4.3 scripts/check-editing.ts
 npx --yes bun@1.4.3 scripts/check-rendering.ts
 npx --yes bun@1.4.3 scripts/check-performance.ts
+npx --yes bun@1.4.3 scripts/check-paste.ts
+npx --yes bun@1.4.3 scripts/check-capture-input.ts
+go tool mygo i18n check
+node scripts/check-i18n.mjs
 python3 scripts/check-preview.py
 node scripts/build.mjs
 python3 scripts/check-split-preview.py http://127.0.0.1:<port>   # 新数据目录
 python3 scripts/check-reader.py http://127.0.0.1:<port>          # 新数据目录
 python3 scripts/check-toolbar.py http://127.0.0.1:<port>         # 新数据目录
+python3 scripts/check-capture.py http://127.0.0.1:<port>         # 新数据目录
+python3 scripts/check-english.py http://127.0.0.1:<port>         # 新数据目录
 python3 scripts/check-pdf.py                                      # 离屏 WebKit 打印，不抢焦点
 go tool mygo build -sign - -skip-dmg -skip-notarize -platform darwin/arm64 -o /tmp/liubai-bundle-check .
 ```
@@ -32,9 +38,11 @@ go tool mygo build -sign - -skip-dmg -skip-notarize -platform darwin/arm64 -o /t
 
 ```text
 PASS: rendering, readonly tasks, modes/history, separator soft follow, one-render reload/new/Recent/same-ID load, synthetic composition guard, stale image isolation, themes, local images/HTML export, responsive layout
-PASS: notice banner, reader rendering, reading mode, focus mode, position saves/word count, status reload/conflict, draft cleanup/removal, drop to open, relative links
+PASS: rich/plain paste and undo, embedded images/fallback, notice banner, reader rendering, reading mode, focus mode, position saves/word count, status reload/conflict, draft cleanup/removal, drop to open, relative links
 PASS: format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar
 PASS: A4, 21 pages, no stranded headings, searchable Chinese text, identical PDF pixels
+PASS: quick note save, current document untouched, newline, IME guard, web-mode settings
+PASS: English chrome, dialogs, capture, save status, word plurals, live/persisted language switching, undo, Chinese browser matching
 ```
 
 ## 任务与提交
@@ -90,6 +98,39 @@ PASS: A4, 21 pages, no stranded headings, searchable Chinese text, identical PDF
 - `check-pdf.py` 改用系统临时目录和默认 Go 缓存（Codex 沙箱里写死了路径）；`check-toolbar.py` 修正两处错误断言（空文稿会显示占位文字；680px 时格式栏不一定溢出）。
 - 原生复测发现标题菜单向按钮左侧展开、超出纸面：菜单改为在窗口左半边时左对齐、右半边时右对齐，回归检查断言两个菜单的位置；导出对话框和缺图提示里残留的「带走」「打包」措辞一并改掉（`e06a9fd`）。
 - 为 PDF 修正补充模糊测试 `FuzzFixPDFTextMapping`：任何输入要么原样返回，要么以原文件为前缀；本机跑了约 74 万次，没有出错。
+
+## MyGo 0.5 升级与新功能（2026-10-16）
+
+用户看到 MyGo 0.5 发布后，要求把评估出的五项全部做完：升级、系统集成、富文本粘贴转 Markdown、随手记、英文界面（加一份是否迁移到 Documents 的评估）。随手记和语言范围由用户选定：每条随手记新建一篇草稿、只做记录；简体中文加英文；不整体迁移。仍由 Codex 实现，编排者审查、在沙箱外跑全部检查并做原生实测。
+
+| 项目 | 提交 | 要点 |
+|---|---|---|
+| 升级到 MyGo 0.5.5 | `cfaa4b8` | 代码不用改；0.4/0.5 的不兼容改动只涉及原生控件、终端插件和安装包文件名 |
+| 系统集成 | `fc9bb08` | 用 FSEvents 监听当前文件，桌面版轮询放宽到 10 秒；`AddRecentDocument` 与「文件 → 打开最近使用」；保存失败或 1.5 秒仍未保存时关闭按钮显示圆点；窗口带上文件路径 |
+| Documents 迁移评估 | `f2cb18f` | 结论不迁移，见 [评估](../specs/2026-10-16-mygo-documents-evaluation.md) |
+| 富文本粘贴 | `48f47c2` | turndown + GFM 插件；Word 列表、Google Docs 样式、CJK 强调边界、代码编辑器内容原样保留；内嵌图片走现有导入；⇧⌘V 纯文本 |
+| 随手记 | `12e51a6` | 全局快捷键 ⌃⌥⌘N（可改）呼出不激活应用的浮动面板，⌘↩ 存为新草稿且不改变主窗口当前文稿；设置可录制快捷键、登录时后台启动 |
+| 英文界面 | `4d5e35c` | MyGo 目录 407 条消息（简中为源、英文翻译）；文稿状态改为结构化代码；「显示 → 语言」即时切换；`check-i18n.mjs` 防止代码里出现未翻译文案 |
+
+编排者的判断与修正：
+
+- **粘贴方案**：小试验对比了 MyGo 的 `richtext` 转换（程序增大约 3 MB，表格被拍平）和 turndown（约 30 KB，保留表格与代码语言），改用 turndown。
+- **粘贴的内嵌图片在应用内导入失败**：页面安全策略 `connect-src 'self'` 不允许 `fetch(data:…)`，改为直接解码 data URL，补了单元测试。
+- **测试本身的问题**：Playwright 的 `dispatch_event` 不会把 `clipboardData` 带进粘贴事件，改为在页面里构造真实的 `ClipboardEvent`；纯文本粘贴和设置对话框的断言在机器繁忙时会抢跑，改为先等内容或对话框出现。
+- **外部修改载入**：Codex 把重新载入从 `Activate` 改成了 `State`，与既有回归的约定不符，恢复为 `Activate`。
+- **英文界面依赖**：Codex 因无网络把 `mygo-runtime` 复制进了 `third_party/`，改为直接依赖 npm 上与 Go 模块同版本的 `mygo-runtime@0.5.5`。
+- **视图切换抢焦点**：切换编辑/分栏/阅读后会把焦点移回正文；如果用户在布局保存期间已经打开了 ··· 菜单，菜单会被关掉。改为只有焦点没被别处拿走时才移回正文。
+- **测试包构建脚本**：应用名改由目录提供后，原生测试包的改名步骤随之更新。
+
+原生实测（隔离测试包，辅助功能操作；涉及键盘、剪贴板和输入法的步骤只在用户离开键盘时进行）：
+
+| # | 项目 | 结果 |
+|---|---|---|
+| 23 | MyGo 0.5.5 冒烟 | 菜单为中文，页面调用与事件正常，退出请求约 1 秒内放行 |
+| 24 | 外部修改即时载入 | 外部写入后 0.41 秒编辑器显示新内容，并提示「已载入磁盘上的新版本」 |
+| 25 | 最近文稿与文件路径 | 「打开最近使用」出现并记录了打开的文件；窗口的 `AXDocument` 为该文件 |
+| 26 | 未保存圆点 | 目录不可写导致保存失败时，关闭按钮立即出现圆点、状态为「草稿已保留，文件保存失败」；恢复权限并撤销后圆点消失。正常自动保存不出现圆点 |
+| 27 | 富文本与纯文本粘贴 | 系统剪贴板放入网页 HTML 后在应用内粘贴，得到 `## 标题`、`**粗体**`、链接、列表和表格；⇧⌘V 原样粘贴含 `*`、`[]`、`\` 的文字。测试前后备份并还原了用户剪贴板 |
 
 ## 性能
 

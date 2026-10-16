@@ -78,11 +78,15 @@ scripts/e2e.sh check-english
 
 性能对比：`ROUNDS=2 scripts/bench/run.sh 29925c3 docs/performance/raw/<日期>` 在同一台机器上交替运行 0.3.0 与当前工作区的编辑、预览、存储基准，并生成 `summary.md`，约 8 分钟。存储基准也可单独运行：`go test -tags perf -run '^$' -bench . -benchtime 20x .`，普通 `go test` 不会运行它们。
 
-构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.1.0.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
+构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.1.1.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
 
 自动更新由 `mygo.json` 的 `updates` 配置：构建时用 `updates.privateKey` 指向的密钥（不在仓库中）签名更新包，更新说明取自 `CHANGELOG.md` 中当前版本的段落，缺少该段落时构建失败。`go tool mygo build -platform darwin/universal -upload .` 把 DMG、更新包和更新清单上传到当前版本的 GitHub Release 草稿；发布为最新版本后，已安装的应用就会检测到更新。
 
 签名与公证验证：对应用运行 `codesign --verify --deep --strict` 和 `spctl -a -t exec -vv`，对 DMG 运行 `spctl -a -t open --context context:primary-signature -vv`；分别运行 `xcrun stapler validate` 检查应用和 DMG 的公证票据。`scripts/package-macos.sh` 仅生成未公证的临时预览 ZIP，会重新签名，不应用于正式签名的应用。
+
+## 0.1.1
+
+新增自动更新。0.1.0 没有更新功能，需要手动下载一次 0.1.1，之后的新版本会在应用内提示。正式通用包 `Liubai 0.1.1.dmg` 由 `v0.1.1` 标签所在的提交构建，已完成 Developer ID 签名与 Apple 公证，发布在 [GitHub Releases](https://github.com/echoVic/liubai/releases/tag/v0.1.1)。
 
 ## 0.1.0（首个公开版本）
 

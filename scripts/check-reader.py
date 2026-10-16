@@ -196,6 +196,29 @@ def run(page):
     assert "Update" in calls, calls
     expect(page.locator("#word-count")).to_have_text("15 字")
 
+    # A read-only save failure offers retry/save elsewhere without conflict actions.
+    readonly_doc = api(page, "State")["current"]
+
+    def readonly_route(route):
+        if route.request.post_data_json.get("method") == "Status":
+            route.fulfill(status=200, content_type="application/json", body=json.dumps({"value": {
+                "id": readonly_doc["id"], "revision": readonly_doc["revision"],
+                "conflict": False, "statusCode": "fileReadOnly", "status": "Unrelated legacy prose",
+            }}))
+        else:
+            route.continue_()
+
+    page.route(BASE + "/api", readonly_route)
+    page.evaluate("window.dispatchEvent(new Event('focus'))")
+    expect(page.locator("#banner-text")).to_have_text("文件为只读，修改保留在草稿中", timeout=10000)
+    expect(page.locator("#retry-save")).to_be_visible()
+    expect(page.locator("#retry-save")).to_have_text("重试保存")
+    expect(page.locator("#banner-save-as")).to_be_visible()
+    expect(page.locator("#banner-save-as")).to_have_text("另存为…")
+    expect(page.locator("#reload-disk")).to_be_hidden()
+    expect(page.locator("#overwrite-disk")).to_be_hidden()
+    page.unroute(BASE + "/api", readonly_route)
+
     # Status polling reloads a clean document and shows both conflict actions.
     state = api(page, "State")
     cur = state["current"]

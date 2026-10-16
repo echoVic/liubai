@@ -946,12 +946,6 @@ export interface Messages {
    */
   fRetrySave(): string;
   /**
-   * Interface text for Save As.
-   *
-   * `另存`
-   */
-  fSaveAs2(): string;
-  /**
    * Interface text for View Disk Version.
    *
    * `查看磁盘版本`
@@ -2445,6 +2439,18 @@ export interface Messages {
    * `替换次数：{count}`
    */
   fReplacements(count: string): string;
+  /**
+   * Document status: fileReadOnly; edits remain in the draft because the file is not writable.
+   *
+   * `文件为只读，修改保留在草稿中`
+   */
+  bStatusFileReadOnly(): string;
+  /**
+   * Error when a user-selected write target is read-only.
+   *
+   * `「{name}」是只读文件，请选择其他位置`
+   */
+  bReadOnlyTarget(name: string): string;
 }
 
 const catalog = createCatalog<Messages>({
@@ -2612,7 +2618,6 @@ const catalog = createCatalog<Messages>({
     "fSplitViewOnly": [],
     "fHeadingLevel": [],
     "fRetrySave": [],
-    "fSaveAs2": [],
     "fViewDiskVersion": [],
     "fOverwriteWithCurrentVersion": [],
     "fShowInFinder": [],
@@ -2862,6 +2867,8 @@ const catalog = createCatalog<Messages>({
     "fOnLine": [],
     "fReplacedOnLine": ["line"],
     "fReplacements": ["count"],
+    "bStatusFileReadOnly": [],
+    "bReadOnlyTarget": ["name"],
   },
   messages: {
     "zh-Hans": {
@@ -3022,7 +3029,6 @@ const catalog = createCatalog<Messages>({
       "fSplitViewOnly": "仅分栏可用",
       "fHeadingLevel": "标题级别",
       "fRetrySave": "重试保存",
-      "fSaveAs2": "另存",
       "fViewDiskVersion": "查看磁盘版本",
       "fOverwriteWithCurrentVersion": "用当前版本覆盖",
       "fShowInFinder": "在 Finder 中显示",
@@ -3272,6 +3278,8 @@ const catalog = createCatalog<Messages>({
       "fOnLine": "所在行",
       "fReplacedOnLine": "已替换第 {line} 行的匹配",
       "fReplacements": "替换次数：{count}",
+      "bStatusFileReadOnly": "文件为只读，修改保留在草稿中",
+      "bReadOnlyTarget": "「{name}」是只读文件，请选择其他位置",
     },
     "en": {
       "fPaper": "Paper",
@@ -3431,7 +3439,6 @@ const catalog = createCatalog<Messages>({
       "fSplitViewOnly": "Split View only",
       "fHeadingLevel": "Heading Level",
       "fRetrySave": "Retry Save",
-      "fSaveAs2": "Save As",
       "fViewDiskVersion": "View Disk Version",
       "fOverwriteWithCurrentVersion": "Overwrite with Current Version",
       "fShowInFinder": "Show in Finder",
@@ -3681,6 +3688,8 @@ const catalog = createCatalog<Messages>({
       "fOnLine": "on line",
       "fReplacedOnLine": "Match replaced on line {line}",
       "fReplacements": "Replacements: {count}",
+      "bStatusFileReadOnly": "The file is read-only. Your changes are kept in the draft.",
+      "bReadOnlyTarget": "“{name}” is read-only. Choose another location.",
     },
   },
 });

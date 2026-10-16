@@ -87,6 +87,9 @@ func (w *Workspace) SaveRecovery(id, content, path string) (ExportResult, error)
 	if info, e := os.Lstat(p); e == nil && info.Mode()&os.ModeSymlink != 0 {
 		return ExportResult{}, messageError("bRegularFileRequired", nil)
 	}
+	if err := checkWriteTarget(p); err != nil {
+		return ExportResult{}, err
+	}
 	clone := *d
 	clone.Content = content
 	portable, e := w.materialize(&clone, p, true)

@@ -2,7 +2,7 @@ import {pageLocale,messages,CatalogError} from './i18n';
 export interface Appearance {theme:'paper'|'warm'|'mist'|'ink';followSystem:boolean;fontSize?:number;lineWidth?:'normal'|'wide';layout?:'single'|'split'|'read';source?:boolean}
 export interface CaptureSettings {enabled:boolean;shortcut:string;openAtLogin:boolean}
 export interface Position {anchor:number;head:number;scroll:number;source:boolean}
-export type StatusCode='draftSaved'|'fileSaved'|'fileUnavailable'|'diskUnreadable'|'diskReloaded'|'reloadRecoveryFailed'|'diskConflict'|'imageSaveFailed'|'fileSaveFailed'|'saveFailed'|'recoveryUpdateFailed';
+export type StatusCode='draftSaved'|'fileSaved'|'fileUnavailable'|'diskUnreadable'|'diskReloaded'|'reloadRecoveryFailed'|'diskConflict'|'imageSaveFailed'|'fileSaveFailed'|'fileReadOnly'|'saveFailed'|'recoveryUpdateFailed';
 export interface Doc {id:string;title:string;customTitle?:boolean;content:string;path:string;updated:number;revision:number;position:Position;conflict:boolean;status:string;statusCode?:StatusCode}
 export interface DocStatus {id:string;revision:number;conflict:boolean;status:string;statusCode?:StatusCode}
 export interface Summary {id:string;title:string;path:string;updated:number;excerpt:string}

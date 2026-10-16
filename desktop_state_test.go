@@ -123,7 +123,7 @@ func TestEditedIndicatorShowsConflictOrSaveFailureImmediately(t *testing.T) {
 }
 
 func TestNativeSaveFailureUsesStatusCodeAcrossLanguages(t *testing.T) {
-	for _, code := range []string{"saveFailed", "fileSaveFailed", "imageSaveFailed", "reloadRecoveryFailed", "recoveryUpdateFailed"} {
+	for _, code := range []string{"saveFailed", "fileSaveFailed", "fileReadOnly", "imageSaveFailed", "reloadRecoveryFailed", "recoveryUpdateFailed"} {
 		for _, prose := range []string{"File saved", "草稿已保存", "", "another language"} {
 			doc := Document{StatusCode: code, Status: prose}
 			if edited, _ := (editedIndicator{}).decision(time.Now(), false, doc.saveFailed()); !edited {

@@ -99,7 +99,7 @@ func (d *Document) UnmarshalJSON(b []byte) error {
 }
 func (d Document) saveFailed() bool {
 	switch d.StatusCode {
-	case "imageSaveFailed", "fileSaveFailed", "saveFailed", "recoveryUpdateFailed", "reloadRecoveryFailed":
+	case "imageSaveFailed", "fileSaveFailed", "fileReadOnly", "saveFailed", "recoveryUpdateFailed", "reloadRecoveryFailed":
 		return true
 	}
 	return false
@@ -107,6 +107,7 @@ func (d Document) saveFailed() bool {
 
 var statusMessageKeys = map[string]string{
 	"draftSaved": "bStatusDraftSaved", "fileSaved": "bStatusFileSaved",
+	"fileReadOnly":    "bStatusFileReadOnly",
 	"fileUnavailable": "bStatusFileUnavailable", "diskUnreadable": "bStatusDiskUnreadable",
 	"diskReloaded": "bStatusDiskReloaded", "reloadRecoveryFailed": "bStatusReloadRecoveryFailed",
 	"diskConflict": "bStatusDiskConflict", "imageSaveFailed": "bStatusImageSaveFailed",

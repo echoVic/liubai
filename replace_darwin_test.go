@@ -14,6 +14,23 @@ import (
 
 const finderTags = "com.apple.metadata:_kMDItemUserTags"
 
+func TestAutosaveLockedFileKeepsDraftAndRetries(t *testing.T) {
+	testAutosaveReadOnly(t, func(path string) {
+		t.Cleanup(func() {
+			if err := unix.Chflags(path, 0); err != nil {
+				t.Error(err)
+			}
+		})
+		if err := unix.Chflags(path, unix.UF_IMMUTABLE); err != nil {
+			t.Fatal(err)
+		}
+	}, func(path string) {
+		if err := unix.Chflags(path, 0); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
 func xattr(t *testing.T, p, name string) string {
 	t.Helper()
 	buf := make([]byte, 256)

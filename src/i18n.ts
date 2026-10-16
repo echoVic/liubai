@@ -26,7 +26,7 @@ export function localizePage(root:ParentNode=document){
  for(const attr of ['title','aria-label','placeholder'])for(const el of root.querySelectorAll<HTMLElement>('[data-i18n-'+attr+']')){const say=lookup[el.getAttribute('data-i18n-'+attr)!];if(say)el.setAttribute(attr,say())}
 }
 const statusMessages={
- draftSaved:'bStatusDraftSaved',fileSaved:'bStatusFileSaved',fileUnavailable:'bStatusFileUnavailable',diskUnreadable:'bStatusDiskUnreadable',diskReloaded:'bStatusDiskReloaded',reloadRecoveryFailed:'bStatusReloadRecoveryFailed',diskConflict:'bStatusDiskConflict',imageSaveFailed:'bStatusImageSaveFailed',fileSaveFailed:'bStatusFileSaveFailed',saveFailed:'bStatusSaveFailed',recoveryUpdateFailed:'bStatusRecoveryUpdateFailed',
+ draftSaved:'bStatusDraftSaved',fileSaved:'bStatusFileSaved',fileReadOnly:'bStatusFileReadOnly',fileUnavailable:'bStatusFileUnavailable',diskUnreadable:'bStatusDiskUnreadable',diskReloaded:'bStatusDiskReloaded',reloadRecoveryFailed:'bStatusReloadRecoveryFailed',diskConflict:'bStatusDiskConflict',imageSaveFailed:'bStatusImageSaveFailed',fileSaveFailed:'bStatusFileSaveFailed',saveFailed:'bStatusSaveFailed',recoveryUpdateFailed:'bStatusRecoveryUpdateFailed',
 } as const;
 type Status=Pick<DocStatus,'status'|'statusCode'|'conflict'>;
 function statusCode(doc:Status){
@@ -61,7 +61,7 @@ export function localizedError(error:unknown){
 }
 export function noticeText(notice:LocaleNotice){return catalogText(notice.key||'',notice.args,notice.text||'')}
 export function statusText(doc:Status){return messages[statusMessages[statusCode(doc)]]()}
-export function statusFailed(doc:Status){return ['reloadRecoveryFailed','imageSaveFailed','fileSaveFailed','saveFailed','recoveryUpdateFailed'].includes(statusCode(doc))}
+export function statusFailed(doc:Status){return ['reloadRecoveryFailed','imageSaveFailed','fileSaveFailed','fileReadOnly','saveFailed','recoveryUpdateFailed'].includes(statusCode(doc))}
 if(typeof window!=='undefined'){
  window.mygo?.on('mygo:locale',refresh);
  window.addEventListener('mygo:locale',refresh);

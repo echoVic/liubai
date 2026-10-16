@@ -125,6 +125,26 @@ def english(context):
     expect(page.locator("#save-status")).to_have_text("Draft retained; file save failed")
     expect(page.locator("#banner-text")).to_have_text("Draft retained; file save failed")
     page.unroute(BASE + "/api", failed_file_save)
+
+    def readonly_file_save(route):
+        if route.request.post_data_json.get("method") == "Update":
+            result = route.fetch().json()
+            result["value"].update(statusCode="fileReadOnly", status="Unrelated legacy prose", conflict=False)
+            route.fulfill(status=200, content_type="application/json", body=json.dumps(result))
+        else:
+            route.continue_()
+
+    page.route(BASE + "/api", readonly_file_save)
+    page.keyboard.press("Meta+s")
+    expect(page.locator("#banner-text")).to_have_text("The file is read-only. Your changes are kept in the draft.")
+    expect(page.locator("#retry-save")).to_be_visible()
+    expect(page.locator("#retry-save")).to_have_text("Retry Save")
+    expect(page.locator("#banner-save-as")).to_be_visible()
+    expect(page.locator("#banner-save-as")).to_have_text("Save As…")
+    expect(page.locator("#reload-disk")).to_be_hidden()
+    expect(page.locator("#overwrite-disk")).to_be_hidden()
+    chrome_is_english(page)
+    page.unroute(BASE + "/api", readonly_file_save)
     page.keyboard.press("Meta+s")
     expect(page.locator("#save-status")).to_have_text("Draft saved")
 

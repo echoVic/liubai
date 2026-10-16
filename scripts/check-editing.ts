@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import {statusFailed} from '../src/i18n';
+assert.equal(statusFailed({statusCode:'fileReadOnly',status:'File saved',conflict:false}),true);
 import {EditorState} from '@codemirror/state';
 import {history,undo} from '@codemirror/commands';
 import {markdown,markdownLanguage} from '@codemirror/lang-markdown';

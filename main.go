@@ -226,6 +226,9 @@ func (d *Desktop) PDF(ctx context.Context, title string) (ExportResult, error) {
 	}
 	// CoreGraphics records CJK radical code points for shared glyphs; fix the text layer.
 	b = fixPDFTextMapping(b)
+	if err = checkWriteTarget(path); err != nil {
+		return ExportResult{}, err
+	}
 	if err = atomicWrite(path, b, 0644); err != nil {
 		return ExportResult{}, err
 	}
@@ -241,6 +244,9 @@ func (d *Desktop) SaveHTML(ctx context.Context, title, html string) (ExportResul
 	}
 	if path == "" {
 		return ExportResult{Cancelled: true}, nil
+	}
+	if err = checkWriteTarget(path); err != nil {
+		return ExportResult{}, err
 	}
 	if err = atomicWrite(path, []byte(html), 0644); err != nil {
 		return ExportResult{}, err

@@ -528,6 +528,9 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 	if info, e := os.Lstat(p); e == nil && info.Mode()&os.ModeSymlink != 0 {
 		return ExportResult{}, messageError("bRegularFilePathRequired", nil)
 	}
+	if err := checkWriteTarget(p); err != nil {
+		return ExportResult{}, err
+	}
 	if p == d.Path {
 		w.check(d, false)
 		if d.Conflict {
@@ -678,6 +681,9 @@ func (w *Workspace) Export(id, path string, allowMissing bool) (ExportResult, er
 	d := w.docs[id]
 	if d == nil {
 		return ExportResult{}, messageError("bDocumentMissing", nil)
+	}
+	if err := checkWriteTarget(path); err != nil {
+		return ExportResult{}, err
 	}
 	r := ExportResult{Missing: []string{}, Document: *d}
 	targets := map[string]string{}

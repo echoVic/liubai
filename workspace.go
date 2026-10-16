@@ -705,7 +705,11 @@ func (w *Workspace) Update(e Edit) (Document, error) {
 				if digest(b) == d.DiskHash {
 					d.setStatus("fileSaved")
 				} else if err := w.writeOriginal(d, b); err != nil {
-					d.setStatus("fileSaveFailed")
+					if e, ok := err.(*catalogError); ok && e.Key == "bReadOnlyTarget" {
+						d.setStatus("fileReadOnly")
+					} else {
+						d.setStatus("fileSaveFailed")
+					}
 				} else {
 					savedFile = true
 					d.setStatus("fileSaved")
@@ -728,6 +732,9 @@ func (w *Workspace) Update(e Edit) (Document, error) {
 	return *d, nil
 }
 func (w *Workspace) writeOriginal(d *Document, b []byte) error {
+	if err := checkWriteTarget(d.Path); err != nil {
+		return err
+	}
 	current, err := readLimited(d.Path, maxDocument)
 	if err != nil {
 		return err
@@ -902,6 +909,9 @@ func (w *Workspace) Overwrite(id string) (WorkspaceState, error) {
 	d := w.docs[id]
 	if d == nil || d.Path == "" {
 		return WorkspaceState{}, messageError("bDocumentWithoutFile", nil)
+	}
+	if err := checkWriteTarget(d.Path); err != nil {
+		return WorkspaceState{}, err
 	}
 	b, err := readLimited(d.Path, maxDocument)
 	if err == nil {

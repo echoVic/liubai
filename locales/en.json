@@ -159,7 +159,6 @@
   "fSplitViewOnly": "Split View only",
   "fHeadingLevel": "Heading Level",
   "fRetrySave": "Retry Save",
-  "fSaveAs2": "Save As",
   "fViewDiskVersion": "View Disk Version",
   "fOverwriteWithCurrentVersion": "Overwrite with Current Version",
   "fShowInFinder": "Show in Finder",
@@ -408,5 +407,7 @@
   "fCurrentMatch": "Current match",
   "fOnLine": "on line",
   "fReplacedOnLine": "Match replaced on line {line}",
-  "fReplacements": "Replacements: {count}"
+  "fReplacements": "Replacements: {count}",
+  "bStatusFileReadOnly": "The file is read-only. Your changes are kept in the draft.",
+  "bReadOnlyTarget": "“{name}” is read-only. Choose another location."
 }

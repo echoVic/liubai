@@ -2312,20 +2312,6 @@ func (msgs Messages) FRetrySave() string {
 	return Catalog.Format(msgs.locale, "fRetrySave", nil)
 }
 
-// FSaveAs2 says "另存"
-// in the language the app shows.
-//
-// Interface text for Save As.
-func FSaveAs2() string { return In(i18n.Locale()).FSaveAs2() }
-
-// FSaveAs2 says "另存"
-// in the language of msgs.
-//
-// Interface text for Save As.
-func (msgs Messages) FSaveAs2() string {
-	return Catalog.Format(msgs.locale, "fSaveAs2", nil)
-}
-
 // FViewDiskVersion says "查看磁盘版本"
 // in the language the app shows.
 //
@@ -5876,4 +5862,34 @@ func FReplacements(count string) string { return In(i18n.Locale()).FReplacements
 // dollar substitution token until announcement.
 func (msgs Messages) FReplacements(count string) string {
 	return Catalog.Format(msgs.locale, "fReplacements", map[string]any{"count": count})
+}
+
+// BStatusFileReadOnly says "文件为只读，修改保留在草稿中"
+// in the language the app shows.
+//
+// Document status: fileReadOnly; edits remain in the draft because the file
+// is not writable.
+func BStatusFileReadOnly() string { return In(i18n.Locale()).BStatusFileReadOnly() }
+
+// BStatusFileReadOnly says "文件为只读，修改保留在草稿中"
+// in the language of msgs.
+//
+// Document status: fileReadOnly; edits remain in the draft because the file
+// is not writable.
+func (msgs Messages) BStatusFileReadOnly() string {
+	return Catalog.Format(msgs.locale, "bStatusFileReadOnly", nil)
+}
+
+// BReadOnlyTarget says "「{name}」是只读文件，请选择其他位置"
+// in the language the app shows.
+//
+// Error when a user-selected write target is read-only.
+func BReadOnlyTarget(name string) string { return In(i18n.Locale()).BReadOnlyTarget(name) }
+
+// BReadOnlyTarget says "「{name}」是只读文件，请选择其他位置"
+// in the language of msgs.
+//
+// Error when a user-selected write target is read-only.
+func (msgs Messages) BReadOnlyTarget(name string) string {
+	return Catalog.Format(msgs.locale, "bReadOnlyTarget", map[string]any{"name": name})
 }

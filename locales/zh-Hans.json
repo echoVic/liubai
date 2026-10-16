@@ -636,10 +636,6 @@
   "@fRetrySave": {
     "description": "Interface text for Retry Save."
   },
-  "fSaveAs2": "另存",
-  "@fSaveAs2": {
-    "description": "Interface text for Save As."
-  },
   "fViewDiskVersion": "查看磁盘版本",
   "@fViewDiskVersion": {
     "description": "Interface text for View Disk Version."
@@ -1779,6 +1775,19 @@
     "description": "CodeMirror search interface. String arguments preserve the editor library dollar substitution token until announcement.",
     "placeholders": {
       "count": {
+        "type": "String"
+      }
+    }
+  },
+  "bStatusFileReadOnly": "文件为只读，修改保留在草稿中",
+  "bReadOnlyTarget": "「{name}」是只读文件，请选择其他位置",
+  "@bStatusFileReadOnly": {
+    "description": "Document status: fileReadOnly; edits remain in the draft because the file is not writable."
+  },
+  "@bReadOnlyTarget": {
+    "description": "Error when a user-selected write target is read-only.",
+    "placeholders": {
+      "name": {
         "type": "String"
       }
     }

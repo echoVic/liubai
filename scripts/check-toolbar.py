@@ -159,138 +159,152 @@ def check_format_bar(page):
     expect(source).to_be_hidden()
 
 
+def settled(page):
+    page.evaluate("async () => {await document.fonts.ready;await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))}")
+
+
+def page_geometry(page):
+    return page.evaluate("""() => {
+      const rect=s=>{const r=document.querySelector(s).getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}};
+      const style=s=>{const c=getComputedStyle(document.querySelector(s));return {shadow:c.boxShadow,radius:c.borderRadius,border:c.borderTopWidth}};
+      const scroll=document.querySelector('.editor-scroll');
+      return {pane:rect('.editor-pane'),paper:rect('.paper'),text:rect('.cm-content'),bar:rect('#format-bar'),
+        count:rect('#word-count'),top:rect('.topbar'),scroll:rect('.editor-scroll'),paperStyle:style('.paper'),
+        scrollHeight:scroll.scrollHeight,clientHeight:scroll.clientHeight,width:innerWidth,height:innerHeight};
+    }""")
+
+
+def assert_count_position(page, g):
+    expect(page.locator("#word-count")).to_be_visible()
+    assert 0 <= g["pane"]["right"] - g["count"]["right"] <= 26, g
+    assert 0 <= g["pane"]["bottom"] - g["count"]["bottom"] <= 16, g
+    assert g["count"]["y"] >= g["scroll"]["bottom"], g
+
+
+def set_width(page, value):
+    page.locator('[data-action="theme"]').click()
+    appearance_change(page, lambda: page.locator("#line-width").select_option(value=value))
+    page.keyboard.press("Escape")
+    settled(page)
+
+
 def check_writing_sheet(page):
     def new_document():
         with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
             more_action(page, "new")
         expect(page.locator(".cm-placeholder")).to_be_visible()
 
-    def settled():
-        page.evaluate("async () => {await document.fonts.ready;await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))}")
-
-    def geometry():
-        return page.evaluate("""() => {
-          const pane=document.querySelector('.editor-pane'), paper=document.querySelector('.paper'), footer=document.querySelector('.paper-bottom');
-          const p=pane.getBoundingClientRect(), r=paper.getBoundingClientRect(), f=footer.getBoundingClientRect();
-          return {paperBottom:r.bottom,paperHeight:r.height,footerTop:f.top,footerBottom:f.bottom,
-            contentBottom:p.top+pane.clientTop+pane.clientHeight-parseFloat(getComputedStyle(pane).paddingBottom),
-            scrollHeight:pane.scrollHeight,clientHeight:pane.clientHeight};
-        }""")
-
-    def desk_width(selector):
-        return page.locator(selector).evaluate("""el => {
-          const desk=document.querySelector('.desk'), style=getComputedStyle(desk);
-          return {width:el.getBoundingClientRect().width,deskWidth:desk.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)};
-        }""")
-
     select_view(page, "single")
     new_document()
+    expect(page.locator(".desk-caption, #document-kind, .paper-top, .paper-bottom, .desk-bottom")).to_have_count(0)
+    expect(page.get_by_text("写下这一刻。", exact=True)).to_have_count(0)
+    expect(page.locator(".topbar #workspace-label")).to_have_text("本地开发版 · 独立草稿存档")
+    expect(page.locator(".topbar #workspace-label")).to_be_visible()
     for width, height in ((1700, 1100), (1120, 820)):
         page.set_viewport_size({"width": width, "height": height})
-        settled()
-        g = geometry()
-        assert abs(g["paperBottom"] - g["contentBottom"]) <= 2, g
-        assert g["paperBottom"] - 80 <= g["footerTop"] < g["footerBottom"] <= g["paperBottom"], g
-        assert g["scrollHeight"] == g["clientHeight"], g
+        for value, cap in (("normal", 760), ("wide", 920), ("full", width)):
+            set_width(page, value)
+            g = page_geometry(page)
+            assert abs(g["pane"]["y"] - g["top"]["bottom"]) <= 2, g
+            assert abs(g["pane"]["x"]) <= 2 and abs(g["pane"]["right"] - width) <= 2, g
+            assert abs(g["pane"]["bottom"] - height) <= 2, g
+            assert g["paperStyle"] == {"shadow": "none", "radius": "0px", "border": "0px"}, g
+            assert abs(g["text"]["width"] - (cap - 96)) <= 2, g
+            assert abs((g["text"]["x"] - g["pane"]["x"]) - (g["pane"]["right"] - g["text"]["right"])) <= 2, g
+            assert abs(g["bar"]["x"] - g["text"]["x"]) <= 2 and abs(g["bar"]["width"] - g["text"]["width"]) <= 2, g
+            assert abs(g["bar"]["y"] - g["pane"]["y"]) <= 2, g
+            assert g["scrollHeight"] == g["clientHeight"], g
+            assert_count_position(page, g)
 
-    page.set_viewport_size({"width": 1700, "height": 1100})
+    # Full width persists and applies to the reader's text column too.
+    page.reload()
     content = page.locator('.cm-content[contenteditable="true"]')
+    expect(content).to_be_visible()
+    assert api(page, "State")["appearance"]["lineWidth"] == "full"
+    select_view(page, "read")
+    g = page.locator("#preview").bounding_box()
+    top = page.locator(".topbar").bounding_box()
+    assert abs(g["x"]) <= 2 and abs(g["width"] - 1120) <= 2 and abs(g["y"] - top["y"] - top["height"]) <= 2 and abs(g["y"] + g["height"] - 820) <= 2, g
+    for value, cap in (("normal", 760), ("wide", 920), ("full", 1120)):
+        set_width(page, value)
+        document = page.locator(".markdown-document").bounding_box()
+        assert abs(document["width"] - cap) <= 2 and abs(document["x"] - (1120 - cap) / 2) <= 2, document
+    expect(page.locator("#word-count")).to_be_hidden()
+    select_view(page, "single")
+    set_width(page, "normal")
     content.focus()
     page.keyboard.insert_text("第一行\n第二行\n第三行")
-    expect(content.locator(".cm-line")).to_have_text(["第一行", "第二行", "第三行"])
+    expect(page.locator("#word-count")).to_have_text("9 字")
     page.keyboard.press("Meta+Home")
-    settled()
     page.locator('[data-action="theme"]').focus()
-    footer = page.locator(".paper-bottom").bounding_box()
-    page.mouse.click(footer["x"] + footer["width"] / 2, footer["y"] - 60)
+    g = page_geometry(page)
+    # The page outside the centred text column also appends at the end.
+    page.mouse.click(g["pane"]["x"] + 10, g["scroll"]["bottom"] - 24)
     expect(content).to_be_focused()
     page.keyboard.insert_text("尾")
     expect(content.locator(".cm-line")).to_have_text(["第一行", "第二行", "第三行尾"])
+    expect(page.locator("#word-count")).to_have_text("10 字")
     expect(page.locator("#save-status")).to_have_text("草稿已保存")
     assert api(page, "State")["current"]["content"] == "第一行\n第二行\n第三行尾"
-    g = geometry()
-    assert g["scrollHeight"] == g["clientHeight"], g
 
     page.keyboard.press("Meta+a")
     page.keyboard.insert_text("\n".join(f"长文第{i}行" for i in range(1, 121)))
-    page.locator(".paper-bottom").scroll_into_view_if_needed()
+    page.keyboard.press("Meta+End")
+    page.locator(".editor-scroll").evaluate("el => el.scrollTop=el.scrollHeight")
     last = content.locator(".cm-line", has_text=re.compile("^长文第120行$"))
     expect(last).to_be_visible()
-    settled()
-    g = geometry()
-    assert g["paperHeight"] > g["clientHeight"] and g["scrollHeight"] > g["clientHeight"], g
+    settled(page)
+    g = page_geometry(page)
+    assert g["scrollHeight"] > g["clientHeight"], g
+    assert abs(g["bar"]["y"] - g["pane"]["y"]) <= 2, g
+    expect(page.locator("#format-bar [data-action=bold]")).to_be_in_viewport()
     line = last.bounding_box()
-    assert g["footerTop"] >= line["y"] + line["height"], (g, line)
-
+    assert g["count"]["y"] >= line["y"] + line["height"], (g, line)
+    assert_count_position(page, g)
+    page.mouse.click(g["pane"]["right"] - 10, g["scroll"]["bottom"] - 12)
+    page.keyboard.insert_text("尾")
+    expect(content.locator(".cm-line", has_text=re.compile("^长文第120行尾$"))).to_be_visible()
+    settled(page)
+    last_line = content.locator(".cm-line", has_text=re.compile("^长文第120行尾$")).bounding_box()
+    assert last_line["y"] + last_line["height"] <= page.locator("#word-count").bounding_box()["y"]
+    # Keyboard movement must keep the current line below the sticky format bar.
+    page.keyboard.press("Meta+Home")
+    for _ in range(40):
+        page.keyboard.press("ArrowDown")
+    page.wait_for_function("""() => {
+      const node=getSelection()?.anchorNode, el=node?.nodeType===Node.ELEMENT_NODE?node:node?.parentElement;
+      const line=el?.closest('.cm-line');
+      return line && line.getBoundingClientRect().top >= document.querySelector('#format-bar').getBoundingClientRect().bottom;
+    }""")
     new_document()
-    page.locator('[data-action="theme"]').click()
-    expect(page.locator('#line-width option[value="full"]')).to_have_text("全宽")
-    appearance_change(page, lambda: page.locator("#line-width").select_option(label="全宽"))
-    page.keyboard.press("Escape")
-    settled()
-    g = desk_width(".paper")
-    assert abs(g["width"] - g["deskWidth"]) <= 2, g
-    for selector in (".desk-caption", ".desk-bottom"):
-        g = desk_width(selector)
-        assert abs(g["width"] - g["deskWidth"]) <= 2, (selector, g)
-    assert api(page, "State")["appearance"]["lineWidth"] == "full"
-    page.reload()
-    expect(content).to_be_visible()
-    settled()
-    g = desk_width(".paper")
-    assert abs(g["width"] - g["deskWidth"]) <= 2, g
-    page.locator('[data-action="theme"]').click()
-    expect(page.locator("#line-width")).to_have_value("full")
-    page.keyboard.press("Escape")
-    select_view(page, "read")
-    settled()
-    for selector in ("#preview", ".read-layout .markdown-document"):
-        g = desk_width(selector)
-        # The reading document is inside the preview's 1px borders.
-        assert abs(g["width"] - g["deskWidth"]) <= 2, (selector, g)
-    select_view(page, "split")
-    settled()
-    split_width = page.locator(".paper").bounding_box()["width"]
-    page.locator('[data-action="theme"]').click()
-    appearance_change(page, lambda: page.locator("#line-width").select_option(label="舒适"))
-    page.keyboard.press("Escape")
-    settled()
-    assert abs(page.locator(".paper").bounding_box()["width"] - split_width) <= 2
-    select_view(page, "single")
-    settled()
-    assert abs(page.locator(".paper").bounding_box()["width"] - 760) <= 2
-    page.locator('[data-action="theme"]').click()
-    appearance_change(page, lambda: page.locator("#line-width").select_option(label="宽阔"))
-    page.keyboard.press("Escape")
-    settled()
-    assert abs(page.locator(".paper").bounding_box()["width"] - 920) <= 2
-    page.locator('[data-action="theme"]').click()
-    appearance_change(page, lambda: page.locator("#line-width").select_option(label="舒适"))
-    page.keyboard.press("Escape")
-    page.set_viewport_size({"width": 1120, "height": 820})
 
 
 def check_split_columns(page):
     select_view(page, "split")
-    for width, height in ((1700, 1100), (1120, 820)):
+    for width, height in ((1700, 1100), (1120, 820), (800, 700), (680, 540)):
         page.set_viewport_size({"width": width, "height": height})
-        page.evaluate("async () => {await document.fonts.ready;await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))}")
-        g = page.evaluate("""() => {
-          const pane=document.querySelector('.editor-pane'), paper=document.querySelector('.paper'), footer=document.querySelector('.paper-bottom');
-          const p=pane.getBoundingClientRect(), r=paper.getBoundingClientRect(), f=footer.getBoundingClientRect();
-          return {pane:p.width,preview:document.querySelector('#preview').getBoundingClientRect().width,paper:r.width,
-            paperBottom:r.bottom,footerBottom:f.bottom,text:document.querySelector('.cm-content').getBoundingClientRect().width,
-            contentBottom:p.top+pane.clientTop+pane.clientHeight-parseFloat(getComputedStyle(pane).paddingBottom),
-            scroll:pane.scrollHeight-pane.clientHeight};
-        }""")
-        # Editor and reading view share the width; the sheet fills its column and its height.
-        assert abs(g["pane"] - g["preview"]) <= 2 and abs(g["paper"] - g["pane"]) <= 2, g
-        assert abs(g["paperBottom"] - g["contentBottom"]) <= 2 and g["paperBottom"] - 80 <= g["footerBottom"] <= g["paperBottom"], g
-        assert g["scroll"] == 0, g
-        if width == 1700:
-            # 舒适 still caps the text inside the wider column.
-            assert g["text"] <= 760 - 100 + 2, g
+        for value, cap in (("normal", 760), ("wide", 920), ("full", width)):
+            set_width(page, value)
+            g = page_geometry(page)
+            r = page.locator("#preview").bounding_box()
+            assert abs(g["pane"]["y"] - g["top"]["bottom"]) <= 2, g
+            if width >= 820:
+                assert abs(g["pane"]["width"] - r["width"]) <= 2 and abs(r["x"] - g["pane"]["right"] - 1) <= .1, (g, r)
+                assert abs(r["y"] - g["pane"]["y"]) <= 2 and abs(g["pane"]["bottom"] - height) <= 2, (g, r)
+            else:
+                assert abs(g["pane"]["height"] - r["height"]) <= 2 and abs(r["y"] - g["pane"]["bottom"] - 1) <= .1, (g, r)
+                assert abs(r["x"]) <= 2 and abs(r["width"] - width) <= 2, (g, r)
+            assert abs(r["y"] + r["height"] - height) <= 2, r
+            gutter = 48 if width > 850 else 30
+            assert abs(g["text"]["width"] - (min(cap, g["paper"]["width"]) - 2 * gutter)) <= 2, g
+            assert abs((g["text"]["x"] - g["pane"]["x"]) - (g["pane"]["right"] - g["text"]["right"])) <= 2, g
+            document = page.locator(".markdown-document").bounding_box()
+            assert abs(document["width"] - min(cap, r["width"])) <= 2, (document, r)
+            assert abs((document["x"] - r["x"]) - (r["x"] + r["width"] - document["x"] - document["width"])) <= 2, (document, r)
+            assert_count_position(page, g)
+            assert page.locator("#preview").evaluate("el => getComputedStyle(el).boxShadow==='none' && getComputedStyle(el).borderRadius==='0px'")
     page.set_viewport_size({"width": 1120, "height": 820})
+    set_width(page, "normal")
     select_view(page, "single")
 
 
@@ -426,7 +440,7 @@ def run(page):
         expect(first).to_be_focused()
         page.keyboard.press("Escape")
     more.click()
-    page.locator("#document-kind").click()
+    page.locator(".paper").click(position={"x": 10, "y": 200})
     expect(menu).to_be_hidden()
     expect(more).to_have_attribute("aria-expanded", "false")
     more.click()
@@ -470,6 +484,7 @@ def run(page):
 
     # Include desktop traffic-light space even though this test uses the web backend.
     page.evaluate("document.body.classList.add('desktop')")
+    expect(page.locator("#workspace-label")).to_be_hidden()
     for width in (1440, 1120, 800, 680):
         page.set_viewport_size({"width": width, "height": 820})
         accessible_buttons(page)
@@ -499,7 +514,7 @@ def run(page):
             page.locator("#format-bar").screenshot(path=str(ARTIFACTS / f"format-bar-{width}-{view}.png"))
         page.locator('[data-view="single"]').click()
         page.locator(".topbar").screenshot(path=str(ARTIFACTS / f"toolbar-{width}.png"))
-    print("PASS: paper height/footer/no-scroll/long-document/click-to-write, split equal columns/filled sheet, full/normal/wide widths/reload/reading/split, format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
+    print("PASS: whole-page bounds/flat panes/centred normal-wide-full columns, sticky format/word count/long-document/click-to-write, equal split/stacked divider/full reader, format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
 
 
 with sync_playwright() as playwright:

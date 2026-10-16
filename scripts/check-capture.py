@@ -27,6 +27,8 @@ def run(context):
     main = context.new_page()
     main.goto(BASE)
     expect(main.locator(".cm-content")).to_be_visible()
+    expect(main.locator(".topbar #workspace-label")).to_have_text("本地开发版 · 独立草稿存档")
+    expect(main.locator(".topbar #workspace-label")).to_be_visible()
     current = api(main, "State")["current"]
     main.locator("#sidebar-button").click()
     expect(main.locator("#drawer")).to_be_visible()

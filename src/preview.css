@@ -1,8 +1,8 @@
-#preview{grid-area:preview;min-width:0;min-height:0;background:var(--card);border:1px solid var(--border);border-radius:7px;overflow:hidden;box-shadow:0 16px 60px #25282210}
+#preview{grid-area:preview;min-width:0;min-height:0;background:var(--card);overflow:hidden}
 .preview-head{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid var(--border);color:var(--muted-foreground);font-size:12px}
-.preview-pill{padding:4px 8px;border-radius:999px;background:var(--accent);color:var(--accent-foreground);font-size:10px;letter-spacing:.05em}
+.preview-pill{font-size:10px;letter-spacing:.05em}
 .preview-scroll{height:calc(100% - 48px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--input) transparent}
-.markdown-document{width:min(var(--paper-width),100%);margin:0 auto;padding:42px clamp(28px,6vw,68px) 72px;color:var(--foreground);font:var(--editor-size)/1.9 'Iowan Old Style','Songti SC','Noto Serif CJK SC',Georgia,serif;overflow-wrap:anywhere}
+.markdown-document{width:min(var(--paper-width),100%);margin:0 auto;padding:42px var(--page-gutter) 72px;color:var(--foreground);font:var(--editor-size)/1.9 'Iowan Old Style','Songti SC','Noto Serif CJK SC',Georgia,serif;overflow-wrap:anywhere}
 .markdown-document h1,.markdown-document h2,.markdown-document h3,.markdown-document h4,.markdown-document h5,.markdown-document h6{font-family:'Iowan Old Style','Songti SC','Noto Serif CJK SC',Georgia,serif;line-height:1.45;margin:1.5em 0 .65em}
 .markdown-document h1{font-size:1.9em}.markdown-document h2{font-size:1.5em}.markdown-document h3{font-size:1.2em}
 .markdown-document p{margin:0 0 1em}.markdown-document a{color:var(--link);text-decoration:underline;text-underline-offset:3px}
@@ -15,7 +15,7 @@
 .markdown-image-note{display:block;padding:12px 14px;border:1px dashed var(--border);border-radius:5px;color:var(--muted-foreground);font:12px/1.7 -apple-system,sans-serif}
 @media(max-width:819px) and (max-height:600px){
  .preview-head{height:34px;padding:0 14px}.preview-scroll{height:calc(100% - 34px)}
- .markdown-document{padding:14px 22px 40px}.markdown-document>:first-child{margin-top:0}
+ .markdown-document{padding:14px var(--page-gutter) 40px}.markdown-document>:first-child{margin-top:0}
 }
 .markdown-document .md-front-matter{margin:0 0 24px;color:var(--muted-foreground);font:12px/1.8 -apple-system,sans-serif}.markdown-document .md-front-matter summary{cursor:pointer}.markdown-document .md-front-matter pre{margin:8px 0;font-size:12px}
 .markdown-document .markdown-alert{border-left:3px solid var(--quote);background:var(--accent);padding:12px 16px;border-radius:4px;font-style:normal}.markdown-document .markdown-alert-title{font-weight:700;margin:0 0 8px}.markdown-document .markdown-alert>:last-child{margin-bottom:0}

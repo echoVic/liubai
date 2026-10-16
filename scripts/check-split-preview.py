@@ -109,7 +109,7 @@ def stability_sample(page):
     # Observe a complete debounce interval, proving the absence of unwanted jumps.
     return page.evaluate("""() => new Promise(resolve => {
       const reader = document.querySelector('#preview .preview-scroll');
-      const editor = document.querySelector('.editor-pane');
+      const editor = document.querySelector('.editor-scroll');
       const start = performance.now(), left = editor.scrollTop, right = reader.scrollTop;
       let movedLeft = 0, movedRight = 0;
       function sample(now) {
@@ -130,6 +130,8 @@ def more_action(page, action):
 def run(page):
     page.goto(BASE)
     expect(page.locator(".cm-content")).to_be_visible()
+    expect(page.locator(".topbar #workspace-label")).to_have_text("本地开发版 · 独立草稿存档")
+    expect(page.locator(".topbar #workspace-label")).to_be_visible()
     import_text(page, TEXT, "分栏验收.md")
     original_id = workspace(page)["current"]["id"]
     # On the pre-feature build this fails: the page has no reading pane.
@@ -171,7 +173,7 @@ def run(page):
 
     # Cross-block caret movement follows; manual scrolling is independent.
     reader = page.locator("#preview .preview-scroll")
-    editor_scroll = page.locator(".editor-pane")
+    editor_scroll = page.locator(".editor-scroll")
     content.focus()
     page.keyboard.press("Meta+Home")
     page.wait_for_function("() => document.querySelector('#preview .preview-scroll').scrollTop < 100")

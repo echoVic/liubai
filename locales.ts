@@ -70,12 +70,6 @@ export interface Messages {
    */
   fUnsaved(): string;
   /**
-   * Interface text for A Draft for This Moment.
-   *
-   * `此刻 · 一篇草稿`
-   */
-  fADraftForThisMoment(): string;
-  /**
    * Interface text for Body.
    *
    * `正文`
@@ -982,12 +976,6 @@ export interface Messages {
    */
   fDocumentEditor(): string;
   /**
-   * Interface text for Write this moment..
-   *
-   * `写下这一刻。`
-   */
-  fWriteThisMoment(): string;
-  /**
    * Interface text for 0 words.
    *
    * `0 字`
@@ -1011,18 +999,6 @@ export interface Messages {
    * `只读`
    */
   fReadOnly(): string;
-  /**
-   * Interface text for Your documents stay on this Mac.
-   *
-   * `文稿留在本机`
-   */
-  fYourDocumentsStayOnThisMac(): string;
-  /**
-   * Interface text for Automatic Drafts · Pick Up Anytime.
-   *
-   * `自动草稿 · 随时续写`
-   */
-  fAutomaticDraftsPickUpAnytime(): string;
   /**
    * Interface text for L.
    *
@@ -2170,12 +2146,6 @@ export interface Messages {
    */
   fAppName(): string;
   /**
-   * Interface message: LocalDocument.
-   *
-   * `本地文稿 · {title}`
-   */
-  fLocalDocument(title: string): string;
-  /**
    * Interface message: Heading.
    *
    * `标题 {level}`
@@ -2484,7 +2454,6 @@ const catalog = createCatalog<Messages>({
     "fLocalDevelopmentSeparateDrafts": [],
     "fTyping": [],
     "fUnsaved": [],
-    "fADraftForThisMoment": [],
     "fBody": [],
     "fSaving": [],
     "fSaveFailedYourTextIsStillHere": [],
@@ -2636,13 +2605,10 @@ const catalog = createCatalog<Messages>({
     "fEditor": [],
     "fFormat": [],
     "fDocumentEditor": [],
-    "fWriteThisMoment": [],
     "f0Words": [],
     "fReadingPreview": [],
     "fReadingView": [],
     "fReadOnly": [],
-    "fYourDocumentsStayOnThisMac": [],
-    "fAutomaticDraftsPickUpAnytime": [],
     "fL": [],
     "fNewDocumentN": [],
     "fCloseSidebar": [],
@@ -2834,7 +2800,6 @@ const catalog = createCatalog<Messages>({
     "bImageUnreadable": ["path"],
     "bOpenFailed": ["name", "error"],
     "fAppName": [],
-    "fLocalDocument": ["title"],
     "fHeading": ["level"],
     "fWordCount": ["count"],
     "fSaveError": ["error"],
@@ -2897,7 +2862,6 @@ const catalog = createCatalog<Messages>({
       "fLocalDevelopmentSeparateDrafts": "本地开发版 · 独立草稿存档",
       "fTyping": "正在输入",
       "fUnsaved": "待保存",
-      "fADraftForThisMoment": "此刻 · 一篇草稿",
       "fBody": "正文",
       "fSaving": "正在保存",
       "fSaveFailedYourTextIsStillHere": "保存失败 · 当前输入仍在",
@@ -3049,13 +3013,10 @@ const catalog = createCatalog<Messages>({
       "fEditor": "编辑区",
       "fFormat": "格式",
       "fDocumentEditor": "文稿编辑区",
-      "fWriteThisMoment": "写下这一刻。",
       "f0Words": "0 字",
       "fReadingPreview": "阅读预览",
       "fReadingView": "阅读视图",
       "fReadOnly": "只读",
-      "fYourDocumentsStayOnThisMac": "文稿留在本机",
-      "fAutomaticDraftsPickUpAnytime": "自动草稿 · 随时续写",
       "fL": "白",
       "fNewDocumentN": "新建文稿 ⌘N",
       "fCloseSidebar": "关闭侧栏",
@@ -3247,7 +3208,6 @@ const catalog = createCatalog<Messages>({
       "bImageUnreadable": "图片缺失或无法读取：{path}",
       "bOpenFailed": "无法打开「{name}」：{error}",
       "fAppName": "留白",
-      "fLocalDocument": "本地文稿 · {title}",
       "fHeading": "标题 {level}",
       "fWordCount": "{count, number} 字",
       "fSaveError": "保存失败：{error}",
@@ -3309,7 +3269,6 @@ const catalog = createCatalog<Messages>({
       "fLocalDevelopmentSeparateDrafts": "Local Development · Separate Drafts",
       "fTyping": "Typing",
       "fUnsaved": "Unsaved",
-      "fADraftForThisMoment": "A Draft for This Moment",
       "fBody": "Body",
       "fSaving": "Saving",
       "fSaveFailedYourTextIsStillHere": "Save Failed · Your Text Is Still Here",
@@ -3461,13 +3420,10 @@ const catalog = createCatalog<Messages>({
       "fEditor": "Editor",
       "fFormat": "Format",
       "fDocumentEditor": "Document Editor",
-      "fWriteThisMoment": "Write this moment.",
       "f0Words": "0 words",
       "fReadingPreview": "Reading Preview",
       "fReadingView": "Reading View",
       "fReadOnly": "Read Only",
-      "fYourDocumentsStayOnThisMac": "Your documents stay on this Mac",
-      "fAutomaticDraftsPickUpAnytime": "Automatic Drafts · Pick Up Anytime",
       "fL": "L",
       "fNewDocumentN": "New Document ⌘N",
       "fCloseSidebar": "Close Sidebar",
@@ -3659,7 +3615,6 @@ const catalog = createCatalog<Messages>({
       "bImageUnreadable": "Image is missing or unreadable: {path}",
       "bOpenFailed": "Could not open “{name}”: {error}",
       "fAppName": "Liubai",
-      "fLocalDocument": "Local Document · {title}",
       "fHeading": "Heading {level}",
       "fWordCount": "{count, plural, one {# word} other {# words}}",
       "fSaveError": "Could not save: {error}",

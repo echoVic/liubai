@@ -19,7 +19,7 @@ def chrome_is_english(page):
     # Document titles, excerpts, editor and rendered content belong to the user.
     # Language autonyms intentionally name each language in its own script.
     offending = page.evaluate("""() => {
-        const skip = '#doc-title, #document-kind, .cm-content, #preview-content, #print-document, .recent-item b, .recent-item p, .outline-item, #missing-list, #table-grid input, #rename-input, #link-text, #link-url';
+        const skip = '#doc-title, .cm-content, #preview-content, #print-document, .recent-item b, .recent-item p, .outline-item, #missing-list, #table-grid input, #rename-input, #link-text, #link-url';
         const cjk = /[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{Script=Hangul}]/u;
         const found = [];
         for (const el of document.querySelectorAll('body *')) {
@@ -46,6 +46,8 @@ def english(context):
     page.goto(BASE)
     expect(page.locator(".cm-content")).to_be_visible()
     expect(page.locator('html')).to_have_attribute("lang", "en")
+    expect(page.locator(".topbar #workspace-label")).to_have_text("Local Development · Separate Drafts")
+    expect(page.locator(".topbar #workspace-label")).to_be_visible()
     expect(page.locator('[data-view="single"]')).to_have_text("Edit")
     expect(page.locator('[data-view="split"]')).to_have_text("Split")
     expect(page.locator('[data-view="read"]')).to_have_text("Read")
@@ -99,6 +101,8 @@ def english(context):
     expect(page.locator("#doc-title")).to_have_text("我的标题")
     palette(page, "简体中文")
     expect(page.locator('[data-view="single"]')).to_have_text("编辑")
+    expect(page.locator(".topbar #workspace-label")).to_have_text("本地开发版 · 独立草稿存档")
+    expect(page.locator(".topbar #workspace-label")).to_be_visible()
     expect(page.locator("#doc-title")).to_have_text("我的标题")
     palette(page, "English")
     expect(page.locator('[data-view="single"]')).to_have_text("Edit")
@@ -151,6 +155,8 @@ def english(context):
 
     palette(page, "简体中文")
     expect(page.locator('[data-view="single"]')).to_have_text("编辑")
+    expect(page.locator(".topbar #workspace-label")).to_have_text("本地开发版 · 独立草稿存档")
+    expect(page.locator(".topbar #workspace-label")).to_be_visible()
     expect(page.locator("#save-status")).to_have_text("草稿已保存")
     expect(page.locator("#word-count")).to_have_text("2 字")
     expect(page.locator(".cm-content")).to_have_text("hello world")
@@ -166,6 +172,8 @@ def english(context):
     palette(page, "简体中文")
     page.reload()
     expect(page.locator('[data-view="single"]')).to_have_text("编辑")
+    expect(page.locator(".topbar #workspace-label")).to_have_text("本地开发版 · 独立草稿存档")
+    expect(page.locator(".topbar #workspace-label")).to_be_visible()
     palette(page, "English")
     expect(page.locator('[data-view="single"]')).to_have_text("Edit")
     palette(page, "Follow System")
@@ -188,6 +196,8 @@ def chinese(context):
     expect(page.locator(".cm-content")).to_be_visible()
     expect(page.locator('html')).to_have_attribute("lang", "zh-Hans")
     expect(page.locator('[data-view="single"]')).to_have_text("编辑")
+    expect(page.locator(".topbar #workspace-label")).to_have_text("本地开发版 · 独立草稿存档")
+    expect(page.locator(".topbar #workspace-label")).to_be_visible()
     expect(page.locator(".export-label")).to_have_text("导出")
     expect(page.locator('#format-bar [data-action="bold"]')).to_have_attribute("aria-label", "加粗")
     page.locator("#sidebar-button").click()

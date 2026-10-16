@@ -82,6 +82,8 @@ def run(page):
     page.route(BASE + "/api", notice_route)
     page.goto(BASE)
     expect(page.locator("#banner-text")).to_have_text("有 1 份草稿无法读取，已移到隔离目录")
+    expect(page.locator(".topbar #workspace-label")).to_have_text("本地开发版 · 独立草稿存档")
+    expect(page.locator(".topbar #workspace-label")).to_be_visible()
     for hidden in ("#retry-save", "#banner-save-as", "#reload-disk", "#overwrite-disk"):
         expect(page.locator(hidden)).to_be_hidden()
     page.unroute(BASE + "/api", notice_route)

@@ -190,20 +190,6 @@ func (msgs Messages) FUnsaved() string {
 	return Catalog.Format(msgs.locale, "fUnsaved", nil)
 }
 
-// FADraftForThisMoment says "此刻 · 一篇草稿"
-// in the language the app shows.
-//
-// Interface text for A Draft for This Moment.
-func FADraftForThisMoment() string { return In(i18n.Locale()).FADraftForThisMoment() }
-
-// FADraftForThisMoment says "此刻 · 一篇草稿"
-// in the language of msgs.
-//
-// Interface text for A Draft for This Moment.
-func (msgs Messages) FADraftForThisMoment() string {
-	return Catalog.Format(msgs.locale, "fADraftForThisMoment", nil)
-}
-
 // FBody says "正文"
 // in the language the app shows.
 //
@@ -2396,20 +2382,6 @@ func (msgs Messages) FDocumentEditor() string {
 	return Catalog.Format(msgs.locale, "fDocumentEditor", nil)
 }
 
-// FWriteThisMoment says "写下这一刻。"
-// in the language the app shows.
-//
-// Interface text for Write this moment..
-func FWriteThisMoment() string { return In(i18n.Locale()).FWriteThisMoment() }
-
-// FWriteThisMoment says "写下这一刻。"
-// in the language of msgs.
-//
-// Interface text for Write this moment..
-func (msgs Messages) FWriteThisMoment() string {
-	return Catalog.Format(msgs.locale, "fWriteThisMoment", nil)
-}
-
 // F0Words says "0 字"
 // in the language the app shows.
 //
@@ -2464,34 +2436,6 @@ func FReadOnly() string { return In(i18n.Locale()).FReadOnly() }
 // Interface text for Read Only.
 func (msgs Messages) FReadOnly() string {
 	return Catalog.Format(msgs.locale, "fReadOnly", nil)
-}
-
-// FYourDocumentsStayOnThisMac says "文稿留在本机"
-// in the language the app shows.
-//
-// Interface text for Your documents stay on this Mac.
-func FYourDocumentsStayOnThisMac() string { return In(i18n.Locale()).FYourDocumentsStayOnThisMac() }
-
-// FYourDocumentsStayOnThisMac says "文稿留在本机"
-// in the language of msgs.
-//
-// Interface text for Your documents stay on this Mac.
-func (msgs Messages) FYourDocumentsStayOnThisMac() string {
-	return Catalog.Format(msgs.locale, "fYourDocumentsStayOnThisMac", nil)
-}
-
-// FAutomaticDraftsPickUpAnytime says "自动草稿 · 随时续写"
-// in the language the app shows.
-//
-// Interface text for Automatic Drafts · Pick Up Anytime.
-func FAutomaticDraftsPickUpAnytime() string { return In(i18n.Locale()).FAutomaticDraftsPickUpAnytime() }
-
-// FAutomaticDraftsPickUpAnytime says "自动草稿 · 随时续写"
-// in the language of msgs.
-//
-// Interface text for Automatic Drafts · Pick Up Anytime.
-func (msgs Messages) FAutomaticDraftsPickUpAnytime() string {
-	return Catalog.Format(msgs.locale, "fAutomaticDraftsPickUpAnytime", nil)
 }
 
 // FL says "白"
@@ -5216,20 +5160,6 @@ func FAppName() string { return In(i18n.Locale()).FAppName() }
 // Interface message: AppName.
 func (msgs Messages) FAppName() string {
 	return Catalog.Format(msgs.locale, "fAppName", nil)
-}
-
-// FLocalDocument says "本地文稿 · {title}"
-// in the language the app shows.
-//
-// Interface message: LocalDocument.
-func FLocalDocument(title string) string { return In(i18n.Locale()).FLocalDocument(title) }
-
-// FLocalDocument says "本地文稿 · {title}"
-// in the language of msgs.
-//
-// Interface message: LocalDocument.
-func (msgs Messages) FLocalDocument(title string) string {
-	return Catalog.Format(msgs.locale, "fLocalDocument", map[string]any{"title": title})
 }
 
 // FHeading says "标题 {level}"

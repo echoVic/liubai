@@ -52,10 +52,6 @@
   "@fUnsaved": {
     "description": "Interface text for Unsaved."
   },
-  "fADraftForThisMoment": "此刻 · 一篇草稿",
-  "@fADraftForThisMoment": {
-    "description": "Interface text for A Draft for This Moment."
-  },
   "fBody": "正文",
   "@fBody": {
     "description": "Interface text for Body."
@@ -660,10 +656,6 @@
   "@fDocumentEditor": {
     "description": "Interface text for Document Editor."
   },
-  "fWriteThisMoment": "写下这一刻。",
-  "@fWriteThisMoment": {
-    "description": "Interface text for Write this moment.."
-  },
   "f0Words": "0 字",
   "@f0Words": {
     "description": "Interface text for 0 words."
@@ -679,14 +671,6 @@
   "fReadOnly": "只读",
   "@fReadOnly": {
     "description": "Interface text for Read Only."
-  },
-  "fYourDocumentsStayOnThisMac": "文稿留在本机",
-  "@fYourDocumentsStayOnThisMac": {
-    "description": "Interface text for Your documents stay on this Mac."
-  },
-  "fAutomaticDraftsPickUpAnytime": "自动草稿 · 随时续写",
-  "@fAutomaticDraftsPickUpAnytime": {
-    "description": "Interface text for Automatic Drafts · Pick Up Anytime."
   },
   "fL": "白",
   "@fL": {
@@ -1474,15 +1458,6 @@
   "fAppName": "留白",
   "@fAppName": {
     "description": "Interface message: AppName."
-  },
-  "fLocalDocument": "本地文稿 · {title}",
-  "@fLocalDocument": {
-    "description": "Interface message: LocalDocument.",
-    "placeholders": {
-      "title": {
-        "type": "String"
-      }
-    }
   },
   "fHeading": "标题 {level}",
   "@fHeading": {

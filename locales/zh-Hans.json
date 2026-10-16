@@ -1200,6 +1200,10 @@
   "@bMenuAbout": {
     "description": "Native menu label: About"
   },
+  "bMenuCheckForUpdates": "检查更新…",
+  "@bMenuCheckForUpdates": {
+    "description": "Native menu label: Check for Updates"
+  },
   "bMenuHide": "隐藏留白",
   "@bMenuHide": {
     "description": "Native menu label: Hide"

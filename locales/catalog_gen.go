@@ -4330,6 +4330,20 @@ func (msgs Messages) BMenuAbout() string {
 	return Catalog.Format(msgs.locale, "bMenuAbout", nil)
 }
 
+// BMenuCheckForUpdates says "检查更新…"
+// in the language the app shows.
+//
+// Native menu label: Check for Updates
+func BMenuCheckForUpdates() string { return In(i18n.Locale()).BMenuCheckForUpdates() }
+
+// BMenuCheckForUpdates says "检查更新…"
+// in the language of msgs.
+//
+// Native menu label: Check for Updates
+func (msgs Messages) BMenuCheckForUpdates() string {
+	return Catalog.Format(msgs.locale, "bMenuCheckForUpdates", nil)
+}
+
 // BMenuHide says "隐藏留白"
 // in the language the app shows.
 //

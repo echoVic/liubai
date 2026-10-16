@@ -38,6 +38,30 @@ func TestMenuTemplateUsesChineseLabelsAndStandardItems(t *testing.T) {
 	}
 }
 
+func TestAppMenuOffersCheckForUpdatesAfterAbout(t *testing.T) {
+	for _, tt := range []struct{ locale, about, label string }{
+		{"zh-Hans", "关于留白", "检查更新…"},
+		{"en", "About Liubai", "Check for Updates…"},
+	} {
+		t.Run(tt.locale, func(t *testing.T) {
+			items := menuTemplateIn(locales.In(tt.locale), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
+			app := items[0].Submenu
+			if len(app) < 4 || app[0].Label != tt.about {
+				t.Fatalf("app menu must start with %q", tt.about)
+			}
+			if label := locales.Catalog.Format(tt.locale, "bMenuCheckForUpdates", nil); label != tt.label {
+				t.Errorf("catalog label = %q, want %q", label, tt.label)
+			}
+			if app[1].Label != tt.label || app[1].Click == nil {
+				t.Errorf("item after About = %+v, want %q with Click", app[1], tt.label)
+			}
+			if app[2].Type != mygo.MenuItemSeparator || app[3].Role != mygo.RoleHide {
+				t.Error("Check for Updates must be followed by a separator and Hide")
+			}
+		})
+	}
+}
+
 func TestSaveHTMLRejectsOversizedContentBeforeDialog(t *testing.T) {
 	d := &Desktop{}
 	r, err := d.SaveHTML(context.Background(), "文稿", strings.Repeat("x", (64<<20)+1))

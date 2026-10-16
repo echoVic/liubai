@@ -6,6 +6,7 @@
   "out": "build",
   "bindings": "bindings.ts",
   "i18n": {"dir": "locales", "source": "zh-Hans"},
+  "updates": {"publicKey": "0ZE+ktIAa8WWCN9qm3Gyg+4q1He4iPKclVBRfi7lEQc=", "github": "echoVic/liubai", "privateKey": "~/Library/Application Support/mygo/update-keys/mygo-update.key"},
   "fileAssociations": [{"ext": ["md", "markdown", "mdown", "mkd"], "name": "Markdown 文稿", "mimeType": "text/markdown", "role": "Editor"}],
   "macos": {
     "infoPlist": {

@@ -22,6 +22,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/i18n"
+	"github.com/egoist/mygo/plugins/updater"
 	"github.com/egoist/mygo/transfer"
 )
 
@@ -281,7 +282,7 @@ func menuTemplateIn(msgs locales.Messages, action func(string) func(*mygo.MenuIt
 	return []*mygo.MenuItem{
 		{Label: msgs.BMenuAppName(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuAbout(), Click: func(*mygo.MenuItem, *mygo.Window) {
 			mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: msgs.BMenuAppName(), ApplicationVersion: "0.1.0"})
-		}}, mygo.Separator(), {Role: mygo.RoleHide, Label: msgs.BMenuHide()}, {Role: mygo.RoleHideOthers, Label: msgs.BMenuHideOthers()}, {Role: mygo.RoleUnhide, Label: msgs.BMenuShowAll()}, mygo.Separator(), {Role: mygo.RoleQuit, Label: msgs.BMenuQuit()}}},
+		}}, {Label: msgs.BMenuCheckForUpdates(), Click: func(*mygo.MenuItem, *mygo.Window) { updater.CheckForUpdates() }}, mygo.Separator(), {Role: mygo.RoleHide, Label: msgs.BMenuHide()}, {Role: mygo.RoleHideOthers, Label: msgs.BMenuHideOthers()}, {Role: mygo.RoleUnhide, Label: msgs.BMenuShowAll()}, mygo.Separator(), {Role: mygo.RoleQuit, Label: msgs.BMenuQuit()}}},
 		{Label: msgs.BMenuFile(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuNew(), Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: msgs.BMenuOpen(), Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Role: mygo.RoleOpenRecent, Label: msgs.BMenuOpenRecent()}, {Label: msgs.BMenuCapture(), Click: action("capture")}, mygo.Separator(), {Label: msgs.BMenuSave(), Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: msgs.BMenuSaveAs(), Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, mygo.Separator(), {Label: msgs.BMenuExport(), Click: action("deliver")}, {Label: msgs.BMenuExportPDF(), Accelerator: "CmdOrCtrl+P", Click: action("pdf")}, mygo.Separator(), {Role: mygo.RoleClose, Label: msgs.BMenuCloseWindow()}}},
 		{Label: msgs.BMenuEdit(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuUndo(), Accelerator: "CmdOrCtrl+Z", Click: action("undo")}, {Label: msgs.BMenuRedo(), Accelerator: "CmdOrCtrl+Shift+Z", Click: action("redo")}, mygo.Separator(), {Role: mygo.RoleCut, Label: msgs.BMenuCut()}, {Role: mygo.RoleCopy, Label: msgs.BMenuCopy()}, {Role: mygo.RolePaste, Label: msgs.BMenuPaste()}, {Label: msgs.BMenuPastePlain(), Accelerator: "CmdOrCtrl+Shift+V", Click: action("pastePlain")}, {Role: mygo.RoleSelectAll, Label: msgs.BMenuSelectAll()}, mygo.Separator(), {Label: msgs.BMenuFind(), Accelerator: "CmdOrCtrl+F", Click: action("find")}}},
 		{Label: msgs.BMenuView(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuFocus(), Accelerator: "CmdOrCtrl+Shift+F", Click: action("focus")}, {Label: msgs.BMenuAppearance(), Click: action("theme")}, {Label: msgs.BMenuLayout(), Accelerator: "CmdOrCtrl+\\", Click: action("layout")}, {Label: msgs.BMenuRead(), Accelerator: "CmdOrCtrl+Shift+R", Click: action("read")}, {Label: msgs.BMenuSource(), Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: msgs.BMenuCommands(), Accelerator: "CmdOrCtrl+K", Click: action("commands")}, mygo.Separator(), {Role: mygo.RoleToggleFullScreen, Label: msgs.BMenuFullscreen()}, mygo.Separator(), {Label: msgs.BMenuLanguage(), Submenu: languageMenu(msgs, action)}}},
@@ -340,6 +341,7 @@ func main() {
 		}
 		return
 	}
+	mygo.Use(updater.Plugin)
 	nativeLocaleChoice.Store(w.localePreference)
 	d.native = newDesktopIntegration(w)
 	defer d.native.cancel()

@@ -1792,6 +1792,12 @@ export interface Messages {
    */
   bMenuAbout(): string;
   /**
+   * Native menu label: Check for Updates
+   *
+   * `检查更新…`
+   */
+  bMenuCheckForUpdates(): string;
+  /**
    * Native menu label: Hide
    *
    * `隐藏留白`
@@ -2759,6 +2765,7 @@ const catalog = createCatalog<Messages>({
     "bUnsupportedImageSyntax": [],
     "bMenuAppName": [],
     "bMenuAbout": [],
+    "bMenuCheckForUpdates": [],
     "bMenuHide": [],
     "bMenuHideOthers": [],
     "bMenuShowAll": [],
@@ -3170,6 +3177,7 @@ const catalog = createCatalog<Messages>({
       "bUnsupportedImageSyntax": "存在无法转换的图片语法，请将图片引用单独放在一行后再保存",
       "bMenuAppName": "留白",
       "bMenuAbout": "关于留白",
+      "bMenuCheckForUpdates": "检查更新…",
       "bMenuHide": "隐藏留白",
       "bMenuHideOthers": "隐藏其他",
       "bMenuShowAll": "全部显示",
@@ -3580,6 +3588,7 @@ const catalog = createCatalog<Messages>({
       "bUnsupportedImageSyntax": "Some image syntax cannot be converted. Place each image reference on its own line before saving",
       "bMenuAppName": "Liubai",
       "bMenuAbout": "About Liubai",
+      "bMenuCheckForUpdates": "Check for Updates…",
       "bMenuHide": "Hide Liubai",
       "bMenuHideOthers": "Hide Others",
       "bMenuShowAll": "Show All",

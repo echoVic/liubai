@@ -300,6 +300,7 @@
   "bUnsupportedImageSyntax": "Some image syntax cannot be converted. Place each image reference on its own line before saving",
   "bMenuAppName": "Liubai",
   "bMenuAbout": "About Liubai",
+  "bMenuCheckForUpdates": "Check for Updates…",
   "bMenuHide": "Hide Liubai",
   "bMenuHideOthers": "Hide Others",
   "bMenuShowAll": "Show All",

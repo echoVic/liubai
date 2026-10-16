@@ -2,7 +2,7 @@
 
 一页就能开始写，随时回来接着写。Mac 优先的轻量 Markdown 桌面编辑器，Go + MyGo + CodeMirror 6，界面基于确认过的「一页写作桌」原型。
 
-下载：在 [Releases](https://github.com/echoVic/liubai/releases/latest) 下载 DMG，打开后把「留白」拖进「应用程序」。需要 macOS 13 或以上，支持 Apple Silicon 和 Intel；安装包已用 Developer ID 签名并经 Apple 公证。
+下载：在 [Releases](https://github.com/echoVic/liubai/releases/latest) 下载 DMG，打开后把「留白」拖进「应用程序」。需要 macOS 13 或以上，支持 Apple Silicon 和 Intel；安装包已用 Developer ID 签名并经 Apple 公证。更新记录见 [CHANGELOG](CHANGELOG.md)。
 
 ## 日常使用
 
@@ -19,6 +19,7 @@
 - 界面支持简体中文和 English，默认跟随系统语言；「显示 → 语言」可手动切换，菜单和页面立即更新。
 - 文件被其他应用修改且本地没有改动时会立即载入；打开过的文件会出现在 Dock 菜单和「文件 → 打开最近使用」里；保存失败或长时间未保存时，窗口关闭按钮显示未保存圆点。
 - 桌面版随手记：在任何应用里按默认快捷键 ⌃⌥⌘N，输入想法后按 ⌘↩，每次存为一篇新草稿，主窗口继续显示原来的文稿；「更多 → 随手记设置…」可改快捷键与登录后台启动。
+- 自动更新：每天在后台检查一次 GitHub Releases，有新版本时显示更新说明，可选择「安装更新」「稍后提醒我」或「跳过这个版本」；「留白 → 检查更新…」随时手动检查。留白需要放在「应用程序」或 `~/Applications` 中才能自行更新。
 - 粘贴网页、文档和 Word 内容会转为 Markdown，保留表格、列表、链接、代码和图片；`⇧⌘V` 粘贴为纯文本。
 - 粘贴或拖入 PNG / JPEG / GIF / WebP / SVG / AVIF / BMP，光标移开后显示图片预览。中文或带空格路径的本地图片（包括 Typora 生成的 `文稿名.assets/`）可以正常显示。
 - 「导出」集中提供 Markdown、图片 ZIP、PDF、富文本复制和含本地图片的 HTML。交付使用整篇文稿，不受编辑器可视区域限制。
@@ -79,6 +80,8 @@ scripts/e2e.sh check-english
 
 构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.1.0.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
 
+自动更新由 `mygo.json` 的 `updates` 配置：构建时用 `updates.privateKey` 指向的密钥（不在仓库中）签名更新包，更新说明取自 `CHANGELOG.md` 中当前版本的段落，缺少该段落时构建失败。`go tool mygo build -platform darwin/universal -upload .` 把 DMG、更新包和更新清单上传到当前版本的 GitHub Release 草稿；发布为最新版本后，已安装的应用就会检测到更新。
+
 签名与公证验证：对应用运行 `codesign --verify --deep --strict` 和 `spctl -a -t exec -vv`，对 DMG 运行 `spctl -a -t open --context context:primary-signature -vv`；分别运行 `xcrun stapler validate` 检查应用和 DMG 的公证票据。`scripts/package-macos.sh` 仅生成未公证的临时预览 ZIP，会重新签名，不应用于正式签名的应用。
 
 ## 0.1.0（首个公开版本）
@@ -99,7 +102,7 @@ scripts/e2e.sh check-english
 
 即时排版使用 CodeMirror 装饰而不重序列化 Markdown。图片/表格在光标离开相关区块后预览。复杂跨行图片语法或扩展语法保留源码，无法安全转换资源时停止保存并提示。外部图片在编辑区保持原链接且可能联网加载；ZIP 保留原引用，PDF、HTML 与富文本中转为可点击链接，准备交付时不抓取外部图片。缺失图片会提示处理或明确继续；图文准备上限为 48 MB，较大文稿可使用 ZIP。接收应用对富文本与内嵌图片的支持不同。
 
-没有广告、遥测和云同步。内存、启动速度及包体大小以实测记录为准。
+没有广告、遥测和云同步；检查更新只访问 GitHub Releases。内存、启动速度及包体大小以实测记录为准。
 
 ## 许可
 

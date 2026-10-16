@@ -80,7 +80,7 @@ scripts/e2e.sh check-english
 
 构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.1.2.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
 
-自动更新由 `mygo.json` 的 `updates` 配置：构建时用 `updates.privateKey` 指向的密钥（不在仓库中）签名更新包，更新说明取自 `CHANGELOG.md` 中当前版本的段落，缺少该段落时构建失败。`go tool mygo build -platform darwin/universal -upload .` 把 DMG、更新包和更新清单上传到当前版本的 GitHub Release 草稿；发布为最新版本后，已安装的应用就会检测到更新。
+自动更新由 `mygo.json` 的 `updates` 配置（公钥和发布仓库）。签名更新包的私钥不在仓库和配置里，发布时通过环境变量传入：`MYGO_UPDATER_PRIVATE_KEY="$(cat <私钥文件>)" go tool mygo build -platform darwin/universal -upload .`；没有私钥时照常构建，只是不生成更新包。更新说明取自 `CHANGELOG.md` 中当前版本的段落，缺少该段落时构建失败。`go tool mygo build -platform darwin/universal -upload .` 把 DMG、更新包和更新清单上传到当前版本的 GitHub Release 草稿；发布为最新版本后，已安装的应用就会检测到更新。
 
 签名与公证验证：对应用运行 `codesign --verify --deep --strict` 和 `spctl -a -t exec -vv`，对 DMG 运行 `spctl -a -t open --context context:primary-signature -vv`；分别运行 `xcrun stapler validate` 检查应用和 DMG 的公证票据。`scripts/package-macos.sh` 仅生成未公证的临时预览 ZIP，会重新签名，不应用于正式签名的应用。
 

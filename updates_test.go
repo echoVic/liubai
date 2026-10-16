@@ -16,9 +16,9 @@ func TestUpdateReleaseConfiguration(t *testing.T) {
 	var config struct {
 		Version string `json:"version"`
 		Updates struct {
-			GitHub     string `json:"github"`
-			PublicKey  string `json:"publicKey"`
-			PrivateKey string `json:"privateKey"`
+			GitHub     string  `json:"github"`
+			PublicKey  string  `json:"publicKey"`
+			PrivateKey *string `json:"privateKey"`
 		} `json:"updates"`
 	}
 	if err := json.Unmarshal(data, &config); err != nil {
@@ -30,8 +30,8 @@ func TestUpdateReleaseConfiguration(t *testing.T) {
 	if strings.TrimSpace(config.Updates.PublicKey) == "" {
 		t.Error("updates.publicKey must not be empty")
 	}
-	if !strings.HasPrefix(config.Updates.PrivateKey, "~/") || strings.TrimPrefix(config.Updates.PrivateKey, "~/") == "" {
-		t.Errorf("updates.privateKey must be a path under ~/, got %q", config.Updates.PrivateKey)
+	if config.Updates.PrivateKey != nil {
+		t.Error("updates.privateKey must not be configured: release builds get the key from MYGO_UPDATER_PRIVATE_KEY")
 	}
 	if config.Version == "" {
 		t.Fatal("version must not be empty")

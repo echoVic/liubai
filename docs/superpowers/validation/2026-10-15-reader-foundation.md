@@ -257,7 +257,7 @@ Gatekeeper 对应用和 DMG 都返回 `accepted`、`source=Notarized Developer I
 
 ## 自动更新（0.1.1、0.1.2，2026-10-16）
 
-用户要求接入自动更新，签名密钥沿用作者其他 MyGo 应用的那一对（`~/Library/Application Support/mygo/update-keys/`，公钥写进 `mygo.json`，私钥不在仓库）。实现由 Codex 完成，编排者审查、补文档并发布；随后按用户要求把检查间隔从每天改为每 4 小时，与作者的 Clipnest 一致。
+用户要求接入自动更新，签名密钥沿用作者其他 MyGo 应用的那一对：公钥写进 `mygo.json`，私钥不在仓库，发布时通过环境变量 `MYGO_UPDATER_PRIVATE_KEY` 传给构建。实现由 Codex 完成，编排者审查、补文档并发布；随后按用户要求把检查间隔从每天改为每 4 小时，与作者的 Clipnest 一致。
 
 | 项目 | 提交 | 要点 |
 |---|---|---|

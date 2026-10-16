@@ -77,17 +77,17 @@ scripts/e2e.sh check-english
 
 性能对比：`ROUNDS=2 scripts/bench/run.sh 29925c3 docs/performance/raw/<日期>` 在同一台机器上交替运行 0.3.0 与当前工作区的编辑、预览、存储基准，并生成 `summary.md`，约 8 分钟。存储基准也可单独运行：`go test -tags perf -run '^$' -bench . -benchtime 20x .`，普通 `go test` 不会运行它们。
 
-构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.4.0.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
+构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.1.0.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
 
 签名与公证验证：对应用运行 `codesign --verify --deep --strict` 和 `spctl -a -t exec -vv`，对 DMG 运行 `spctl -a -t open --context context:primary-signature -vv`；分别运行 `xcrun stapler validate` 检查应用和 DMG 的公证票据。`scripts/package-macos.sh` 仅生成未公证的临时预览 ZIP，会重新签名，不应用于正式签名的应用。
 
-## 0.4.0
+## 0.1.0（首个公开版本）
 
-0.4.0 在 0.3.0 之上修复评审中复现的 6 个可靠性问题（中文/空格图片路径、坏草稿导致闪退、写回丢 Finder 标签、另存为改写图片引用、外部修改处理、退出打断关机），降低长文与多草稿下的开销（10 万字文稿每输入一个字由约 25 ms 降到约 2.6 ms，300 份草稿时的空闲轮询由约 65 ms 降到约 2 µs），并补齐阅读器入口与渲染；工具栏按常见写作应用重排（编辑/分栏/阅读、侧栏、导出、更多），PDF 导出修正了标题落在页底和中文复制、搜索不匹配的问题。随后升级到 MyGo 0.5.5，接入文件监听、系统最近文稿和未保存标记，新增富文本粘贴转 Markdown、随手记和英文界面，只读文件不再被自动保存覆盖；是否整体迁移到 MyGo Documents 的评估见 [评估](docs/superpowers/specs/2026-10-16-mygo-documents-evaluation.md)。设计见 [规格](docs/superpowers/specs/2026-10-15-reader-foundation-design.md)；命令、原生应用实测与剩余边界见 [验证记录](docs/superpowers/validation/2026-10-15-reader-foundation.md)；与 0.3.0 的对比数据见 [性能测试报告](docs/performance/2026-10-15-reader-foundation.md)。
+0.1.0 是首个公开版本，在未公开的内部版本 0.3.0 之上修复评审中复现的 6 个可靠性问题（中文/空格图片路径、坏草稿导致闪退、写回丢 Finder 标签、另存为改写图片引用、外部修改处理、退出打断关机），降低长文与多草稿下的开销（10 万字文稿每输入一个字由约 25 ms 降到约 2.6 ms，300 份草稿时的空闲轮询由约 65 ms 降到约 2 µs），并补齐阅读器入口与渲染；工具栏按常见写作应用重排（编辑/分栏/阅读、侧栏、导出、更多），PDF 导出修正了标题落在页底和中文复制、搜索不匹配的问题。随后升级到 MyGo 0.5.5，接入文件监听、系统最近文稿和未保存标记，新增富文本粘贴转 Markdown、随手记和英文界面，只读文件不再被自动保存覆盖；是否整体迁移到 MyGo Documents 的评估见 [评估](docs/superpowers/specs/2026-10-16-mygo-documents-evaluation.md)。设计见 [规格](docs/superpowers/specs/2026-10-15-reader-foundation-design.md)；命令、原生应用实测与剩余边界见 [验证记录](docs/superpowers/validation/2026-10-15-reader-foundation.md)；与 0.3.0 的对比数据见 [性能测试报告](docs/performance/2026-10-15-reader-foundation.md)。
 
-正式通用包 `Liubai 0.4.0.dmg`（9,482,696 字节）由 `v0.4.0` 标签所在的提交构建，已完成 Developer ID 签名与 Apple 公证，发布在 [GitHub Releases](https://github.com/echoVic/liubai/releases/tag/v0.4.0)。签名、Gatekeeper、公证票据与 DMG 完整性检查见验证记录。
+正式通用包 `Liubai 0.1.0.dmg` 由 `v0.1.0` 标签所在的提交构建，已完成 Developer ID 签名与 Apple 公证，发布在 [GitHub Releases](https://github.com/echoVic/liubai/releases/tag/v0.1.0)。签名、Gatekeeper、公证票据与 DMG 完整性检查见验证记录。
 
-## 0.3.0 验证边界
+## 内部版本 0.3.0 验证边界
 
 本轮新增全局记忆的分栏阅读预览。自动化验证覆盖共享 Markdown/交付 DOM、主模式与分栏源码切换、CodeMirror 撤销历史、跨块光标软跟随、手动阅读滚动独立、合成 composition 保护、重载/新文稿/最近文稿偏好、换稿后的过期图片结果隔离、本地图片导入与 HTML 导出、四主题/字号，以及 1440/1120/800/680px 长代码和表格布局。
 

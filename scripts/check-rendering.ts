@@ -6,7 +6,7 @@ import {GFM} from '@lezer/markdown';
 import {createBlockField,inlineDecorations,composing,setComposing} from '../src/editor';
 const field=createBlockField(async()=> 'data:image/png;base64,');
 let state=EditorState.create({doc:'# 标题\n\n正文 [链接](https://example.com)\n\n- [ ] 待办\n\n| 项目 | 说明 |\n| --- | --- |\n| 甲 | 乙 |\n\n![图](<图片 目录/a.png>)\n',extensions:[markdown({base:markdownLanguage,extensions:GFM}),composing,field]});
-ensureSyntaxTree(state,state.doc.length,5000);
+ensureSyntaxTree(state,state.doc.length,5000);state=state.update({}).state;
 const collect=(set:any)=>{const out:any[]=[];set.between(0,state.doc.length,(from:number,to:number,value:any)=>{out.push({from,to,value})});return out};
 const blocks=collect(state.field(field)),inline=collect(inlineDecorations(state,[{from:0,to:state.doc.length}]));
 assert.ok(blocks.some(x=>x.value.spec.widget?.constructor.name==='TableWidget'));
@@ -39,7 +39,7 @@ state=state.update({selection:{anchor:tableFrom+2}}).state;
 assert.ok(!collect(state.field(field)).some(x=>x.value.spec.widget?.constructor.name==='TableWidget'),'selected table reveals source');
 
 state=EditorState.create({doc:'光标\n\n## 标题 **粗体**\n\n> 引用\n> 下一行\n\n```ts\nconst x=1\n```\n\n[链接](<文件 目录/a\\(1\\).md>)\n\n![图](<图片 目录/a\\(1\\).png>)\n\n内联 ![小图](a.png) 文字\n',extensions:[markdown({base:markdownLanguage,extensions:GFM}),composing,field]});
-ensureSyntaxTree(state,state.doc.length,5000);
+ensureSyntaxTree(state,state.doc.length,5000);state=state.update({}).state;
 const styled=collect(inlineDecorations(state,[{from:0,to:state.doc.length}]));
 assert.ok(styled.some(x=>x.value.spec.class==='md-heading md-h2'));
 assert.equal(styled.filter(x=>x.value.spec.class==='md-quote').length,2);

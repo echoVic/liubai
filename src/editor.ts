@@ -1,4 +1,4 @@
-import {messages,pageLocale} from './i18n';
+import {messages,activeLocale} from './i18n';
 import { EditorState, Compartment, RangeSetBuilder, StateEffect, StateField, type Extension } from '@codemirror/state';
 import { EditorView, Decoration, WidgetType, ViewPlugin, type DecorationSet, type ViewUpdate, keymap, placeholder } from '@codemirror/view';
 import { history,historyKeymap,defaultKeymap,indentWithTab,undo,redo } from '@codemirror/commands';
@@ -42,7 +42,7 @@ const focusDecorations=StateField.define<DecorationSet>({
  provide:field=>EditorView.decorations.from(field)
 });
 class TaskWidget extends WidgetType {
- readonly locale=pageLocale();
+ readonly locale=activeLocale;
  constructor(readonly from:number,readonly checked:boolean){super()}
  eq(o:TaskWidget){return o.locale===this.locale&&o.from===this.from&&o.checked===this.checked}
  toDOM(view:EditorView){const input=document.createElement('input');input.type='checkbox';input.checked=this.checked;input.className='task-check';input.setAttribute('aria-label',this.checked?messages.fMarkAsIncomplete():messages.fMarkAsComplete());input.onmousedown=e=>e.preventDefault();input.onchange=()=>{if(view.state.readOnly){input.checked=this.checked;return}view.dispatch({changes:{from:this.from,to:this.from+3,insert:input.checked?'[x]':'[ ]'},userEvent:'input.task'});view.focus()};return input}
@@ -59,14 +59,14 @@ const colours=HighlightStyle.define([
  {tag:[tags.number,tags.atom],color:'var(--primary)'}
 ]);
 class ImageWidget extends WidgetType{
- readonly locale=pageLocale();
+ readonly locale=activeLocale;
  constructor(readonly dest:string,readonly alt:string,readonly resolve:(dest:string)=>Promise<string>){super()}
  eq(o:ImageWidget){return o.locale===this.locale&&o.dest===this.dest&&o.alt===this.alt}
  toDOM(){const wrap=document.createElement('figure');wrap.className='inline-image';const img=new Image();img.alt=this.alt;img.loading='lazy';wrap.append(img);this.resolve(this.dest).then(url=>{img.src=url}).catch(()=>{const msg=document.createElement('span');msg.textContent=messages.fImageTemporarilyUnreadable(this.alt);wrap.replaceChildren(msg)});img.onerror=()=>{wrap.textContent=messages.fImageResourceMissing(this.alt)};return wrap}
  ignoreEvent(){return false}
 }
 class TableWidget extends WidgetType{
- readonly locale=pageLocale();
+ readonly locale=activeLocale;
  constructor(readonly raw:string,readonly from:number,readonly edit?:()=>void){super()}
  eq(o:TableWidget){return o.locale===this.locale&&o.raw===this.raw&&o.from===this.from}
  toDOM(view:EditorView){const el=document.createElement('div');el.className='rendered-table';el.innerHTML=md.render(this.raw);const b=document.createElement('button');b.className='table-edit';b.textContent=messages.fEditTable();b.onmousedown=e=>e.preventDefault();b.onclick=()=>{view.dispatch({selection:{anchor:this.from+1}});this.edit?.()};el.append(b);return el}

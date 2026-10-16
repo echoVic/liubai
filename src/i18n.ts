@@ -11,8 +11,10 @@ export function pageLocale(){
  const choice=browserChoice();if(choice)return supported([choice]);
  return supported(typeof navigator==='undefined'?[]:navigator.languages||[navigator.language]);
 }
-export let messages:Messages=messagesIn(pageLocale());
-function refresh(){messages=messagesIn(pageLocale());localizePage();for(const listener of listeners)listener()}
+// The language of `messages`, cheap enough to read for every editor widget.
+export let activeLocale=pageLocale();
+export let messages:Messages=messagesIn(activeLocale);
+function refresh(){activeLocale=pageLocale();messages=messagesIn(activeLocale);localizePage();for(const listener of listeners)listener()}
 export function onPageLocaleChange(listener:()=>void){listeners.add(listener);return ()=>listeners.delete(listener)}
 export async function setPageLocale(locale:string){
  if(window.mygo){await window.mygo.call('Desktop.SetLocale',locale);return}

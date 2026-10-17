@@ -11,10 +11,12 @@
 - 顶部「编辑 / 分栏 / 阅读」切换视图；「外观与排版」调整主题、字号和行宽（舒适、宽阔，或随窗口铺开的全宽）；格式工具栏在顶栏下方单独一行、居中，字数显示在右下角；正文右侧有空间时显示大纲，当前章节高亮，点文字下方的空白处即可接着写。`⌘⇧R` 进入阅读模式，只显示成品视图；编辑区隐藏且只读，再按一次回到原来的布局。
 - 阅读视图与「导出」渲染消毒后的内联 HTML（README 常见的居中 logo、`<details>`、`<kbd>` 等），front matter 折叠为「文稿属性」（导出时省略），支持脚注、GitHub 提示块、带协议或 `www.` 的裸链接，代码块按语言高亮。`README.md` 这类文件名不会被识别成链接。
 - 阅读视图点击、编辑区 ⌘ 点击相对 `.md` 链接会打开对应文稿并跳到 `#标题`；草稿还没有保存位置时会说明原因。
-- 格式工具栏按标题、行内格式、列表和插入分组：标题菜单可设正文或标题 1–3，按钮随光标显示当前标题级别（1–6）；支持加粗、斜体、删除线、行内代码、引用、无序/有序/任务列表，以及链接、图片、表格和代码块。图标按钮提供中文提示，窄窗口自动换行；也可以从「更多」打开「所有操作…」。
+- 格式工具栏按常见写作应用分组：插入菜单（与斜杠菜单相同的块）、撤销、重做；正文 / 标题 1–6，随光标显示当前级别；加粗、斜体、下划线（`<u>`）、删除线、高亮（`==文字==`）、行内代码、上标（`<sup>`）、下标（`<sub>`）、清除格式；引用、无序/有序/任务列表、减少/增加缩进（列表项连同子项移动，也可用 Tab / ⇧Tab）；链接、图片、表格、代码块；查找替换。新增的标记在编辑区即时呈现，阅读视图和导出同样显示。图标按钮提供中文提示，窄窗口按分组整体换行；也可以从「更多」打开「所有操作…」。
 - 块编辑：鼠标移到段落、标题、列表项、表格等内容左侧会出现 ⋮⋮ 和 ＋。拖动 ⋮⋮ 调整顺序（列表项连同子项一起移动）；点 ⋮⋮ 选中整块并打开块菜单，可转换类型、复制、删除、上移下移，⇧ 点击连选多块；⌥⇧↑ / ⌥⇧↓ 用键盘移动，⌘/ 打开块菜单。所有块操作都直接修改 Markdown 原文，一步即可撤销。
 - 在空行开头输入「/」（中文标点下的「、」也可以）打开插入菜单：标题、列表、任务、引用、代码块、表格、图片、分割线、提示块，可用中文、拼音首字母或英文搜索；块左侧的 ＋ 也能打开。
-- 链接面板可编辑文字与地址，⌘/Ctrl 点击打开；任务可直接勾选，表格面板支持编辑单元格、增加行列与整次撤销。
+- 链接面板可编辑文字与地址，⌘/Ctrl 点击打开；任务可直接勾选。
+- 表格就地编辑：点单元格直接输入，Tab / ⇧Tab 在单元格间移动（最后一格按 Tab 新增一行），↑↓ 同列移动，从首行、末行或按 Esc 回到正文；表格右上角的 ⋯（或 ⌘/）可插入、删除行列，设置列对齐或删除表格。每次修改只改写这张表格的 Markdown，一步即可撤销；中文组字期间不提交。
+- 图片就地调整：点击图片出现选中框、右下角拖动柄和工具条，可拖动改宽度（实时显示像素），左对齐、居中、右对齐、恢复原始大小、修改说明文字或删除；Esc 回到正文，Delete 删除，Enter 修改说明。未调整的图片保持 `![说明](路径)`，调整过宽度写成 `<img src alt width>`，居中或右对齐外包 `<p align>`，编辑区、阅读视图和导出显示一致。
 - `⌘/Ctrl+\` 在「编辑」与「分栏」之间切换；仅在分栏中显示格式工具栏右侧的「源码」，点击或用 `⌘/Ctrl+Shift+M` 切换左侧即时排版与完整源码，与「更多」中的「显示 Markdown 源码」同步；文字和撤销记录共用。
 - 分栏时左右两栏等宽，右侧是只读成品视图。光标跨段时会跟随到对应内容块，手动滚动阅读区不会反向带动编辑区；窗口窄于 820px 时两栏改为上下排列。
 - 点击顶部「侧栏」打开最近文稿与大纲，窗口宽于 1180px 时停靠在左侧、不盖住正文并记住开关，两个标签可切换，最近文稿支持搜索；悬停文稿可「从最近文稿移除」（需再点一次确认）：草稿移到数据目录的 `trash/` 保留 30 天，已有文件只从列表移除、磁盘文件不动。空的未命名草稿在切走时自动清理。点击顶部草稿标题命名，「更多」提供新建、打开、另存为、重命名、专注模式、显示 Markdown 源码和所有操作…。
@@ -23,14 +25,14 @@
 - 桌面版随手记：在任何应用里按默认快捷键 ⌃⌥⌘N，输入想法后按 ⌘↩，每次存为一篇新草稿，主窗口继续显示原来的文稿；「更多 → 随手记设置…」可改快捷键与登录后台启动。
 - 自动更新：每 4 小时在后台检查一次 GitHub Releases，有新版本时显示更新说明，可选择「安装更新」「稍后提醒我」或「跳过这个版本」；「留白 → 检查更新…」随时手动检查。留白需要放在「应用程序」或 `~/Applications` 中才能自行更新。
 - 粘贴网页、文档和 Word 内容会转为 Markdown，保留表格、列表、链接、代码和图片；`⇧⌘V` 粘贴为纯文本。
-- 粘贴或拖入 PNG / JPEG / GIF / WebP / SVG / AVIF / BMP，光标移开后显示图片预览。中文或带空格路径的本地图片（包括 Typora 生成的 `文稿名.assets/`）可以正常显示。
+- 粘贴或拖入 PNG / JPEG / GIF / WebP / SVG / AVIF / BMP，图片直接显示在正文中；用键盘把光标移到图片所在行时显示原文。中文或带空格路径的本地图片（包括 Typora 生成的 `文稿名.assets/`）可以正常显示。
 - 「导出」集中提供 Markdown、图片 ZIP、PDF、富文本复制和含本地图片的 HTML。交付使用整篇文稿，不受编辑器可视区域限制。
 - 导出的 PDF 会将标题与后续正文保持在同一页，中文可正常复制和搜索。
 - 布局、分栏左侧编辑方式、主题、字号和行宽都是全局偏好，对新文稿和最近文稿继续生效。纸白、暖纸、雾绿、夜墨四主题首次跟随系统，手动选择后记住选择。
 - 专注模式突出正在写的段落，淡化其余文字与工具；按 Esc 返回。
 - 字数按中文字、日文假名和韩文字逐个计、其他文字按词计，不计 Markdown 标记、链接地址、HTML 标签和 front matter，输入停顿后更新。
 
-常用快捷键：⌘N 新建、⌘O 打开、⌘S 保存、⌘⇧S 另存、⌘K 所有操作…、⌘F 查找、⌘\ 切换分栏、⌘⇧R 阅读模式、⌘⇧M 显示 Markdown 源码、⌘B 加粗、⌘L 编辑链接、⌘⇧F 专注模式、⌘P 导出 PDF、⌘Z 撤销（在输入框里只撤销输入框）、⌘W 关闭窗口、⌘H 隐藏、⌘M 最小化、⌃⌘F 全屏。Windows/Linux 浏览器开发时使用对应的 Ctrl 组合键。
+常用快捷键：⌘N 新建、⌘O 打开、⌘S 保存、⌘⇧S 另存、⌘K 所有操作…、⌘F 查找、⌘\ 切换分栏、⌘⇧R 阅读模式、⌘⇧M 显示 Markdown 源码、⌘B 加粗、⌘U 下划线、⌘L 编辑链接、⌘⇧F 专注模式、⌘P 导出 PDF、⌘Z 撤销（在输入框里只撤销输入框）、⌘W 关闭窗口、⌘H 隐藏、⌘M 最小化、⌃⌘F 全屏。Windows/Linux 浏览器开发时使用对应的 Ctrl 组合键。
 
 ## 文件和恢复
 
@@ -75,16 +77,21 @@ scripts/e2e.sh check-toolbar
 scripts/e2e.sh check-capture
 scripts/e2e.sh check-english
 scripts/e2e.sh check-blocks
-scripts/e2e.sh check-blocks-webkit   # 块操作在 WebKit（桌面版引擎）中的表现
+scripts/e2e.sh check-tables
+scripts/e2e.sh check-images
+scripts/e2e.sh check-blocks-webkit   # 块操作、表格输入与图片拖动柄在 WebKit（桌面版引擎）中的表现
 npx --yes bun@1.4.3 scripts/check-blocks.ts
 npx --yes bun@1.4.3 scripts/check-slash.ts
+npx --yes bun@1.4.3 scripts/check-tables.ts
+npx --yes bun@1.4.3 scripts/check-images.ts
+npx --yes bun@1.4.3 scripts/check-marks.ts
 ```
 
 `scripts/e2e.sh` 为每项浏览器回归编译一次程序，用新的数据目录启动本地网页服务，跑完后关闭。Python 浏览器回归使用已安装的 Chrome channel，不下载 Playwright Chromium。应用依赖 macOS 13 或以上。
 
 性能对比：`ROUNDS=2 scripts/bench/run.sh 29925c3 docs/performance/raw/<日期>` 在同一台机器上交替运行 0.3.0 与当前工作区的编辑、预览、存储基准，并生成 `summary.md`，约 8 分钟。存储基准也可单独运行：`go test -tags perf -run '^$' -bench . -benchtime 20x .`，普通 `go test` 不会运行它们。
 
-构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.2.0.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
+构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.3.0.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
 
 自动更新由 `mygo.json` 的 `updates` 配置（公钥和发布仓库）。签名更新包的私钥不在仓库和配置里，发布时通过环境变量传入：`MYGO_UPDATER_PRIVATE_KEY="$(cat <私钥文件>)" go tool mygo build -platform darwin/universal -upload .`；没有私钥时照常构建，只是不生成更新包。更新说明取自 `CHANGELOG.md` 中当前版本的段落，缺少该段落时构建失败。`go tool mygo build -platform darwin/universal -upload .` 把 DMG、更新包和更新清单上传到当前版本的 GitHub Release 草稿；发布为最新版本后，已安装的应用就会检测到更新。
 

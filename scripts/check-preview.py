@@ -37,5 +37,6 @@ with tempfile.TemporaryDirectory(prefix="liubai-render-check-") as folder:
             page.set_content("<!doctype html><html><body></body></html>")
             page.add_script_tag(path=str(bundle))
             print(page.evaluate("() => PreviewChecks.runPreviewChecks()"))
+            print(page.evaluate("() => PreviewChecks.runDOCXChecks()"))
         finally:
             browser.close()

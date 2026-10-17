@@ -6503,3 +6503,115 @@ func FExpandDetails() string { return In(i18n.Locale()).FExpandDetails() }
 func (msgs Messages) FExpandDetails() string {
 	return Catalog.Format(msgs.locale, "fExpandDetails", nil)
 }
+
+// FWordDocument says "Word 文稿（.docx）"
+// in the language the app shows.
+//
+// Export format option for an editable Word document.
+func FWordDocument() string { return In(i18n.Locale()).FWordDocument() }
+
+// FWordDocument says "Word 文稿（.docx）"
+// in the language of msgs.
+//
+// Export format option for an editable Word document.
+func (msgs Messages) FWordDocument() string {
+	return Catalog.Format(msgs.locale, "fWordDocument", nil)
+}
+
+// FExportWordDocument says "导出 Word 文稿"
+// in the language the app shows.
+//
+// Command palette action to export Word.
+func FExportWordDocument() string { return In(i18n.Locale()).FExportWordDocument() }
+
+// FExportWordDocument says "导出 Word 文稿"
+// in the language of msgs.
+//
+// Command palette action to export Word.
+func (msgs Messages) FExportWordDocument() string {
+	return Catalog.Format(msgs.locale, "fExportWordDocument", nil)
+}
+
+// FWordDescription says "可编辑的 Word 文稿，保留标题、列表、表格、图片、公式和脚注。"
+// in the language the app shows.
+//
+// Description of the Word export in the export and ready dialogs.
+func FWordDescription() string { return In(i18n.Locale()).FWordDescription() }
+
+// FWordDescription says "可编辑的 Word 文稿，保留标题、列表、表格、图片、公式和脚注。"
+// in the language of msgs.
+//
+// Description of the Word export in the export and ready dialogs.
+func (msgs Messages) FWordDescription() string {
+	return Catalog.Format(msgs.locale, "fWordDescription", nil)
+}
+
+// FSaveWordDocument says "保存 Word 文稿"
+// in the language the app shows.
+//
+// Desktop Word export save button.
+func FSaveWordDocument() string { return In(i18n.Locale()).FSaveWordDocument() }
+
+// FSaveWordDocument says "保存 Word 文稿"
+// in the language of msgs.
+//
+// Desktop Word export save button.
+func (msgs Messages) FSaveWordDocument() string {
+	return Catalog.Format(msgs.locale, "fSaveWordDocument", nil)
+}
+
+// FDownloadWordDocument says "下载 Word 文稿"
+// in the language the app shows.
+//
+// Browser Word export download button.
+func FDownloadWordDocument() string { return In(i18n.Locale()).FDownloadWordDocument() }
+
+// FDownloadWordDocument says "下载 Word 文稿"
+// in the language of msgs.
+//
+// Browser Word export download button.
+func (msgs Messages) FDownloadWordDocument() string {
+	return Catalog.Format(msgs.locale, "fDownloadWordDocument", nil)
+}
+
+// FWordSaved says "Word 文稿已保存：{path}"
+// in the language the app shows.
+//
+// Toast showing the saved Word document path.
+func FWordSaved(path string) string { return In(i18n.Locale()).FWordSaved(path) }
+
+// FWordSaved says "Word 文稿已保存：{path}"
+// in the language of msgs.
+//
+// Toast showing the saved Word document path.
+func (msgs Messages) FWordSaved(path string) string {
+	return Catalog.Format(msgs.locale, "fWordSaved", map[string]any{"path": path})
+}
+
+// BSaveWordDocument says "保存 Word 文稿"
+// in the language the app shows.
+//
+// Native Word document save panel title.
+func BSaveWordDocument() string { return In(i18n.Locale()).BSaveWordDocument() }
+
+// BSaveWordDocument says "保存 Word 文稿"
+// in the language of msgs.
+//
+// Native Word document save panel title.
+func (msgs Messages) BSaveWordDocument() string {
+	return Catalog.Format(msgs.locale, "bSaveWordDocument", nil)
+}
+
+// BWordTooLarge says "Word 文稿过大，请改用 ZIP 导出"
+// in the language the app shows.
+//
+// Error when Word export exceeds the 64 MiB save limit.
+func BWordTooLarge() string { return In(i18n.Locale()).BWordTooLarge() }
+
+// BWordTooLarge says "Word 文稿过大，请改用 ZIP 导出"
+// in the language of msgs.
+//
+// Error when Word export exceeds the 64 MiB save limit.
+func (msgs Messages) BWordTooLarge() string {
+	return Catalog.Format(msgs.locale, "bWordTooLarge", nil)
+}

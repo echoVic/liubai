@@ -79,6 +79,9 @@ Task { @MainActor in
   for _ in 0..<150 { if (await js("return !!document.querySelector('.rendered-mermaid svg')") as? Bool) == true { break }; await wait(100) }
   report["mermaidRendered"] = (await js("const svg=document.querySelector('.rendered-mermaid svg');return !!svg&&svg.textContent.includes('开始')&&svg.textContent.includes('结束')") as? Bool) ?? false
   report["mermaidCSP"] = (await js("return window.mermaidCSP") as? [String]) ?? ["missing"]
+  // Import the actual hashed converter under the app CSP. No inline scripts/eval are enabled.
+  report["docxBase64"] = (await js(#"const app=await (await fetch('/app.js')).text(),path=app.match(/docx-export-[a-f0-9]+\.js/);if(!path)return '';const {exportDOCX}=await import('/'+path[0]);const root=document.createElement('article');root.innerHTML='<h1>Word 中文</h1><p><strong>正文</strong> English</p><p><span class=math-inline><math xmlns="http://www.w3.org/1998/Math/MathML"><mfrac><mn>1</mn><mi>x</mi></mfrac></math></span></p><svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="80" height="40" fill="green"/></svg>';const bytes=await exportDOCX(root,'Word 中文','zh-CN');let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(binary)"#) as? String) ?? ""
+  report["docxCSP"] = (await js("return window.mermaidCSP") as? [String]) ?? ["missing"]
   let data = try! JSONSerialization.data(withJSONObject: report, options: [.sortedKeys])
   FileHandle.standardOutput.write(data); FileHandle.standardOutput.write(Data("\n".utf8))
   exit(0)

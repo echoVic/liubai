@@ -453,5 +453,13 @@
   "fDetailsTitle": "Title",
   "fDetailsContent": "Content",
   "fCollapseDetails": "Collapse details",
-  "fExpandDetails": "Expand details"
+  "fExpandDetails": "Expand details",
+  "fWordDocument": "Word Document (.docx)",
+  "fExportWordDocument": "Export Word Document",
+  "fWordDescription": "An editable Word document with headings, lists, tables, images, formulas and footnotes.",
+  "fSaveWordDocument": "Save Word Document",
+  "fDownloadWordDocument": "Download Word Document",
+  "fWordSaved": "Word document saved: {path}",
+  "bSaveWordDocument": "Save Word Document",
+  "bWordTooLarge": "Word document is too large. Export as ZIP"
 }

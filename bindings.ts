@@ -209,6 +209,9 @@ export const Desktop = {
   saveAs(id: string): Promise<ExportResult> {
     return call("Desktop.SaveAs", id);
   },
+  saveDOCX(title: string, data: string): Promise<ExportResult> {
+    return call("Desktop.SaveDOCX", title, data);
+  },
   saveHTML(title: string, html: string): Promise<ExportResult> {
     return call("Desktop.SaveHTML", title, html);
   },

@@ -28,11 +28,23 @@ export async function writeMermaidNotices(inputs){
    }
   }catch(error){if(error.code!=='ENOENT')throw error}
  }
+ // docx publishes its runtime dependencies already bundled without source maps.
+ // Include their installed license inventories as well as the esbuild-visible inputs.
+ const wordPackages=new Set();
+ async function collectWord(name){
+  if(name.startsWith('@types/')||wordPackages.has(name))return;wordPackages.add(name);
+  const file='node_modules/'+name+'/package.json',pkg=JSON.parse(await readFile(file,'utf8'));
+  await collect(file);for(const dependency of Object.keys(pkg.dependencies||{}))await collectWord(dependency);
+ }
+ if(inputs.some(input=>input.includes('node_modules/docx/')))await collectWord('docx');
  let text='';
  for(const [name,{directory,pkg}] of [...packages].sort(([a],[b])=>a.localeCompare(b,'en'))){
   const files=(await readdir(directory)).filter(file=>/^(?:licen[sc]e|copying|notice)(?:\.|$)/i.test(file)).sort();
-  if(!files.length)throw Error('Missing licence for '+name+' ('+pkg.license+')');
-  text+='\n\n'+name+'\n'+(await Promise.all(files.map(file=>readFile(join(directory,file),'utf8')))).join('\n');
+  let licence=(await Promise.all(files.map(file=>readFile(join(directory,file),'utf8')))).join('\n');
+  if(!licence){const readme=await readFile(join(directory,'README.md'),'utf8');licence=readme.split(/^#+ LICENSE\s*$/im)[1]?.trim();if(!licence)throw Error('Missing licence for '+name+' ('+pkg.license+')')}
+  // JSZip offers MIT or GPL; distribute under the MIT option.
+  if(pkg.name==='jszip')licence=licence.split('\n\nGPL version 3')[0];
+  text+='\n\n'+name+'\n'+licence.replace(/\r\n/g,'\n').replace(/[ \t]+$/gm,'');
  }
  // These packages ship inside upstream bundles, rather than as separate npm directories.
  // Versions are preserved in their pnpm source paths; MIT attribution is preserved in source-map headers.
@@ -54,10 +66,10 @@ export async function writeMermaidNotices(inputs){
   if(!embeddedMIT[name])throw Error('Missing embedded licence for '+name);
   const [version,copyright]=embeddedMIT[name];text+='\n\n'+name+' '+version+'\nMIT License\n\n'+copyright+'\n\n'+mit;
  }
- const file='web/THIRD_PARTY_NOTICES.txt',marker='\n\nMermaid lazy chunk dependencies (generated from bundled inputs)\n';
- const existing=(await readFile(file,'utf8')).split(marker)[0].trimEnd();
+ const file='web/THIRD_PARTY_NOTICES.txt',marker='\n\nMermaid and Word lazy chunk dependencies (generated from bundled inputs)\n';
+ const existing=(await readFile(file,'utf8')).split('\n\nMermaid lazy chunk dependencies (generated from bundled inputs)\n')[0].split(marker)[0].trimEnd();
  // Packages already licensed above are listed once, including shared DOMPurify versions.
  const sections=text.split(/\n\n(?=(?:@[^\s]+|[\w.-]+) [0-9][^\n]*\n)/).filter(Boolean).filter(section=>!existing.split('\n').includes(section.split('\n')[0]));
  await writeFile(file,existing+marker+sections.join('\n\n').trimEnd()+'\n');
- console.log('Mermaid licence inventory: '+packages.size+' packages plus '+embedded.size+' embedded packages');
+ console.log('Lazy chunk licence inventory: '+packages.size+' packages plus '+embedded.size+' embedded packages');
 }

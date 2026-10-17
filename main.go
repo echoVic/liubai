@@ -251,6 +251,25 @@ func (d *Desktop) SaveHTML(ctx context.Context, title, html string) (ExportResul
 	}
 	return ExportResult{Path: path}, nil
 }
+func (d *Desktop) SaveDOCX(ctx context.Context, title string, data []byte) (ExportResult, error) {
+	if len(data) > 64<<20 {
+		return ExportResult{}, messageError("bWordTooLarge", nil)
+	}
+	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: locales.BSaveWordDocument(), DefaultPath: documentFilename(title, ".docx"), Filters: []mygo.FileFilter{{Name: "Word", Extensions: []string{"docx"}}}})
+	if err != nil {
+		return ExportResult{}, err
+	}
+	if path == "" {
+		return ExportResult{Cancelled: true}, nil
+	}
+	if err = checkWriteTarget(path); err != nil {
+		return ExportResult{}, err
+	}
+	if err = atomicWrite(path, data, 0644); err != nil {
+		return ExportResult{}, err
+	}
+	return ExportResult{Path: path}, nil
+}
 func (d *Desktop) Close() {
 	d.allowClose.Store(true)
 	if d.native != nil {

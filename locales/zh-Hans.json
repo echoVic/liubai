@@ -1948,5 +1948,42 @@
   "fExpandDetails": "展开内容",
   "@fExpandDetails": {
     "description": "Button to show details content in this editor."
+  },
+  "fWordDocument": "Word 文稿（.docx）",
+  "@fWordDocument": {
+    "description": "Export format option for an editable Word document."
+  },
+  "fExportWordDocument": "导出 Word 文稿",
+  "@fExportWordDocument": {
+    "description": "Command palette action to export Word."
+  },
+  "fWordDescription": "可编辑的 Word 文稿，保留标题、列表、表格、图片、公式和脚注。",
+  "@fWordDescription": {
+    "description": "Description of the Word export in the export and ready dialogs."
+  },
+  "fSaveWordDocument": "保存 Word 文稿",
+  "@fSaveWordDocument": {
+    "description": "Desktop Word export save button."
+  },
+  "fDownloadWordDocument": "下载 Word 文稿",
+  "@fDownloadWordDocument": {
+    "description": "Browser Word export download button."
+  },
+  "fWordSaved": "Word 文稿已保存：{path}",
+  "@fWordSaved": {
+    "description": "Toast showing the saved Word document path.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "bSaveWordDocument": "保存 Word 文稿",
+  "@bSaveWordDocument": {
+    "description": "Native Word document save panel title."
+  },
+  "bWordTooLarge": "Word 文稿过大，请改用 ZIP 导出",
+  "@bWordTooLarge": {
+    "description": "Error when Word export exceeds the 64 MiB save limit."
   }
 }

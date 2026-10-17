@@ -381,3 +381,54 @@ export async function runPreviewChecks(): Promise<string> {
  }
  return 'shared renderer and delivery DOM checks passed';
 }
+
+export async function runDOCXChecks():Promise<string>{
+ const {exportDOCX}=await import('../src/docx-export'),{default:JSZip}=await import('jszip');
+ const canvas=document.createElement('canvas');canvas.width=2000;canvas.height=1000;canvas.getContext('2d')!.fillRect(0,0,2000,1000);
+ const png=canvas.toDataURL('image/png'),svg='data:image/svg+xml;base64,'+btoa('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="80"><rect width="160" height="80" fill="green"/></svg>');
+ const content=[
+  '---','title: 隐藏属性','---','',...Array.from({length:6},(_,i)=>'#'.repeat(i+1)+' 标题 '+(i+1)+' Heading'),'',
+  '**加粗 bold** *斜体 italic* <u>下划线</u> ~~删除~~ ==高亮== `inline code` <sup>上标</sup> <sub>下标</sub>  ','换行 [远端](https://example.invalid/word) [本地](notes.md#h) [章节](#标题-1-heading)。','',
+  '3. 第三项','   - 嵌套 bullet','','     7. 七','     8. 八','4. 第四项','','- [ ] 待办','- [x] 完成','',
+  '> 引用第一段','>','> 引用第二段','','> [!WARNING]','> 警告正文','','```ts','  const x = 1;','    next();','```','','    indented code','','---','',
+  '<details><summary>更多 Details</summary><p>折叠正文</p></details>','',
+  '| 左列 | 中列 | 右列 |','| :--- | :---: | ---: |','| 甲 | English | 乙 |','',
+  '![宽图](wide.png)','','<p align="center"><img src="wide.png" width="120"></p>','','![矢量图](vector.svg)','','![缺图](missing.png)','',
+  '$\\frac{1}{x}$ 与 $x^2$、$x_i$、$x_i^2$、$\\sqrt{x}$、$\\sqrt[3]{x}$、$\\hat{x}$。','',
+  '$$\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}$$','',
+  '$$\\sum_{i=1}^n i$$','',
+  '$\\phantom{x}$','',
+  '```mermaid','flowchart LR','  A[开始] --> B[结束]','```','',
+  '脚注位置[^one] 和重复[^one]。','',
+  '[^one]: 脚注 **内容** English。','',
+ ].join('\n');
+ const root=renderDelivery({title:'Word 中文',content,images:{'wide.png':png,'vector.svg':svg},missing:['missing.png'],external:0});
+ await (await import('../src/delivery')).waitImages(root);
+ const bytes=await exportDOCX(root,'Word 中文','zh-CN'),zip=await JSZip.loadAsync(bytes);
+ const read=async(path:string)=>{const f=zip.file(path);assert(f,'missing '+path);return f.async('string')};
+ const xml=await read('word/document.xml'),styles=await read('word/styles.xml'),numbering=await read('word/numbering.xml'),notes=await read('word/footnotes.xml'),rels=await read('word/_rels/document.xml.rels');
+ const dom=(xml:string)=>new DOMParser().parseFromString(xml,'application/xml');
+ const documentXML=dom(xml),ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main',mathNS='http://schemas.openxmlformats.org/officeDocument/2006/math';
+ const all=(name:string)=>[...documentXML.getElementsByTagNameNS(ns,name)];
+ for(let level=1;level<=6;level++)assert(xml.includes('w:val="Heading'+level+'"'),'native heading '+level);
+ for(const expected of ['Times New Roman','宋体','黑体','w:sz w:val="22"','w:line="360"','w:eastAsia="zh-CN"'])assert(styles.includes(expected),'Word style '+expected);
+ for(const tag of ['b','i','u','strike','highlight'])assert(all(tag).length,'inline '+tag);
+ for(const value of ['superscript','subscript'])assert(xml.includes('w:val="'+value+'"'),'vertical '+value);
+ assert(xml.includes('☐')&&xml.includes('☑'),'task glyphs');assert(xml.includes('  const x = 1;')&&xml.includes('    next();'),'code whitespace');assert(xml.includes('indented code'),'indented code');
+ assert(all('br').length,'hard break');assert(all('pBdr').length>=3,'quotes/alerts/rules borders');assert(all('shd').length,'shading');
+ assert(xml.includes('警告')&&xml.includes('警告正文')&&xml.includes('更多 Details')&&xml.includes('折叠正文'),'alerts and details');assert(!xml.includes('隐藏属性'),'front matter hidden');
+ assert(numbering.includes('w:start w:val="3"')&&numbering.includes('w:start w:val="7"'),'ordered starts');assert(numbering.includes('w:ilvl="2"')&&xml.includes('w:ilvl w:val="2"'),'nested list levels');
+ assert(all('tblHeader').filter(el=>el.getAttributeNS(ns,'val')!=='off').length===1,'repeated header');assert(all('tr')[0].getElementsByTagNameNS(ns,'b').length===3,'bold table header');for(const value of ['left','center','right'])assert(xml.includes('w:jc w:val="'+value+'"'),'table alignment '+value);
+ assert(rels.includes('https://example.invalid/word')&&!rels.includes('notes.md'),'external hyperlink only');assert(xml.includes('本地'),'local link text');assert(all('hyperlink').some(el=>el.hasAttributeNS(ns,'anchor')),'internal heading link');
+ for(const tag of ['f','sSup','sSub','sSubSup','rad','acc','m','limLow','limUpp'])assert(documentXML.getElementsByTagNameNS(mathNS,tag).length,'OMML '+tag);
+ assert(xml.includes('\\phantom{x}')&&xml.includes('Menlo'),'unsupported math uses TeX');assert(xml.includes('图片缺失'),'missing image note');
+ assert(notes.includes('脚注')&&notes.includes('English')&&notes.includes('<w:b/>'),'footnote definition formatting');equal(all('footnoteReference').length,2,'reference positions');assert(!xml.includes('脚注 内容 English'),'definitions omitted from body');
+ const extentNS='http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing';
+ const extents=[...documentXML.getElementsByTagNameNS(extentNS,'extent')];equal(extents.length,4,'embedded images and Mermaid');
+ const maxWidth=(11906-2880)*635;assert(extents.every(e=>Number(e.getAttribute('cx'))<=maxWidth),'images exceed text width');assert(extents.some(e=>Number(e.getAttribute('cx'))===120*9525),'explicit width at 96dpi');
+ const media=Object.keys(zip.files).filter(path=>/^word\/media\/.+\.png$/.test(path));assert(media.length>=3,'PNG raster images');
+ for(const path of media){const data=await zip.file(path)!.async('uint8array');equal([...data.slice(0,8)].join(','),'137,80,78,71,13,10,26,10','PNG magic '+path)}
+ const huge=renderDelivery({title:'长文',content:('中'.repeat(100)+'\n\n').repeat(1000),images:{},missing:[],external:0});
+ let ticks=0,maxGap=0,last=performance.now();const timer=setInterval(()=>{const now=performance.now();maxGap=Math.max(maxGap,now-last);last=now;ticks++},0),start=performance.now();await exportDOCX(huge,'十万字');const elapsed=performance.now()-start;maxGap=Math.max(maxGap,performance.now()-last);clearInterval(timer);assert(ticks>0,'export yields');assert(elapsed<5000,'100k conversion exceeds five seconds: '+elapsed);
+ return `Word DOM/OOXML checks passed; 100,000 Chinese characters ${elapsed.toFixed(0)} ms (${ticks} event-loop ticks, max gap ${maxGap.toFixed(0)} ms)`;
+}

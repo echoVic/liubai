@@ -2715,6 +2715,54 @@ export interface Messages {
    * `展开内容`
    */
   fExpandDetails(): string;
+  /**
+   * Export format option for an editable Word document.
+   *
+   * `Word 文稿（.docx）`
+   */
+  fWordDocument(): string;
+  /**
+   * Command palette action to export Word.
+   *
+   * `导出 Word 文稿`
+   */
+  fExportWordDocument(): string;
+  /**
+   * Description of the Word export in the export and ready dialogs.
+   *
+   * `可编辑的 Word 文稿，保留标题、列表、表格、图片、公式和脚注。`
+   */
+  fWordDescription(): string;
+  /**
+   * Desktop Word export save button.
+   *
+   * `保存 Word 文稿`
+   */
+  fSaveWordDocument(): string;
+  /**
+   * Browser Word export download button.
+   *
+   * `下载 Word 文稿`
+   */
+  fDownloadWordDocument(): string;
+  /**
+   * Toast showing the saved Word document path.
+   *
+   * `Word 文稿已保存：{path}`
+   */
+  fWordSaved(path: string): string;
+  /**
+   * Native Word document save panel title.
+   *
+   * `保存 Word 文稿`
+   */
+  bSaveWordDocument(): string;
+  /**
+   * Error when Word export exceeds the 64 MiB save limit.
+   *
+   * `Word 文稿过大，请改用 ZIP 导出`
+   */
+  bWordTooLarge(): string;
 }
 
 const catalog = createCatalog<Messages>({
@@ -3177,6 +3225,14 @@ const catalog = createCatalog<Messages>({
     "fDetailsContent": [],
     "fCollapseDetails": [],
     "fExpandDetails": [],
+    "fWordDocument": [],
+    "fExportWordDocument": [],
+    "fWordDescription": [],
+    "fSaveWordDocument": [],
+    "fDownloadWordDocument": [],
+    "fWordSaved": ["path"],
+    "bSaveWordDocument": [],
+    "bWordTooLarge": [],
   },
   messages: {
     "zh-Hans": {
@@ -3632,6 +3688,14 @@ const catalog = createCatalog<Messages>({
       "fDetailsContent": "内容",
       "fCollapseDetails": "折叠内容",
       "fExpandDetails": "展开内容",
+      "fWordDocument": "Word 文稿（.docx）",
+      "fExportWordDocument": "导出 Word 文稿",
+      "fWordDescription": "可编辑的 Word 文稿，保留标题、列表、表格、图片、公式和脚注。",
+      "fSaveWordDocument": "保存 Word 文稿",
+      "fDownloadWordDocument": "下载 Word 文稿",
+      "fWordSaved": "Word 文稿已保存：{path}",
+      "bSaveWordDocument": "保存 Word 文稿",
+      "bWordTooLarge": "Word 文稿过大，请改用 ZIP 导出",
     },
     "en": {
       "fPaper": "Paper",
@@ -4086,6 +4150,14 @@ const catalog = createCatalog<Messages>({
       "fDetailsContent": "Content",
       "fCollapseDetails": "Collapse details",
       "fExpandDetails": "Expand details",
+      "fWordDocument": "Word Document (.docx)",
+      "fExportWordDocument": "Export Word Document",
+      "fWordDescription": "An editable Word document with headings, lists, tables, images, formulas and footnotes.",
+      "fSaveWordDocument": "Save Word Document",
+      "fDownloadWordDocument": "Download Word Document",
+      "fWordSaved": "Word document saved: {path}",
+      "bSaveWordDocument": "Save Word Document",
+      "bWordTooLarge": "Word document is too large. Export as ZIP",
     },
   },
 });

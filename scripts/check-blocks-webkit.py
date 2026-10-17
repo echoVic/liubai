@@ -3,6 +3,9 @@
 
 Usage: python3 scripts/check-blocks-webkit.py http://127.0.0.1:<port>   # against a fresh web server
 """
+import base64
+import io
+import zipfile
 import json
 import subprocess
 import sys
@@ -30,7 +33,16 @@ def main():
     assert report["imageFixture"] and report["imageSelected"] and report["imageResizeBadge"] and report["imageWidthWritten"], report
     assert report["mathRendered"] and report["mathFontLoaded"], report
     assert report["mermaidRendered"] and report["mermaidCSP"] == [], report
-    print("PASS: WebKit hover grip alignment, drag past a list, slash menu inline table input and image selection/resize, KaTeX rendering and bundled font loading, Mermaid SVG under the app CSP")
+    assert report["docxCSP"] == [], report
+    docx = base64.b64decode(report["docxBase64"])
+    (work / "webkit.docx").write_bytes(docx)
+    with zipfile.ZipFile(io.BytesIO(docx)) as package:
+        assert package.testzip() is None
+        xml = package.read("word/document.xml").decode()
+        assert 'Heading1' in xml and '<m:f>' in xml and 'Word 中文' in xml, xml
+        assert any(path.endswith('.png') for path in package.namelist())
+    print(f"Word WebKit artifact: {work / 'webkit.docx'}")
+    print("PASS: WebKit hover grip alignment, drag past a list, slash menu inline table input and image selection/resize, KaTeX rendering and bundled font loading, Mermaid SVG and Word OOXML conversion under the app CSP")
 
 
 main()

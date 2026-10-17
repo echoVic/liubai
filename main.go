@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"embed"
 	"encoding/json"
 	"flag"
 	"io/fs"
@@ -26,8 +25,6 @@ import (
 	"github.com/egoist/mygo/transfer"
 )
 
-//go:embed web
-var frontend embed.FS
 var desktopAction = mygo.NewEvent[string]("liubai:action")
 var documentOpened = mygo.NewEvent[WorkspaceState]("liubai:opened")
 var openFailed = mygo.NewEvent[OpenFailure]("liubai:open-failed")
@@ -298,7 +295,7 @@ func main() {
 		mygo.App.SetName(locales.BMenuAppName())
 		mygo.App.SetVersion("0.4.0")
 	}
-	web, _ := fs.Sub(frontend, "web")
+	web := frontendFiles()
 	if *webAddr == "" && os.Getenv("MYGO_GENERATE") != "" {
 		mygo.Bind(&Desktop{})
 		if err := mygo.App.Run(); err != nil {

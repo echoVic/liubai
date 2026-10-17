@@ -2,7 +2,7 @@
   "name": "Liubai",
   "identifier": "app.liubai.desktop",
   "version": "0.4.0",
-  "frontendDist": "web",
+  "resources": ["web"],
   "out": "build",
   "bindings": "bindings.ts",
   "i18n": {"dir": "locales", "source": "zh-Hans"},

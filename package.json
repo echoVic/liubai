@@ -20,8 +20,10 @@
     "@lezer/highlight": "^1.2.1",
     "@lezer/markdown": "^1.4.3",
     "dompurify": "3.4.16",
+    "katex": "0.19.0",
     "markdown-it": "^14.1.0",
     "markdown-it-footnote": "4.0.0",
+    "mermaid": "12.1.0",
     "mygo-runtime": "0.5.5",
     "turndown": "7.2.0",
     "turndown-plugin-gfm": "1.0.2"

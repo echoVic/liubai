@@ -7,7 +7,7 @@ export function renderDelivery(data:Delivery){
  root.className='delivery-document';
  const used=new Map<string,number>();
  for(const heading of root.querySelectorAll('h1,h2,h3,h4,h5,h6'))heading.id=headingSlug(heading.textContent||'',used);
- for(const img of root.querySelectorAll('img')){img.removeAttribute('data-image-source');img.style.maxWidth='100%'}
+ for(const img of root.querySelectorAll('img')){img.removeAttribute('data-image-source');img.style.maxWidth='100%';img.style.height='auto'}
  for(const note of root.querySelectorAll('.markdown-image-note'))note.className='delivery-image-note';
  for(const el of root.querySelectorAll('.task-list, .task-list-item')){
   el.classList.remove('task-list','task-list-item');if(!el.className)el.removeAttribute('class');

@@ -1,3 +1,4 @@
+import {imageAltText} from './images';
 import {messages} from './i18n';
 import MarkdownIt from 'markdown-it';
 import {highlightPlugin} from './marks';
@@ -50,6 +51,8 @@ export function headingSlug(text:string,used:Map<string,number>):string {
 }
 
 const allowedTags='a abbr b blockquote br caption center code col colgroup dd del details div dl dt em figcaption figure h1 h2 h3 h4 h5 h6 hr i img input ins kbd li mark ol p pre q s samp section small span strike strong sub summary sup table tbody td tfoot th thead tr u ul var'.split(' ');
+// DOMPurify's default URI rule plus the app's own image scheme, so a resized <img src="liubai-asset:…"> keeps its source.
+const allowedURI=/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|liubai-asset):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
 const allowedAttributes='href src alt title width height align valign colspan rowspan open id class start reversed type checked disabled aria-label aria-hidden lang dir datetime cite scope data-line data-line-end data-image-source'.split(' ');
 if(DOMPurify.addHook)DOMPurify.addHook('uponSanitizeAttribute',(node,data)=>{
  if(data.attrName==='class')data.attrValue=data.attrValue.split(/\s+/).filter(value=>/^(md-|language-|task-list|contains-task-list|footnote|markdown-alert)/.test(value)).join(' ');
@@ -171,7 +174,7 @@ parser.use(highlightPlugin).use(footnote).use(lineMapPlugin).use(taskPlugin).use
 const imageRule:NonNullable<(typeof parser.renderer.rules)['image']>=(tokens,index,options,env,self)=>{
  const token=tokens[index];
  const source=token.attrGet('src')||'';
- token.attrSet('alt',self.renderInlineAsText(token.children||[],options,env));
+ token.attrSet('alt',imageAltText(token.children||[]));
  token.attrSet('data-image-source',source);
  token.attrs=token.attrs?.filter(([name])=>name!=='src')||null;
  return `<img${self.renderAttrs(token)}>`;
@@ -212,7 +215,7 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
  const template=document.createElement('template');
  if(authorHTML){
   sanitizeStats.calls++;
-  template.innerHTML=DOMPurify.sanitize(properties+rendered,{ALLOWED_TAGS:allowedTags,ALLOWED_ATTR:allowedAttributes,ADD_URI_SAFE_ATTR:['data-image-source','data-line','data-line-end'],ALLOW_DATA_ATTR:false,FORBID_ATTR:['style']});
+  template.innerHTML=DOMPurify.sanitize(properties+rendered,{ALLOWED_TAGS:allowedTags,ALLOWED_ATTR:allowedAttributes,ADD_URI_SAFE_ATTR:['data-image-source','data-line','data-line-end'],ALLOW_DATA_ATTR:false,FORBID_ATTR:['style'],ALLOWED_URI_REGEXP:allowedURI});
  }else template.innerHTML=properties+rendered;
  for(const input of template.content.querySelectorAll('input')){
   if(input.type!=='checkbox')input.remove();

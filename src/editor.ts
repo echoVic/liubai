@@ -1,5 +1,5 @@
 import {messages,activeLocale} from './i18n';
-import { EditorState, Compartment, RangeSetBuilder, StateEffect, StateField, type Extension } from '@codemirror/state';
+import { EditorState, Compartment, RangeSetBuilder, StateEffect, StateField, type Extension, type Transaction } from '@codemirror/state';
 import { EditorView, Decoration, WidgetType, ViewPlugin, type DecorationSet, type ViewUpdate, keymap, placeholder } from '@codemirror/view';
 import { history,historyKeymap,defaultKeymap,indentWithTab,undo,redo } from '@codemirror/commands';
 import { markdown,markdownLanguage,markdownKeymap } from '@codemirror/lang-markdown';
@@ -10,6 +10,8 @@ import { searchKeymap,highlightSelectionMatches,openSearchPanel,closeSearchPanel
 import { GFM } from '@lezer/markdown';
 import type { SyntaxNode } from '@lezer/common';
 import {TableWidget,tableComposition} from './table-ui';
+import {ImageWidget,imageSelection,imageSelected} from './image-ui';
+import {imageRanges,tableRanges,mapImageRanges} from './images';
 import type { Doc } from './types';
 import {createBlockUI,blockRichMode,type BlockUIOptions} from './block-ui';
 import {createSlashMenu} from './slash';
@@ -60,13 +62,6 @@ const colours=HighlightStyle.define([
  {tag:[tags.link,tags.url],color:'var(--link)'},
  {tag:[tags.number,tags.atom],color:'var(--primary)'}
 ]);
-class ImageWidget extends WidgetType{
- readonly locale=activeLocale;
- constructor(readonly dest:string,readonly alt:string,readonly resolve:(dest:string)=>Promise<string>){super()}
- eq(o:ImageWidget){return o.locale===this.locale&&o.dest===this.dest&&o.alt===this.alt}
- toDOM(){const wrap=document.createElement('figure');wrap.className='inline-image';const img=new Image();img.alt=this.alt;img.loading='lazy';wrap.append(img);this.resolve(this.dest).then(url=>{img.src=url}).catch(()=>{const msg=document.createElement('span');msg.textContent=messages.fImageTemporarilyUnreadable(this.alt);wrap.replaceChildren(msg)});img.onerror=()=>{wrap.textContent=messages.fImageResourceMissing(this.alt)};return wrap}
- ignoreEvent(){return false}
-}
 function selectedLines(state:EditorState){
  const lines=state.selection.ranges.map(sel=>({from:state.doc.lineAt(sel.from).from,to:state.doc.lineAt(sel.to).to}));
  return (from:number,to:number)=>lines.some(line=>from<=line.to&&to>=line.from);
@@ -75,38 +70,44 @@ function destination(state:EditorState,node:SyntaxNode){
  const url=node.getChild('URL');if(!url)return '';
  return state.sliceDoc(url.from,url.to).replace(/^<(.*)>$/s,'$1').replace(/\\([!-/:-@[-`{-~])/g,'$1');
 }
-function imageOnLine(state:EditorState,node:SyntaxNode){
- const line=state.doc.lineAt(node.from);
- return node.to<=line.to&&(node.from===line.from||!state.sliceDoc(line.from,node.from).trim())&&(node.to===line.to||!state.sliceDoc(node.to,line.to).trim());
-}
 export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promise<string>):DecorationSet{
- const builder=new RangeSetBuilder<Decoration>(),touched=selectedLines(state),meta=frontMatterRange(state);
- syntaxTree(state).iterate({enter:n=>{
-  if(meta&&n.from<meta.to&&n.name!=='Document')return false;
-  if(['Document','BulletList','OrderedList','ListItem','Blockquote'].includes(n.name))return;
-  if(n.name==='Table')builder.add(n.from,n.to,Decoration.replace({widget:new TableWidget(state.sliceDoc(n.from,n.to),n.from,composing,state.readOnly),block:true}));
-  if(n.name==='Paragraph')for(const image of n.node.getChildren('Image')){
-   if(touched(image.from,image.to)||!imageOnLine(state,image))continue;
-   const dest=destination(state,image),end=image.getChildren('LinkMark')[1];
-   if(dest)builder.add(image.from,image.to,Decoration.replace({widget:new ImageWidget(dest,end?state.sliceDoc(image.from+2,end.from):messages.fImage(),resolve),block:true}));
-  }
-  return false;
- }});
- return builder.finish();
+ const decorations:{from:number;to:number;dec:Decoration}[]=[],touched=selectedLines(state),meta=frontMatterRange(state);
+ for(const image of imageRanges(state)){
+  if(meta&&image.from<meta.to||touched(image.from,image.to)&&!imageSelected(state,image.from))continue;
+  decorations.push({...image,dec:Decoration.replace({widget:new ImageWidget(image.raw,image.from,resolve,composing,imageSelected(state,image.from),state.readOnly,image.quotes,image.listEms),block:true})});
+ }
+ for(const table of tableRanges(state)){
+  if(meta&&table.from<meta.to)continue;
+  decorations.push({...table,dec:Decoration.replace({widget:new TableWidget(state.sliceDoc(table.from,table.to),table.from,composing,state.readOnly),block:true})});
+ }
+ const builder=new RangeSetBuilder<Decoration>();for(const d of decorations.sort((a,b)=>a.from-b.from))builder.add(d.from,d.to,d.dec);return builder.finish();
+}
+// Ordinary single-line prose edits cannot change image or table widgets. Map their ranges rather than rebuilding every widget in a long document.
+function proseEdit(tr:Transaction){
+ if(!tr.docChanged||tr.reconfigured||tr.startState.field(composing)||tr.startState.readOnly!==tr.state.readOnly||tr.startState.field(imageSelection,false)!==tr.state.field(imageSelection,false)||syntaxTree(tr.startState).length!==tr.startState.doc.length||syntaxTree(tr.state).length!==tr.state.doc.length)return false;
+ const paragraph=(state:EditorState,pos:number)=>{let node:SyntaxNode|null=syntaxTree(state).resolveInner(pos,1);while(node&&node.name!=='Paragraph')node=node.parent;return node};
+ let safe=true;const paragraphs:SyntaxNode[]=[];
+ tr.changes.iterChanges((from,to,nextFrom,nextTo,inserted)=>{
+  if(!safe)return;const before=paragraph(tr.startState,from),after=paragraph(tr.state,nextFrom);
+  if(inserted.lines>1||tr.startState.sliceDoc(from,to).includes('\n')||!before||!after||before.to<to||after.to<nextTo||tr.changes.mapPos(before.from,-1)!==after.from||tr.changes.mapPos(before.to,1)!==after.to||before.getChild('Image')||before.getChild('HTMLTag')||after.getChild('Image')||after.getChild('HTMLTag'))safe=false;
+  else paragraphs.push(after);
+ });
+ return safe&&tr.state.selection.ranges.every(sel=>sel.empty&&paragraphs.some(node=>node.from<=sel.head&&sel.head<=node.to));
 }
 export function createBlockField(resolve:(dest:string)=>Promise<string>):StateField<DecorationSet>{
  return StateField.define<DecorationSet>({
   create:state=>blockDecorations(state,resolve),
   update(value,tr){
    if(tr.state.field(composing))return value.map(tr.changes);
-   if(!tr.docChanged&&!tr.selection&&tr.startState.readOnly===tr.state.readOnly&&!tr.startState.field(composing)&&syntaxTree(tr.startState)===syntaxTree(tr.state))return value;
+   if(proseEdit(tr)&&mapImageRanges(tr.startState,tr.state,tr.changes))return blockDecorations(tr.state,resolve);
+   if(!tr.docChanged&&!tr.selection&&tr.startState.field(imageSelection,false)===tr.state.field(imageSelection,false)&&tr.startState.readOnly===tr.state.readOnly&&!tr.startState.field(composing)&&syntaxTree(tr.startState)===syntaxTree(tr.state))return value;
    return blockDecorations(tr.state,resolve);
   },
   provide:field=>EditorView.decorations.from(field)
  });
 }
 export function inlineDecorations(state:EditorState,ranges:readonly {from:number;to:number}[]):DecorationSet{
- const decorations:{from:number;to:number;dec:Decoration}[]=[],touched=selectedLines(state),marked=new Set<string>(),meta=frontMatterRange(state);
+ const decorations:{from:number;to:number;dec:Decoration}[]=[],touched=selectedLines(state),marked=new Set<string>(),meta=frontMatterRange(state),images=imageRanges(state).filter(i=>ranges.some(range=>i.from<=range.to&&i.to>=range.from)&&(!touched(i.from,i.to)||imageSelected(state,i.from)));
  const active=(from:number,to:number)=>state.selection.ranges.some(sel=>sel.from<=to&&sel.to>=from);
  for(const range of ranges){
   const lineClass=(from:number,to:number,cls:string)=>{
@@ -118,6 +119,7 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
    if(meta&&n.from<meta.to&&n.name!=='Document')return false;
    if(n.to<=range.from||n.from>=range.to)return false;
    const name=n.name;
+   if(images.some(image=>n.from>=image.from&&n.to<=image.to))return false;
    if(tagHosts.test(name))for(const pair of inlineTagPairs(n.node,(a,b)=>state.sliceDoc(a,b))){
     const key=pair.from+':tag';if(marked.has(key))continue;marked.add(key);
     if(pair.closeFrom>pair.openTo)decorations.push({from:pair.openTo,to:pair.closeFrom,dec:Decoration.mark({class:pair.tag==='u'?'md-underline':'md-'+pair.tag})});
@@ -128,7 +130,6 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
     if(!active(n.from,n.to))for(const mark of marks)decorations.push({from:mark.from,to:mark.to,dec:Decoration.replace({})});
    }
    if(name==='Table')return false;
-   if(name==='Image'&&!touched(n.from,n.to)&&imageOnLine(state,n.node)&&destination(state,n.node))return false;
    if(/^ATXHeading[1-6]$/.test(name))lineClass(n.from,n.from,'md-heading md-h'+name.slice(-1));
    if(name==='Blockquote')lineClass(n.from,n.to,'md-quote');
    if(name==='FencedCode')lineClass(n.from,n.to,'md-code-line');
@@ -150,10 +151,10 @@ export function richExtensions(resolve:(dest:string)=>Promise<string>):Extension
   constructor(view:EditorView){this.decorations=inlineDecorations(view.state,view.visibleRanges)}
   update(update:ViewUpdate){
    if(update.state.field(composing)){this.decorations=this.decorations.map(update.changes);return}
-   if(update.docChanged||update.viewportChanged||update.selectionSet||update.startState.field(composing)||syntaxTree(update.startState)!==syntaxTree(update.state))this.decorations=inlineDecorations(update.state,update.view.visibleRanges);
+   if(update.docChanged||update.viewportChanged||update.selectionSet||update.startState.field(imageSelection,false)!==update.state.field(imageSelection,false)||update.startState.field(composing)||syntaxTree(update.startState)!==syntaxTree(update.state))this.decorations=inlineDecorations(update.state,update.view.visibleRanges);
   }
  },{decorations:plugin=>plugin.decorations});
- return [blockRichMode.of(true),createBlockField(resolve),inlinePlugin];
+ return [blockRichMode.of(true),imageSelection,createBlockField(resolve),inlinePlugin];
 }
 export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions){
  const state=EditorState.create({doc:doc.content,selection:{anchor:Math.min(doc.position.anchor||0,doc.content.length),head:Math.min(doc.position.head||0,doc.content.length)},extensions:[

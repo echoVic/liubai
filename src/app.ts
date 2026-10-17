@@ -4,6 +4,9 @@ import {createEditor,mode,editorLocale,closeSearchPanel,localizedEditor,richExte
 import {blockAt,convertBlocks,duplicateBlocks,deleteBlocks,moveBlocks,insertParagraphBelow,type BlockConversion} from './blocks';
 import {blockControls} from './block-ui';
 import {focusTableCell,focusedTableRange,formatTableCell,leaveTable,tableAround} from './table-ui';
+import {focusedImageRange} from './image-ui';
+import {imageRanges} from './images';
+import {leaveBlock} from './block-navigation';
 import {filterSlashItems,insertToolbarItem,type SlashItemID,openSlashMenu} from './slash';
 import {Transaction,Compartment,StateEffect} from '@codemirror/state';
 import {blockFormat,setHeading,headingLevel,inlineMarkers,clearFormatting,inList,indentList,wrapSelection,codeBlock,linkAt,makeLink,safeLink,localDocumentLink,insertTable,headings,type BlockKind} from './editing';
@@ -56,11 +59,12 @@ const sourceActive=()=>split()&&source;
 function position(){const r=view.state.selection.main;return {anchor:r.anchor,head:r.head,scroll:$('.editor-scroll').scrollTop,source:false}}
 function header(){if(!doc)return;const isSplit=split(),isSource=sourceActive();$('#doc-title').textContent=doc.title;$('#save-status').textContent=dirty?(compositionActive?messages.fTyping():messages.fUnsaved()):statusText(doc);const current=reading()?'read':isSplit?'split':'single';$$('[data-view]').forEach(b=>{const checked=b.dataset.view===current;b.setAttribute('aria-checked',String(checked));b.tabIndex=checked?0:-1});const sourceItem=$('[data-menu-action=source]');sourceItem.setAttribute('aria-checked',String(isSource));sourceItem.setAttribute('aria-disabled',String(!isSplit));sourceItem.querySelector('small')!.hidden=isSplit;$('[data-menu-action=focus]').setAttribute('aria-disabled',String(reading()));const sourceButton=$('#format-bar [data-action=source]');sourceButton.hidden=!isSplit;$('.format-source-sep').hidden=!isSplit;sourceButton.setAttribute('aria-pressed',String(isSource));updateHeading();$('.paper').classList.toggle('source-mode',isSource)}
 function updateHeading(){
- const cell=!!focusedTableRange(view);
- $<HTMLButtonElement>('#heading-button').disabled=cell;
+ const image=!!focusedImageRange(view),cell=!!focusedTableRange(view);
+ $<HTMLButtonElement>('#heading-button').disabled=cell||image;
  for(const id of ['quote','bullet','ordered','task','indent','outdent']){
-  const b=$<HTMLButtonElement>('#format-bar [data-action='+id+']');if(b)b.disabled=cell||(['indent','outdent'].includes(id)&&!inList(view.state));
+  const b=$<HTMLButtonElement>('#format-bar [data-action='+id+']');if(b)b.disabled=cell||image||(['indent','outdent'].includes(id)&&!inList(view.state));
  }
+ for(const id of [...Object.keys(inlineMarkers),'clearFormatting','link']){const b=$<HTMLButtonElement>('#format-bar [data-action='+id+']');if(b)b.disabled=image}
  const level=headingLevel(view.state);$('#heading-label').textContent=level?messages.fHeading(level):messages.fBody();
  $$('#heading-menu [data-menu-action]').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.menuAction===(level?'h'+level:'paragraph'))));
 }
@@ -209,7 +213,7 @@ async function importPastedImage(image:PasteImage):Promise<string>{
  }finally{setBusy(false)}
 }
 async function insertImages(files:File[],at?:number){
- if(reading()){toast(messages.fEditingIsUnavailableInReadingModePressRTo());return}if(busy||!doc||compositionActive)return;const id=doc.id;let offset=at??view.state.selection.main.from;setBusy(true);
+ if(reading()){toast(messages.fEditingIsUnavailableInReadingModePressRTo());return}if(busy||!doc||compositionActive)return;const id=doc.id;let offset=at??focusedImageRange(view)?.to??view.state.selection.main.from;setBusy(true);
  try{for(const file of files){const image=await importImage(file,id);const alt=file.name.replace(/[\[\]\\\r\n]/g,'').replace(/\.[^.]+$/,'')||messages.fImage();const text=`\n\n![${alt}](${image.markdown})\n\n`;view.dispatch({changes:{from:offset,insert:text},selection:{anchor:offset+text.length},userEvent:'input.paste'});offset+=text.length}await save();reconfigure();view.focus()}catch(e){toast(errorText(e))}finally{setBusy(false)}
 }
 $('#image-input').onchange=()=>{const input=$<HTMLInputElement>('#image-input');void insertImages(Array.from(input.files||[]));input.value=''};
@@ -267,7 +271,8 @@ async function action(id:string){
  if(reading()&&(id in inlineMarkers||id==='clearFormatting'||id==='indent'||id==='outdent'||id==='insert'||['paragraph','h1','h2','h3','h4','h5','h6','strike','inlineCode','heading','quote','bullet','ordered','task','bold','italic','code','link','table','image','pastePlain','undo','redo','find','source','focus'].includes(id))){toast(messages.fEditingIsUnavailableInReadingModePressRTo());return}
  if(busy){if(id==='close')pendingClose=true;return;}
  if(compositionActive&&id!=='close'){toast(messages.fFinishComposingYourTextFirst());return}
- const cellRange=focusedTableRange(view);
+ const imageRange=focusedImageRange(view),cellRange=imageRange||focusedTableRange(view);
+ if(imageRange&&(id in inlineMarkers||['clearFormatting','link'].includes(id)))return;
  if(cellRange){
   if(id in inlineMarkers||id==='clearFormatting'||id==='link'){formatTableCell(view,id);return}
   if(['paragraph','h1','h2','h3','h4','h5','h6','heading','quote','bullet','ordered','task','indent','outdent'].includes(id))return;
@@ -380,9 +385,9 @@ const insertPopup=node('div','menu');insertPopup.id='insert-menu';insertPopup.se
 function populateInsertMenu(){insertPopup.replaceChildren(...filterSlashItems('').map(item=>{const b=node('button','',(messages[item.label] as ()=>string)());b.setAttribute('type','button');b.tabIndex=-1;b.setAttribute('role','menuitem');b.dataset.menuAction=item.id;return b}))}
 populateInsertMenu();
 let insertBelow:{from:number;to:number}|undefined;
-const captureInsert=()=>{insertBelow=focusedTableRange(view)||undefined};
+const captureInsert=()=>{insertBelow=focusedImageRange(view)||focusedTableRange(view)||undefined};
 insertButton.addEventListener('pointerdown',captureInsert);insertButton.addEventListener('keydown',captureInsert);
-insertButton.addEventListener('click',()=>{if(focusedTableRange(view))captureInsert()});
+insertButton.addEventListener('click',()=>{if(focusedImageRange(view)||focusedTableRange(view))captureInsert()});
 const insertMenu=attachMenu(insertButton,insertPopup,id=>{
  if(compositionActive||view.composing||view.state.readOnly)return;
  view.dispatch(insertToolbarItem(view.state,id as SlashItemID,insertBelow));insertBelow=undefined;
@@ -427,9 +432,10 @@ $('.editor-pane').addEventListener('mousedown',e=>{
  if(![$('.editor-pane'),$('.editor-scroll'),$('.editor-status'),$('#word-count'),$('.paper'),$('#editor'),view.dom,view.scrollDOM,view.contentDOM].includes(e.target as HTMLElement))return;
  if(e.clientY<Math.min(view.contentDOM.getBoundingClientRect().bottom,view.documentTop+view.lineBlockAt(view.state.doc.length).bottom))return;
  e.preventDefault();const state=view.state,doc=state.doc;let last=doc.line(doc.lines);while(last.number>1&&!last.text.trim())last=doc.line(last.number-1);
- // Text typed right below a final table would join it, so write in an empty paragraph after it, as leaving the table does.
+ // Text below a final table or image needs its own paragraph, as leaving the widget does.
  const table=tableAround(state,last.from+last.text.trimEnd().length);
- view.dispatch(table?leaveTable(state,table):{selection:{anchor:doc.length},userEvent:'select.pointer'});view.focus();
+ const image=imageRanges(state).find(i=>i.from>=last.from&&i.to<=last.to);
+ view.dispatch(table?leaveTable(state,table):image?leaveBlock(state,image):{selection:{anchor:doc.length},userEvent:'select.pointer'});view.focus();
 });
 $('.editor-scroll').addEventListener('scroll',()=>{if(loading||!doc)return;clearTimeout(timer);timer=setTimeout(()=>void save(),500)},{passive:true});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});

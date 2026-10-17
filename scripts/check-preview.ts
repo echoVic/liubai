@@ -352,5 +352,14 @@ export async function runPreviewChecks(): Promise<string> {
  }
  assert(marksExport.querySelector('mark')!.getAttribute('style')!.includes('background'),'export highlight style');
  await marksView.ready;
+ // Resized and aligned images are raw HTML; their app asset source must survive sanitizing in the reader and exports.
+ const sized='<p align="center"><img src="liubai-asset:abc.png" alt="图" width="300"></p>';
+ const pixel='data:image/png;base64,iVBORw0KGgo=';
+ const sizedView=renderMarkdown(sized,{resolve:source=>source==='liubai-asset:abc.png'?pixel:undefined,external:'load'});
+ const sizedImage=sizedView.root.querySelector('img')!;
+ equal(sizedImage?.getAttribute('src'),pixel,'asset source is kept and resolved');
+ equal(sizedImage.getAttribute('width'),'300','image width survives');equal(sizedImage.closest('p')?.getAttribute('align'),'center','alignment survives');
+ assert(!renderMarkdown('<img src="javascript:alert(1)">',{resolve:()=>undefined,external:'load'}).root.querySelector('[data-image-source^="javascript"]'),'scripts stay out of image sources');
+ await sizedView.ready;
  return 'shared renderer and delivery DOM checks passed';
 }

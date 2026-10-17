@@ -2589,6 +2589,54 @@ export interface Messages {
    * `标题 6`
    */
   fHeading6(): string;
+  /**
+   * Image editing control: Image actions.
+   *
+   * `图片操作`
+   */
+  fImageActions(): string;
+  /**
+   * Image editing control: Resize image.
+   *
+   * `调整图片大小`
+   */
+  fResizeImage(): string;
+  /**
+   * Image editing control: Align left.
+   *
+   * `左对齐`
+   */
+  fImageAlignLeft(): string;
+  /**
+   * Image editing control: Align center.
+   *
+   * `居中`
+   */
+  fImageAlignCenter(): string;
+  /**
+   * Image editing control: Align right.
+   *
+   * `右对齐`
+   */
+  fImageAlignRight(): string;
+  /**
+   * Image editing control: Original size.
+   *
+   * `原始大小`
+   */
+  fImageOriginalSize(): string;
+  /**
+   * Image editing control: Alt text.
+   *
+   * `说明文字`
+   */
+  fImageAlt(): string;
+  /**
+   * Image editing control: Delete image.
+   *
+   * `删除图片`
+   */
+  fDeleteImage(): string;
 }
 
 const catalog = createCatalog<Messages>({
@@ -3030,6 +3078,14 @@ const catalog = createCatalog<Messages>({
     "fHeading4": [],
     "fHeading5": [],
     "fHeading6": [],
+    "fImageActions": [],
+    "fResizeImage": [],
+    "fImageAlignLeft": [],
+    "fImageAlignCenter": [],
+    "fImageAlignRight": [],
+    "fImageOriginalSize": [],
+    "fImageAlt": [],
+    "fDeleteImage": [],
   },
   messages: {
     "zh-Hans": {
@@ -3464,6 +3520,14 @@ const catalog = createCatalog<Messages>({
       "fHeading4": "标题 4",
       "fHeading5": "标题 5",
       "fHeading6": "标题 6",
+      "fImageActions": "图片操作",
+      "fResizeImage": "调整图片大小",
+      "fImageAlignLeft": "左对齐",
+      "fImageAlignCenter": "居中",
+      "fImageAlignRight": "右对齐",
+      "fImageOriginalSize": "原始大小",
+      "fImageAlt": "说明文字",
+      "fDeleteImage": "删除图片",
     },
     "en": {
       "fPaper": "Paper",
@@ -3897,6 +3961,14 @@ const catalog = createCatalog<Messages>({
       "fHeading4": "Heading 4",
       "fHeading5": "Heading 5",
       "fHeading6": "Heading 6",
+      "fImageActions": "Image actions",
+      "fResizeImage": "Resize image",
+      "fImageAlignLeft": "Align left",
+      "fImageAlignCenter": "Align center",
+      "fImageAlignRight": "Align right",
+      "fImageOriginalSize": "Original size",
+      "fImageAlt": "Alt text",
+      "fDeleteImage": "Delete image",
     },
   },
 });

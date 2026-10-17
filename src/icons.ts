@@ -1,5 +1,11 @@
 type IconElement=[string,Record<string,string>];
 const paths:Record<string,IconElement[]>={
+ 'align-left':[['path',{d:'M3 6h18M3 12h12M3 18h18'}]],
+ 'align-center':[['path',{d:'M3 6h18M6 12h12M3 18h18'}]],
+ 'align-right':[['path',{d:'M3 6h18M9 12h12M3 18h18'}]],
+ maximize:[['path',{d:'M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3'}]],
+ 'image-alt':[['path',{d:'M4 5h16M12 5v14M8 19h8'}]],
+ trash:[['path',{d:'M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6'}]],
  "grip-vertical":[["circle",{"cx":"9","cy":"5","r":"1"}],["circle",{"cx":"9","cy":"12","r":"1"}],["circle",{"cx":"9","cy":"19","r":"1"}],["circle",{"cx":"15","cy":"5","r":"1"}],["circle",{"cx":"15","cy":"12","r":"1"}],["circle",{"cx":"15","cy":"19","r":"1"}]],
 
  underline:[["path",{"d":"M6 4v6a6 6 0 0 0 12 0V4"}],["line",{"x1":"4","x2":"20","y1":"20","y2":"20"}]],

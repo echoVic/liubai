@@ -432,5 +432,13 @@
   "fFindReplace": "Find and Replace",
   "fHeading4": "Heading 4",
   "fHeading5": "Heading 5",
-  "fHeading6": "Heading 6"
+  "fHeading6": "Heading 6",
+  "fImageActions": "Image actions",
+  "fResizeImage": "Resize image",
+  "fImageAlignLeft": "Align left",
+  "fImageAlignCenter": "Align center",
+  "fImageAlignRight": "Align right",
+  "fImageOriginalSize": "Original size",
+  "fImageAlt": "Alt text",
+  "fDeleteImage": "Delete image"
 }

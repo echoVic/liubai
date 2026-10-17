@@ -1878,5 +1878,37 @@
   "fHeading6": "标题 6",
   "@fHeading6": {
     "description": "Format toolbar: Heading 6."
+  },
+  "fImageActions": "图片操作",
+  "@fImageActions": {
+    "description": "Image editing control: Image actions."
+  },
+  "fResizeImage": "调整图片大小",
+  "@fResizeImage": {
+    "description": "Image editing control: Resize image."
+  },
+  "fImageAlignLeft": "左对齐",
+  "@fImageAlignLeft": {
+    "description": "Image editing control: Align left."
+  },
+  "fImageAlignCenter": "居中",
+  "@fImageAlignCenter": {
+    "description": "Image editing control: Align center."
+  },
+  "fImageAlignRight": "右对齐",
+  "@fImageAlignRight": {
+    "description": "Image editing control: Align right."
+  },
+  "fImageOriginalSize": "原始大小",
+  "@fImageOriginalSize": {
+    "description": "Image editing control: Original size."
+  },
+  "fImageAlt": "说明文字",
+  "@fImageAlt": {
+    "description": "Image editing control: Alt text."
+  },
+  "fDeleteImage": "删除图片",
+  "@fDeleteImage": {
+    "description": "Image editing control: Delete image."
   }
 }

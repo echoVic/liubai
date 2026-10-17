@@ -6209,3 +6209,115 @@ func FHeading6() string { return In(i18n.Locale()).FHeading6() }
 func (msgs Messages) FHeading6() string {
 	return Catalog.Format(msgs.locale, "fHeading6", nil)
 }
+
+// FImageActions says "图片操作"
+// in the language the app shows.
+//
+// Image editing control: Image actions.
+func FImageActions() string { return In(i18n.Locale()).FImageActions() }
+
+// FImageActions says "图片操作"
+// in the language of msgs.
+//
+// Image editing control: Image actions.
+func (msgs Messages) FImageActions() string {
+	return Catalog.Format(msgs.locale, "fImageActions", nil)
+}
+
+// FResizeImage says "调整图片大小"
+// in the language the app shows.
+//
+// Image editing control: Resize image.
+func FResizeImage() string { return In(i18n.Locale()).FResizeImage() }
+
+// FResizeImage says "调整图片大小"
+// in the language of msgs.
+//
+// Image editing control: Resize image.
+func (msgs Messages) FResizeImage() string {
+	return Catalog.Format(msgs.locale, "fResizeImage", nil)
+}
+
+// FImageAlignLeft says "左对齐"
+// in the language the app shows.
+//
+// Image editing control: Align left.
+func FImageAlignLeft() string { return In(i18n.Locale()).FImageAlignLeft() }
+
+// FImageAlignLeft says "左对齐"
+// in the language of msgs.
+//
+// Image editing control: Align left.
+func (msgs Messages) FImageAlignLeft() string {
+	return Catalog.Format(msgs.locale, "fImageAlignLeft", nil)
+}
+
+// FImageAlignCenter says "居中"
+// in the language the app shows.
+//
+// Image editing control: Align center.
+func FImageAlignCenter() string { return In(i18n.Locale()).FImageAlignCenter() }
+
+// FImageAlignCenter says "居中"
+// in the language of msgs.
+//
+// Image editing control: Align center.
+func (msgs Messages) FImageAlignCenter() string {
+	return Catalog.Format(msgs.locale, "fImageAlignCenter", nil)
+}
+
+// FImageAlignRight says "右对齐"
+// in the language the app shows.
+//
+// Image editing control: Align right.
+func FImageAlignRight() string { return In(i18n.Locale()).FImageAlignRight() }
+
+// FImageAlignRight says "右对齐"
+// in the language of msgs.
+//
+// Image editing control: Align right.
+func (msgs Messages) FImageAlignRight() string {
+	return Catalog.Format(msgs.locale, "fImageAlignRight", nil)
+}
+
+// FImageOriginalSize says "原始大小"
+// in the language the app shows.
+//
+// Image editing control: Original size.
+func FImageOriginalSize() string { return In(i18n.Locale()).FImageOriginalSize() }
+
+// FImageOriginalSize says "原始大小"
+// in the language of msgs.
+//
+// Image editing control: Original size.
+func (msgs Messages) FImageOriginalSize() string {
+	return Catalog.Format(msgs.locale, "fImageOriginalSize", nil)
+}
+
+// FImageAlt says "说明文字"
+// in the language the app shows.
+//
+// Image editing control: Alt text.
+func FImageAlt() string { return In(i18n.Locale()).FImageAlt() }
+
+// FImageAlt says "说明文字"
+// in the language of msgs.
+//
+// Image editing control: Alt text.
+func (msgs Messages) FImageAlt() string {
+	return Catalog.Format(msgs.locale, "fImageAlt", nil)
+}
+
+// FDeleteImage says "删除图片"
+// in the language the app shows.
+//
+// Image editing control: Delete image.
+func FDeleteImage() string { return In(i18n.Locale()).FDeleteImage() }
+
+// FDeleteImage says "删除图片"
+// in the language of msgs.
+//
+// Image editing control: Delete image.
+func (msgs Messages) FDeleteImage() string {
+	return Catalog.Format(msgs.locale, "fDeleteImage", nil)
+}

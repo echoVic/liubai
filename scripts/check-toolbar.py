@@ -25,6 +25,16 @@ def api(page, method, *args):
     assert not body.get("error"), body
     return body["value"]
 
+def saved_position(page, check, timeout=7000):
+    """Poll the persisted position; Playwright treats an async wait_for_function predicate as already true."""
+    for _ in range(timeout // 100):
+        current = api(page, "State")["current"]
+        if check(current):
+            return current
+        page.wait_for_timeout(100)
+    raise AssertionError(api(page, "State")["current"]["position"])
+
+
 
 def appearance_change(page, operation):
     with page.expect_response(lambda r: r.url.endswith("/api") and '"Appearance"' in (r.request.post_data or "")) as pending:
@@ -430,10 +440,7 @@ def check_docked_sidebar_and_outline(page):
     expect(items.nth(2)).to_have_attribute("aria-current", "location")
     page.wait_for_function("""() => getSelection()?.anchorNode?.parentElement?.closest('.cm-line')?.textContent.includes('第三节')""")
     expect(page.locator("#save-status")).to_have_text("草稿已保存")
-    page.wait_for_function("""async ({base, anchor}) => {
-      const r=await fetch(base+'/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'State',args:[]})});
-      return (await r.json()).value.current.position.anchor===anchor;
-    }""", arg={"base": BASE, "anchor": text.index("### 第三节")})
+    saved_position(page, lambda current: current["position"]["anchor"] == text.index("### 第三节"))
     page.reload()
     expect(drawer).to_be_visible()
     geometry(True)
@@ -604,10 +611,7 @@ def run(page):
       return node?.parentElement?.closest('.cm-line')?.textContent.includes('二');
     }""")
     # Verify the actual CodeMirror selection via the separately persisted position.
-    page.wait_for_function("""async ({base, anchor}) => {
-      const r=await fetch(base+'/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'State',args:[]})});
-      return (await r.json()).value.current.position.anchor===anchor;
-    }""", arg={"base": BASE, "anchor": TEXT.index("## 二")})
+    saved_position(page, lambda current: current["position"]["anchor"] == TEXT.index("## 二"))
     page.keyboard.press("Escape")
     expect(drawer).to_be_hidden()
     expect(sidebar).to_have_attribute("aria-expanded", "false")

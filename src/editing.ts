@@ -7,27 +7,27 @@ export function headingLevel(state:EditorState):number {
  const match=/^[ \t]*(#{1,6})[ \t]+/.exec(state.doc.lineAt(state.selection.main.head).text);
  return match?match[1].length:0;
 }
-export function setHeading(state:EditorState,level:number):TransactionSpec {
+export function setHeading(state:EditorState,level:number,preserveBody=false):TransactionSpec {
  const selection=state.selection.main;
  const first=state.doc.lineAt(selection.from).number;
  const last=state.doc.lineAt(Math.max(selection.from,selection.to-(selection.empty?0:1))).number;
  const changes=state.changes(Array.from({length:last-first+1},(_,i)=>{
   const line=state.doc.line(first+i),indent=/^[ \t]*/.exec(line.text)![0];
-  const prefix=/^#{1,6}[ \t]+/.exec(line.text.slice(indent.length))?.[0]||'';
+  const prefix=preserveBody?'':/^#{1,6}[ \t]+/.exec(line.text.slice(indent.length))?.[0]||'';
   return {from:line.from+indent.length,to:line.from+indent.length+prefix.length,insert:level?'#'.repeat(level)+' ':''};
  }));
  return {changes,selection:state.selection.map(changes,1),userEvent:'input.format'};
 }
-export function blockFormat(state:EditorState,kind:BlockKind):TransactionSpec {
+export function blockFormat(state:EditorState,kind:BlockKind,preserveBody=false):TransactionSpec {
  const selection=state.selection.main;
  const first=state.doc.lineAt(selection.from).number;
  const last=state.doc.lineAt(Math.max(selection.from,selection.to-(selection.empty?0:1))).number;
  const lines=Array.from({length:last-first+1},(_,i)=>state.doc.line(first+i));
  const own={heading:/^(\s*)#{1,6}\s+/,quote:/^(\s*)>\s?/,bullet:/^(\s*)[-+*]\s+(?!\[[ xX]\])/,ordered:/^(\s*)\d+[.)]\s+/,task:/^(\s*)[-+*]\s+\[[ xX]\]\s*/}[kind];
- const remove=lines.every(l=>!l.text.trim()||own.test(l.text));
+ const remove=!preserveBody&&lines.every(l=>!l.text.trim()||own.test(l.text));
  const changes=lines.filter(l=>l.text.trim()||lines.length===1).map((line,i)=>{
   const indent=/^\s*/.exec(line.text)![0];
-  const body=line.text.slice(indent.length).replace(/^(?:#{1,6}\s+|>\s?|[-+*]\s+(?:\[[ xX]\]\s*)?|\d+[.)]\s+)/,'');
+  const body=preserveBody?line.text.slice(indent.length):line.text.slice(indent.length).replace(/^(?:#{1,6}\s+|>\s?|[-+*]\s+(?:\[[ xX]\]\s*)?|\d+[.)]\s+)/,'');
   const prefix=remove?'':{heading:'## ',quote:'> ',bullet:'- ',ordered:`${i+1}. `,task:'- [ ] '}[kind];
   return {from:line.from,to:line.to,insert:indent+prefix+body};
  });

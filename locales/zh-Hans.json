@@ -1774,5 +1774,37 @@
         "type": "String"
       }
     }
+  },
+  "fBlockActions": "块操作",
+  "@fBlockActions": {
+    "description": "Block editing: Block actions."
+  },
+  "fBlockGrip": "选择或拖动块",
+  "@fBlockGrip": {
+    "description": "Block editing: Select or drag block."
+  },
+  "fInsertParagraphBelow": "在下方插入段落",
+  "@fInsertParagraphBelow": {
+    "description": "Block editing: Insert paragraph below."
+  },
+  "fConvertBlockTo": "转换为",
+  "@fConvertBlockTo": {
+    "description": "Block editing: Convert to."
+  },
+  "fDuplicateBlock": "复制一份",
+  "@fDuplicateBlock": {
+    "description": "Block editing: Duplicate."
+  },
+  "fDeleteBlock": "删除",
+  "@fDeleteBlock": {
+    "description": "Block editing: Delete."
+  },
+  "fMoveBlockUp": "上移",
+  "@fMoveBlockUp": {
+    "description": "Block editing: Move up."
+  },
+  "fMoveBlockDown": "下移",
+  "@fMoveBlockDown": {
+    "description": "Block editing: Move down."
   }
 }

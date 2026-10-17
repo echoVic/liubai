@@ -11,6 +11,7 @@ import { GFM } from '@lezer/markdown';
 import type { SyntaxNode } from '@lezer/common';
 import MarkdownIt from 'markdown-it';
 import type { Doc } from './types';
+import {createBlockUI,blockRichMode,type BlockUIOptions} from './block-ui';
 import {safeLink,localDocumentLink,frontMatterRange} from './editing';
 import {htmlToMarkdown,pasteText,replacePasteImage,type PasteImage} from './paste';
 
@@ -148,13 +149,13 @@ export function richExtensions(resolve:(dest:string)=>Promise<string>,editTable?
    if(update.docChanged||update.viewportChanged||update.selectionSet||update.startState.field(composing)||syntaxTree(update.startState)!==syntaxTree(update.state))this.decorations=inlineDecorations(update.state,update.view.visibleRanges);
   }
  },{decorations:plugin=>plugin.decorations});
- return [createBlockField(resolve,editTable),inlinePlugin];
+ return [blockRichMode.of(true),createBlockField(resolve,editTable),inlinePlugin];
 }
-export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onTable:()=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void){
+export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onTable:()=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions){
  const state=EditorState.create({doc:doc.content,selection:{anchor:Math.min(doc.position.anchor||0,doc.content.length),head:Math.min(doc.position.head||0,doc.content.length)},extensions:[
-  history(),composing,focusField,focusDecorations,markdown({base:markdownLanguage,codeLanguages:languages,extensions:GFM}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),
+  history(),composing,focusField,focusDecorations,blocks?createBlockUI(composing,focusField,blocks):[],markdown({base:markdownLanguage,codeLanguages:languages,extensions:GFM}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),
   EditorView.editorAttributes.of(view=>({class:view.state.field(focusField)?'cm-focus-on':''})),
-  keymap.of([...markdownKeymap,...historyKeymap,...searchKeymap,...defaultKeymap,indentWithTab]),
+  keymap.of([...(blocks?[{key:'Alt-Shift-ArrowUp',run:()=>{blocks.action('up');return true}},{key:'Alt-Shift-ArrowDown',run:()=>{blocks.action('down');return true}},{key:'Mod-/',run:()=>{blocks.action('menu');return true}}]:[]),...markdownKeymap,...historyKeymap,...searchKeymap,...defaultKeymap,indentWithTab]),
   mode.of(doc.position.source?[]:richExtensions(resolve,onTable)),EditorView.lineWrapping,editorLocale.of(localizedEditor()),
   EditorView.updateListener.of(u=>{if(u.docChanged||u.selectionSet)onChange(u.docChanged)}),
   EditorView.domEventHandlers({

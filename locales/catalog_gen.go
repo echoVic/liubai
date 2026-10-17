@@ -5851,3 +5851,115 @@ func BReadOnlyTarget(name string) string { return In(i18n.Locale()).BReadOnlyTar
 func (msgs Messages) BReadOnlyTarget(name string) string {
 	return Catalog.Format(msgs.locale, "bReadOnlyTarget", map[string]any{"name": name})
 }
+
+// FBlockActions says "块操作"
+// in the language the app shows.
+//
+// Block editing: Block actions.
+func FBlockActions() string { return In(i18n.Locale()).FBlockActions() }
+
+// FBlockActions says "块操作"
+// in the language of msgs.
+//
+// Block editing: Block actions.
+func (msgs Messages) FBlockActions() string {
+	return Catalog.Format(msgs.locale, "fBlockActions", nil)
+}
+
+// FBlockGrip says "选择或拖动块"
+// in the language the app shows.
+//
+// Block editing: Select or drag block.
+func FBlockGrip() string { return In(i18n.Locale()).FBlockGrip() }
+
+// FBlockGrip says "选择或拖动块"
+// in the language of msgs.
+//
+// Block editing: Select or drag block.
+func (msgs Messages) FBlockGrip() string {
+	return Catalog.Format(msgs.locale, "fBlockGrip", nil)
+}
+
+// FInsertParagraphBelow says "在下方插入段落"
+// in the language the app shows.
+//
+// Block editing: Insert paragraph below.
+func FInsertParagraphBelow() string { return In(i18n.Locale()).FInsertParagraphBelow() }
+
+// FInsertParagraphBelow says "在下方插入段落"
+// in the language of msgs.
+//
+// Block editing: Insert paragraph below.
+func (msgs Messages) FInsertParagraphBelow() string {
+	return Catalog.Format(msgs.locale, "fInsertParagraphBelow", nil)
+}
+
+// FConvertBlockTo says "转换为"
+// in the language the app shows.
+//
+// Block editing: Convert to.
+func FConvertBlockTo() string { return In(i18n.Locale()).FConvertBlockTo() }
+
+// FConvertBlockTo says "转换为"
+// in the language of msgs.
+//
+// Block editing: Convert to.
+func (msgs Messages) FConvertBlockTo() string {
+	return Catalog.Format(msgs.locale, "fConvertBlockTo", nil)
+}
+
+// FDuplicateBlock says "复制一份"
+// in the language the app shows.
+//
+// Block editing: Duplicate.
+func FDuplicateBlock() string { return In(i18n.Locale()).FDuplicateBlock() }
+
+// FDuplicateBlock says "复制一份"
+// in the language of msgs.
+//
+// Block editing: Duplicate.
+func (msgs Messages) FDuplicateBlock() string {
+	return Catalog.Format(msgs.locale, "fDuplicateBlock", nil)
+}
+
+// FDeleteBlock says "删除"
+// in the language the app shows.
+//
+// Block editing: Delete.
+func FDeleteBlock() string { return In(i18n.Locale()).FDeleteBlock() }
+
+// FDeleteBlock says "删除"
+// in the language of msgs.
+//
+// Block editing: Delete.
+func (msgs Messages) FDeleteBlock() string {
+	return Catalog.Format(msgs.locale, "fDeleteBlock", nil)
+}
+
+// FMoveBlockUp says "上移"
+// in the language the app shows.
+//
+// Block editing: Move up.
+func FMoveBlockUp() string { return In(i18n.Locale()).FMoveBlockUp() }
+
+// FMoveBlockUp says "上移"
+// in the language of msgs.
+//
+// Block editing: Move up.
+func (msgs Messages) FMoveBlockUp() string {
+	return Catalog.Format(msgs.locale, "fMoveBlockUp", nil)
+}
+
+// FMoveBlockDown says "下移"
+// in the language the app shows.
+//
+// Block editing: Move down.
+func FMoveBlockDown() string { return In(i18n.Locale()).FMoveBlockDown() }
+
+// FMoveBlockDown says "下移"
+// in the language of msgs.
+//
+// Block editing: Move down.
+func (msgs Messages) FMoveBlockDown() string {
+	return Catalog.Format(msgs.locale, "fMoveBlockDown", nil)
+}

@@ -406,5 +406,13 @@
   "fReplacedOnLine": "Match replaced on line {line}",
   "fReplacements": "Replacements: {count}",
   "bStatusFileReadOnly": "The file is read-only. Your changes are kept in the draft.",
-  "bReadOnlyTarget": "“{name}” is read-only. Choose another location."
+  "bReadOnlyTarget": "“{name}” is read-only. Choose another location.",
+  "fBlockActions": "Block actions",
+  "fBlockGrip": "Select or drag block",
+  "fInsertParagraphBelow": "Insert paragraph below",
+  "fConvertBlockTo": "Convert to",
+  "fDuplicateBlock": "Duplicate",
+  "fDeleteBlock": "Delete",
+  "fMoveBlockUp": "Move up",
+  "fMoveBlockDown": "Move down"
 }

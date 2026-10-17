@@ -2433,6 +2433,54 @@ export interface Messages {
    * `「{name}」是只读文件，请选择其他位置`
    */
   bReadOnlyTarget(name: string): string;
+  /**
+   * Block editing: Block actions.
+   *
+   * `块操作`
+   */
+  fBlockActions(): string;
+  /**
+   * Block editing: Select or drag block.
+   *
+   * `选择或拖动块`
+   */
+  fBlockGrip(): string;
+  /**
+   * Block editing: Insert paragraph below.
+   *
+   * `在下方插入段落`
+   */
+  fInsertParagraphBelow(): string;
+  /**
+   * Block editing: Convert to.
+   *
+   * `转换为`
+   */
+  fConvertBlockTo(): string;
+  /**
+   * Block editing: Duplicate.
+   *
+   * `复制一份`
+   */
+  fDuplicateBlock(): string;
+  /**
+   * Block editing: Delete.
+   *
+   * `删除`
+   */
+  fDeleteBlock(): string;
+  /**
+   * Block editing: Move up.
+   *
+   * `上移`
+   */
+  fMoveBlockUp(): string;
+  /**
+   * Block editing: Move down.
+   *
+   * `下移`
+   */
+  fMoveBlockDown(): string;
 }
 
 const catalog = createCatalog<Messages>({
@@ -2848,6 +2896,14 @@ const catalog = createCatalog<Messages>({
     "fReplacements": ["count"],
     "bStatusFileReadOnly": [],
     "bReadOnlyTarget": ["name"],
+    "fBlockActions": [],
+    "fBlockGrip": [],
+    "fInsertParagraphBelow": [],
+    "fConvertBlockTo": [],
+    "fDuplicateBlock": [],
+    "fDeleteBlock": [],
+    "fMoveBlockUp": [],
+    "fMoveBlockDown": [],
   },
   messages: {
     "zh-Hans": {
@@ -3256,6 +3312,14 @@ const catalog = createCatalog<Messages>({
       "fReplacements": "替换次数：{count}",
       "bStatusFileReadOnly": "文件为只读，修改保留在草稿中",
       "bReadOnlyTarget": "「{name}」是只读文件，请选择其他位置",
+      "fBlockActions": "块操作",
+      "fBlockGrip": "选择或拖动块",
+      "fInsertParagraphBelow": "在下方插入段落",
+      "fConvertBlockTo": "转换为",
+      "fDuplicateBlock": "复制一份",
+      "fDeleteBlock": "删除",
+      "fMoveBlockUp": "上移",
+      "fMoveBlockDown": "下移",
     },
     "en": {
       "fPaper": "Paper",
@@ -3663,6 +3727,14 @@ const catalog = createCatalog<Messages>({
       "fReplacements": "Replacements: {count}",
       "bStatusFileReadOnly": "The file is read-only. Your changes are kept in the draft.",
       "bReadOnlyTarget": "“{name}” is read-only. Choose another location.",
+      "fBlockActions": "Block actions",
+      "fBlockGrip": "Select or drag block",
+      "fInsertParagraphBelow": "Insert paragraph below",
+      "fConvertBlockTo": "Convert to",
+      "fDuplicateBlock": "Duplicate",
+      "fDeleteBlock": "Delete",
+      "fMoveBlockUp": "Move up",
+      "fMoveBlockDown": "Move down",
     },
   },
 });

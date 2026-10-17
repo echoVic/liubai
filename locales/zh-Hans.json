@@ -1910,5 +1910,9 @@
   "fDeleteImage": "删除图片",
   "@fDeleteImage": {
     "description": "Image editing control: Delete image."
-  }
+  },
+  "fFormula": "公式",
+  "@fFormula": {"description": "Formula insertion button, tooltip and math block menu item."},
+  "fFormulaUnsupported": "公式含有不支持或不受信任的命令。",
+  "@fFormulaUnsupported": {"description": "Tooltip for a formula whose commands KaTeX cannot safely render."}
 }

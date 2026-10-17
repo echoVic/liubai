@@ -2,6 +2,7 @@ import {imageAltText} from './images';
 import {messages} from './i18n';
 import MarkdownIt from 'markdown-it';
 import {highlightPlugin} from './marks';
+import {mathPlugin,fillMath,type MathOutput} from './math';
 import DOMPurify from 'dompurify';
 import footnote from 'markdown-it-footnote';
 import type {PluginSimple} from 'markdown-it';
@@ -10,6 +11,7 @@ export interface MarkdownOptions {
  resolve: (destination:string)=>string|undefined|Promise<string|undefined>;
  external: 'load'|'link';
  frontMatter?: 'show'|'hide';
+ mathOutput?:MathOutput;
 }
 
 export interface MarkdownRender {
@@ -170,7 +172,7 @@ const githubAlerts:PluginSimple=md=>{
  });
 };
 
-parser.use(highlightPlugin).use(footnote).use(lineMapPlugin).use(taskPlugin).use(semanticClassPlugin).use(githubAlerts);
+parser.use(highlightPlugin).use(mathPlugin).use(footnote).use(lineMapPlugin).use(taskPlugin).use(semanticClassPlugin).use(githubAlerts);
 const imageRule:NonNullable<(typeof parser.renderer.rules)['image']>=(tokens,index,options,env,self)=>{
  const token=tokens[index];
  const source=token.attrGet('src')||'';
@@ -207,7 +209,7 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
  const root=document.createElement('article');
  root.className='markdown-document';
  const meta=splitFrontMatter(content);
- const env={lineOffset:meta.lines};
+ const env:{lineOffset:number;math?:{source:string;display:boolean}[];mathID?:string}={lineOffset:meta.lines};
  const tokens=parser.parse(meta.body,env);
  const authorHTML=tokens.some(t=>(t.type==='html_block'&&!t.meta?.liubai)||(t.children||[]).some(c=>c.type==='html_inline'&&!c.meta?.liubai));
  const rendered=parser.renderer.render(tokens,parser.options,env);
@@ -224,6 +226,11 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
  for(const image of template.content.querySelectorAll<HTMLImageElement>('img[src]')){
   if(!image.hasAttribute('data-image-source'))image.dataset.imageSource=parser.normalizeLink(image.getAttribute('src')||'');
   image.removeAttribute('src');
+ }
+ // Only unguessable, parser-generated placeholders receive trusted KaTeX output, after author HTML has been sanitized.
+ for(const [index,formula] of (env.math||[]).entries()){
+  const element=template.content.querySelector<HTMLElement>('.md-math-'+env.mathID+'-'+index);if(!element)continue;
+  element.classList.remove('md-math-'+env.mathID+'-'+index);fillMath(element,formula.source,formula.display,options.mathOutput);
  }
  root.append(template.content);
  let active=true;

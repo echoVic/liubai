@@ -11,11 +11,13 @@ import { GFM } from '@lezer/markdown';
 import type { SyntaxNode } from '@lezer/common';
 import {TableWidget,tableComposition} from './table-ui';
 import {ImageWidget,imageSelection,imageSelected} from './image-ui';
-import {imageRanges,tableRanges,mapImageRanges} from './images';
+import {imageRanges,tableRanges,mathRanges,mapImageRanges} from './images';
 import type { Doc } from './types';
 import {createBlockUI,blockRichMode,type BlockUIOptions} from './block-ui';
 import {createSlashMenu} from './slash';
 import {Highlight,inlineTagPairs,tagHosts} from './marks';
+import {MathSyntax} from './math';
+import {MathWidget} from './math-ui';
 import {indentList,safeLink,localDocumentLink,frontMatterRange} from './editing';
 import {htmlToMarkdown,pasteText,replacePasteImage,type PasteImage} from './paste';
 
@@ -80,9 +82,13 @@ export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promis
   if(meta&&table.from<meta.to)continue;
   decorations.push({...table,dec:Decoration.replace({widget:new TableWidget(state.sliceDoc(table.from,table.to),table.from,composing,state.readOnly),block:true})});
  }
+ for(const formula of mathRanges(state)){
+  if(meta&&formula.from<meta.to||touched(formula.from,formula.to))continue;
+  decorations.push({...formula,dec:Decoration.replace({widget:new MathWidget(formula.source,true,formula.from,composing),block:true})});
+ }
  const builder=new RangeSetBuilder<Decoration>();for(const d of decorations.sort((a,b)=>a.from-b.from))builder.add(d.from,d.to,d.dec);return builder.finish();
 }
-// Ordinary single-line prose edits cannot change image or table widgets. Map their ranges rather than rebuilding every widget in a long document.
+// Ordinary single-line prose edits cannot change image, table or math widgets. Map their ranges rather than rebuilding every widget in a long document.
 function proseEdit(tr:Transaction){
  if(!tr.docChanged||tr.reconfigured||tr.startState.field(composing)||tr.startState.readOnly!==tr.state.readOnly||tr.startState.field(imageSelection,false)!==tr.state.field(imageSelection,false)||syntaxTree(tr.startState).length!==tr.startState.doc.length||syntaxTree(tr.state).length!==tr.state.doc.length)return false;
  const paragraph=(state:EditorState,pos:number)=>{let node:SyntaxNode|null=syntaxTree(state).resolveInner(pos,1);while(node&&node.name!=='Paragraph')node=node.parent;return node};
@@ -125,6 +131,11 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
     if(pair.closeFrom>pair.openTo)decorations.push({from:pair.openTo,to:pair.closeFrom,dec:Decoration.mark({class:pair.tag==='u'?'md-underline':'md-'+pair.tag})});
     if(!active(pair.from,pair.to))for(const [from,to] of [[pair.from,pair.openTo],[pair.closeFrom,pair.to]])decorations.push({from,to,dec:Decoration.replace({})});
    }
+   if(name==='MathBlock'||name==='MathFence')return false;
+   if(name==='InlineMath'){
+    if(!touched(n.from,n.to)&&!marked.has(n.from+':math')){marked.add(n.from+':math');decorations.push({from:n.from,to:n.to,dec:Decoration.replace({widget:new MathWidget(state.sliceDoc(n.from+1,n.to-1),false,n.from,composing)})})}
+    return false;
+   }
    if(name==='Highlight'){
     const marks=n.node.getChildren('HighlightMark');if(marks.length===2)decorations.push({from:marks[0].to,to:marks[1].from,dec:Decoration.mark({class:'md-highlight'})});
     if(!active(n.from,n.to))for(const mark of marks)decorations.push({from:mark.from,to:mark.to,dec:Decoration.replace({})});
@@ -159,7 +170,7 @@ export function richExtensions(resolve:(dest:string)=>Promise<string>):Extension
 export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions){
  const state=EditorState.create({doc:doc.content,selection:{anchor:Math.min(doc.position.anchor||0,doc.content.length),head:Math.min(doc.position.head||0,doc.content.length)},extensions:[
   tableComposition.of((view,active,commit)=>{view.dispatch({effects:setComposing.of(active)});commit?.();onCompose(active)}),
-  history(),composing,focusField,focusDecorations,createSlashMenu(composing,focusField,()=>blocks?.action('image')),blocks?createBlockUI(composing,focusField,blocks):[],markdown({base:markdownLanguage,codeLanguages:languages,extensions:[GFM,Highlight]}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),
+  history(),composing,focusField,focusDecorations,createSlashMenu(composing,focusField,()=>blocks?.action('image')),blocks?createBlockUI(composing,focusField,blocks):[],markdown({base:markdownLanguage,codeLanguages:languages,extensions:[GFM,Highlight,MathSyntax]}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),
   EditorView.editorAttributes.of(view=>({class:view.state.field(focusField)?'cm-focus-on':''})),
   // ⌘U underlines like the toolbar, so CodeMirror's undo-selection binding is dropped.
   keymap.of([...(blocks?[{key:'Alt-Shift-ArrowUp',run:()=>{blocks.action('up');return true}},{key:'Alt-Shift-ArrowDown',run:()=>{blocks.action('down');return true}},{key:'Mod-/',run:()=>{blocks.action('menu');return true}}]:[]),...([1,-1] as const).map(direction=>({key:direction>0?'Tab':'Shift-Tab',run:(view:EditorView)=>{if(view.composing||view.state.field(composing)||view.state.readOnly)return false;const spec=indentList(view.state,direction);if(!spec)return false;view.dispatch(spec);return true}})),...markdownKeymap,...historyKeymap.filter(binding=>binding.key!=='Mod-u'),...searchKeymap,...defaultKeymap,indentWithTab]),

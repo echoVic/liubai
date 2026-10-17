@@ -124,6 +124,11 @@ export function indentList(state:EditorState,direction:1|-1):TransactionSpec|nul
  const set=state.changes(changes);
  return {changes:set,selection:state.selection.map(set,1),userEvent:'input.indent'};
 }
+export function insertMath(state:EditorState,inline=false):TransactionSpec {
+ const {from,to}=state.selection.main,selected=state.sliceDoc(from,to),display=!inline&&from===to&&!state.doc.lineAt(from).text.trim();
+ const insert=selected?'$'+selected+'$':display?'$$\n\n$$':'$$',start=from+(display?3:1);
+ return {changes:{from,to,insert},selection:{anchor:start,head:start+selected.length},userEvent:'input.format',annotations:isolateHistory.of('full')};
+}
 export function codeBlock(state:EditorState):TransactionSpec {
  const {from,to}=state.selection.main;const selected=state.sliceDoc(from,to);
  const fence='`'.repeat(Math.max(3,...[...selected.matchAll(/`+/g)].map(m=>m[0].length+1)));

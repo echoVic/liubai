@@ -36,7 +36,8 @@ def main():
     print(f"Evidence: {ARTIFACTS}", flush=True)
     esbuild = str(PROJECT / "node_modules/.bin/esbuild")
     run(esbuild, "scripts/pdf-fixture.ts", "--bundle", "--platform=browser", "--format=iife", f"--outfile={ARTIFACTS / 'fixture.js'}")
-    run(esbuild, "src/style.css", "--bundle", f"--outfile={ARTIFACTS / 'style.css'}")
+    # The stylesheet bundles KaTeX, whose fonts need the same loaders as scripts/build.mjs.
+    run(esbuild, "src/style.css", "--bundle", "--loader:.woff2=file", "--loader:.woff=file", "--loader:.ttf=file", "--asset-names=fonts/[name]", f"--outfile={ARTIFACTS / 'style.css'}")
     html = ARTIFACTS / "page.html"
     html.write_text(
         '<!doctype html><html><head><meta charset="utf-8"><title>loading</title>'

@@ -1,9 +1,10 @@
 import {messages} from './i18n';
+import type {MathOutput} from './math';
 import {normalizeImageDestination,renderMarkdown,headingSlug} from './markdown';
 export interface Delivery {title:string;content:string;images:Record<string,string>;missing:string[];external:number}
-export function renderDelivery(data:Delivery){
+export function renderDelivery(data:Delivery,mathOutput:MathOutput='mathml'){
  const images=new Map(Object.entries(data.images).map(([src,value])=>[normalizeImageDestination(src),value]));
- const {root}=renderMarkdown(data.content,{resolve:destination=>images.get(destination),external:'link',frontMatter:'hide'});
+ const {root}=renderMarkdown(data.content,{resolve:destination=>images.get(destination),external:'link',frontMatter:'hide',mathOutput});
  root.className='delivery-document';
  const used=new Map<string,number>();
  for(const heading of root.querySelectorAll('h1,h2,h3,h4,h5,h6'))heading.id=headingSlug(heading.textContent||'',used);

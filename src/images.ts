@@ -8,11 +8,12 @@ import {blockAt,deleteBlocks} from './blocks';
 
 export interface ImageModel {src:string;alt:string;title?:string;width?:number;height?:number;align:'left'|'center'|'right'}
 export type ImageAction='resize'|'left'|'center'|'right'|'original'|'alt'|'delete';
+export interface MathRange {from:number;to:number;source:string}
 export interface ImageRange {from:number;to:number;raw:string;image:ImageModel;quotes:number;listEms:number}
 const parser=new MarkdownIt(),decode=parser.utils.unescapeAll;
 const escapeHTML=(s:string)=>s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const escapeMarkdown=(s:string)=>s.replace(/\\/g,'\\\\').replace(/[\[\]*_`!~]/g,'\\$&').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\r\n]/g,' ');
-export function imageAltText(tokens:Token[]):string{return tokens.map(token=>token.type==='image'?imageAltText(token.children||[]):['text','text_special','code_inline','html_inline'].includes(token.type)?token.content:['softbreak','hardbreak'].includes(token.type)?'\n':'').join('')}
+export function imageAltText(tokens:Token[]):string{return tokens.map(token=>token.type==='image'?imageAltText(token.children||[]):token.type==='math_inline'?'$'+token.content+'$':['text','text_special','code_inline','html_inline'].includes(token.type)?token.content:['softbreak','hardbreak'].includes(token.type)?'\n':'').join('')}
 const parsed=new Map<string,ImageModel|null>();
 export function parseImage(raw:string):ImageModel|null{
  if(!/^\s*(?:!\[|<img\b|<p\b)/i.test(raw))return null;
@@ -55,13 +56,14 @@ export function serializeImage(image:ImageModel):string{
  const img='<img src="'+escapeHTML(src)+'" alt="'+escapeHTML(alt)+'"'+(title!==undefined?' title="'+escapeHTML(title)+'"':'')+(width!==undefined?' width="'+Math.round(width)+'"':'')+(height!==undefined?' height="'+height+'"':'')+'>';
  return align==='left'?img:'<p align="'+align+'">'+img+'</p>';
 }
-const ranges=new WeakMap<EditorState,{tree:Tree;images:ImageRange[];tables:{from:number;to:number}[]}>();
+const ranges=new WeakMap<EditorState,{tree:Tree;images:ImageRange[];tables:{from:number;to:number}[];math:MathRange[]}>();
 export function imageRanges(state:EditorState):ImageRange[]{
  const tree=syntaxTree(state),cached=ranges.get(state);if(cached?.tree===tree)return cached.images;
- const out:ImageRange[]=[],tables:{from:number;to:number}[]=[];
- // Images and tables share one tree walk; ordinary prose never goes through the image parser.
+ const out:ImageRange[]=[],tables:{from:number;to:number}[]=[],math:MathRange[]=[];
+ // Images, tables and display math share one tree walk; ordinary prose never goes through the image parser.
  tree.iterate({enter:n=>{
   if(['Document','BulletList','OrderedList','ListItem','Blockquote'].includes(n.name))return;
+  if(n.name==='MathBlock'||n.name==='MathFence'){math.push({from:n.from,to:n.to,source:n.node.getChildren('MathText').map(t=>state.sliceDoc(t.from,t.to)).join('\n').trim()});return false}
   if(n.name==='Table'){tables.push({from:n.from,to:n.to});return false}
   if(!['Paragraph','Task','HTMLBlock'].includes(n.name))return false;
   const node=n.node;let candidates:Set<number>|undefined;
@@ -79,15 +81,16 @@ export function imageRanges(state:EditorState):ImageRange[]{
    out.push({from:start+prefix.length,to:line.to-(text.length-prefix.length-raw.length),raw,image,quotes,listEms});
   }
   return false;
- }});ranges.set(state,{tree,images:out,tables});return out;
+ }});ranges.set(state,{tree,images:out,tables,math});return out;
 }
 // Called only when an edit is confined to unchanged prose syntax; all widget source remains byte-identical.
 export function mapImageRanges(before:EditorState,after:EditorState,changes:ChangeDesc){
  const cached=ranges.get(before);if(!cached||cached.tree!==syntaxTree(before))return false;
  const map=(range:{from:number;to:number})=>({from:changes.mapPos(range.from,1),to:changes.mapPos(range.to,-1)});
- ranges.set(after,{tree:syntaxTree(after),images:cached.images.map(image=>({...image,...map(image)})),tables:cached.tables.map(map)});return true;
+ ranges.set(after,{tree:syntaxTree(after),images:cached.images.map(image=>({...image,...map(image)})),tables:cached.tables.map(map),math:cached.math.map(formula=>({...formula,...map(formula)}))});return true;
 }
 export function clampImageWidth(width:number,column:number){const max=Math.max(1,Math.floor(column));return Math.min(max,Math.max(Math.min(48,max),Math.round(width)))}
+export function mathRanges(state:EditorState){imageRanges(state);return ranges.get(state)!.math}
 export function tableRanges(state:EditorState){imageRanges(state);return ranges.get(state)!.tables}
 function deleteImage(state:EditorState,range:{from:number;to:number}):TransactionSpec{
  const doc=state.doc,line=doc.lineAt(range.from),block=blockAt(state,range.from);

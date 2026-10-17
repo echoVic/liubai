@@ -1,4 +1,4 @@
-import {Facet,EditorState,StateField} from '@codemirror/state';
+import {Facet,EditorState,StateField,type TransactionSpec} from '@codemirror/state';
 import {EditorView,WidgetType} from '@codemirror/view';
 import {syntaxTree} from '@codemirror/language';
 import type {SyntaxNode} from '@lezer/common';
@@ -6,7 +6,7 @@ import {undo,redo,isolateHistory} from '@codemirror/commands';
 import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
 import {GFM} from '@lezer/markdown';
 import {Highlight} from './marks';
-import {wrapSelection,clearFormatting,inlineMarkers,editTable,parseTable,type TableAction} from './editing';
+import {wrapSelection,insertMath,clearFormatting,inlineMarkers,editTable,parseTable,type TableAction} from './editing';
 import {messages,activeLocale} from './i18n';
 import {attachMenu} from './menu';
 
@@ -118,14 +118,14 @@ class TableDOM{
   cell.addEventListener('paste',e=>{if(this.blocked())return;e.preventDefault();document.execCommand('insertText',false,(e.clipboardData?.getData('text/plain')||'').replace(/\r?\n/g,' '))});
   cell.addEventListener('keydown',e=>this.key(e));
  }
- private commit(cell:HTMLElement){
+ private commit(cell:HTMLElement,annotations?:TransactionSpec['annotations']){
   if(this.blocked()||!cell.isConnected)return;
   const value=cell.textContent||'',row=Number(cell.dataset.row),column=Number(cell.dataset.column);
   if(value===(parseTable(this.raw).rows[row]?.[column]||''))return;
   this.committing=true;
   try{
    const spec=editTable(this.view.state,{from:this.from,to:this.from+this.raw.length},row,column,'cell',value);
-   if(this.fresh)spec.annotations=isolateHistory.of('before');
+   if(annotations)spec.annotations=annotations;else if(this.fresh)spec.annotations=isolateHistory.of('before');
    this.view.dispatch(spec);this.fresh=false;
   }finally{this.committing=false}
  }
@@ -154,10 +154,10 @@ class TableDOM{
   const text=cell.textContent||'',start=before.toString().length,end=start+r.toString().length;
   const state=EditorState.create({doc:text,selection:{anchor:start,head:end},extensions:markdown({base:markdownLanguage,extensions:[GFM,Highlight]})});
   const marks=id==='link'?['[',']()']:inlineMarkers[id];
-  const spec=id==='clearFormatting'?clearFormatting(state):marks?wrapSelection(state,marks[0],marks[1]):null;if(!spec)return;
+  const spec=id==='math'?insertMath(state,true):id==='clearFormatting'?clearFormatting(state):marks?wrapSelection(state,marks[0],marks[1]):null;if(!spec)return;
   const next=state.update(spec).state;cell.textContent=next.doc.toString();
   const node=cell.firstChild||cell.appendChild(document.createTextNode('')),range=document.createRange();range.setStart(node,next.selection.main.from);range.setEnd(node,next.selection.main.to);sel.removeAllRanges();sel.addRange(range);
-  this.commit(cell);
+  this.commit(cell,spec.annotations);
  }
  private key(e:KeyboardEvent){
   if(e.isComposing||this.blocked())return;

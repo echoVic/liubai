@@ -8,7 +8,7 @@ import {focusTableCell} from './table-ui';
 import {messages} from './i18n';
 import {messagesIn,type Messages} from '../locales';
 
-export type SlashItemID='paragraph'|'h1'|'h2'|'h3'|'bullet'|'ordered'|'task'|'quote'|'code'|'table'|'image'|'rule'|'note';
+export type SlashItemID='paragraph'|'h1'|'h2'|'h3'|'bullet'|'ordered'|'task'|'quote'|'code'|'math'|'table'|'image'|'rule'|'note';
 interface SlashItem {id:SlashItemID;label:keyof Messages;keywords:string}
 const items:SlashItem[]=[
  {id:'paragraph',label:'fBody',keywords:'zhengwen zw body paragraph text'},
@@ -20,6 +20,7 @@ const items:SlashItem[]=[
  {id:'task',label:'fTaskList',keywords:'renwuliebiao rwlb rw task todo checklist'},
  {id:'quote',label:'fBlockquote',keywords:'yinyong yy quote blockquote'},
  {id:'code',label:'fCodeBlock',keywords:'daimakuai dmk dm code fenced codeblock'},
+ {id:'math',label:'fFormula',keywords:'gongshi gs math formula latex katex tex'},
  {id:'table',label:'fTable',keywords:'biaoge bg table'},
  {id:'image',label:'fImage',keywords:'tupian tp image picture photo'},
  {id:'rule',label:'fHorizontalRule',keywords:'fengexian fgx horizontal rule divider separator'},
@@ -79,10 +80,11 @@ export function applySlashItem(state:EditorState,id:SlashItemID):TransactionSpec
  if(id==='paragraph'||/^h[123]$/.test(id))insert=empty.update(setHeading(empty,id==='paragraph'?0:Number(id[1]))).state.doc.toString();
  else if(['bullet','ordered','task','quote'].includes(id))insert=empty.update(blockFormat(empty,id as 'bullet'|'ordered'|'task'|'quote',true)).state.doc.toString();
  else if(id==='code')insert='```\n\n```';
+ else if(id==='math')insert='$$\n\n$$';
  else if(id==='table')return {...insertTable(state,{from:line.from,to:line.to},false),userEvent:'input.slash'};
  else if(id==='rule')insert='---\n\n';
  else if(id==='note')insert='> [!NOTE]\n> ';
- cursor=id==='code'?4:insert.length;
+ cursor=id==='code'?4:id==='math'?3:insert.length;
  return {changes:{from:line.from,to:line.to,insert},selection:{anchor:line.from+cursor},userEvent:'input.slash',annotations:isolateHistory.of('full'),scrollIntoView:true};
 }
 

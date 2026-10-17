@@ -440,5 +440,7 @@
   "fImageAlignRight": "Align right",
   "fImageOriginalSize": "Original size",
   "fImageAlt": "Alt text",
-  "fDeleteImage": "Delete image"
+  "fDeleteImage": "Delete image",
+  "fFormula": "Formula",
+  "fFormulaUnsupported": "The formula contains an unsupported or untrusted command."
 }

@@ -5,11 +5,11 @@ import type {SyntaxNode} from '@lezer/common';
 import {frontMatterRange,blockFormat,setHeading,codeBlock} from './editing';
 
 export interface Block {from:number;to:number;kind:BlockType;depth:number;parent:number|null;children:number[]}
-export type BlockType='paragraph'|'heading'|'quote'|'code'|'table'|'rule'|'html'|'listItem';
+export type BlockType='paragraph'|'heading'|'quote'|'code'|'math'|'table'|'rule'|'html'|'listItem';
 export type BlockConversion='paragraph'|'h1'|'h2'|'h3'|'bullet'|'ordered'|'task'|'quote'|'code';
 type Range={from:number;to:number};
 const lists=new WeakMap<Block,string>(),cache=new WeakMap<EditorState,Block[]>(),units=new WeakMap<EditorState,Block[]>();
-const kind=(name:string):BlockType|null=>/^ATXHeading|^SetextHeading/.test(name)?'heading':({Paragraph:'paragraph',Blockquote:'quote',FencedCode:'code',CodeBlock:'code',Table:'table',HorizontalRule:'rule',HTMLBlock:'html',CommentBlock:'html',ProcessingInstructionBlock:'html',ListItem:'listItem'} as Record<string,BlockType>)[name]||null;
+const kind=(name:string):BlockType|null=>/^ATXHeading|^SetextHeading/.test(name)?'heading':({Paragraph:'paragraph',Blockquote:'quote',FencedCode:'code',MathFence:'code',MathBlock:'math',CodeBlock:'code',Table:'table',HorizontalRule:'rule',HTMLBlock:'html',CommentBlock:'html',ProcessingInstructionBlock:'html',ListItem:'listItem'} as Record<string,BlockType>)[name]||null;
 function collect(state:EditorState,from:number,to:number,full=false):Block[]{
  const tree=full?(ensureSyntaxTree(state,state.doc.length,60_000)||syntaxTree(state)):(ensureSyntaxTree(state,to,50)||syntaxTree(state)),meta=frontMatterRange(state),out:Block[]=[],indices=new Map<number,number>();
  tree.iterate({from,to,enter(ref){
@@ -101,6 +101,7 @@ export function moveBlocksTo(state:EditorState,range:Range,target:Block,place:'b
 function bodyOf(text:string,b:Block){
  if(b.kind==='heading')return text.replace(/^ {0,3}#{1,6}(?:[ \t]+|$)/,'').replace(/[ \t]+#+[ \t]*$/,'').replace(/\n {0,3}(?:=+|-+)[ \t]*$/,'');
  if(b.kind==='quote')return text.replace(/^ {0,3}>[ \t]?/gm,'');
+ if(b.kind==='math')return text.trim().slice(2,-2).trim();
  if(b.kind==='code'){
   const fence=/^ {0,3}(`{3,}|~{3,})[^\n]*\n/.exec(text);
   if(fence)return text.slice(fence[0].length).replace(new RegExp('\\n {0,3}'+fence[1][0]+'{'+fence[1].length+',}[ \\t]*$'),'');

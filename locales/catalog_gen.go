@@ -6321,3 +6321,31 @@ func FDeleteImage() string { return In(i18n.Locale()).FDeleteImage() }
 func (msgs Messages) FDeleteImage() string {
 	return Catalog.Format(msgs.locale, "fDeleteImage", nil)
 }
+
+// FFormula says "公式"
+// in the language the app shows.
+//
+// Formula insertion button, tooltip and math block menu item.
+func FFormula() string { return In(i18n.Locale()).FFormula() }
+
+// FFormula says "公式"
+// in the language of msgs.
+//
+// Formula insertion button, tooltip and math block menu item.
+func (msgs Messages) FFormula() string {
+	return Catalog.Format(msgs.locale, "fFormula", nil)
+}
+
+// FFormulaUnsupported says "公式含有不支持或不受信任的命令。"
+// in the language the app shows.
+//
+// Tooltip for a formula whose commands KaTeX cannot safely render.
+func FFormulaUnsupported() string { return In(i18n.Locale()).FFormulaUnsupported() }
+
+// FFormulaUnsupported says "公式含有不支持或不受信任的命令。"
+// in the language of msgs.
+//
+// Tooltip for a formula whose commands KaTeX cannot safely render.
+func (msgs Messages) FFormulaUnsupported() string {
+	return Catalog.Format(msgs.locale, "fFormulaUnsupported", nil)
+}

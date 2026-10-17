@@ -361,5 +361,23 @@ export async function runPreviewChecks(): Promise<string> {
  equal(sizedImage.getAttribute('width'),'300','image width survives');equal(sizedImage.closest('p')?.getAttribute('align'),'center','alignment survives');
  assert(!renderMarkdown('<img src="javascript:alert(1)">',{resolve:()=>undefined,external:'load'}).root.querySelector('[data-image-source^="javascript"]'),'scripts stay out of image sources');
  await sizedView.ready;
+ // KaTeX HTML must be installed after sanitizing: author HTML never gains its style/class privileges.
+ const formulaSource='$x^2$\n\n$$\n\\int_0^1 x\\,dx\n$$\n\n```math\ny+1\n```\n\n$\\frac{$\n\n$5 和 $10\n\n<span style="position:fixed" class="katex forged">author</span><script>window.__mathXSS=1</script>';
+ const math=renderMarkdown(formulaSource,{resolve:()=>undefined,external:'load'}).root;
+ equal(math.querySelectorAll('.katex').length,3,'reader formulas lost to sanitizer');
+ assert(math.querySelector('.katex [style]'),'trusted KaTeX layout styles are missing');
+ equal(math.querySelector('.math-error')?.textContent,'\\frac{','invalid math source fallback');
+ assert(math.querySelector('.math-error')?.getAttribute('title')?.includes('KaTeX'),'math error lacks diagnostic');
+ assert(math.textContent?.includes('$5 和 $10'),'currency became math');
+ const author=[...math.querySelectorAll('span')].find(el=>el.textContent==='author');
+ assert(author&&!author.hasAttribute('style')&&!author.classList.contains('katex'),'author HTML gained KaTeX privileges');
+ assert(!math.querySelector('script')&&!(window as any).__mathXSS,'math placeholders bypassed author sanitizing');
+ equal(math.querySelector<HTMLElement>('.math-display')?.dataset.line,'2','display formula line map');
+ for(const output of ['mathml','htmlAndMathml'] as const){
+  const result=renderDelivery({title:'math',content:formulaSource,images:{},missing:[],external:0},output);
+  equal(result.querySelectorAll('math').length,3,'delivery math missing');
+  if(output==='mathml'){assert(!result.querySelector('.katex-html'),'portable delivery depends on KaTeX CSS');assert(!result.innerHTML.includes('KaTeX_Main'),'portable delivery depends on fonts')}
+  else assert(result.querySelector('.katex-html'),'PDF must use the same HTML as the reader');
+ }
  return 'shared renderer and delivery DOM checks passed';
 }

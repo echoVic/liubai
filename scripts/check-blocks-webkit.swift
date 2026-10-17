@@ -69,6 +69,11 @@ Task { @MainActor in
   report["imageResizeBadge"] = (await js("const h=document.querySelector('.image-resize-handle');if(!h||h.hidden)return false;const b=h.getBoundingClientRect(),img=document.querySelector('.inline-image img');window.imageExpectedWidth=Math.round(img.getBoundingClientRect().width-61);h.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true,clientX:b.x+5,clientY:b.y+5,pointerId:2,pointerType:'mouse',button:0,buttons:1}));window.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,cancelable:true,clientX:b.x-56,clientY:b.y+5,pointerId:2,pointerType:'mouse',buttons:1}));const badge=document.querySelector('.image-width-badge'),shown=!badge.hidden&&badge.textContent===window.imageExpectedWidth+' px';window.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,cancelable:true,clientX:b.x-56,clientY:b.y+5,pointerId:2,pointerType:'mouse',button:0}));return shown") as? Bool) ?? false
   await wait(1500)
   report["imageWidthWritten"] = (await js("const r=await fetch('/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'State',args:[]})});const text=(await r.json()).value.current.content;return text.includes('width=\"'+window.imageExpectedWidth+'\"')") as? Bool) ?? false
+  // KaTeX must render under the app CSP using a bundled woff2 face in WKWebView.
+  _ = await js("const c=document.querySelector('.cm-content');c.focus();document.execCommand('selectAll');document.execCommand('insertText',false,'公式前文。\\n\\n$x^2$\\n\\n$$y^2$$\\n\\n尾文。');return true")
+  await wait(700)
+  report["mathRendered"] = (await js("return document.querySelectorAll('.rendered-math .katex-html').length===2") as? Bool) ?? false
+  report["mathFontLoaded"] = (await js("await document.fonts.ready;await document.fonts.load('16px KaTeX_Main');return document.fonts.check('16px KaTeX_Main')&&[...document.fonts].some(f=>f.family.replace(/[\\\"']/g,'')==='KaTeX_Main'&&f.status==='loaded')") as? Bool) ?? false
   let data = try! JSONSerialization.data(withJSONObject: report, options: [.sortedKeys])
   FileHandle.standardOutput.write(data); FileHandle.standardOutput.write(Data("\n".utf8))
   exit(0)

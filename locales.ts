@@ -2637,6 +2637,18 @@ export interface Messages {
    * `删除图片`
    */
   fDeleteImage(): string;
+  /**
+   * Formula insertion button, tooltip and math block menu item.
+   *
+   * `公式`
+   */
+  fFormula(): string;
+  /**
+   * Tooltip for a formula whose commands KaTeX cannot safely render.
+   *
+   * `公式含有不支持或不受信任的命令。`
+   */
+  fFormulaUnsupported(): string;
 }
 
 const catalog = createCatalog<Messages>({
@@ -3086,6 +3098,8 @@ const catalog = createCatalog<Messages>({
     "fImageOriginalSize": [],
     "fImageAlt": [],
     "fDeleteImage": [],
+    "fFormula": [],
+    "fFormulaUnsupported": [],
   },
   messages: {
     "zh-Hans": {
@@ -3528,6 +3542,8 @@ const catalog = createCatalog<Messages>({
       "fImageOriginalSize": "原始大小",
       "fImageAlt": "说明文字",
       "fDeleteImage": "删除图片",
+      "fFormula": "公式",
+      "fFormulaUnsupported": "公式含有不支持或不受信任的命令。",
     },
     "en": {
       "fPaper": "Paper",
@@ -3969,6 +3985,8 @@ const catalog = createCatalog<Messages>({
       "fImageOriginalSize": "Original size",
       "fImageAlt": "Alt text",
       "fDeleteImage": "Delete image",
+      "fFormula": "Formula",
+      "fFormulaUnsupported": "The formula contains an unsupported or untrusted command.",
     },
   },
 });

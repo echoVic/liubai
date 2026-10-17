@@ -514,12 +514,6 @@ export interface Messages {
    */
   fInsertCodeBlock(): string;
   /**
-   * Interface text for Insert / Edit Table.
-   *
-   * `插入 / 编辑表格`
-   */
-  fInsertEditTable(): string;
-  /**
    * Interface text for Insert / Edit Link.
    *
    * `插入 / 编辑链接`
@@ -586,23 +580,11 @@ export interface Messages {
    */
   fTheDocumentChangedReopenTheEditingPanel(): string;
   /**
-   * Interface text for Item.
-   *
-   * `项目`
-   */
-  fItem(): string;
-  /**
    * Interface text for Note.
    *
    * `说明`
    */
   fNote(): string;
-  /**
-   * Interface text for Edit large tables in Markdown source..
-   *
-   * `大表格请在源码中编辑`
-   */
-  fEditLargeTablesInMarkdownSource(): string;
   /**
    * Interface text for Bold.
    *
@@ -729,12 +711,6 @@ export interface Messages {
    * `标记为已完成`
    */
   fMarkAsComplete(): string;
-  /**
-   * Interface text for Edit Table.
-   *
-   * `编辑表格`
-   */
-  fEditTable(): string;
   /**
    * Interface text for ⌘ / Ctrl-click to open the link.
    *
@@ -1323,36 +1299,6 @@ export interface Messages {
    * `应用链接`
    */
   fApplyLink(): string;
-  /**
-   * Interface text for Close Table Panel.
-   *
-   * `关闭表格面板`
-   */
-  fCloseTablePanel(): string;
-  /**
-   * Interface text for The first row is the header. Press Tab to move between cells. You can undo the entire change after applying it..
-   *
-   * `第一行是表头。用 Tab 切换单元格，应用后可撤销整次修改。`
-   */
-  fTheFirstRowIsTheHeaderPressTabTo(): string;
-  /**
-   * Interface text for Add Row.
-   *
-   * `增加一行`
-   */
-  fAddRow(): string;
-  /**
-   * Interface text for Add Column.
-   *
-   * `增加一列`
-   */
-  fAddColumn(): string;
-  /**
-   * Interface text for Apply Table.
-   *
-   * `应用表格`
-   */
-  fApplyTable(): string;
   /**
    * Interface text for Export This Page.
    *
@@ -2499,6 +2445,78 @@ export interface Messages {
    * `提示块`
    */
   fCallout(): string;
+  /**
+   * Table editing: Insert Table.
+   *
+   * `插入表格`
+   */
+  fInsertTable(): string;
+  /**
+   * Table editing: Table actions.
+   *
+   * `表格操作`
+   */
+  fTableActions(): string;
+  /**
+   * Table editing: Insert row above.
+   *
+   * `在上方插入行`
+   */
+  fInsertRowAbove(): string;
+  /**
+   * Table editing: Insert row below.
+   *
+   * `在下方插入行`
+   */
+  fInsertRowBelow(): string;
+  /**
+   * Table editing: Insert column left.
+   *
+   * `在左侧插入列`
+   */
+  fInsertColumnLeft(): string;
+  /**
+   * Table editing: Insert column right.
+   *
+   * `在右侧插入列`
+   */
+  fInsertColumnRight(): string;
+  /**
+   * Table editing: Delete row.
+   *
+   * `删除行`
+   */
+  fDeleteRow(): string;
+  /**
+   * Table editing: Delete column.
+   *
+   * `删除列`
+   */
+  fDeleteColumn(): string;
+  /**
+   * Table editing: Align column left.
+   *
+   * `左对齐`
+   */
+  fAlignColumnLeft(): string;
+  /**
+   * Table editing: Align column center.
+   *
+   * `居中`
+   */
+  fAlignColumnCenter(): string;
+  /**
+   * Table editing: Align column right.
+   *
+   * `右对齐`
+   */
+  fAlignColumnRight(): string;
+  /**
+   * Table editing: Delete table.
+   *
+   * `删除表格`
+   */
+  fDeleteTable(): string;
 }
 
 const catalog = createCatalog<Messages>({
@@ -2594,7 +2612,6 @@ const catalog = createCatalog<Messages>({
     "fInsertBlockquote": [],
     "fInsertTaskList": [],
     "fInsertCodeBlock": [],
-    "fInsertEditTable": [],
     "fInsertEditLink": [],
     "fBulletedList": [],
     "fNumberedList": [],
@@ -2606,9 +2623,7 @@ const catalog = createCatalog<Messages>({
     "fHeadingNotFound": [],
     "fThisTypeOfLinkIsNotSupported": [],
     "fTheDocumentChangedReopenTheEditingPanel": [],
-    "fItem": [],
     "fNote": [],
-    "fEditLargeTablesInMarkdownSource": [],
     "fBold": [],
     "fItalic": [],
     "fBlockquote": [],
@@ -2630,7 +2645,6 @@ const catalog = createCatalog<Messages>({
     "fATableNeedsAtLeastOneColumn": [],
     "fMarkAsIncomplete": [],
     "fMarkAsComplete": [],
-    "fEditTable": [],
     "fCtrlClickToOpenTheLink": [],
     "fStartWithASentence": [],
     "fDocumentText": [],
@@ -2729,11 +2743,6 @@ const catalog = createCatalog<Messages>({
     "fOpenLink": [],
     "fRemoveLink": [],
     "fApplyLink": [],
-    "fCloseTablePanel": [],
-    "fTheFirstRowIsTheHeaderPressTabTo": [],
-    "fAddRow": [],
-    "fAddColumn": [],
-    "fApplyTable": [],
     "fExportThisPage": [],
     "fCloseExportPanel": [],
     "fSaveMarkdown": [],
@@ -2925,6 +2934,18 @@ const catalog = createCatalog<Messages>({
     "fInsertBlock": [],
     "fHorizontalRule": [],
     "fCallout": [],
+    "fInsertTable": [],
+    "fTableActions": [],
+    "fInsertRowAbove": [],
+    "fInsertRowBelow": [],
+    "fInsertColumnLeft": [],
+    "fInsertColumnRight": [],
+    "fDeleteRow": [],
+    "fDeleteColumn": [],
+    "fAlignColumnLeft": [],
+    "fAlignColumnCenter": [],
+    "fAlignColumnRight": [],
+    "fDeleteTable": [],
   },
   messages: {
     "zh-Hans": {
@@ -3013,7 +3034,6 @@ const catalog = createCatalog<Messages>({
       "fInsertBlockquote": "插入引用",
       "fInsertTaskList": "插入任务列表",
       "fInsertCodeBlock": "插入代码块",
-      "fInsertEditTable": "插入 / 编辑表格",
       "fInsertEditLink": "插入 / 编辑链接",
       "fBulletedList": "无序列表",
       "fNumberedList": "有序列表",
@@ -3025,9 +3045,7 @@ const catalog = createCatalog<Messages>({
       "fHeadingNotFound": "没有找到这个标题",
       "fThisTypeOfLinkIsNotSupported": "不支持打开此类链接",
       "fTheDocumentChangedReopenTheEditingPanel": "文稿已变化，请重新打开编辑面板",
-      "fItem": "项目",
       "fNote": "说明",
-      "fEditLargeTablesInMarkdownSource": "大表格请在源码中编辑",
       "fBold": "加粗",
       "fItalic": "斜体",
       "fBlockquote": "引用",
@@ -3049,7 +3067,6 @@ const catalog = createCatalog<Messages>({
       "fATableNeedsAtLeastOneColumn": "表格至少需要一列",
       "fMarkAsIncomplete": "标记为未完成",
       "fMarkAsComplete": "标记为已完成",
-      "fEditTable": "编辑表格",
       "fCtrlClickToOpenTheLink": "⌘ / Ctrl 点击打开链接",
       "fStartWithASentence": "从一句话开始……",
       "fDocumentText": "文稿正文",
@@ -3148,11 +3165,6 @@ const catalog = createCatalog<Messages>({
       "fOpenLink": "打开链接",
       "fRemoveLink": "移除链接",
       "fApplyLink": "应用链接",
-      "fCloseTablePanel": "关闭表格面板",
-      "fTheFirstRowIsTheHeaderPressTabTo": "第一行是表头。用 Tab 切换单元格，应用后可撤销整次修改。",
-      "fAddRow": "增加一行",
-      "fAddColumn": "增加一列",
-      "fApplyTable": "应用表格",
       "fExportThisPage": "导出这一页",
       "fCloseExportPanel": "关闭导出面板",
       "fSaveMarkdown": "保存 Markdown",
@@ -3344,6 +3356,18 @@ const catalog = createCatalog<Messages>({
       "fInsertBlock": "插入块",
       "fHorizontalRule": "分割线",
       "fCallout": "提示块",
+      "fInsertTable": "插入表格",
+      "fTableActions": "表格操作",
+      "fInsertRowAbove": "在上方插入行",
+      "fInsertRowBelow": "在下方插入行",
+      "fInsertColumnLeft": "在左侧插入列",
+      "fInsertColumnRight": "在右侧插入列",
+      "fDeleteRow": "删除行",
+      "fDeleteColumn": "删除列",
+      "fAlignColumnLeft": "左对齐",
+      "fAlignColumnCenter": "居中",
+      "fAlignColumnRight": "右对齐",
+      "fDeleteTable": "删除表格",
     },
     "en": {
       "fPaper": "Paper",
@@ -3431,7 +3455,6 @@ const catalog = createCatalog<Messages>({
       "fInsertBlockquote": "Insert Blockquote",
       "fInsertTaskList": "Insert Task List",
       "fInsertCodeBlock": "Insert Code Block",
-      "fInsertEditTable": "Insert / Edit Table",
       "fInsertEditLink": "Insert / Edit Link",
       "fBulletedList": "Bulleted List",
       "fNumberedList": "Numbered List",
@@ -3443,9 +3466,7 @@ const catalog = createCatalog<Messages>({
       "fHeadingNotFound": "Heading not found.",
       "fThisTypeOfLinkIsNotSupported": "This type of link is not supported.",
       "fTheDocumentChangedReopenTheEditingPanel": "The document changed. Reopen the editing panel.",
-      "fItem": "Item",
       "fNote": "Note",
-      "fEditLargeTablesInMarkdownSource": "Edit large tables in Markdown source.",
       "fBold": "Bold",
       "fItalic": "Italic",
       "fBlockquote": "Blockquote",
@@ -3467,7 +3488,6 @@ const catalog = createCatalog<Messages>({
       "fATableNeedsAtLeastOneColumn": "A table needs at least one column.",
       "fMarkAsIncomplete": "Mark as Incomplete",
       "fMarkAsComplete": "Mark as Complete",
-      "fEditTable": "Edit Table",
       "fCtrlClickToOpenTheLink": "⌘ / Ctrl-click to open the link",
       "fStartWithASentence": "Start with a sentence…",
       "fDocumentText": "Document Text",
@@ -3566,11 +3586,6 @@ const catalog = createCatalog<Messages>({
       "fOpenLink": "Open Link",
       "fRemoveLink": "Remove Link",
       "fApplyLink": "Apply Link",
-      "fCloseTablePanel": "Close Table Panel",
-      "fTheFirstRowIsTheHeaderPressTabTo": "The first row is the header. Press Tab to move between cells. You can undo the entire change after applying it.",
-      "fAddRow": "Add Row",
-      "fAddColumn": "Add Column",
-      "fApplyTable": "Apply Table",
       "fExportThisPage": "Export This Page",
       "fCloseExportPanel": "Close Export Panel",
       "fSaveMarkdown": "Save Markdown",
@@ -3762,6 +3777,18 @@ const catalog = createCatalog<Messages>({
       "fInsertBlock": "Insert block",
       "fHorizontalRule": "Horizontal Rule",
       "fCallout": "Callout",
+      "fInsertTable": "Insert Table",
+      "fTableActions": "Table actions",
+      "fInsertRowAbove": "Insert row above",
+      "fInsertRowBelow": "Insert row below",
+      "fInsertColumnLeft": "Insert column left",
+      "fInsertColumnRight": "Insert column right",
+      "fDeleteRow": "Delete row",
+      "fDeleteColumn": "Delete column",
+      "fAlignColumnLeft": "Align column left",
+      "fAlignColumnCenter": "Align column center",
+      "fAlignColumnRight": "Align column right",
+      "fDeleteTable": "Delete table",
     },
   },
 });

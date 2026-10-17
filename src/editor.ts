@@ -9,14 +9,13 @@ import { tags } from '@lezer/highlight';
 import { searchKeymap,highlightSelectionMatches,openSearchPanel,closeSearchPanel } from '@codemirror/search';
 import { GFM } from '@lezer/markdown';
 import type { SyntaxNode } from '@lezer/common';
-import MarkdownIt from 'markdown-it';
+import {TableWidget,tableComposition} from './table-ui';
 import type { Doc } from './types';
 import {createBlockUI,blockRichMode,type BlockUIOptions} from './block-ui';
 import {createSlashMenu} from './slash';
 import {safeLink,localDocumentLink,frontMatterRange} from './editing';
 import {htmlToMarkdown,pasteText,replacePasteImage,type PasteImage} from './paste';
 
-const md=new MarkdownIt({html:false,linkify:false});
 export const mode=new Compartment();
 export const editorLocale=new Compartment();
 export function localizedEditor(){return [placeholder(messages.fStartWithASentence()),EditorView.contentAttributes.of({'aria-label':messages.fDocumentText(),'spellcheck':'false'}),EditorState.phrases.of({
@@ -67,13 +66,6 @@ class ImageWidget extends WidgetType{
  toDOM(){const wrap=document.createElement('figure');wrap.className='inline-image';const img=new Image();img.alt=this.alt;img.loading='lazy';wrap.append(img);this.resolve(this.dest).then(url=>{img.src=url}).catch(()=>{const msg=document.createElement('span');msg.textContent=messages.fImageTemporarilyUnreadable(this.alt);wrap.replaceChildren(msg)});img.onerror=()=>{wrap.textContent=messages.fImageResourceMissing(this.alt)};return wrap}
  ignoreEvent(){return false}
 }
-class TableWidget extends WidgetType{
- readonly locale=activeLocale;
- constructor(readonly raw:string,readonly from:number,readonly edit?:()=>void){super()}
- eq(o:TableWidget){return o.locale===this.locale&&o.raw===this.raw&&o.from===this.from}
- toDOM(view:EditorView){const el=document.createElement('div');el.className='rendered-table';el.innerHTML=md.render(this.raw);const b=document.createElement('button');b.className='table-edit';b.textContent=messages.fEditTable();b.onmousedown=e=>e.preventDefault();b.onclick=()=>{view.dispatch({selection:{anchor:this.from+1}});this.edit?.()};el.append(b);return el}
- ignoreEvent(){return true}
-}
 function selectedLines(state:EditorState){
  const lines=state.selection.ranges.map(sel=>({from:state.doc.lineAt(sel.from).from,to:state.doc.lineAt(sel.to).to}));
  return (from:number,to:number)=>lines.some(line=>from<=line.to&&to>=line.from);
@@ -86,12 +78,12 @@ function imageOnLine(state:EditorState,node:SyntaxNode){
  const line=state.doc.lineAt(node.from);
  return node.to<=line.to&&(node.from===line.from||!state.sliceDoc(line.from,node.from).trim())&&(node.to===line.to||!state.sliceDoc(node.to,line.to).trim());
 }
-export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promise<string>,editTable?:()=>void):DecorationSet{
+export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promise<string>):DecorationSet{
  const builder=new RangeSetBuilder<Decoration>(),touched=selectedLines(state),meta=frontMatterRange(state);
  syntaxTree(state).iterate({enter:n=>{
   if(meta&&n.from<meta.to&&n.name!=='Document')return false;
   if(['Document','BulletList','OrderedList','ListItem','Blockquote'].includes(n.name))return;
-  if(n.name==='Table'&&!touched(n.from,n.to))builder.add(n.from,n.to,Decoration.replace({widget:new TableWidget(state.sliceDoc(n.from,n.to),n.from,editTable),block:true}));
+  if(n.name==='Table')builder.add(n.from,n.to,Decoration.replace({widget:new TableWidget(state.sliceDoc(n.from,n.to),n.from,composing,state.readOnly),block:true}));
   if(n.name==='Paragraph')for(const image of n.node.getChildren('Image')){
    if(touched(image.from,image.to)||!imageOnLine(state,image))continue;
    const dest=destination(state,image),end=image.getChildren('LinkMark')[1];
@@ -101,13 +93,13 @@ export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promis
  }});
  return builder.finish();
 }
-export function createBlockField(resolve:(dest:string)=>Promise<string>,editTable?:()=>void):StateField<DecorationSet>{
+export function createBlockField(resolve:(dest:string)=>Promise<string>):StateField<DecorationSet>{
  return StateField.define<DecorationSet>({
-  create:state=>blockDecorations(state,resolve,editTable),
+  create:state=>blockDecorations(state,resolve),
   update(value,tr){
    if(tr.state.field(composing))return value.map(tr.changes);
-   if(!tr.docChanged&&!tr.selection&&!tr.startState.field(composing)&&syntaxTree(tr.startState)===syntaxTree(tr.state))return value;
-   return blockDecorations(tr.state,resolve,editTable);
+   if(!tr.docChanged&&!tr.selection&&tr.startState.readOnly===tr.state.readOnly&&!tr.startState.field(composing)&&syntaxTree(tr.startState)===syntaxTree(tr.state))return value;
+   return blockDecorations(tr.state,resolve);
   },
   provide:field=>EditorView.decorations.from(field)
  });
@@ -124,7 +116,7 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
    if(meta&&n.from<meta.to&&n.name!=='Document')return false;
    if(n.to<=range.from||n.from>=range.to)return false;
    const name=n.name;
-   if(name==='Table'&&!touched(n.from,n.to))return false;
+   if(name==='Table')return false;
    if(name==='Image'&&!touched(n.from,n.to)&&imageOnLine(state,n.node)&&destination(state,n.node))return false;
    if(/^ATXHeading[1-6]$/.test(name))lineClass(n.from,n.from,'md-heading md-h'+name.slice(-1));
    if(name==='Blockquote')lineClass(n.from,n.to,'md-quote');
@@ -141,7 +133,7 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
  const builder=new RangeSetBuilder<Decoration>();decorations.sort((a,b)=>a.from-b.from||a.dec.startSide-b.dec.startSide||a.to-b.to);
  for(const r of decorations)builder.add(r.from,r.to,r.dec);return builder.finish();
 }
-export function richExtensions(resolve:(dest:string)=>Promise<string>,editTable?:()=>void):Extension{
+export function richExtensions(resolve:(dest:string)=>Promise<string>):Extension{
  const inlinePlugin=ViewPlugin.fromClass(class{
   decorations:DecorationSet;
   constructor(view:EditorView){this.decorations=inlineDecorations(view.state,view.visibleRanges)}
@@ -150,14 +142,15 @@ export function richExtensions(resolve:(dest:string)=>Promise<string>,editTable?
    if(update.docChanged||update.viewportChanged||update.selectionSet||update.startState.field(composing)||syntaxTree(update.startState)!==syntaxTree(update.state))this.decorations=inlineDecorations(update.state,update.view.visibleRanges);
   }
  },{decorations:plugin=>plugin.decorations});
- return [blockRichMode.of(true),createBlockField(resolve,editTable),inlinePlugin];
+ return [blockRichMode.of(true),createBlockField(resolve),inlinePlugin];
 }
-export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onTable:()=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions){
+export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions){
  const state=EditorState.create({doc:doc.content,selection:{anchor:Math.min(doc.position.anchor||0,doc.content.length),head:Math.min(doc.position.head||0,doc.content.length)},extensions:[
+  tableComposition.of((view,active,commit)=>{view.dispatch({effects:setComposing.of(active)});commit?.();onCompose(active)}),
   history(),composing,focusField,focusDecorations,createSlashMenu(composing,focusField,()=>blocks?.action('image')),blocks?createBlockUI(composing,focusField,blocks):[],markdown({base:markdownLanguage,codeLanguages:languages,extensions:GFM}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),
   EditorView.editorAttributes.of(view=>({class:view.state.field(focusField)?'cm-focus-on':''})),
   keymap.of([...(blocks?[{key:'Alt-Shift-ArrowUp',run:()=>{blocks.action('up');return true}},{key:'Alt-Shift-ArrowDown',run:()=>{blocks.action('down');return true}},{key:'Mod-/',run:()=>{blocks.action('menu');return true}}]:[]),...markdownKeymap,...historyKeymap,...searchKeymap,...defaultKeymap,indentWithTab]),
-  mode.of(doc.position.source?[]:richExtensions(resolve,onTable)),EditorView.lineWrapping,editorLocale.of(localizedEditor()),
+  mode.of(doc.position.source?[]:richExtensions(resolve)),EditorView.lineWrapping,editorLocale.of(localizedEditor()),
   EditorView.updateListener.of(u=>{if(u.docChanged||u.selectionSet)onChange(u.docChanged)}),
   EditorView.domEventHandlers({
    compositionstart:(_e,v)=>{v.dispatch({effects:setComposing.of(true)});onCompose(true);return false},

@@ -56,6 +56,12 @@ Task { @MainActor in
   _ = await js("const c=document.querySelector('.cm-content');c.focus();document.execCommand('selectAll');document.execCommand('insertText',false,'第一段。\\n\\n');return true"); await wait(300)
   _ = await js("document.execCommand('insertText',false,'/');return true"); await wait(400)
   report["slashMenu"] = (await js("const m=document.querySelector('[role=listbox]');return !!m&&m.getBoundingClientRect().height>0") as? Bool) ?? false
+  // A nested editable table cell must write through to the Markdown document in WKWebView.
+  _ = await js("const c=document.querySelector('.cm-content');c.focus();document.execCommand('selectAll');document.execCommand('insertText',false,'前文。\\n\\n| 表头 | 说明 |\\n| --- | --- |\\n| 甲 | 乙 |\\n\\n尾文。');return true")
+  await wait(500)
+  report["tableInput"] = (await js("const c=document.querySelector('.rendered-table [data-row=\"1\"][data-column=\"0\"]');if(!c)return false;const b=c.getBoundingClientRect();for(const type of ['pointerdown','mousedown','pointerup','mouseup','click']){const EventClass=type.startsWith('pointer')?PointerEvent:MouseEvent;c.dispatchEvent(new EventClass(type,{bubbles:true,cancelable:true,clientX:b.x+10,clientY:b.y+10}));}c.focus();const r=document.createRange();r.selectNodeContents(c);r.collapse(false);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(r);document.execCommand('insertText',false,'WK');return document.activeElement===c&&c.textContent==='甲WK'") as? Bool) ?? false
+  await wait(1500)
+  report["tableMarkdown"] = (await js("const r=await fetch('/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'State',args:[]})});return (await r.json()).value.current.content") as? String) ?? ""
   let data = try! JSONSerialization.data(withJSONObject: report, options: [.sortedKeys])
   FileHandle.standardOutput.write(data); FileHandle.standardOutput.write(Data("\n".utf8))
   exit(0)

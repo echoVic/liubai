@@ -348,10 +348,6 @@
   "@fInsertCodeBlock": {
     "description": "Interface text for Insert Code Block."
   },
-  "fInsertEditTable": "插入 / 编辑表格",
-  "@fInsertEditTable": {
-    "description": "Interface text for Insert / Edit Table."
-  },
   "fInsertEditLink": "插入 / 编辑链接",
   "@fInsertEditLink": {
     "description": "Interface text for Insert / Edit Link."
@@ -396,17 +392,9 @@
   "@fTheDocumentChangedReopenTheEditingPanel": {
     "description": "Interface text for The document changed. Reopen the editing panel.."
   },
-  "fItem": "项目",
-  "@fItem": {
-    "description": "Interface text for Item."
-  },
   "fNote": "说明",
   "@fNote": {
     "description": "Interface text for Note."
-  },
-  "fEditLargeTablesInMarkdownSource": "大表格请在源码中编辑",
-  "@fEditLargeTablesInMarkdownSource": {
-    "description": "Interface text for Edit large tables in Markdown source.."
   },
   "fBold": "加粗",
   "@fBold": {
@@ -491,10 +479,6 @@
   "fMarkAsComplete": "标记为已完成",
   "@fMarkAsComplete": {
     "description": "Interface text for Mark as Complete."
-  },
-  "fEditTable": "编辑表格",
-  "@fEditTable": {
-    "description": "Interface text for Edit Table."
   },
   "fCtrlClickToOpenTheLink": "⌘ / Ctrl 点击打开链接",
   "@fCtrlClickToOpenTheLink": {
@@ -887,26 +871,6 @@
   "fApplyLink": "应用链接",
   "@fApplyLink": {
     "description": "Interface text for Apply Link."
-  },
-  "fCloseTablePanel": "关闭表格面板",
-  "@fCloseTablePanel": {
-    "description": "Interface text for Close Table Panel."
-  },
-  "fTheFirstRowIsTheHeaderPressTabTo": "第一行是表头。用 Tab 切换单元格，应用后可撤销整次修改。",
-  "@fTheFirstRowIsTheHeaderPressTabTo": {
-    "description": "Interface text for The first row is the header. Press Tab to move between cells. You can undo the entire change after applying it.."
-  },
-  "fAddRow": "增加一行",
-  "@fAddRow": {
-    "description": "Interface text for Add Row."
-  },
-  "fAddColumn": "增加一列",
-  "@fAddColumn": {
-    "description": "Interface text for Add Column."
-  },
-  "fApplyTable": "应用表格",
-  "@fApplyTable": {
-    "description": "Interface text for Apply Table."
   },
   "fExportThisPage": "导出这一页",
   "@fExportThisPage": {
@@ -1818,5 +1782,53 @@
   "fCallout": "提示块",
   "@fCallout": {
     "description": "Slash menu: Callout."
+  },
+  "fInsertTable": "插入表格",
+  "@fInsertTable": {
+    "description": "Table editing: Insert Table."
+  },
+  "fTableActions": "表格操作",
+  "@fTableActions": {
+    "description": "Table editing: Table actions."
+  },
+  "fInsertRowAbove": "在上方插入行",
+  "@fInsertRowAbove": {
+    "description": "Table editing: Insert row above."
+  },
+  "fInsertRowBelow": "在下方插入行",
+  "@fInsertRowBelow": {
+    "description": "Table editing: Insert row below."
+  },
+  "fInsertColumnLeft": "在左侧插入列",
+  "@fInsertColumnLeft": {
+    "description": "Table editing: Insert column left."
+  },
+  "fInsertColumnRight": "在右侧插入列",
+  "@fInsertColumnRight": {
+    "description": "Table editing: Insert column right."
+  },
+  "fDeleteRow": "删除行",
+  "@fDeleteRow": {
+    "description": "Table editing: Delete row."
+  },
+  "fDeleteColumn": "删除列",
+  "@fDeleteColumn": {
+    "description": "Table editing: Delete column."
+  },
+  "fAlignColumnLeft": "左对齐",
+  "@fAlignColumnLeft": {
+    "description": "Table editing: Align column left."
+  },
+  "fAlignColumnCenter": "居中",
+  "@fAlignColumnCenter": {
+    "description": "Table editing: Align column center."
+  },
+  "fAlignColumnRight": "右对齐",
+  "@fAlignColumnRight": {
+    "description": "Table editing: Align column right."
+  },
+  "fDeleteTable": "删除表格",
+  "@fDeleteTable": {
+    "description": "Table editing: Delete table."
   }
 }

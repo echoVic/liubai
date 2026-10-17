@@ -3,9 +3,10 @@ import {call,desktop,type Summary,type LocaleNotice,type Doc,type DocStatus,type
 import {createEditor,mode,editorLocale,closeSearchPanel,localizedEditor,richExtensions,setFocus,undo,redo,openSearchPanel,EditorState,EditorView} from './editor';
 import {blockAt,convertBlocks,duplicateBlocks,deleteBlocks,moveBlocks,insertParagraphBelow,type BlockConversion} from './blocks';
 import {blockControls} from './block-ui';
+import {focusTableCell,leaveTable,tableAround} from './table-ui';
 import {openSlashMenu} from './slash';
 import {Transaction,Compartment,StateEffect} from '@codemirror/state';
-import {blockFormat,setHeading,headingLevel,wrapSelection,codeBlock,linkAt,makeLink,safeLink,localDocumentLink,tableAt,parseTable,serializeTable,headings,type BlockKind} from './editing';
+import {blockFormat,setHeading,headingLevel,wrapSelection,codeBlock,linkAt,makeLink,safeLink,localDocumentLink,insertTable,headings,type BlockKind} from './editing';
 import {isolateHistory} from '@codemirror/commands';
 import {applyIcons,icon} from './icons';
 import {attachMenu} from './menu';
@@ -33,7 +34,7 @@ let preview:PreviewController;
 let layoutBeforeRead:Appearance['layout'];
 const editLock=new Compartment();
 const openedQueue:string[]=[];
-let compositionActive=false,focusMode=false;let pendingClose=false;let pendingMissing:()=>Promise<void>=async()=>{};let prepared:HTMLElement|null=null,readyAction='';let editRange:{from:number;to:number;raw?:string}|null=null;let tableRows:string[][]=[],tableAligns:string[]=[];let editingExistingTable=false;
+let compositionActive=false,focusMode=false;let pendingClose=false;let pendingMissing:()=>Promise<void>=async()=>{};let prepared:HTMLElement|null=null,readyAction='';let editRange:{from:number;to:number;raw?:string}|null=null;
 const sessions=new Map<string,EditorState>();
 const imageCache=new Map<string,Promise<string>>();
 const imageKey=(id:string,dest:string)=>id+':'+normalizeImageDestination(dest);
@@ -62,7 +63,7 @@ function scheduleWordCount(immediate=false){clearTimeout(wordCountTimer);const u
 let pendingSent=false;function syncPending(){const pending=dirty||compositionActive||busy||!!saveFlight;if(pending===pendingSent||!desktop)return;pendingSent=pending;void call('SetPending',pending).catch(()=>{pendingSent=!pending})}
 function changed(content=true){if(loading||!doc)return;updateHeading();if(content){dirty=true;generation++;header();scheduleWordCount()}preview.changed(content,view.state.doc.lineAt(view.state.selection.main.head).number-1);if(content)scheduleOutline();else scheduleOutlineLayout();clearTimeout(timer);if(!compositionActive)timer=setTimeout(()=>void save(),content?450:800);syncPending()}
 function composition(active:boolean){compositionActive=active;if(!active&&localePending){localePending=false;refreshLanguage()}preview.composition(active);if(active)clearTimeout(outlineTimer);else scheduleOutline();clearTimeout(timer);if(!active){timer=setTimeout(()=>void save(),800);if(pendingClose){pendingClose=false;void closeApp()}else void processOpened()}syncPending()}
-function reconfigure(){view.dispatch({effects:mode.reconfigure(sourceActive()?[]:richExtensions(resolveImage,openTable)),annotations:Transaction.addToHistory.of(false)})}
+function reconfigure(){view.dispatch({effects:mode.reconfigure(sourceActive()?[]:richExtensions(resolveImage)),annotations:Transaction.addToHistory.of(false)})}
 // force: an explicit save or retry resends the content so a failed file write is retried.
 async function save(force=false):Promise<boolean>{
  clearTimeout(timer);if(compositionActive)return false;if(saveFlight){const pending=await saveFlight;if(!pending&&dirty)return false;if(dirty||force)return save(force);return true}if(!doc||!view)return true;
@@ -86,7 +87,7 @@ function load(next:WorkspaceState){
  loading=true;if(view){sessions.set(doc.id,view.state);view.destroy()}
  if(appearance)next.appearance=appearance;else appearance=next.appearance;
  state=next;doc=next.current;source=!!appearance.source;dirty=false;generation=0;savedPosition=JSON.stringify(doc.position);
- view=createEditor($('#editor'),doc,resolveImage,changed,insertImages,composition,openLink,openTable,files=>{if(!desktop&&files[0])void importFile(files[0])},importPastedImage,error=>toast(errorText(error)),{action:id=>void action(id==='image'?id:'block:'+id),dispatch:spec=>{if(!compositionActive&&!view.state.readOnly)view.dispatch(spec);view.focus()}});
+ view=createEditor($('#editor'),doc,resolveImage,changed,insertImages,composition,openLink,files=>{if(!desktop&&files[0])void importFile(files[0])},importPastedImage,error=>toast(errorText(error)),{action:id=>void action(id==='image'?id:'block:'+id),dispatch:spec=>{if(!compositionActive&&!view.state.readOnly)view.dispatch(spec);view.focus()}});
  view.dispatch({effects:StateEffect.appendConfig.of([editLock.of(EditorState.readOnly.of(false)),EditorView.scrollMargins.of(()=>({top:parseFloat(getComputedStyle($('#editor')).paddingTop)+24}))])});
  const cached=sessions.get(doc.id);if(cached&&cached.doc.toString()===doc.content)view.setState(cached);
  view.dispatch({effects:[editLock.reconfigure(EditorState.readOnly.of(busy||reading())),editorLocale.reconfigure(localizedEditor())]});
@@ -250,7 +251,7 @@ $('#ready-go').onclick=()=>{if(!prepared)return;const root=prepared;
 async function closeApp(){if(compositionActive){pendingClose=true;toast(messages.fFinishComposingYourTextToSaveAndQuit());return}if(busy){pendingClose=true;return}if(closeRequested)return;closeRequested=true;try{await appearanceQueue.catch(()=>{});const ok=await save();if(!ok||dirty){dialog('close-dialog');return}if(desktop)await call('Close');else toast(messages.fYourDocumentIsSavedLocallyYouCanCloseThis())}finally{closeRequested=false}}
 $('#discard-close').onclick=()=>{if(desktop)void call('Close');else closeDialog('close-dialog')};
 const commands=()=>[
- ['language:system',messages.fLanguageSystem(),''],['language:zh-Hans',messages.fLanguageChinese(),''],['language:en',messages.fLanguageEnglish(),''],['capture',messages.fQuickNote(),''],['captureSettings',messages.fQuickNoteSettings(),''],['new',messages.fNewDocument(),'⌘ N'],['rename',messages.fRename(),''],['open',messages.fOpenDocument(),'⌘ O'],['save',messages.fSave(),'⌘ S'],['saveAs',messages.fSaveAs(),'⌘ ⇧ S'],['deliver',messages.fExport(),''],['export',messages.fDocumentAndImagesZIP(),'ZIP'],['pdf',messages.fExportPDF(),''],['copyRich',messages.fCopyRichText(),''],['pastePlain',messages.fPasteAsPlainText(),'⌘ ⇧ V'],['html',messages.fDownloadHTML(),''],['focus',messages.fFocusMode(),'⌘ ⇧ F'],['recent',messages.fRecentDocuments(),''],['remove',messages.fRemoveCurrentDocumentFromRecents(),''],['outline',messages.fOutline(),''],['find',messages.fFindInDocument(),'⌘ F'],['layout',messages.fToggleSplitView(),'⌘ \\'],['read',messages.fReadingMode(),'⌘ ⇧ R'],['source',messages.fShowMarkdownSource(),'⌘ ⇧ M'],['image',messages.fInsertImage(),''],['theme',messages.fAppearanceAndTypography(),''],['commands',messages.fAllCommands(),'⌘ K'],...names().map(t=>['theme:'+t.id,messages.fSwitchTheme(t.name),'']),['bold',messages.fBoldSelection(),'⌘ B'],['italic',messages.fItalicizeSelection(),''],['paragraph',messages.fBody(),''],['h1',messages.fHeading1(),''],['h2',messages.fHeading2(),''],['h3',messages.fHeading3(),''],['strike',messages.fStrikethrough(),''],['inlineCode',messages.fInlineCode(),''],['quote',messages.fInsertBlockquote(),''],['task',messages.fInsertTaskList(),''],['code',messages.fInsertCodeBlock(),''],['table',messages.fInsertEditTable(),''],['link',messages.fInsertEditLink(),'⌘ L'],['bullet',messages.fBulletedList(),''],['ordered',messages.fNumberedList(),''],['undo',messages.fUndo(),'⌘ Z'],['redo',messages.fRedo(),'⌘ ⇧ Z']
+ ['language:system',messages.fLanguageSystem(),''],['language:zh-Hans',messages.fLanguageChinese(),''],['language:en',messages.fLanguageEnglish(),''],['capture',messages.fQuickNote(),''],['captureSettings',messages.fQuickNoteSettings(),''],['new',messages.fNewDocument(),'⌘ N'],['rename',messages.fRename(),''],['open',messages.fOpenDocument(),'⌘ O'],['save',messages.fSave(),'⌘ S'],['saveAs',messages.fSaveAs(),'⌘ ⇧ S'],['deliver',messages.fExport(),''],['export',messages.fDocumentAndImagesZIP(),'ZIP'],['pdf',messages.fExportPDF(),''],['copyRich',messages.fCopyRichText(),''],['pastePlain',messages.fPasteAsPlainText(),'⌘ ⇧ V'],['html',messages.fDownloadHTML(),''],['focus',messages.fFocusMode(),'⌘ ⇧ F'],['recent',messages.fRecentDocuments(),''],['remove',messages.fRemoveCurrentDocumentFromRecents(),''],['outline',messages.fOutline(),''],['find',messages.fFindInDocument(),'⌘ F'],['layout',messages.fToggleSplitView(),'⌘ \\'],['read',messages.fReadingMode(),'⌘ ⇧ R'],['source',messages.fShowMarkdownSource(),'⌘ ⇧ M'],['image',messages.fInsertImage(),''],['theme',messages.fAppearanceAndTypography(),''],['commands',messages.fAllCommands(),'⌘ K'],...names().map(t=>['theme:'+t.id,messages.fSwitchTheme(t.name),'']),['bold',messages.fBoldSelection(),'⌘ B'],['italic',messages.fItalicizeSelection(),''],['paragraph',messages.fBody(),''],['h1',messages.fHeading1(),''],['h2',messages.fHeading2(),''],['h3',messages.fHeading3(),''],['strike',messages.fStrikethrough(),''],['inlineCode',messages.fInlineCode(),''],['quote',messages.fInsertBlockquote(),''],['task',messages.fInsertTaskList(),''],['code',messages.fInsertCodeBlock(),''],['table',messages.fInsertTable(),''],['link',messages.fInsertEditLink(),'⌘ L'],['bullet',messages.fBulletedList(),''],['ordered',messages.fNumberedList(),''],['undo',messages.fUndo(),'⌘ Z'],['redo',messages.fRedo(),'⌘ ⇧ Z']
 ];
 function renderCommands(){const q=$<HTMLInputElement>('#command-search').value.trim();const list=$('#command-list');list.replaceChildren();commands().filter(c=>c[1].includes(q)).forEach(([id,title,key])=>{const b=node('button','command');b.append(node('span','',title),node('kbd','',key));if(id==='language:zh-Hans')b.dataset.languageAutonym='true';b.onclick=()=>{closeDialog('commands');void action(id)};list.append(b)})}
 $('#command-search').oninput=renderCommands;$('#command-search').onkeydown=e=>{if(e.key==='ArrowDown'){e.preventDefault();$('#command-list button')?.focus()}if(e.key==='Enter'){e.preventDefault();$('#command-list button')?.click()}};
@@ -277,7 +278,7 @@ async function action(id:string){
   try{const text=desktop?await call<string>('ClipboardText'):await navigator.clipboard.readText();if(view!==target||view.state.readOnly||compositionActive)return;view.dispatch(pasteText(view.state,text));view.focus()}catch(error){toast(messages.fClipboardError(errorText(error)))}return;
  }
  if(id==='code'){view.dispatch(codeBlock(view.state));view.focus();return}
- if(id==='link'){openLinkEditor();return}if(id==='table'){openTable();return}
+ if(id==='link'){openLinkEditor();return}if(id==='table'){view.dispatch(insertTable(view.state));if(!focusTableCell(view))view.focus();return}
  if(id==='focus'){focusMode=!focusMode;document.body.classList.toggle('focus-mode',focusMode);scheduleOutlineLayout();$('#focus-exit').hidden=!focusMode;view.dispatch({effects:setFocus.of(focusMode)});$$('[data-action=focus]').forEach(b=>b.setAttribute('aria-pressed',String(focusMode)));view.focus();return}
  if(id==='deliver'){dialog('delivery-dialog');return}
  if(id==='rescue'){await rescue();return}
@@ -349,19 +350,6 @@ function applyRange(text:string){if(!editRange)return;if(view.state.sliceDoc(edi
 $('#link-form').onsubmit=e=>{e.preventDefault();try{applyRange(makeLink($<HTMLInputElement>('#link-text').value,$<HTMLInputElement>('#link-url').value));closeDialog('link-dialog');view.focus()}catch(e){$('#link-error').textContent=errorText(e);$('#link-error').hidden=false}};
 $('#link-open').onclick=()=>openLink($<HTMLInputElement>('#link-url').value);
 $('#link-remove').onclick=()=>{try{applyRange($<HTMLInputElement>('#link-text').value.replace(/[\\`*_{}[\]()#+.!|>~-]/g,'\\$&'));closeDialog('link-dialog');view.focus()}catch(e){toast(errorText(e))}};
-function openTable(){
- const existing=tableAt(view.state),r=view.state.selection.main;editRange=existing||{from:r.from,to:r.to,raw:view.state.sliceDoc(r.from,r.to)};
- editingExistingTable=!!existing;if(existing){const t=parseTable(existing.raw);tableRows=t.rows;tableAligns=t.aligns}else{tableRows=[[messages.fItem(),messages.fNote()],['','']];tableAligns=[]}
- if(tableRows.length>101||(tableRows[0]?.length||0)>12){toast(messages.fEditLargeTablesInMarkdownSource());return}
- renderTable();dialog('table-dialog');$('#table-grid input')?.focus();
-}
-function renderTable(){
- const host=$('#table-grid');host.replaceChildren();tableRows.forEach((row,i)=>{const line=node('div','table-input-row');line.style.gridTemplateColumns=`repeat(${tableRows[0].length}, minmax(100px,1fr))`;for(let j=0;j<tableRows[0].length;j++){const input=document.createElement('input');input.value=row[j]||'';input.setAttribute('aria-label',i===0?messages.fTableHeaderCell(j+1):messages.fTableCell(i,j+1));input.oninput=()=>{tableRows[i][j]=input.value};line.append(input)}host.append(line)});
- $<HTMLButtonElement>('#table-row').disabled=tableRows.length>=101;$<HTMLButtonElement>('#table-column').disabled=tableRows[0].length>=12;
-}
-$('#table-row').onclick=()=>{tableRows.push(tableRows[0].map(()=>''));renderTable();$('#table-grid .table-input-row:last-child input')?.focus()};
-$('#table-column').onclick=()=>{tableRows.forEach(r=>r.push(''));tableAligns.push('');renderTable()};
-$('#table-form').onsubmit=e=>{e.preventDefault();try{if(!editRange)return;const before=!editingExistingTable&&editRange.from>0&&view.state.sliceDoc(editRange.from-1,editRange.from)!=='\n'?'\n\n':'';const after=editingExistingTable?'':editRange.to<view.state.doc.length&&view.state.sliceDoc(editRange.to,editRange.to+1)!=='\n'?'\n\n':'\n';applyRange(before+serializeTable(tableRows,tableAligns)+after);closeDialog('table-dialog');view.focus()}catch(e){toast(errorText(e))}};
 const formatButtons=()=>[
  [['bold',messages.fBold(),'⌘B'],['italic',messages.fItalic()],['strike',messages.fStrikethrough()],['inlineCode',messages.fInlineCode()]],
  [['quote',messages.fBlockquote()],['bullet',messages.fBulletedList()],['ordered',messages.fNumberedList()],['task',messages.fTaskList()]],
@@ -394,8 +382,11 @@ document.addEventListener('keydown',e=>{
 $('.editor-pane').addEventListener('mousedown',e=>{
  if(e.button!==0||e.shiftKey||e.metaKey||e.ctrlKey||e.altKey||!view||view.state.readOnly||compositionActive)return;
  if(![$('.editor-pane'),$('.editor-scroll'),$('.editor-status'),$('#word-count'),$('.paper'),$('#editor'),view.dom,view.scrollDOM,view.contentDOM].includes(e.target as HTMLElement))return;
- if(e.clientY<view.documentTop+view.lineBlockAt(view.state.doc.length).bottom)return;
- e.preventDefault();view.dispatch({selection:{anchor:view.state.doc.length},userEvent:'select.pointer'});view.focus();
+ if(e.clientY<Math.min(view.contentDOM.getBoundingClientRect().bottom,view.documentTop+view.lineBlockAt(view.state.doc.length).bottom))return;
+ e.preventDefault();const state=view.state,doc=state.doc;let last=doc.line(doc.lines);while(last.number>1&&!last.text.trim())last=doc.line(last.number-1);
+ // Text typed right below a final table would join it, so write in an empty paragraph after it, as leaving the table does.
+ const table=tableAround(state,last.from+last.text.trimEnd().length);
+ view.dispatch(table?leaveTable(state,table):{selection:{anchor:doc.length},userEvent:'select.pointer'});view.focus();
 });
 $('.editor-scroll').addEventListener('scroll',()=>{if(loading||!doc)return;clearTimeout(timer);timer=setTimeout(()=>void save(),500)},{passive:true});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
@@ -433,7 +424,6 @@ function refreshLanguage(){
  header();scheduleWordCount(true);renderThemes();preview.refresh();scheduleOutline(true);
  if(!$('#drawer').hidden)renderDrawer();
  if($<HTMLDialogElement>('#commands').open)renderCommands();
- if($<HTMLDialogElement>('#table-dialog').open)renderTable();
  if(doc.conflict||statusFailed(doc))banner(statusText(doc),doc.conflict?'conflict':'error');else if(failedSaveError)banner(messages.fSaveError(errorText(failedSaveError)),'error');
  if($<HTMLDialogElement>('#ready-dialog').open&&readyData){renderReadyInfo();prepared=renderDelivery(readyData);$('#print-document').replaceChildren(prepared)}
  if($<HTMLDialogElement>('#link-dialog').open&&!$('#link-error').hidden){try{makeLink($<HTMLInputElement>('#link-text').value,$<HTMLInputElement>('#link-url').value)}catch(error){$('#link-error').textContent=errorText(error)}}

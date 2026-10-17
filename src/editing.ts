@@ -1,5 +1,6 @@
 import {messages} from './i18n';
 import {EditorState, type TransactionSpec} from '@codemirror/state';
+import {isolateHistory} from '@codemirror/commands';
 import {syntaxTree} from '@codemirror/language';
 
 export type BlockKind='heading'|'quote'|'bullet'|'ordered'|'task';
@@ -92,14 +93,39 @@ export function tableAt(state:EditorState){let n=syntaxTree(state).resolveInner(
 export function splitCells(line:string){
  const s=line.trim();let cells:string[]=[],cell='',escaped=false;
  for(let i=0;i<s.length;i++){const c=s[i];if(c==='|'&&!escaped){cells.push(cell.trim());cell=''}else cell+=c;escaped=c==='\\'&&!escaped;if(c!=='\\')escaped=false;}
- cells.push(cell.trim());if(s.startsWith('|'))cells.shift();if(s.endsWith('|')&&!s.endsWith('\\|'))cells.pop();return cells;
+ cells.push(cell.trim());if(s.startsWith('|'))cells.shift();if(s.endsWith('|')&&/^(?:\\\\)*$/.test(/\\*$/.exec(s.slice(0,-1))![0]))cells.pop();return cells;
 }
 export function parseTable(raw:string){
- const lines=raw.trim().split('\n');const rows=lines.filter((_,i)=>i!==1).map(splitCells);const aligns=(lines[1]?splitCells(lines[1]):[]).map(c=>/^:-+:$/.test(c)?'center':/-+:$/.test(c)?'right':/^:-+/.test(c)?'left':'');
- return {rows,aligns};
+ const lines=raw.trim().split('\n'),prefix=/^[ \t>]*/.exec(lines[1]||'')![0];
+ // Lezer starts the range after the first container marker, but includes later ones.
+ const content=lines.map((line,i)=>i&&prefix&&line.startsWith(prefix)?line.slice(prefix.length):line);
+ const rows=content.filter((_,i)=>i!==1).map(splitCells),aligns=(content[1]?splitCells(content[1]):[]).map(c=>/^:-+:$/.test(c)?'center':/-+:$/.test(c)?'right':/^:-+/.test(c)?'left':'');
+ return {rows,aligns,prefix};
 }
-export function serializeTable(rows:string[][],aligns:string[]=[]){
+export function serializeTable(rows:string[][],aligns:string[]=[],prefix=''){
  const count=rows[0]?.length||0;if(count<1)throw Error(messages.fATableNeedsAtLeastOneColumn());
- const line=(r:string[])=>'| '+Array.from({length:count},(_,i)=>(r[i]||'').replace(/\r?\n/g,' ').replace(/(?<!\\)\|/g,'\\|')).join(' | ')+' |';
- return [line(rows[0]),line(Array.from({length:count},(_,i)=>({center:':---:',right:'---:',left:':---'}[aligns[i]]||'---'))),...rows.slice(1).map(line)].join('\n');
+ const line=(r:string[])=>'| '+Array.from({length:count},(_,i)=>(r[i]||'').replace(/\r?\n/g,' ').replace(/(\\*)\|/g,(pipe,slashes:string)=>slashes.length%2?pipe:slashes+'\\|')).join(' | ')+' |';
+ return [line(rows[0]),line(Array.from({length:count},(_,i)=>({center:':---:',right:'---:',left:':---'}[aligns[i]]||'---'))),...rows.slice(1).map(line)].join('\n'+prefix);
+}
+
+export type TableAction='cell'|'rowAbove'|'rowBelow'|'columnLeft'|'columnRight'|'deleteRow'|'deleteColumn'|'left'|'center'|'right'|'deleteTable';
+export function editTable(state:EditorState,range:{from:number;to:number},row:number,column:number,action:TableAction,value=''):TransactionSpec{
+ const {rows,aligns,prefix}=parseTable(state.sliceDoc(range.from,range.to)),count=rows[0].length;
+ // Missing trailing cells in valid Markdown tables behave like empty cells.
+ for(const r of rows)while(r.length<count)r.push('');
+ if(action==='cell')rows[row][column]=value;
+ else if(action==='rowAbove'||action==='rowBelow')rows.splice(row+(action==='rowBelow'?1:0),0,Array(count).fill(''));
+ else if(action==='columnLeft'||action==='columnRight'){
+  const at=column+(action==='columnRight'?1:0);for(const r of rows)r.splice(at,0,'');aligns.splice(at,0,'');
+ }else if(action==='deleteRow')rows.splice(row,1);
+ else if(action==='deleteColumn'){for(const r of rows)r.splice(column,1);aligns.splice(column,1)}
+ else if(action!=='deleteTable')aligns[column]=action;
+ const insert=action==='deleteTable'||!rows.length||!rows[0].length?'':serializeTable(rows,aligns,prefix);
+ return {changes:{from:range.from,to:range.to,insert},selection:{anchor:range.from+(insert?2:0)},userEvent:action==='cell'?'input.type.table':'input.table',annotations:action==='cell'?[]:isolateHistory.of('full')};
+}
+export function insertTable(state:EditorState,range:{from:number;to:number}=state.selection.main,trailing=true):TransactionSpec{
+ const {from,to}=range,left=state.sliceDoc(Math.max(0,from-2),from),right=state.sliceDoc(to,Math.min(state.doc.length,to+2));
+ const before=from&&!left.endsWith('\n\n')?left.endsWith('\n')?'\n':'\n\n':'';
+ const after=to<state.doc.length?right.startsWith('\n\n')?'':right.startsWith('\n')?'\n':'\n\n':trailing?'\n':'';
+ return {changes:{from,to,insert:before+serializeTable([['',''],['','']])+after},selection:{anchor:from+before.length+2},userEvent:'input.table',annotations:isolateHistory.of('full'),scrollIntoView:true};
 }

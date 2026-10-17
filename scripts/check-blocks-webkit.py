@@ -25,7 +25,9 @@ def main():
     assert report["insertionVisible"], report
     assert report["afterDrag"] == " 标题||第三段。||第一段。||第二段。||- 甲|  - 乙|- 丙", report
     assert report["slashMenu"], report
-    print("PASS: WebKit hover grip alignment, drag past a list, slash menu")
+    assert report["tableInput"], report
+    assert report["tableMarkdown"] == "前文。\n\n| 表头 | 说明 |\n| --- | --- |\n| 甲WK | 乙 |\n\n尾文。", report
+    print("PASS: WebKit hover grip alignment, drag past a list, slash menu and inline table input")
 
 
 main()

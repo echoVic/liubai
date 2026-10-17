@@ -19,7 +19,7 @@ def chrome_is_english(page):
     # Document titles, excerpts, editor and rendered content belong to the user.
     # Language autonyms intentionally name each language in its own script.
     offending = page.evaluate("""() => {
-        const skip = '#doc-title, .cm-content, #preview-content, #print-document, .recent-item b, .recent-item p, .outline-item, #missing-list, #table-grid input, #rename-input, #link-text, #link-url';
+        const skip = '#doc-title, .cm-content, #preview-content, #print-document, .recent-item b, .recent-item p, .outline-item, #missing-list, #rename-input, #link-text, #link-url';
         const cjk = /[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{Script=Hangul}]/u;
         const found = [];
         for (const el of document.querySelectorAll('body *')) {

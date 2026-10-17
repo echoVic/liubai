@@ -2,7 +2,8 @@ import {EditorState,StateEffect,StateField,Prec,type TransactionSpec} from '@cod
 import {EditorView,ViewPlugin,keymap,type ViewUpdate} from '@codemirror/view';
 import {isolateHistory} from '@codemirror/commands';
 import {blockRichMode} from './block-ui';
-import {blockFormat,setHeading} from './editing';
+import {blockFormat,setHeading,insertTable} from './editing';
+import {focusTableCell} from './table-ui';
 import {messages} from './i18n';
 import {messagesIn,type Messages} from '../locales';
 
@@ -77,10 +78,10 @@ export function applySlashItem(state:EditorState,id:SlashItemID):TransactionSpec
  if(id==='paragraph'||/^h[123]$/.test(id))insert=empty.update(setHeading(empty,id==='paragraph'?0:Number(id[1]))).state.doc.toString();
  else if(['bullet','ordered','task','quote'].includes(id))insert=empty.update(blockFormat(empty,id as 'bullet'|'ordered'|'task'|'quote',true)).state.doc.toString();
  else if(id==='code')insert='```\n\n```';
- else if(id==='table')insert='|  |  |\n| --- | --- |\n|  |  |';
+ else if(id==='table')return {...insertTable(state,{from:line.from,to:line.to},false),userEvent:'input.slash'};
  else if(id==='rule')insert='---\n\n';
  else if(id==='note')insert='> [!NOTE]\n> ';
- cursor=id==='code'?4:id==='table'?2:insert.length;
+ cursor=id==='code'?4:insert.length;
  return {changes:{from:line.from,to:line.to,insert},selection:{anchor:line.from+cursor},userEvent:'input.slash',annotations:isolateHistory.of('full'),scrollIntoView:true};
 }
 
@@ -111,7 +112,7 @@ class SlashMenu {
  private active(){return !this.view.composing&&!this.view.state.field(this.composing)&&!this.view.state.readOnly?this.view.state.field(this.field):null}
  private apply(id:SlashItemID){
   if(!this.active())return;
-  this.view.dispatch(applySlashItem(this.view.state,id));this.view.focus();if(id==='image')this.image();
+  this.view.dispatch(applySlashItem(this.view.state,id));if(id!=='table'||!focusTableCell(this.view))this.view.focus();if(id==='image')this.image();
  }
  key(key:string){
   const value=this.active();if(!value)return false;

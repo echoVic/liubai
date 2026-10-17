@@ -36,7 +36,7 @@ state=state.update({selection:{anchor:imageFrom+3}}).state;
 assert.ok(!collect(state.field(field)).some(x=>x.value.spec.widget?.constructor.name==='ImageWidget'),'selected image reveals source');
 const tableFrom=state.doc.toString().indexOf('| 项目');
 state=state.update({selection:{anchor:tableFrom+2}}).state;
-assert.ok(!collect(state.field(field)).some(x=>x.value.spec.widget?.constructor.name==='TableWidget'),'selected table reveals source');
+assert.ok(collect(state.field(field)).some(x=>x.value.spec.widget?.constructor.name==='TableWidget'),'selected table stays a widget');
 
 state=EditorState.create({doc:'光标\n\n## 标题 **粗体**\n\n> 引用\n> 下一行\n\n```ts\nconst x=1\n```\n\n[链接](<文件 目录/a\\(1\\).md>)\n\n![图](<图片 目录/a\\(1\\).png>)\n\n内联 ![小图](a.png) 文字\n',extensions:[markdown({base:markdownLanguage,extensions:GFM}),composing,field]});
 ensureSyntaxTree(state,state.doc.length,5000);state=state.update({}).state;

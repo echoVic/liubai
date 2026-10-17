@@ -1278,20 +1278,6 @@ func (msgs Messages) FInsertCodeBlock() string {
 	return Catalog.Format(msgs.locale, "fInsertCodeBlock", nil)
 }
 
-// FInsertEditTable says "插入 / 编辑表格"
-// in the language the app shows.
-//
-// Interface text for Insert / Edit Table.
-func FInsertEditTable() string { return In(i18n.Locale()).FInsertEditTable() }
-
-// FInsertEditTable says "插入 / 编辑表格"
-// in the language of msgs.
-//
-// Interface text for Insert / Edit Table.
-func (msgs Messages) FInsertEditTable() string {
-	return Catalog.Format(msgs.locale, "fInsertEditTable", nil)
-}
-
 // FInsertEditLink says "插入 / 编辑链接"
 // in the language the app shows.
 //
@@ -1452,20 +1438,6 @@ func (msgs Messages) FTheDocumentChangedReopenTheEditingPanel() string {
 	return Catalog.Format(msgs.locale, "fTheDocumentChangedReopenTheEditingPanel", nil)
 }
 
-// FItem says "项目"
-// in the language the app shows.
-//
-// Interface text for Item.
-func FItem() string { return In(i18n.Locale()).FItem() }
-
-// FItem says "项目"
-// in the language of msgs.
-//
-// Interface text for Item.
-func (msgs Messages) FItem() string {
-	return Catalog.Format(msgs.locale, "fItem", nil)
-}
-
 // FNote says "说明"
 // in the language the app shows.
 //
@@ -1478,22 +1450,6 @@ func FNote() string { return In(i18n.Locale()).FNote() }
 // Interface text for Note.
 func (msgs Messages) FNote() string {
 	return Catalog.Format(msgs.locale, "fNote", nil)
-}
-
-// FEditLargeTablesInMarkdownSource says "大表格请在源码中编辑"
-// in the language the app shows.
-//
-// Interface text for Edit large tables in Markdown source..
-func FEditLargeTablesInMarkdownSource() string {
-	return In(i18n.Locale()).FEditLargeTablesInMarkdownSource()
-}
-
-// FEditLargeTablesInMarkdownSource says "大表格请在源码中编辑"
-// in the language of msgs.
-//
-// Interface text for Edit large tables in Markdown source..
-func (msgs Messages) FEditLargeTablesInMarkdownSource() string {
-	return Catalog.Format(msgs.locale, "fEditLargeTablesInMarkdownSource", nil)
 }
 
 // FBold says "加粗"
@@ -1796,20 +1752,6 @@ func FMarkAsComplete() string { return In(i18n.Locale()).FMarkAsComplete() }
 // Interface text for Mark as Complete.
 func (msgs Messages) FMarkAsComplete() string {
 	return Catalog.Format(msgs.locale, "fMarkAsComplete", nil)
-}
-
-// FEditTable says "编辑表格"
-// in the language the app shows.
-//
-// Interface text for Edit Table.
-func FEditTable() string { return In(i18n.Locale()).FEditTable() }
-
-// FEditTable says "编辑表格"
-// in the language of msgs.
-//
-// Interface text for Edit Table.
-func (msgs Messages) FEditTable() string {
-	return Catalog.Format(msgs.locale, "fEditTable", nil)
 }
 
 // FCtrlClickToOpenTheLink says "⌘ / Ctrl 点击打开链接"
@@ -3208,80 +3150,6 @@ func FApplyLink() string { return In(i18n.Locale()).FApplyLink() }
 // Interface text for Apply Link.
 func (msgs Messages) FApplyLink() string {
 	return Catalog.Format(msgs.locale, "fApplyLink", nil)
-}
-
-// FCloseTablePanel says "关闭表格面板"
-// in the language the app shows.
-//
-// Interface text for Close Table Panel.
-func FCloseTablePanel() string { return In(i18n.Locale()).FCloseTablePanel() }
-
-// FCloseTablePanel says "关闭表格面板"
-// in the language of msgs.
-//
-// Interface text for Close Table Panel.
-func (msgs Messages) FCloseTablePanel() string {
-	return Catalog.Format(msgs.locale, "fCloseTablePanel", nil)
-}
-
-// FTheFirstRowIsTheHeaderPressTabTo says "第一行是表头。用 Tab 切换单元格，应用后可撤销整次修改。"
-// in the language the app shows.
-//
-// Interface text for The first row is the header. Press Tab to move between
-// cells. You can undo the entire change after applying it..
-func FTheFirstRowIsTheHeaderPressTabTo() string {
-	return In(i18n.Locale()).FTheFirstRowIsTheHeaderPressTabTo()
-}
-
-// FTheFirstRowIsTheHeaderPressTabTo says "第一行是表头。用 Tab 切换单元格，应用后可撤销整次修改。"
-// in the language of msgs.
-//
-// Interface text for The first row is the header. Press Tab to move between
-// cells. You can undo the entire change after applying it..
-func (msgs Messages) FTheFirstRowIsTheHeaderPressTabTo() string {
-	return Catalog.Format(msgs.locale, "fTheFirstRowIsTheHeaderPressTabTo", nil)
-}
-
-// FAddRow says "增加一行"
-// in the language the app shows.
-//
-// Interface text for Add Row.
-func FAddRow() string { return In(i18n.Locale()).FAddRow() }
-
-// FAddRow says "增加一行"
-// in the language of msgs.
-//
-// Interface text for Add Row.
-func (msgs Messages) FAddRow() string {
-	return Catalog.Format(msgs.locale, "fAddRow", nil)
-}
-
-// FAddColumn says "增加一列"
-// in the language the app shows.
-//
-// Interface text for Add Column.
-func FAddColumn() string { return In(i18n.Locale()).FAddColumn() }
-
-// FAddColumn says "增加一列"
-// in the language of msgs.
-//
-// Interface text for Add Column.
-func (msgs Messages) FAddColumn() string {
-	return Catalog.Format(msgs.locale, "fAddColumn", nil)
-}
-
-// FApplyTable says "应用表格"
-// in the language the app shows.
-//
-// Interface text for Apply Table.
-func FApplyTable() string { return In(i18n.Locale()).FApplyTable() }
-
-// FApplyTable says "应用表格"
-// in the language of msgs.
-//
-// Interface text for Apply Table.
-func (msgs Messages) FApplyTable() string {
-	return Catalog.Format(msgs.locale, "fApplyTable", nil)
 }
 
 // FExportThisPage says "导出这一页"
@@ -6004,4 +5872,172 @@ func FCallout() string { return In(i18n.Locale()).FCallout() }
 // Slash menu: Callout.
 func (msgs Messages) FCallout() string {
 	return Catalog.Format(msgs.locale, "fCallout", nil)
+}
+
+// FInsertTable says "插入表格"
+// in the language the app shows.
+//
+// Table editing: Insert Table.
+func FInsertTable() string { return In(i18n.Locale()).FInsertTable() }
+
+// FInsertTable says "插入表格"
+// in the language of msgs.
+//
+// Table editing: Insert Table.
+func (msgs Messages) FInsertTable() string {
+	return Catalog.Format(msgs.locale, "fInsertTable", nil)
+}
+
+// FTableActions says "表格操作"
+// in the language the app shows.
+//
+// Table editing: Table actions.
+func FTableActions() string { return In(i18n.Locale()).FTableActions() }
+
+// FTableActions says "表格操作"
+// in the language of msgs.
+//
+// Table editing: Table actions.
+func (msgs Messages) FTableActions() string {
+	return Catalog.Format(msgs.locale, "fTableActions", nil)
+}
+
+// FInsertRowAbove says "在上方插入行"
+// in the language the app shows.
+//
+// Table editing: Insert row above.
+func FInsertRowAbove() string { return In(i18n.Locale()).FInsertRowAbove() }
+
+// FInsertRowAbove says "在上方插入行"
+// in the language of msgs.
+//
+// Table editing: Insert row above.
+func (msgs Messages) FInsertRowAbove() string {
+	return Catalog.Format(msgs.locale, "fInsertRowAbove", nil)
+}
+
+// FInsertRowBelow says "在下方插入行"
+// in the language the app shows.
+//
+// Table editing: Insert row below.
+func FInsertRowBelow() string { return In(i18n.Locale()).FInsertRowBelow() }
+
+// FInsertRowBelow says "在下方插入行"
+// in the language of msgs.
+//
+// Table editing: Insert row below.
+func (msgs Messages) FInsertRowBelow() string {
+	return Catalog.Format(msgs.locale, "fInsertRowBelow", nil)
+}
+
+// FInsertColumnLeft says "在左侧插入列"
+// in the language the app shows.
+//
+// Table editing: Insert column left.
+func FInsertColumnLeft() string { return In(i18n.Locale()).FInsertColumnLeft() }
+
+// FInsertColumnLeft says "在左侧插入列"
+// in the language of msgs.
+//
+// Table editing: Insert column left.
+func (msgs Messages) FInsertColumnLeft() string {
+	return Catalog.Format(msgs.locale, "fInsertColumnLeft", nil)
+}
+
+// FInsertColumnRight says "在右侧插入列"
+// in the language the app shows.
+//
+// Table editing: Insert column right.
+func FInsertColumnRight() string { return In(i18n.Locale()).FInsertColumnRight() }
+
+// FInsertColumnRight says "在右侧插入列"
+// in the language of msgs.
+//
+// Table editing: Insert column right.
+func (msgs Messages) FInsertColumnRight() string {
+	return Catalog.Format(msgs.locale, "fInsertColumnRight", nil)
+}
+
+// FDeleteRow says "删除行"
+// in the language the app shows.
+//
+// Table editing: Delete row.
+func FDeleteRow() string { return In(i18n.Locale()).FDeleteRow() }
+
+// FDeleteRow says "删除行"
+// in the language of msgs.
+//
+// Table editing: Delete row.
+func (msgs Messages) FDeleteRow() string {
+	return Catalog.Format(msgs.locale, "fDeleteRow", nil)
+}
+
+// FDeleteColumn says "删除列"
+// in the language the app shows.
+//
+// Table editing: Delete column.
+func FDeleteColumn() string { return In(i18n.Locale()).FDeleteColumn() }
+
+// FDeleteColumn says "删除列"
+// in the language of msgs.
+//
+// Table editing: Delete column.
+func (msgs Messages) FDeleteColumn() string {
+	return Catalog.Format(msgs.locale, "fDeleteColumn", nil)
+}
+
+// FAlignColumnLeft says "左对齐"
+// in the language the app shows.
+//
+// Table editing: Align column left.
+func FAlignColumnLeft() string { return In(i18n.Locale()).FAlignColumnLeft() }
+
+// FAlignColumnLeft says "左对齐"
+// in the language of msgs.
+//
+// Table editing: Align column left.
+func (msgs Messages) FAlignColumnLeft() string {
+	return Catalog.Format(msgs.locale, "fAlignColumnLeft", nil)
+}
+
+// FAlignColumnCenter says "居中"
+// in the language the app shows.
+//
+// Table editing: Align column center.
+func FAlignColumnCenter() string { return In(i18n.Locale()).FAlignColumnCenter() }
+
+// FAlignColumnCenter says "居中"
+// in the language of msgs.
+//
+// Table editing: Align column center.
+func (msgs Messages) FAlignColumnCenter() string {
+	return Catalog.Format(msgs.locale, "fAlignColumnCenter", nil)
+}
+
+// FAlignColumnRight says "右对齐"
+// in the language the app shows.
+//
+// Table editing: Align column right.
+func FAlignColumnRight() string { return In(i18n.Locale()).FAlignColumnRight() }
+
+// FAlignColumnRight says "右对齐"
+// in the language of msgs.
+//
+// Table editing: Align column right.
+func (msgs Messages) FAlignColumnRight() string {
+	return Catalog.Format(msgs.locale, "fAlignColumnRight", nil)
+}
+
+// FDeleteTable says "删除表格"
+// in the language the app shows.
+//
+// Table editing: Delete table.
+func FDeleteTable() string { return In(i18n.Locale()).FDeleteTable() }
+
+// FDeleteTable says "删除表格"
+// in the language of msgs.
+//
+// Table editing: Delete table.
+func (msgs Messages) FDeleteTable() string {
+	return Catalog.Format(msgs.locale, "fDeleteTable", nil)
 }

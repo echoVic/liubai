@@ -2679,6 +2679,42 @@ export interface Messages {
    * `结束`
    */
   fDiagramEnd(): string;
+  /**
+   * Insert a numbered footnote reference and definition.
+   *
+   * `脚注`
+   */
+  fFootnote(): string;
+  /**
+   * Insert an expandable details block.
+   *
+   * `折叠块`
+   */
+  fDetails(): string;
+  /**
+   * Selected summary text in a new details block.
+   *
+   * `标题`
+   */
+  fDetailsTitle(): string;
+  /**
+   * Body text in a new details block.
+   *
+   * `内容`
+   */
+  fDetailsContent(): string;
+  /**
+   * Button to hide details content in this editor.
+   *
+   * `折叠内容`
+   */
+  fCollapseDetails(): string;
+  /**
+   * Button to show details content in this editor.
+   *
+   * `展开内容`
+   */
+  fExpandDetails(): string;
 }
 
 const catalog = createCatalog<Messages>({
@@ -3135,6 +3171,12 @@ const catalog = createCatalog<Messages>({
     "fDiagramError": ["error"],
     "fDiagramStart": [],
     "fDiagramEnd": [],
+    "fFootnote": [],
+    "fDetails": [],
+    "fDetailsTitle": [],
+    "fDetailsContent": [],
+    "fCollapseDetails": [],
+    "fExpandDetails": [],
   },
   messages: {
     "zh-Hans": {
@@ -3584,6 +3626,12 @@ const catalog = createCatalog<Messages>({
       "fDiagramError": "图表错误：{error}",
       "fDiagramStart": "开始",
       "fDiagramEnd": "结束",
+      "fFootnote": "脚注",
+      "fDetails": "折叠块",
+      "fDetailsTitle": "标题",
+      "fDetailsContent": "内容",
+      "fCollapseDetails": "折叠内容",
+      "fExpandDetails": "展开内容",
     },
     "en": {
       "fPaper": "Paper",
@@ -4032,6 +4080,12 @@ const catalog = createCatalog<Messages>({
       "fDiagramError": "Diagram error: {error}",
       "fDiagramStart": "Start",
       "fDiagramEnd": "End",
+      "fFootnote": "Footnote",
+      "fDetails": "Details",
+      "fDetailsTitle": "Title",
+      "fDetailsContent": "Content",
+      "fCollapseDetails": "Collapse details",
+      "fExpandDetails": "Expand details",
     },
   },
 });

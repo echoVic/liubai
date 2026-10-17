@@ -6,9 +6,10 @@ import {blockFormat,setHeading,insertTable} from './editing';
 import {blockAt,insertParagraphBelow} from './blocks';
 import {focusTableCell} from './table-ui';
 import {messages} from './i18n';
+import {insertFootnote} from './extras';
 import {messagesIn,type Messages} from '../locales';
 
-export type SlashItemID='paragraph'|'h1'|'h2'|'h3'|'bullet'|'ordered'|'task'|'quote'|'code'|'math'|'mermaid'|'table'|'image'|'rule'|'note';
+export type SlashItemID='paragraph'|'h1'|'h2'|'h3'|'bullet'|'ordered'|'task'|'quote'|'code'|'math'|'mermaid'|'table'|'image'|'rule'|'note'|'details'|'footnote';
 interface SlashItem {id:SlashItemID;label:keyof Messages;keywords:string}
 const items:SlashItem[]=[
  {id:'paragraph',label:'fBody',keywords:'zhengwen zw body paragraph text'},
@@ -22,6 +23,8 @@ const items:SlashItem[]=[
  {id:'code',label:'fCodeBlock',keywords:'daimakuai dmk dm code fenced codeblock'},
  {id:'math',label:'fFormula',keywords:'gongshi gs math formula latex katex tex'},
  {id:'mermaid',label:'fDiagram',keywords:'tubiao tb diagram chart mermaid flowchart'},
+ {id:'details',label:'fDetails',keywords:'zhediekuai zdk details fold collapse toggle'},
+ {id:'footnote',label:'fFootnote',keywords:'jiaozhu jz footnote note reference'},
  {id:'table',label:'fTable',keywords:'biaoge bg table'},
  {id:'image',label:'fImage',keywords:'tupian tp image picture photo'},
  {id:'rule',label:'fHorizontalRule',keywords:'fengexian fgx horizontal rule divider separator'},
@@ -83,6 +86,11 @@ export function applySlashItem(state:EditorState,id:SlashItemID):TransactionSpec
  else if(id==='code')insert='```\n\n```';
  else if(id==='math')insert='$$\n\n$$';
  else if(id==='mermaid')insert='```mermaid\nflowchart LR\n  A['+messages.fDiagramStart()+'] --> B['+messages.fDiagramEnd()+']\n```';
+ else if(id==='details'){
+  const title=messages.fDetailsTitle();insert='<details>\n<summary>'+title+'</summary>\n\n'+messages.fDetailsContent()+'\n\n</details>';
+  return {changes:{from:line.from,to:line.to,insert},selection:{anchor:line.from+19,head:line.from+19+title.length},userEvent:'input.slash',annotations:isolateHistory.of('full'),scrollIntoView:true};
+ }
+ else if(id==='footnote')return insertFootnote(state,ref=>({changes:{from:line.from,to:line.to,insert:ref}}));
  else if(id==='table')return {...insertTable(state,{from:line.from,to:line.to},false),userEvent:'input.slash'};
  else if(id==='rule')insert='---\n\n';
  else if(id==='note')insert='> [!NOTE]\n> ';
@@ -92,6 +100,7 @@ export function applySlashItem(state:EditorState,id:SlashItemID):TransactionSpec
 
 // Toolbar insertion shares slash templates, but can start below an existing block or focused table.
 export function insertToolbarItem(state:EditorState,id:SlashItemID,below?:{from:number;to:number}):TransactionSpec{
+ if(id==='footnote'&&!below)return insertFootnote(state);
  const line=state.doc.lineAt(state.selection.main.head);
  if(!below&&!line.text.trim())return applySlashItem(state,id);
  const range=below||blockAt(state,state.selection.main.head)||{from:line.from,to:line.to};

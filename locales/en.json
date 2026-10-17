@@ -447,5 +447,11 @@
   "fDiagramLoading": "Rendering diagram…",
   "fDiagramError": "Diagram error: {error}",
   "fDiagramStart": "Start",
-  "fDiagramEnd": "End"
+  "fDiagramEnd": "End",
+  "fFootnote": "Footnote",
+  "fDetails": "Details",
+  "fDetailsTitle": "Title",
+  "fDetailsContent": "Content",
+  "fCollapseDetails": "Collapse details",
+  "fExpandDetails": "Expand details"
 }

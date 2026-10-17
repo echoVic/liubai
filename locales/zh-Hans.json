@@ -1924,5 +1924,29 @@
   "fDiagramStart": "开始",
   "@fDiagramStart": {"description": "First node label in the inserted flowchart template."},
   "fDiagramEnd": "结束",
-  "@fDiagramEnd": {"description": "Last node label in the inserted flowchart template."}
+  "@fDiagramEnd": {"description": "Last node label in the inserted flowchart template."},
+  "fFootnote": "脚注",
+  "@fFootnote": {
+    "description": "Insert a numbered footnote reference and definition."
+  },
+  "fDetails": "折叠块",
+  "@fDetails": {
+    "description": "Insert an expandable details block."
+  },
+  "fDetailsTitle": "标题",
+  "@fDetailsTitle": {
+    "description": "Selected summary text in a new details block."
+  },
+  "fDetailsContent": "内容",
+  "@fDetailsContent": {
+    "description": "Body text in a new details block."
+  },
+  "fCollapseDetails": "折叠内容",
+  "@fCollapseDetails": {
+    "description": "Button to hide details content in this editor."
+  },
+  "fExpandDetails": "展开内容",
+  "@fExpandDetails": {
+    "description": "Button to show details content in this editor."
+  }
 }

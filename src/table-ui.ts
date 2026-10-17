@@ -8,6 +8,7 @@ import {GFM} from '@lezer/markdown';
 import {Highlight} from './marks';
 import {wrapSelection,insertMath,clearFormatting,inlineMarkers,editTable,parseTable,type TableAction} from './editing';
 import {messages,activeLocale} from './i18n';
+import {insertFootnote} from './extras';
 import {attachMenu} from './menu';
 
 // The editor clears its IME guard, commits the cell, then resumes saves and queued actions.
@@ -32,6 +33,10 @@ function focusedTable(view:EditorView){
 }
 export function focusedTableRange(view:EditorView){const table=focusedTable(view);return table?{from:table.from,to:table.from+table.raw.length}:null}
 export function formatTableCell(view:EditorView,id:string){const table=focusedTable(view);if(!table)return false;table.format(document.activeElement as HTMLElement,id);return true}
+// Capture the DOM selection before the insert menu moves focus into its buttons.
+export function tableFootnote(view:EditorView):(()=>TransactionSpec)|undefined{
+ const table=focusedTable(view);return table?.footnote(document.activeElement as HTMLElement);
+}
 export class TableWidget extends WidgetType{
  readonly locale=activeLocale;
  constructor(readonly raw:string,readonly from:number,readonly composing:StateField<boolean>,readonly readOnly=false){super()}
@@ -146,6 +151,13 @@ class TableDOM{
   this.fresh=true;
   if(this.disposed){this.view.focus();return}
   this.focus(action==='rowBelow'?row+1:row,action==='columnRight'?column+1:column);
+ }
+ footnote(cell:HTMLElement){
+  if(this.blocked())return;
+  const sel=getSelection();if(!sel?.rangeCount||!cell.contains(sel.anchorNode)||!cell.contains(sel.focusNode))return;
+  const r=sel.getRangeAt(0),before=document.createRange();before.selectNodeContents(cell);before.setEnd(r.startContainer,r.startOffset);
+  const start=before.toString().length,end=start+r.toString().length,text=cell.textContent||'',row=Number(cell.dataset.row),column=Number(cell.dataset.column),from=this.from;
+  return ()=>insertFootnote(this.view.state,ref=>editTable(this.view.state,{from,to:from+this.raw.length},row,column,'cell',text.slice(0,start)+ref+text.slice(end)));
  }
  format(cell:HTMLElement,id:string){
   if(this.blocked())return;

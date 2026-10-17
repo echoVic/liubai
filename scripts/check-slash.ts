@@ -12,12 +12,13 @@ for(const query of ['标题','biaoti','bt','heading','HEADING'])assert.deepEqual
 for(const query of ['标题 2','biaoti2','bt2','h2'])assert.equal(ids(query)[0],'h2',query);
 for(const [query,id] of [['正文','paragraph'],['zw','paragraph'],['wx','bullet'],['youxu','ordered'],['rwlb','task'],['yy','quote'],['daima','code'],['bg','table'],['image','image'],['fgx','rule'],['tsk','note']])assert.equal(ids(query)[0],id,query);
 assert.deepEqual(ids('nothing-matches'),[]);
-assert.equal(ids('').length,15);
+assert.equal(ids('').length,17);
 const searches:[slash.SlashItemID,string[]][]=[
  ['paragraph',['正文','zhengwen','zw','body']],['h1',['标题 1','biaoti1','bt1','h1']],['h2',['标题 2','biaoti2','bt2','h2']],['h3',['标题 3','biaoti3','bt3','h3']],
  ['bullet',['无序列表','wuxuliebiao','wxlb','bulleted']],['ordered',['有序列表','youxuliebiao','yxlb','numbered']],['task',['任务列表','renwuliebiao','rwlb','task']],
  ['quote',['引用','yinyong','yy','blockquote']],['code',['代码块','daimakuai','dmk','code']],['table',['表格','biaoge','bg','table']],['image',['图片','tupian','tp','image']],
  ['mermaid',['图表','tubiao','tb','diagram','chart','mermaid','flowchart']],
+ ['details',['折叠块','zhediekuai','zdk','details','fold','collapse','toggle']],['footnote',['脚注','jiaozhu','jz','footnote','reference']],
  ['math',['公式','gongshi','gs','math','formula','latex','katex','tex']],
  ['rule',['分割线','fengexian','fgx','divider']],['note',['提示块','tishikuai','tsk','callout']],
 ];
@@ -69,7 +70,7 @@ for(const trigger of ['/','、']){
  assert.equal(create().update({changes:{from:0,insert:trigger},selection:{anchor:1},userEvent:'input.paste'}).state.field(field),null,'paste does not trigger');
 }
 let s=create('before\n\n\nafter',8).update({effects:slash.slashOpen.of(null)}).state;
-assert.equal(s.field(field)?.items.length,15,'plus opens on an empty paragraph without a trigger');
+assert.equal(s.field(field)?.items.length,17,'plus opens on an empty paragraph without a trigger');
 s=type(s,'table');assert.equal(s.field(field)?.items[0].id,'table');
 s=s.update(slash.applySlashItem(s,'table')).state;assert.equal(s.field(field),null,'applying closes');
 console.log('PASS: slash search, all templates/cursors/undo/neighbours, punctuation, composition, mode/read-only guards, dismissal and plus state');

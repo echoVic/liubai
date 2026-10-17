@@ -76,13 +76,15 @@ def check_format_bar(page):
     expect(bar).to_have_attribute("role", "toolbar")
     expect(bar).to_have_attribute("aria-label", "格式")
     order = bar.locator(".format-group").evaluate("el => [...el.children].flatMap(el => el.classList.contains('format-cluster') ? [...el.children] : [el]).map(el => el.classList.contains('format-sep') ? '|' : el.dataset.action || el.id)")
-    assert order == ["insert-button", "undo", "redo", "|", "heading-button", "|", "bold", "italic", "underline", "strike", "highlight", "inlineCode", "superscript", "subscript", "clearFormatting", "|", "quote", "bullet", "ordered", "task", "outdent", "indent", "|", "link", "image", "table", "code", "math", "mermaid", "|", "find", "|", "source"], order
+    assert order == ["insert-button", "undo", "redo", "|", "heading-button", "|", "bold", "italic", "underline", "strike", "highlight", "inlineCode", "superscript", "subscript", "clearFormatting", "|", "quote", "bullet", "ordered", "task", "outdent", "indent", "|", "link", "image", "table", "code", "math", "mermaid", "footnote", "|", "find", "|", "source"], order
     for separator in bar.locator(".format-sep").all():
         expect(separator).to_have_attribute("aria-hidden", "true")
     expect(heading).to_have_attribute("title", "标题级别")
     expect(heading).to_have_attribute("aria-haspopup", "menu")
     expect(bar.locator('[data-action="bold"]')).to_have_attribute("title", "加粗 ⌘B")
     expect(bar.locator('[data-action="link"]')).to_have_attribute("title", "链接 ⌘L")
+    expect(bar.locator('[data-action="footnote"]')).to_have_accessible_name("脚注")
+    expect(bar.locator('[data-action="footnote"]')).to_have_attribute("title", "脚注")
     expect(bar.locator('[data-action="mermaid"]')).to_have_accessible_name("图表")
     expect(bar.locator('[data-action="mermaid"]')).to_have_attribute("title", "图表")
     expect(bar.locator('[data-action="math"]')).to_have_accessible_name("公式")
@@ -93,9 +95,9 @@ def check_format_bar(page):
     expect(page.locator("#source-button, .source-toggle, .paper-top button")).to_have_count(0)
     expect(bar.locator('[data-action="image"]')).to_have_count(1)
     icons = bar.locator("button.tool").evaluate_all("els => els.map(el => ({action:el.dataset.action, svg:el.querySelector('svg').outerHTML}))")
-    assert len(icons) == 24
+    assert len(icons) == 25
     assert len({item["svg"] for item in icons}) == len(icons), icons
-    assert bar.locator("button.tool").evaluate_all("els => els.every(el => el.getAttribute('aria-label') && getComputedStyle(el).width === '32px' && getComputedStyle(el).height === '32px')")
+    assert bar.locator("button.tool").evaluate_all("els => els.every(el => el.getAttribute('aria-label') && getComputedStyle(el).width === '30px' && getComputedStyle(el).height === '32px')")
     accessible_buttons(page)
     for button in bar.locator("button:visible").all():
         assert button.get_attribute("title"), button.evaluate("el => el.outerHTML")
@@ -186,7 +188,7 @@ def check_format_bar(page):
     for initial, expected in [("", "> "), ("已有正文", "已有正文\n\n> ")]:
         replace(initial)
         page.locator("#insert-button").click()
-        expect(page.locator("#insert-menu [role=menuitem]")).to_have_count(15)
+        expect(page.locator("#insert-menu [role=menuitem]")).to_have_count(17)
         page.locator('#insert-menu [data-menu-action="quote"]').click()
         saved_text(expected)
     replace("- 父项\n- 子项\n  - 孙项")
@@ -523,7 +525,7 @@ def check_docked_sidebar_and_outline(page):
     page.set_viewport_size({"width": 680, "height": 820})
     for layout in ("single", "split"):
         select_view(page, layout)
-        expect(page.locator("#format-bar button:visible")).to_have_count(27 if layout == "split" else 26)
+        expect(page.locator("#format-bar button:visible")).to_have_count(28 if layout == "split" else 27)
         boxes = page.locator("#format-bar button:visible").evaluate_all("els => els.map(el => {const r=el.getBoundingClientRect();return {x:r.x,right:r.right,y:r.y,bottom:r.bottom}})")
         assert len({b["y"] for b in boxes}) >= 2, boxes
         bar = page.locator("#format-bar").bounding_box()
@@ -745,7 +747,7 @@ def run(page):
         page.locator(".topbar").screenshot(path=str(ARTIFACTS / f"toolbar-{width}.png"))
     page.evaluate("localStorage.setItem('mygo:locale','en')")
     page.reload()
-    for action, label in [("mermaid", "Diagram"), ("math", "Formula"), ("underline", "Underline"), ("highlight", "Highlight"), ("superscript", "Superscript"), ("subscript", "Subscript"), ("clearFormatting", "Clear Formatting"), ("indent", "Increase Indent"), ("outdent", "Decrease Indent"), ("find", "Find and Replace")]:
+    for action, label in [("footnote", "Footnote"), ("mermaid", "Diagram"), ("math", "Formula"), ("underline", "Underline"), ("highlight", "Highlight"), ("superscript", "Superscript"), ("subscript", "Subscript"), ("clearFormatting", "Clear Formatting"), ("indent", "Increase Indent"), ("outdent", "Decrease Indent"), ("find", "Find and Replace")]:
         expect(page.locator(f'#format-bar [data-action="{action}"]')).to_have_accessible_name(label)
     expect(page.locator("#insert-button")).to_have_accessible_name("Insert")
     page.locator("#heading-button").click()

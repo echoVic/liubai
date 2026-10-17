@@ -20,6 +20,8 @@ import {MathSyntax} from './math';
 import {MathWidget} from './math-ui';
 import {MermaidWidget} from './mermaid-ui';
 import {MermaidSyntax} from './mermaid';
+import {extraRanges,extraMarkers,createDetailsFolding} from './extras';
+import {CalloutWidget,DetailsWidget,FootnoteWidget,detailsExpanded,footnoteInteractions} from './extras-ui';
 import {indentList,safeLink,localDocumentLink,frontMatterRange} from './editing';
 import {htmlToMarkdown,pasteText,replacePasteImage,type PasteImage} from './paste';
 
@@ -121,17 +123,42 @@ export function createBlockField(resolve:(dest:string)=>Promise<string>):StateFi
 export function inlineDecorations(state:EditorState,ranges:readonly {from:number;to:number}[]):DecorationSet{
  const decorations:{from:number;to:number;dec:Decoration}[]=[],touched=selectedLines(state),marked=new Set<string>(),meta=frontMatterRange(state),images=imageRanges(state).filter(i=>ranges.some(range=>i.from<=range.to&&i.to>=range.from)&&(!touched(i.from,i.to)||imageSelected(state,i.from)));
  const diagrams=mermaidRanges(state).filter(d=>!touched(d.from,d.to));
+ const tables=tableRanges(state);
+ const extras=extraRanges(state),numbers=new Map<string,number>();
+ for(const ref of extras.references)if(extras.definitions.has(ref.label)&&!numbers.has(ref.label))numbers.set(ref.label,numbers.size+1);
  const active=(from:number,to:number)=>state.selection.ranges.some(sel=>sel.from<=to&&sel.to>=from);
  for(const range of ranges){
   const lineClass=(from:number,to:number,cls:string)=>{
    const first=state.doc.lineAt(Math.max(from,range.from)).number,last=state.doc.lineAt(Math.min(to,range.to)).number;
    for(let i=first;i<=last;i++){const line=state.doc.line(i),key=line.from+cls;if(!marked.has(key)){marked.add(key);decorations.push({from:line.from,to:line.from,dec:Decoration.line({class:cls})})}}
   };
+  for(const callout of extras.callouts){
+   if(callout.from>range.to||callout.to<range.from)continue;
+   lineClass(callout.from,callout.to,'md-callout markdown-alert-'+callout.kind);
+   const key=callout.markerFrom+':callout';
+   if(callout.markerFrom>=range.from&&callout.markerTo<=range.to&&!touched(callout.markerFrom,callout.markerTo)&&!marked.has(key)){marked.add(key);decorations.push({from:callout.markerFrom,to:callout.markerTo,dec:Decoration.replace({widget:new CalloutWidget(callout.kind)})})}
+  }
+  for(const detail of extras.details)if(detail.summary>=range.from&&detail.summary<=range.to&&!marked.has(detail.summary+':details')){
+   marked.add(detail.summary+':details');decorations.push({from:detail.summary,to:detail.summary,dec:Decoration.widget({widget:new DetailsWidget(detail,detailsExpanded(state,detail),composing),side:-1})});
+  }
+  for(const definition of extras.definitions.values())if(definition.from<=range.to&&definition.to>=range.from)lineClass(definition.from,definition.to,'md-footnote-definition');
+  for(const ref of extras.references){
+   const key=ref.from+':footnote';if(ref.from<range.from||ref.to>range.to||!numbers.has(ref.label)||active(ref.from,ref.to)||tables.some(t=>ref.from>=t.from&&ref.to<=t.to)||marked.has(key))continue;
+   marked.add(key);decorations.push({from:ref.from,to:ref.to,dec:Decoration.replace({widget:new FootnoteWidget(ref.label,numbers.get(ref.label)!,ref.from)})});
+  }
   if(meta&&range.from<=meta.to)lineClass(meta.from,meta.to,'md-front-matter');
+  // Only visible replacements can own syntax nodes. Index their intervals instead of
+  // searching every footnote in a long document for each visible node.
+  const hidden=decorations.filter(d=>d.dec.spec.widget instanceof FootnoteWidget||d.dec.spec.widget instanceof CalloutWidget).sort((a,b)=>a.from-b.from);
+  const hiddenNode=(from:number,to:number)=>{
+   let lo=0,hi=hidden.length;while(lo<hi){const mid=(lo+hi)>>>1;if(hidden[mid].from<=from)lo=mid+1;else hi=mid}
+   const owner=hidden[lo-1];return owner&&from>=owner.from&&to<=owner.to;
+  };
   syntaxTree(state).iterate({from:range.from,to:range.to,enter:n=>{
    if(meta&&n.from<meta.to&&n.name!=='Document')return false;
    if(n.to<=range.from||n.from>=range.to)return false;
    const name=n.name;
+   if(hiddenNode(n.from,n.to))return false;
    if(images.some(image=>n.from>=image.from&&n.to<=image.to))return false;
    if(tagHosts.test(name))for(const pair of inlineTagPairs(n.node,(a,b)=>state.sliceDoc(a,b))){
     const key=pair.from+':tag';if(marked.has(key))continue;marked.add(key);
@@ -169,10 +196,10 @@ export function richExtensions(resolve:(dest:string)=>Promise<string>):Extension
   constructor(view:EditorView){this.decorations=inlineDecorations(view.state,view.visibleRanges)}
   update(update:ViewUpdate){
    if(update.state.field(composing)){this.decorations=this.decorations.map(update.changes);return}
-   if(update.docChanged||update.viewportChanged||update.selectionSet||update.startState.field(imageSelection,false)!==update.state.field(imageSelection,false)||update.startState.field(composing)||syntaxTree(update.startState)!==syntaxTree(update.state))this.decorations=inlineDecorations(update.state,update.view.visibleRanges);
+   if(update.docChanged||update.viewportChanged||update.selectionSet||update.startState.field(imageSelection,false)!==update.state.field(imageSelection,false)||update.startState.field(composing)||update.transactions.some(tr=>tr.effects.length)||syntaxTree(update.startState)!==syntaxTree(update.state))this.decorations=inlineDecorations(update.state,update.view.visibleRanges);
   }
  },{decorations:plugin=>plugin.decorations});
- return [blockRichMode.of(true),imageSelection,createBlockField(resolve),inlinePlugin];
+ return [blockRichMode.of(true),imageSelection,extraMarkers,createDetailsFolding(composing),footnoteInteractions(composing),createBlockField(resolve),inlinePlugin];
 }
 export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions){
  const state=EditorState.create({doc:doc.content,selection:{anchor:Math.min(doc.position.anchor||0,doc.content.length),head:Math.min(doc.position.head||0,doc.content.length)},extensions:[

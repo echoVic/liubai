@@ -6419,3 +6419,87 @@ func FDiagramEnd() string { return In(i18n.Locale()).FDiagramEnd() }
 func (msgs Messages) FDiagramEnd() string {
 	return Catalog.Format(msgs.locale, "fDiagramEnd", nil)
 }
+
+// FFootnote says "脚注"
+// in the language the app shows.
+//
+// Insert a numbered footnote reference and definition.
+func FFootnote() string { return In(i18n.Locale()).FFootnote() }
+
+// FFootnote says "脚注"
+// in the language of msgs.
+//
+// Insert a numbered footnote reference and definition.
+func (msgs Messages) FFootnote() string {
+	return Catalog.Format(msgs.locale, "fFootnote", nil)
+}
+
+// FDetails says "折叠块"
+// in the language the app shows.
+//
+// Insert an expandable details block.
+func FDetails() string { return In(i18n.Locale()).FDetails() }
+
+// FDetails says "折叠块"
+// in the language of msgs.
+//
+// Insert an expandable details block.
+func (msgs Messages) FDetails() string {
+	return Catalog.Format(msgs.locale, "fDetails", nil)
+}
+
+// FDetailsTitle says "标题"
+// in the language the app shows.
+//
+// Selected summary text in a new details block.
+func FDetailsTitle() string { return In(i18n.Locale()).FDetailsTitle() }
+
+// FDetailsTitle says "标题"
+// in the language of msgs.
+//
+// Selected summary text in a new details block.
+func (msgs Messages) FDetailsTitle() string {
+	return Catalog.Format(msgs.locale, "fDetailsTitle", nil)
+}
+
+// FDetailsContent says "内容"
+// in the language the app shows.
+//
+// Body text in a new details block.
+func FDetailsContent() string { return In(i18n.Locale()).FDetailsContent() }
+
+// FDetailsContent says "内容"
+// in the language of msgs.
+//
+// Body text in a new details block.
+func (msgs Messages) FDetailsContent() string {
+	return Catalog.Format(msgs.locale, "fDetailsContent", nil)
+}
+
+// FCollapseDetails says "折叠内容"
+// in the language the app shows.
+//
+// Button to hide details content in this editor.
+func FCollapseDetails() string { return In(i18n.Locale()).FCollapseDetails() }
+
+// FCollapseDetails says "折叠内容"
+// in the language of msgs.
+//
+// Button to hide details content in this editor.
+func (msgs Messages) FCollapseDetails() string {
+	return Catalog.Format(msgs.locale, "fCollapseDetails", nil)
+}
+
+// FExpandDetails says "展开内容"
+// in the language the app shows.
+//
+// Button to show details content in this editor.
+func FExpandDetails() string { return In(i18n.Locale()).FExpandDetails() }
+
+// FExpandDetails says "展开内容"
+// in the language of msgs.
+//
+// Button to show details content in this editor.
+func (msgs Messages) FExpandDetails() string {
+	return Catalog.Format(msgs.locale, "fExpandDetails", nil)
+}

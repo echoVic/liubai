@@ -1,5 +1,8 @@
 import {imageAltText} from './images';
 import {messages} from './i18n';
+import {icon} from './icons';
+import {calloutTitle} from './extras-ui';
+import type {CalloutKind} from './extras';
 import MarkdownIt from 'markdown-it';
 import {highlightPlugin} from './marks';
 import {mathPlugin,fillMath,type MathOutput} from './math';
@@ -244,6 +247,9 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
   element.classList.remove('md-math-'+env.mathID+'-'+index);fillMath(element,formula.source,formula.display,options.mathOutput);
  }
  root.append(template.content);
+ for(const kind of ['note','tip','important','warning','caution'] as CalloutKind[])for(const alert of root.querySelectorAll('.markdown-alert-'+kind)){
+  const title=alert.querySelector('.markdown-alert-title');if(title)title.replaceChildren(icon(kind),document.createTextNode(calloutTitle(kind)));
+ }
  let active=true;
  const pending:Promise<void>[]=[],diagrams:MermaidMount[]=[];
  // Only parser-generated, unguessable placeholders receive strict Mermaid SVG after sanitization.

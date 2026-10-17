@@ -24,8 +24,15 @@ export function renderDelivery(data:Delivery,mathOutput:MathOutput='mathml'){
  for(const a of root.querySelectorAll('a')){a.rel='noopener noreferrer'}
  const styles:Record<string,string>={mark:'background:#eee2a5;color:inherit;-webkit-print-color-adjust:exact;print-color-adjust:exact',u:'text-decoration:underline',sup:'vertical-align:super;font-size:.75em;line-height:0',sub:'vertical-align:sub;font-size:.75em;line-height:0',h1:'font-size:30px;line-height:1.5;margin:24px 0 18px',h2:'font-size:24px;line-height:1.5;margin:24px 0 14px',h3:'font-size:20px;line-height:1.6',p:'line-height:1.9;margin:14px 0',blockquote:'border-left:3px solid #809387;padding-left:16px;color:#45574c',pre:'background:#f1f2ef;padding:16px;white-space:pre-wrap;font-family:monospace;font-size:13px',table:'border-collapse:collapse;width:100%;margin:20px 0',hr:'height:0;border:0;border-top:1px solid #cdd2cc;margin:24px 0',th:'border:1px solid #cdd2cc;padding:9px;text-align:left;background:#edf0e9',td:'border:1px solid #cdd2cc;padding:9px;text-align:left',code:'font-family:monospace',a:'color:#315f82;text-decoration:underline'};
  for(const [tag,style]of Object.entries(styles))root.querySelectorAll(tag).forEach(el=>el.setAttribute('style',style+';'+(el.getAttribute('style')||'')));
- const readerStyles:Record<string,string>={'.markdown-alert':'border-left:3px solid #809387;background:#edf2ee;padding:12px 16px;margin:18px 0','.markdown-alert-title':'font-weight:700;margin:0 0 8px',kbd:'border:1px solid #cdd2cc;border-radius:4px;padding:2px 5px;font-family:monospace;background:#f1f2ef','section.footnotes':'font-size:13px'};
+ const readerStyles:Record<string,string>={'.markdown-alert':'border-left:3px solid #809387;background:#edf2ee;padding:12px 16px;margin:18px 0','.markdown-alert-title':'font-weight:700;margin:0 0 8px;display:flex;align-items:center;gap:7px',kbd:'border:1px solid #cdd2cc;border-radius:4px;padding:2px 5px;font-family:monospace;background:#f1f2ef','section.footnotes':'font-size:13px'};
  for(const [selector,style] of Object.entries(readerStyles))root.querySelectorAll(selector).forEach(el=>el.setAttribute('style',style));
+ for(const [kind,colour] of Object.entries({note:'#316dba',tip:'#34794c',important:'#8250b5',warning:'#966611',caution:'#bd4343'})){
+  for(const alert of root.querySelectorAll<HTMLElement>('.markdown-alert-'+kind)){
+   alert.style.borderLeftColor=colour;alert.style.background={note:'#edf2f9',tip:'#edf3ef',important:'#f4eff8',warning:'#f6f2e9',caution:'#f9eeee'}[kind as 'note'];
+   const title=alert.querySelector<HTMLElement>('.markdown-alert-title');if(title)title.style.color=colour;
+  }
+ }
+ root.querySelectorAll('.markdown-alert-title svg').forEach(el=>el.setAttribute('style','width:1em;height:1em;flex:none;vertical-align:-.1em'));
  root.querySelectorAll('input[type=checkbox]').forEach(el=>el.setAttribute('style','margin:0 8px 0 0;vertical-align:middle'));
  root.style.cssText='font-family:PingFang SC,Noto Sans CJK SC,sans-serif;font-size:16px;line-height:1.9;color:#242523;background:#fff;overflow-wrap:anywhere';
  return root;

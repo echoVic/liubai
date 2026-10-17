@@ -1,0 +1,63 @@
+import AppKit
+import WebKit
+
+// Block handles, drag and the slash menu in WebKit, the engine of the desktop app, in an off-screen window.
+// Pointer events are dispatched in the page: WebKit ignores native mouse events for windows that are not key.
+let url = URL(string: CommandLine.arguments[1])!
+let app = NSApplication.shared
+app.setActivationPolicy(.prohibited)
+let size = NSSize(width: 1440, height: 900)
+let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled], backing: .buffered, defer: false)
+window.acceptsMouseMovedEvents = true
+let web = WKWebView(frame: NSRect(origin: .zero, size: size))
+window.contentView = web
+// Ordered in far off-screen so WebKit lays it out as visible; the app never activates and the window is never key.
+window.setFrameOrigin(NSPoint(x: -20000, y: -20000))
+window.orderFrontRegardless()
+
+func fail(_ m: String) -> Never { FileHandle.standardError.write(Data("blocks webkit: \(m)\n".utf8)); exit(1) }
+@MainActor func js(_ s: String) async -> Any? {
+  do { return try await web.callAsyncJavaScript(s, arguments: [:], in: nil, contentWorld: .page) } catch { fail("js error: \(error) in \(s.prefix(80))") }
+}
+@MainActor func wait(_ ms: UInt64) async { try? await Task.sleep(nanoseconds: ms * 1_000_000) }
+@MainActor func mouse(_ type: String, _ x: Double, _ y: Double, buttons: Int = 0) async {
+  _ = await js("const t=document.elementFromPoint(\(x),\(y))||document.body;t.dispatchEvent(new PointerEvent('\(type)',{bubbles:true,cancelable:true,composed:true,clientX:\(x),clientY:\(y),pointerId:1,pointerType:'mouse',isPrimary:true,button:\(type == "pointermove" ? -1 : 0),buttons:\(buttons)}));return true")
+}
+@MainActor func rect(_ text: String) async -> [String: Double] {
+  guard let r = await js("const l=[...document.querySelectorAll('.cm-line')].find(e=>e.textContent==='\(text)');if(!l)return null;const b=l.getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height}") as? [String: Double] else { fail("no line \(text)") }
+  return r
+}
+@MainActor func content() async -> String { (await js("return [...document.querySelectorAll('.cm-line')].map(e=>e.textContent).join('|')") as? String) ?? "" }
+
+Task { @MainActor in
+  web.load(URLRequest(url: url))
+  for _ in 0..<100 { if (await js("return !!document.querySelector('.cm-content')") as? Bool) == true { break }; await wait(100) }
+  _ = await js("const c=document.querySelector('.cm-content');c.focus();document.execCommand('selectAll');document.execCommand('insertText',false,'# 标题\\n\\n第一段。\\n\\n第二段。\\n\\n- 甲\\n  - 乙\\n- 丙\\n\\n第三段。');return true")
+  await wait(1500)
+  var report: [String: Any] = ["typed": await content()]
+  let p2 = await rect("第二段。")
+  await mouse("pointermove", p2["x"]! + 40, p2["y"]! + p2["h"]! / 2); await wait(400)
+  let grip = await js("const g=document.querySelector('#block-grip');const o=document.querySelector('.block-handles');if(!g||o.hidden)return null;const b=g.getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height}") as? [String: Double]
+  report["hoverShowsGrip"] = grip != nil
+  if let g = grip { report["gripAligned"] = abs(g["y"]! - p2["y"]!) < 12 && g["x"]! + g["w"]! <= p2["x"]! }
+  let p3 = await rect("第三段。")
+  await mouse("pointermove", p3["x"]! + 40, p3["y"]! + p3["h"]! / 2); await wait(300)
+  guard let g3 = await js("const g=document.querySelector('#block-grip');const b=g.getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height}") as? [String: Double] else { fail("no grip for 第三段") }
+  let p1 = await rect("第一段。")
+  let gx = g3["x"]! + g3["w"]! / 2, gy = g3["y"]! + g3["h"]! / 2
+  await mouse("pointerdown", gx, gy, buttons: 1)
+  let steps = 14
+  for i in 1...steps { let t = Double(i) / Double(steps); await mouse("pointermove", gx + (p1["x"]! + 20 - gx) * t, gy + (p1["y"]! + 2 - gy) * t, buttons: 1); await wait(16) }
+  await wait(200)
+  report["insertionVisible"] = (await js("return !document.querySelector('.block-insertion').hidden") as? Bool) ?? false
+  await mouse("pointerup", p1["x"]! + 20, p1["y"]! + 2); await wait(800)
+  report["afterDrag"] = await content()
+  // The slash menu opens on an empty line in WebKit too.
+  _ = await js("const c=document.querySelector('.cm-content');c.focus();document.execCommand('selectAll');document.execCommand('insertText',false,'第一段。\\n\\n');return true"); await wait(300)
+  _ = await js("document.execCommand('insertText',false,'/');return true"); await wait(400)
+  report["slashMenu"] = (await js("const m=document.querySelector('[role=listbox]');return !!m&&m.getBoundingClientRect().height>0") as? Bool) ?? false
+  let data = try! JSONSerialization.data(withJSONObject: report, options: [.sortedKeys])
+  FileHandle.standardOutput.write(data); FileHandle.standardOutput.write(Data("\n".utf8))
+  exit(0)
+}
+app.run()

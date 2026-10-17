@@ -12,6 +12,8 @@
 - 阅读视图与「导出」渲染消毒后的内联 HTML（README 常见的居中 logo、`<details>`、`<kbd>` 等），front matter 折叠为「文稿属性」（导出时省略），支持脚注、GitHub 提示块、带协议或 `www.` 的裸链接，代码块按语言高亮。`README.md` 这类文件名不会被识别成链接。
 - 阅读视图点击、编辑区 ⌘ 点击相对 `.md` 链接会打开对应文稿并跳到 `#标题`；草稿还没有保存位置时会说明原因。
 - 格式工具栏按标题、行内格式、列表和插入分组：标题菜单可设正文或标题 1–3，按钮随光标显示当前标题级别（1–6）；支持加粗、斜体、删除线、行内代码、引用、无序/有序/任务列表，以及链接、图片、表格和代码块。图标按钮提供中文提示，窄窗口自动换行；也可以从「更多」打开「所有操作…」。
+- 块编辑：鼠标移到段落、标题、列表项、表格等内容左侧会出现 ⋮⋮ 和 ＋。拖动 ⋮⋮ 调整顺序（列表项连同子项一起移动）；点 ⋮⋮ 选中整块并打开块菜单，可转换类型、复制、删除、上移下移，⇧ 点击连选多块；⌥⇧↑ / ⌥⇧↓ 用键盘移动，⌘/ 打开块菜单。所有块操作都直接修改 Markdown 原文，一步即可撤销。
+- 在空行开头输入「/」（中文标点下的「、」也可以）打开插入菜单：标题、列表、任务、引用、代码块、表格、图片、分割线、提示块，可用中文、拼音首字母或英文搜索；块左侧的 ＋ 也能打开。
 - 链接面板可编辑文字与地址，⌘/Ctrl 点击打开；任务可直接勾选，表格面板支持编辑单元格、增加行列与整次撤销。
 - `⌘/Ctrl+\` 在「编辑」与「分栏」之间切换；仅在分栏中显示格式工具栏右侧的「源码」，点击或用 `⌘/Ctrl+Shift+M` 切换左侧即时排版与完整源码，与「更多」中的「显示 Markdown 源码」同步；文字和撤销记录共用。
 - 分栏时左右两栏等宽，右侧是只读成品视图。光标跨段时会跟随到对应内容块，手动滚动阅读区不会反向带动编辑区；窗口窄于 820px 时两栏改为上下排列。
@@ -72,13 +74,17 @@ scripts/e2e.sh check-reader
 scripts/e2e.sh check-toolbar
 scripts/e2e.sh check-capture
 scripts/e2e.sh check-english
+scripts/e2e.sh check-blocks
+scripts/e2e.sh check-blocks-webkit   # 块操作在 WebKit（桌面版引擎）中的表现
+npx --yes bun@1.4.3 scripts/check-blocks.ts
+npx --yes bun@1.4.3 scripts/check-slash.ts
 ```
 
 `scripts/e2e.sh` 为每项浏览器回归编译一次程序，用新的数据目录启动本地网页服务，跑完后关闭。Python 浏览器回归使用已安装的 Chrome channel，不下载 Playwright Chromium。应用依赖 macOS 13 或以上。
 
 性能对比：`ROUNDS=2 scripts/bench/run.sh 29925c3 docs/performance/raw/<日期>` 在同一台机器上交替运行 0.3.0 与当前工作区的编辑、预览、存储基准，并生成 `summary.md`，约 8 分钟。存储基准也可单独运行：`go test -tags perf -run '^$' -bench . -benchtime 20x .`，普通 `go test` 不会运行它们。
 
-构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.1.6.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
+构建 Mac 通用安装包：先运行 `node scripts/build.mjs`，再运行 `go tool mygo build -platform darwin/universal .`。产物为 `build/darwin-universal/Liubai.app` 和 `build/darwin-universal/Liubai 0.2.0.dmg`，同时支持 Apple Silicon 和 Intel。`mygo.json` 已配置 Developer ID 正式签名与 Apple 公证；构建机需要对应证书及钥匙串中的 `clipnest-notary` 公证凭据，密码不写入仓库。构建会启用 hardened runtime、添加安全时间戳，并将公证票据附加到应用和 DMG。
 
 自动更新由 `mygo.json` 的 `updates` 配置（公钥和发布仓库）。签名更新包的私钥不在仓库和配置里，发布时通过环境变量传入：`MYGO_UPDATER_PRIVATE_KEY="$(cat <私钥文件>)" go tool mygo build -platform darwin/universal -upload .`；没有私钥时照常构建，只是不生成更新包。更新说明取自 `CHANGELOG.md` 中当前版本的段落，缺少该段落时构建失败。`go tool mygo build -platform darwin/universal -upload .` 把 DMG、更新包和更新清单上传到当前版本的 GitHub Release 草稿；发布为最新版本后，已安装的应用就会检测到更新。
 

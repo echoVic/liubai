@@ -3,6 +3,7 @@ import {call,desktop,type Summary,type LocaleNotice,type Doc,type DocStatus,type
 import {createEditor,mode,editorLocale,closeSearchPanel,localizedEditor,richExtensions,setFocus,undo,redo,openSearchPanel,EditorState,EditorView} from './editor';
 import {blockAt,convertBlocks,duplicateBlocks,deleteBlocks,moveBlocks,insertParagraphBelow,type BlockConversion} from './blocks';
 import {blockControls} from './block-ui';
+import {openSlashMenu} from './slash';
 import {Transaction,Compartment,StateEffect} from '@codemirror/state';
 import {blockFormat,setHeading,headingLevel,wrapSelection,codeBlock,linkAt,makeLink,safeLink,localDocumentLink,tableAt,parseTable,serializeTable,headings,type BlockKind} from './editing';
 import {isolateHistory} from '@codemirror/commands';
@@ -85,7 +86,7 @@ function load(next:WorkspaceState){
  loading=true;if(view){sessions.set(doc.id,view.state);view.destroy()}
  if(appearance)next.appearance=appearance;else appearance=next.appearance;
  state=next;doc=next.current;source=!!appearance.source;dirty=false;generation=0;savedPosition=JSON.stringify(doc.position);
- view=createEditor($('#editor'),doc,resolveImage,changed,insertImages,composition,openLink,openTable,files=>{if(!desktop&&files[0])void importFile(files[0])},importPastedImage,error=>toast(errorText(error)),{action:id=>void action('block:'+id),dispatch:spec=>{if(!compositionActive&&!view.state.readOnly)view.dispatch(spec);view.focus()}});
+ view=createEditor($('#editor'),doc,resolveImage,changed,insertImages,composition,openLink,openTable,files=>{if(!desktop&&files[0])void importFile(files[0])},importPastedImage,error=>toast(errorText(error)),{action:id=>void action(id==='image'?id:'block:'+id),dispatch:spec=>{if(!compositionActive&&!view.state.readOnly)view.dispatch(spec);view.focus()}});
  view.dispatch({effects:StateEffect.appendConfig.of([editLock.of(EditorState.readOnly.of(false)),EditorView.scrollMargins.of(()=>({top:parseFloat(getComputedStyle($('#editor')).paddingTop)+24}))])});
  const cached=sessions.get(doc.id);if(cached&&cached.doc.toString()===doc.content)view.setState(cached);
  view.dispatch({effects:[editLock.reconfigure(EditorState.readOnly.of(busy||reading())),editorLocale.reconfigure(localizedEditor())]});
@@ -264,7 +265,7 @@ async function action(id:string){
   if(view.state.readOnly||compositionActive||sourceActive()||focusMode)return;
   const control=blockControls(view),name=id.slice(6);if(name==='menu'){control?.open();return}
   const range=control?.range||blockAt(view.state,view.state.selection.main.head);if(!range)return;
-  if(name==='insert'){view.dispatch(insertParagraphBelow(view.state,range));view.focus();return}
+  if(name==='insert'){view.dispatch(insertParagraphBelow(view.state,range));openSlashMenu(view);return}
   const spec=name==='up'||name==='down'?moveBlocks(view.state,range,name==='up'?-1:1):name==='duplicate'?duplicateBlocks(view.state,range):name==='delete'?deleteBlocks(view.state,range):convertBlocks(view.state,range,name as BlockConversion);
   if(spec)view.dispatch(spec);view.focus();return;
  }

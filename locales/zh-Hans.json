@@ -1806,5 +1806,17 @@
   "fMoveBlockDown": "下移",
   "@fMoveBlockDown": {
     "description": "Block editing: Move down."
+  },
+  "fInsertBlock": "插入块",
+  "@fInsertBlock": {
+    "description": "Slash menu: Insert block."
+  },
+  "fHorizontalRule": "分割线",
+  "@fHorizontalRule": {
+    "description": "Slash menu: Horizontal Rule."
+  },
+  "fCallout": "提示块",
+  "@fCallout": {
+    "description": "Slash menu: Callout."
   }
 }

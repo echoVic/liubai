@@ -5963,3 +5963,45 @@ func FMoveBlockDown() string { return In(i18n.Locale()).FMoveBlockDown() }
 func (msgs Messages) FMoveBlockDown() string {
 	return Catalog.Format(msgs.locale, "fMoveBlockDown", nil)
 }
+
+// FInsertBlock says "插入块"
+// in the language the app shows.
+//
+// Slash menu: Insert block.
+func FInsertBlock() string { return In(i18n.Locale()).FInsertBlock() }
+
+// FInsertBlock says "插入块"
+// in the language of msgs.
+//
+// Slash menu: Insert block.
+func (msgs Messages) FInsertBlock() string {
+	return Catalog.Format(msgs.locale, "fInsertBlock", nil)
+}
+
+// FHorizontalRule says "分割线"
+// in the language the app shows.
+//
+// Slash menu: Horizontal Rule.
+func FHorizontalRule() string { return In(i18n.Locale()).FHorizontalRule() }
+
+// FHorizontalRule says "分割线"
+// in the language of msgs.
+//
+// Slash menu: Horizontal Rule.
+func (msgs Messages) FHorizontalRule() string {
+	return Catalog.Format(msgs.locale, "fHorizontalRule", nil)
+}
+
+// FCallout says "提示块"
+// in the language the app shows.
+//
+// Slash menu: Callout.
+func FCallout() string { return In(i18n.Locale()).FCallout() }
+
+// FCallout says "提示块"
+// in the language of msgs.
+//
+// Slash menu: Callout.
+func (msgs Messages) FCallout() string {
+	return Catalog.Format(msgs.locale, "fCallout", nil)
+}

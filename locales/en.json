@@ -414,5 +414,8 @@
   "fDuplicateBlock": "Duplicate",
   "fDeleteBlock": "Delete",
   "fMoveBlockUp": "Move up",
-  "fMoveBlockDown": "Move down"
+  "fMoveBlockDown": "Move down",
+  "fInsertBlock": "Insert block",
+  "fHorizontalRule": "Horizontal Rule",
+  "fCallout": "Callout"
 }

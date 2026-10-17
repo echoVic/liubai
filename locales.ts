@@ -2481,6 +2481,24 @@ export interface Messages {
    * `下移`
    */
   fMoveBlockDown(): string;
+  /**
+   * Slash menu: Insert block.
+   *
+   * `插入块`
+   */
+  fInsertBlock(): string;
+  /**
+   * Slash menu: Horizontal Rule.
+   *
+   * `分割线`
+   */
+  fHorizontalRule(): string;
+  /**
+   * Slash menu: Callout.
+   *
+   * `提示块`
+   */
+  fCallout(): string;
 }
 
 const catalog = createCatalog<Messages>({
@@ -2904,6 +2922,9 @@ const catalog = createCatalog<Messages>({
     "fDeleteBlock": [],
     "fMoveBlockUp": [],
     "fMoveBlockDown": [],
+    "fInsertBlock": [],
+    "fHorizontalRule": [],
+    "fCallout": [],
   },
   messages: {
     "zh-Hans": {
@@ -3320,6 +3341,9 @@ const catalog = createCatalog<Messages>({
       "fDeleteBlock": "删除",
       "fMoveBlockUp": "上移",
       "fMoveBlockDown": "下移",
+      "fInsertBlock": "插入块",
+      "fHorizontalRule": "分割线",
+      "fCallout": "提示块",
     },
     "en": {
       "fPaper": "Paper",
@@ -3735,6 +3759,9 @@ const catalog = createCatalog<Messages>({
       "fDeleteBlock": "Delete",
       "fMoveBlockUp": "Move up",
       "fMoveBlockDown": "Move down",
+      "fInsertBlock": "Insert block",
+      "fHorizontalRule": "Horizontal Rule",
+      "fCallout": "Callout",
     },
   },
 });

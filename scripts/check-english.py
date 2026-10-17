@@ -53,6 +53,8 @@ def english(context):
     expect(page.locator('[data-view="read"]')).to_have_text("Read")
     expect(page.locator(".export-label")).to_have_text("Export")
     expect(page.locator('#format-bar [data-action="bold"]')).to_have_attribute("aria-label", "Bold")
+    if page.locator("#right-outline").is_visible():
+        expect(page.locator("#right-outline .outline-label")).to_have_text("Outline")
     chrome_is_english(page)
     page.locator("#more-button").click()
     expect(page.locator('[data-menu-action="new"]')).to_contain_text("New Document")
@@ -179,6 +181,15 @@ def english(context):
     palette(page, "Follow System")
     expect(page.locator('[data-view="single"]')).to_have_text("Edit")
     assert page.evaluate("localStorage.getItem('mygo:locale')") is None
+
+    page.set_viewport_size({"width": 1700, "height": 1100})
+    page.locator(".cm-content").focus()
+    page.keyboard.press("Meta+a")
+    page.keyboard.insert_text("# First section\n\nText\n\n## Second section\n\nText")
+    expect(page.locator("#right-outline")).to_be_visible()
+    expect(page.locator("#right-outline .outline-label")).to_have_text("Outline")
+    chrome_is_english(page)
+    page.set_viewport_size({"width": 1120, "height": 820})
 
     capture = context.new_page()
     capture.goto(BASE + "/capture.html")

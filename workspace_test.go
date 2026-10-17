@@ -83,6 +83,41 @@ func TestLineWidthAppearancePersistsAndRejectsUnknown(t *testing.T) {
 		})
 	}
 }
+func TestDockedSidebarAppearancePersists(t *testing.T) {
+	w := workspace(t)
+	for _, open := range []bool{true, false} {
+		p := w.State().Appearance
+		p.SidebarDocked = open
+		if err := w.Appearance(p); err != nil {
+			t.Fatal(err)
+		}
+		reopened, err := openWorkspace(w.root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, current := range []*Workspace{w, reopened} {
+			if got := current.State().Appearance; got != p {
+				t.Fatalf("appearance = %+v, want %+v", got, p)
+			}
+		}
+		w = reopened
+	}
+}
+
+func TestOldWorkspaceDefaultsToClosedSidebar(t *testing.T) {
+	w := workspace(t)
+	p := filepath.Join(w.root, "workspace.json")
+	if err := os.WriteFile(p, []byte(`{"version":1,"appearance":{"theme":"warm","layout":"split","followSystem":false}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := openWorkspace(w.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reopened.State().Appearance; got.SidebarDocked || got.Theme != "warm" || got.Layout != "split" {
+		t.Fatalf("old appearance not preserved with closed sidebar: %+v", got)
+	}
+}
 func TestPreserveUneditedCRLFBOMAndConflict(t *testing.T) {
 	w := workspace(t)
 	p := filepath.Join(t.TempDir(), "note.md")

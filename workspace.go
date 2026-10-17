@@ -26,12 +26,13 @@ const maxDocument = 8 << 20
 const maxPicture = 20 << 20
 
 type Appearance struct {
-	Theme        string `json:"theme"`
-	FontSize     int    `json:"fontSize,omitempty"`
-	LineWidth    string `json:"lineWidth,omitempty"`
-	FollowSystem bool   `json:"followSystem"`
-	Layout       string `json:"layout"`
-	Source       bool   `json:"source"`
+	Theme         string `json:"theme"`
+	FontSize      int    `json:"fontSize,omitempty"`
+	LineWidth     string `json:"lineWidth,omitempty"`
+	FollowSystem  bool   `json:"followSystem"`
+	Layout        string `json:"layout"`
+	Source        bool   `json:"source"`
+	SidebarDocked bool   `json:"sidebarDocked"`
 }
 type Position struct {
 	Anchor int     `json:"anchor"`
@@ -431,7 +432,7 @@ func (w *Workspace) restoreIndex(b []byte) {
 	if json.Unmarshal(x.Appearance["layout"], &layout) == nil && (layout == "" || layout == "single" || layout == "split" || layout == "read") {
 		p.Layout = normalizeLayout(layout)
 	}
-	for name, field := range map[string]*bool{"followSystem": &p.FollowSystem, "source": &p.Source} {
+	for name, field := range map[string]*bool{"followSystem": &p.FollowSystem, "source": &p.Source, "sidebarDocked": &p.SidebarDocked} {
 		_ = json.Unmarshal(x.Appearance[name], field)
 	}
 }

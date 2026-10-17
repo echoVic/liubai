@@ -1,5 +1,5 @@
 import {pageLocale,messages,CatalogError} from './i18n';
-export interface Appearance {theme:'paper'|'warm'|'mist'|'ink';followSystem:boolean;fontSize?:number;lineWidth?:'normal'|'wide'|'full';layout?:'single'|'split'|'read';source?:boolean}
+export interface Appearance {theme:'paper'|'warm'|'mist'|'ink';followSystem:boolean;fontSize?:number;lineWidth?:'normal'|'wide'|'full';layout?:'single'|'split'|'read';source?:boolean;sidebarDocked?:boolean}
 export interface CaptureSettings {enabled:boolean;shortcut:string;openAtLogin:boolean}
 export interface Position {anchor:number;head:number;scroll:number;source:boolean}
 export type StatusCode='draftSaved'|'fileSaved'|'fileUnavailable'|'diskUnreadable'|'diskReloaded'|'reloadRecoveryFailed'|'diskConflict'|'imageSaveFailed'|'fileSaveFailed'|'fileReadOnly'|'saveFailed'|'recoveryUpdateFailed';

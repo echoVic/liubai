@@ -65,8 +65,8 @@ def check_format_bar(page):
     source_item = page.locator('#more-menu [data-menu-action="source"]')
     expect(bar).to_have_attribute("role", "toolbar")
     expect(bar).to_have_attribute("aria-label", "格式")
-    order = bar.evaluate("el => [...el.children].map(el => el.classList.contains('format-sep') ? '|' : el.dataset.action || el.id)")
-    assert order == ["heading-button", "|", "bold", "italic", "strike", "inlineCode", "|", "quote", "bullet", "ordered", "task", "|", "link", "image", "table", "code", "source"], order
+    order = bar.locator(".format-group").evaluate("el => [...el.children].map(el => el.classList.contains('format-sep') ? '|' : el.dataset.action || el.id)")
+    assert order == ["heading-button", "|", "bold", "italic", "strike", "inlineCode", "|", "quote", "bullet", "ordered", "task", "|", "link", "image", "table", "code", "|", "source"], order
     for separator in bar.locator(".format-sep").all():
         expect(separator).to_have_attribute("aria-hidden", "true")
     expect(heading).to_have_attribute("title", "标题级别")
@@ -95,7 +95,7 @@ def check_format_bar(page):
         heading.click()
         expect(menu).to_be_visible()
         expect(menu.get_by_role("menuitemradio")).to_have_text(["正文", "标题 1", "标题 2", "标题 3"])
-        # Dropdowns on the left half open left-aligned under their button.
+        # The heading menu stays under its button after moving the row.
         button_box, menu_box = heading.bounding_box(), menu.bounding_box()
         assert abs(menu_box["x"] - button_box["x"]) <= 1 and menu_box["y"] >= button_box["y"] + button_box["height"], (button_box, menu_box)
         expect(menu.locator('[aria-checked="true"]')).to_have_count(1)
@@ -170,7 +170,7 @@ def page_geometry(page):
       const scroll=document.querySelector('.editor-scroll');
       return {pane:rect('.editor-pane'),paper:rect('.paper'),text:rect('.cm-content'),bar:rect('#format-bar'),
         count:rect('#word-count'),top:rect('.topbar'),scroll:rect('.editor-scroll'),paperStyle:style('.paper'),
-        scrollHeight:scroll.scrollHeight,clientHeight:scroll.clientHeight,width:innerWidth,height:innerHeight};
+        scrollHeight:scroll.scrollHeight,clientHeight:scroll.clientHeight,scrollClientRight:scroll.getBoundingClientRect().left+scroll.clientWidth,width:innerWidth,height:innerHeight};
     }""")
 
 
@@ -205,14 +205,14 @@ def check_writing_sheet(page):
         for value, cap in (("normal", 760), ("wide", 920), ("full", width)):
             set_width(page, value)
             g = page_geometry(page)
-            assert abs(g["pane"]["y"] - g["top"]["bottom"]) <= 2, g
+            assert abs(g["bar"]["y"] - g["top"]["bottom"]) <= 2 and abs(g["pane"]["y"] - g["bar"]["bottom"]) <= 2, g
             assert abs(g["pane"]["x"]) <= 2 and abs(g["pane"]["right"] - width) <= 2, g
             assert abs(g["pane"]["bottom"] - height) <= 2, g
             assert g["paperStyle"] == {"shadow": "none", "radius": "0px", "border": "0px"}, g
             assert abs(g["text"]["width"] - (cap - 96)) <= 2, g
             assert abs((g["text"]["x"] - g["pane"]["x"]) - (g["pane"]["right"] - g["text"]["right"])) <= 2, g
-            assert abs(g["bar"]["x"] - g["text"]["x"]) <= 2 and abs(g["bar"]["width"] - g["text"]["width"]) <= 2, g
-            assert abs(g["bar"]["y"] - g["pane"]["y"]) <= 2, g
+            assert abs(g["bar"]["x"] - g["pane"]["x"]) <= 2 and abs(g["bar"]["width"] - g["pane"]["width"]) <= 2, g
+            assert abs(g["bar"]["bottom"] - g["pane"]["y"]) <= 2, g
             assert g["scrollHeight"] == g["clientHeight"], g
             assert_count_position(page, g)
 
@@ -256,7 +256,7 @@ def check_writing_sheet(page):
     settled(page)
     g = page_geometry(page)
     assert g["scrollHeight"] > g["clientHeight"], g
-    assert abs(g["bar"]["y"] - g["pane"]["y"]) <= 2, g
+    assert abs(g["bar"]["bottom"] - g["pane"]["y"]) <= 2, g
     expect(page.locator("#format-bar [data-action=bold]")).to_be_in_viewport()
     line = last.bounding_box()
     assert g["count"]["y"] >= line["y"] + line["height"], (g, line)
@@ -267,7 +267,10 @@ def check_writing_sheet(page):
     settled(page)
     last_line = content.locator(".cm-line", has_text=re.compile("^长文第120行尾$")).bounding_box()
     assert last_line["y"] + last_line["height"] <= page.locator("#word-count").bounding_box()["y"]
-    # Keyboard movement must keep the current line below the sticky format bar.
+    # ⌘↑ returns to the very top, page padding included.
+    page.keyboard.press("Meta+Home")
+    page.wait_for_function("() => document.querySelector('.editor-scroll').scrollTop === 0")
+    # Keyboard movement must keep the current line below the separate format row.
     page.keyboard.press("Meta+Home")
     for _ in range(40):
         page.keyboard.press("ArrowDown")
@@ -287,7 +290,7 @@ def check_split_columns(page):
             set_width(page, value)
             g = page_geometry(page)
             r = page.locator("#preview").bounding_box()
-            assert abs(g["pane"]["y"] - g["top"]["bottom"]) <= 2, g
+            assert abs(g["bar"]["y"] - g["top"]["bottom"]) <= 2 and abs(g["pane"]["y"] - g["bar"]["bottom"]) <= 2, g
             if width >= 820:
                 assert abs(g["pane"]["width"] - r["width"]) <= 2 and abs(r["x"] - g["pane"]["right"] - 1) <= .1, (g, r)
                 assert abs(r["y"] - g["pane"]["y"]) <= 2 and abs(g["pane"]["bottom"] - height) <= 2, (g, r)
@@ -305,6 +308,145 @@ def check_split_columns(page):
             assert page.locator("#preview").evaluate("el => getComputedStyle(el).boxShadow==='none' && getComputedStyle(el).borderRadius==='0px'")
     page.set_viewport_size({"width": 1120, "height": 820})
     set_width(page, "normal")
+    select_view(page, "single")
+
+
+def check_docked_sidebar_and_outline(page):
+    page.set_viewport_size({"width": 1700, "height": 1100})
+    select_view(page, "single")
+    set_width(page, "normal")
+    content = page.locator('.cm-content[contenteditable="true"]')
+    text = "# 第一节\n\n" + "正文。\n\n" * 30 + "## 第二节\n\n" + "正文。\n\n" * 30 + "### 第三节\n\n" + "结尾。\n\n" * 40
+    content.focus()
+    page.keyboard.press("Meta+a")
+    page.keyboard.insert_text(text)
+    expect(page.locator("#save-status")).to_have_text("草稿已保存")
+    page.keyboard.press("Meta+Home")
+    drawer, sidebar = page.locator("#drawer"), page.locator("#sidebar-button")
+    outline = page.locator("#right-outline")
+    items = outline.locator("button")
+    expect(outline).to_be_visible()
+    expect(items).to_have_text(["第一节", "第二节", "第三节"])
+    expect(outline.locator(".outline-label")).to_have_text("大纲")
+
+    def geometry(docked):
+        settled(page)
+        g = page_geometry(page)
+        group = page.locator(".format-group").bounding_box()
+        assert abs(g["bar"]["y"] - g["top"]["bottom"]) <= 1, g
+        assert abs((group["x"] - g["bar"]["x"]) - (g["bar"]["right"] - group["x"] - group["width"])) <= 4, (g, group)
+        left = drawer.bounding_box()["width"] if docked else 0
+        assert abs(g["bar"]["x"] - left) <= 1 and abs(g["pane"]["x"] - left) <= 1, g
+        assert abs(g["bar"]["right"] - 1700) <= 1 and abs(g["pane"]["right"] - 1700) <= 1, g
+        assert abs((g["text"]["x"] - left) - (g["scrollClientRight"] - g["text"]["right"])) <= 2, g
+        if docked:
+            assert drawer.bounding_box()["x"] == 0
+            assert drawer.evaluate("el => getComputedStyle(el).boxShadow") == "none"
+        if outline.is_visible():
+            box = outline.bounding_box()
+            assert box["x"] >= g["text"]["right"] and box["x"] + box["width"] <= 1700, (g, box)
+
+    geometry(False)
+    appearance_change(page, sidebar.click)
+    expect(drawer).to_be_visible()
+    geometry(True)
+    content.click()
+    page.keyboard.press("Escape")
+    expect(drawer).to_be_visible()
+    expect(outline).to_be_visible()
+    items.nth(2).click()
+    expect(items.nth(2)).to_have_attribute("aria-current", "location")
+    page.wait_for_function("""() => getSelection()?.anchorNode?.parentElement?.closest('.cm-line')?.textContent.includes('第三节')""")
+    expect(page.locator("#save-status")).to_have_text("草稿已保存")
+    page.wait_for_function("""async ({base, anchor}) => {
+      const r=await fetch(base+'/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'State',args:[]})});
+      return (await r.json()).value.current.position.anchor===anchor;
+    }""", arg={"base": BASE, "anchor": text.index("### 第三节")})
+    page.reload()
+    expect(drawer).to_be_visible()
+    geometry(True)
+    assert api(page, "State")["appearance"]["sidebarDocked"] is True
+    select_view(page, "split")
+    expect(drawer).to_be_visible()
+    expect(outline).to_be_hidden()
+    left, right = page.locator(".editor-pane").bounding_box(), page.locator("#preview").bounding_box()
+    assert abs(left["width"] - right["width"]) <= 2 and abs(left["x"] - drawer.bounding_box()["width"]) <= 1, (left, right)
+    select_view(page, "read")
+    expect(drawer).to_be_visible()
+    expect(outline).to_be_visible()
+    expect(page.locator("#format-bar")).to_be_hidden()
+    reader = page.locator("#preview").bounding_box()
+    assert abs(reader["x"] - drawer.bounding_box()["width"]) <= 1 and abs(reader["x"] + reader["width"] - 1700) <= 1, reader
+    select_view(page, "single")
+    page.set_viewport_size({"width": 1000, "height": 800})
+    expect(drawer).to_be_hidden()
+    assert page.locator(".editor-pane").bounding_box()["x"] == 0
+    sidebar.click()
+    expect(drawer).to_be_visible()
+    assert drawer.evaluate("el => getComputedStyle(el).position") == "fixed"
+    assert drawer.evaluate("el => getComputedStyle(el).boxShadow") != "none"
+    page.keyboard.press("Escape")
+    expect(drawer).to_be_hidden()
+    assert api(page, "State")["appearance"]["sidebarDocked"] is True
+    sidebar.click()
+    page.mouse.click(950, 200)
+    expect(drawer).to_be_hidden()
+    page.set_viewport_size({"width": 1700, "height": 1100})
+    expect(drawer).to_be_visible()
+    geometry(True)
+    appearance_change(page, lambda: drawer.locator('[data-close="drawer"]').click())
+    expect(drawer).to_be_hidden()
+    geometry(False)
+    assert api(page, "State")["appearance"]["sidebarDocked"] is False
+    appearance_change(page, sidebar.click)
+    expect(drawer).to_be_visible()
+    appearance_change(page, sidebar.click)
+    expect(drawer).to_be_hidden()
+    geometry(False)
+    page.set_viewport_size({"width": 1000, "height": 800})
+    sidebar.click()
+    page.keyboard.press("Escape")
+    assert api(page, "State")["appearance"]["sidebarDocked"] is False
+    page.set_viewport_size({"width": 1700, "height": 1100})
+    expect(drawer).to_be_hidden()
+
+    select_view(page, "split")
+    expect(outline).to_be_hidden()
+    select_view(page, "single")
+    set_width(page, "full")
+    expect(outline).to_be_hidden()
+    set_width(page, "normal")
+    page.set_viewport_size({"width": 1120, "height": 820})
+    expect(outline).to_be_hidden()
+    page.set_viewport_size({"width": 1700, "height": 1100})
+    more_action(page, "focus")
+    expect(outline).to_be_hidden()
+    page.keyboard.press("Escape")
+    expect(outline).to_be_visible()
+    select_view(page, "read")
+    expect(outline).to_be_visible()
+    expect(page.locator("#format-bar")).to_be_hidden()
+    items.nth(2).click()
+    expect(items.nth(2)).to_have_attribute("aria-current", "location")
+    page.wait_for_function("""() => {
+      const h=document.querySelector('#preview-content h3'),s=document.querySelector('.preview-scroll');
+      return s.scrollTop>0 && Math.abs(h.getBoundingClientRect().top-s.getBoundingClientRect().top)<=2;
+    }""")
+    select_view(page, "single")
+    content.focus()
+    page.keyboard.press("Meta+a")
+    page.keyboard.insert_text("# 唯一标题\n\n正文")
+    expect(outline).to_be_hidden()
+    page.set_viewport_size({"width": 680, "height": 820})
+    for layout in ("single", "split"):
+        select_view(page, layout)
+        expect(page.locator("#format-bar button:visible")).to_have_count(14 if layout == "split" else 13)
+        boxes = page.locator("#format-bar button:visible").evaluate_all("els => els.map(el => {const r=el.getBoundingClientRect();return {x:r.x,right:r.right,y:r.y,bottom:r.bottom}})")
+        assert len({b["y"] for b in boxes}) >= 2, boxes
+        bar = page.locator("#format-bar").bounding_box()
+        for b in boxes:
+            assert b["x"] >= 0 and b["right"] <= 680 and b["y"] >= bar["y"] and b["bottom"] <= bar["y"] + bar["height"], (bar, b)
+    page.set_viewport_size({"width": 1120, "height": 820})
     select_view(page, "single")
 
 
@@ -328,6 +470,7 @@ def run(page):
     check_format_bar(page)
     check_writing_sheet(page)
     check_split_columns(page)
+    check_docked_sidebar_and_outline(page)
 
     # Use the real New action and autosave before checking sidebar headings/recent.
     with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
@@ -382,8 +525,8 @@ def run(page):
     expect(page.locator("#drawer-list")).to_have_attribute("role", "tabpanel")
     expect(page.locator("#recent-search")).to_be_hidden()
     expect(page.locator(".drawer-open")).to_be_hidden()
-    expect(page.locator(".outline-item")).to_have_text(["一", "二"])
-    page.locator(".outline-item", has_text="二").click()
+    expect(page.locator("#drawer-list .outline-item")).to_have_text(["一", "二"])
+    page.locator("#drawer-list .outline-item", has_text="二").click()
     page.wait_for_function("""() => {
       const node=getSelection()?.anchorNode;
       return node?.parentElement?.closest('.cm-line')?.textContent.includes('二');
@@ -401,7 +544,8 @@ def run(page):
     page.locator('[data-tab="recent"]').click()
     expect(page.locator("#recent-search")).to_be_visible()
     expect(page.locator(".drawer-open")).to_be_visible()
-    expect(page.locator(".recent-item b", has_text=title)).to_have_count(1)
+    # Exact match: other test documents (第一节, 唯一标题) also contain the title character.
+    expect(page.locator(".recent-item b", has_text=re.compile("^" + re.escape(title) + "$"))).to_have_count(1)
     accessible_buttons(page)
     page.locator('[data-close="drawer"]').click()
     expect(sidebar).to_have_attribute("aria-expanded", "false")
@@ -514,7 +658,7 @@ def run(page):
             page.locator("#format-bar").screenshot(path=str(ARTIFACTS / f"format-bar-{width}-{view}.png"))
         page.locator('[data-view="single"]').click()
         page.locator(".topbar").screenshot(path=str(ARTIFACTS / f"toolbar-{width}.png"))
-    print("PASS: whole-page bounds/flat panes/centred normal-wide-full columns, sticky format/word count/long-document/click-to-write, equal split/stacked divider/full reader, format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
+    print("PASS: whole-page bounds/flat panes/centred normal-wide-full columns, format row/word count/long-document/click-to-write, equal split/stacked divider/full reader, format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, docked/overlay sidebar persistence/resizing, right outline geometry/jumps/active heading/visibility, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
 
 
 with sync_playwright() as playwright:

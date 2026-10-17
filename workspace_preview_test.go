@@ -45,15 +45,15 @@ func TestReadLayoutPersists(t *testing.T) {
 
 func TestReadLayoutRestoresFromNewerIndex(t *testing.T) {
 	w := workspace(t)
-	if err := os.WriteFile(filepath.Join(w.root, "workspace.json"), []byte(`{"version":2,"appearance":{"theme":"paper","layout":"read"}}`), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(w.root, "workspace.json"), []byte(`{"version":2,"appearance":{"theme":"paper","layout":"read","sidebarDocked":true}}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	reopened, err := openWorkspace(w.root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := appearanceValues(t, reopened)["layout"]; got != "read" {
-		t.Fatalf("restored layout %v", got)
+	if got := appearanceValues(t, reopened); got["layout"] != "read" || got["sidebarDocked"] != true {
+		t.Fatalf("restored appearance %v", got)
 	}
 }
 

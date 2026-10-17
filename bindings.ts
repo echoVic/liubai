@@ -11,6 +11,7 @@ export interface Appearance {
   followSystem: boolean;
   layout: string;
   source: boolean;
+  sidebarDocked: boolean;
 }
 
 export interface CaptureSettings {

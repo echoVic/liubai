@@ -442,5 +442,10 @@
   "fImageAlt": "Alt text",
   "fDeleteImage": "Delete image",
   "fFormula": "Formula",
-  "fFormulaUnsupported": "The formula contains an unsupported or untrusted command."
+  "fFormulaUnsupported": "The formula contains an unsupported or untrusted command.",
+  "fDiagram": "Diagram",
+  "fDiagramLoading": "Rendering diagram…",
+  "fDiagramError": "Diagram error: {error}",
+  "fDiagramStart": "Start",
+  "fDiagramEnd": "End"
 }

@@ -9,7 +9,7 @@ export type BlockType='paragraph'|'heading'|'quote'|'code'|'math'|'table'|'rule'
 export type BlockConversion='paragraph'|'h1'|'h2'|'h3'|'bullet'|'ordered'|'task'|'quote'|'code';
 type Range={from:number;to:number};
 const lists=new WeakMap<Block,string>(),cache=new WeakMap<EditorState,Block[]>(),units=new WeakMap<EditorState,Block[]>();
-const kind=(name:string):BlockType|null=>/^ATXHeading|^SetextHeading/.test(name)?'heading':({Paragraph:'paragraph',Blockquote:'quote',FencedCode:'code',MathFence:'code',MathBlock:'math',CodeBlock:'code',Table:'table',HorizontalRule:'rule',HTMLBlock:'html',CommentBlock:'html',ProcessingInstructionBlock:'html',ListItem:'listItem'} as Record<string,BlockType>)[name]||null;
+const kind=(name:string):BlockType|null=>/^ATXHeading|^SetextHeading/.test(name)?'heading':({Paragraph:'paragraph',Blockquote:'quote',FencedCode:'code',MathFence:'code',MermaidFence:'code',MathBlock:'math',CodeBlock:'code',Table:'table',HorizontalRule:'rule',HTMLBlock:'html',CommentBlock:'html',ProcessingInstructionBlock:'html',ListItem:'listItem'} as Record<string,BlockType>)[name]||null;
 function collect(state:EditorState,from:number,to:number,full=false):Block[]{
  const tree=full?(ensureSyntaxTree(state,state.doc.length,60_000)||syntaxTree(state)):(ensureSyntaxTree(state,to,50)||syntaxTree(state)),meta=frontMatterRange(state),out:Block[]=[],indices=new Map<number,number>();
  tree.iterate({from,to,enter(ref){

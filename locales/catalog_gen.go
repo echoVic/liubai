@@ -6349,3 +6349,73 @@ func FFormulaUnsupported() string { return In(i18n.Locale()).FFormulaUnsupported
 func (msgs Messages) FFormulaUnsupported() string {
 	return Catalog.Format(msgs.locale, "fFormulaUnsupported", nil)
 }
+
+// FDiagram says "图表"
+// in the language the app shows.
+//
+// Diagram toolbar button, tooltip and Mermaid block menu item.
+func FDiagram() string { return In(i18n.Locale()).FDiagram() }
+
+// FDiagram says "图表"
+// in the language of msgs.
+//
+// Diagram toolbar button, tooltip and Mermaid block menu item.
+func (msgs Messages) FDiagram() string {
+	return Catalog.Format(msgs.locale, "fDiagram", nil)
+}
+
+// FDiagramLoading says "正在绘制图表…"
+// in the language the app shows.
+//
+// Shown while an on-demand Mermaid diagram renders.
+func FDiagramLoading() string { return In(i18n.Locale()).FDiagramLoading() }
+
+// FDiagramLoading says "正在绘制图表…"
+// in the language of msgs.
+//
+// Shown while an on-demand Mermaid diagram renders.
+func (msgs Messages) FDiagramLoading() string {
+	return Catalog.Format(msgs.locale, "fDiagramLoading", nil)
+}
+
+// FDiagramError says "图表错误：{error}"
+// in the language the app shows.
+//
+// Short diagnostic when a Mermaid diagram cannot render.
+func FDiagramError(error string) string { return In(i18n.Locale()).FDiagramError(error) }
+
+// FDiagramError says "图表错误：{error}"
+// in the language of msgs.
+//
+// Short diagnostic when a Mermaid diagram cannot render.
+func (msgs Messages) FDiagramError(error string) string {
+	return Catalog.Format(msgs.locale, "fDiagramError", map[string]any{"error": error})
+}
+
+// FDiagramStart says "开始"
+// in the language the app shows.
+//
+// First node label in the inserted flowchart template.
+func FDiagramStart() string { return In(i18n.Locale()).FDiagramStart() }
+
+// FDiagramStart says "开始"
+// in the language of msgs.
+//
+// First node label in the inserted flowchart template.
+func (msgs Messages) FDiagramStart() string {
+	return Catalog.Format(msgs.locale, "fDiagramStart", nil)
+}
+
+// FDiagramEnd says "结束"
+// in the language the app shows.
+//
+// Last node label in the inserted flowchart template.
+func FDiagramEnd() string { return In(i18n.Locale()).FDiagramEnd() }
+
+// FDiagramEnd says "结束"
+// in the language of msgs.
+//
+// Last node label in the inserted flowchart template.
+func (msgs Messages) FDiagramEnd() string {
+	return Catalog.Format(msgs.locale, "fDiagramEnd", nil)
+}

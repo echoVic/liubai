@@ -1,21 +1,24 @@
 import {messages} from './i18n';
+import {waitMermaid} from './mermaid';
 import type {MathOutput} from './math';
 import {normalizeImageDestination,renderMarkdown,headingSlug} from './markdown';
 export interface Delivery {title:string;content:string;images:Record<string,string>;missing:string[];external:number}
 export function renderDelivery(data:Delivery,mathOutput:MathOutput='mathml'){
  const images=new Map(Object.entries(data.images).map(([src,value])=>[normalizeImageDestination(src),value]));
- const {root}=renderMarkdown(data.content,{resolve:destination=>images.get(destination),external:'link',frontMatter:'hide',mathOutput});
+ // Exports are styled for white paper, so diagrams use the light theme whatever the app theme is.
+ const {root}=renderMarkdown(data.content,{resolve:destination=>images.get(destination),external:'link',frontMatter:'hide',mathOutput,diagramTheme:'paper'});
  root.className='delivery-document';
  const used=new Map<string,number>();
  for(const heading of root.querySelectorAll('h1,h2,h3,h4,h5,h6'))heading.id=headingSlug(heading.textContent||'',used);
  for(const img of root.querySelectorAll('img')){img.removeAttribute('data-image-source');img.style.maxWidth='100%';img.style.height='auto'}
  for(const note of root.querySelectorAll('.markdown-image-note'))note.className='delivery-image-note';
  for(const el of root.querySelectorAll('.task-list, .task-list-item')){
-  el.classList.remove('task-list','task-list-item');if(!el.className)el.removeAttribute('class');
+  el.classList.remove('task-list','task-list-item');if(!el.getAttribute('class'))el.removeAttribute('class');
  }
- for(const el of root.querySelectorAll('[class]')){
+ for(const el of root.querySelectorAll<HTMLElement>('[class]')){
+  if(el.closest('svg'))continue;
   for(const className of [...el.classList])if(className.startsWith('md-'))el.classList.remove(className);
-  if(!el.className)el.removeAttribute('class');
+  if(!el.getAttribute('class'))el.removeAttribute('class');
  }
  for(const el of root.querySelectorAll('[data-line], [data-line-end]')){el.removeAttribute('data-line');el.removeAttribute('data-line-end')}
  for(const a of root.querySelectorAll('a')){a.rel='noopener noreferrer'}
@@ -27,7 +30,7 @@ export function renderDelivery(data:Delivery,mathOutput:MathOutput='mathml'){
  root.style.cssText='font-family:PingFang SC,Noto Sans CJK SC,sans-serif;font-size:16px;line-height:1.9;color:#242523;background:#fff;overflow-wrap:anywhere';
  return root;
 }
-export async function waitImages(root:HTMLElement){await Promise.all([...root.querySelectorAll('img')].map(img=>new Promise<void>((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(Error(messages.fTheImageCouldNotBeDecoded()));return}const timeout=setTimeout(()=>reject(Error(messages.fTheImageTookTooLongToLoad())),10000);img.onload=()=>{clearTimeout(timeout);resolve()};img.onerror=()=>{clearTimeout(timeout);reject(Error(messages.fTheImageCouldNotBeDecoded()))}})))}
+export async function waitImages(root:HTMLElement){await waitMermaid(root);await Promise.all([...root.querySelectorAll('img')].map(img=>new Promise<void>((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(Error(messages.fTheImageCouldNotBeDecoded()));return}const timeout=setTimeout(()=>reject(Error(messages.fTheImageTookTooLongToLoad())),10000);img.onload=()=>{clearTimeout(timeout);resolve()};img.onerror=()=>{clearTimeout(timeout);reject(Error(messages.fTheImageCouldNotBeDecoded()))}})))}
 export async function copyRich(root:HTMLElement){
  const html=root.outerHTML,text=root.innerText;
  if(navigator.clipboard?.write&&typeof ClipboardItem!=='undefined'){

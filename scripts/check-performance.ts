@@ -4,6 +4,8 @@ import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
 import {ensureSyntaxTree,syntaxTree} from '@codemirror/language';
 import {GFM} from '@lezer/markdown';
 import {Highlight} from '../src/marks';
+import {MathSyntax} from '../src/math';
+import {MermaidSyntax} from '../src/mermaid';
 import {createBlockField,inlineDecorations,composing} from '../src/editor';
 
 const block='这是一段普通的中文正文，用来模拟长篇写作。偶尔会有**加粗**、一个[链接](https://example.com/a)和`代码`。\n\n'
@@ -15,7 +17,7 @@ const best=(batches:number,run:()=>number)=>{let min=Infinity;for(let i=0;i<batc
 for(const [size,budget] of [[100_000,5],[300_000,15]] as const){
  const doc=block.repeat(Math.ceil(size/block.length));
  const field=createBlockField(async()=>'data:,');
- let state=EditorState.create({doc,extensions:[markdown({base:markdownLanguage,extensions:[GFM,Highlight]}),composing,field]});
+ let state=EditorState.create({doc,extensions:[markdown({base:markdownLanguage,extensions:[GFM,Highlight,MathSyntax,MermaidSyntax]}),composing,field]});
  // Under load an edit can run out of its parse budget and leave a partial tree, which makes later
  // edits look cheaper than they are; such a batch is parsed in full and measured again.
  const complete=()=>{if(syntaxTree(state).length===state.doc.length)return true;ensureSyntaxTree(state,state.doc.length,60_000);state=state.update({}).state;return false};

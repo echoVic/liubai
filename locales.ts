@@ -2649,6 +2649,36 @@ export interface Messages {
    * `公式含有不支持或不受信任的命令。`
    */
   fFormulaUnsupported(): string;
+  /**
+   * Diagram toolbar button, tooltip and Mermaid block menu item.
+   *
+   * `图表`
+   */
+  fDiagram(): string;
+  /**
+   * Shown while an on-demand Mermaid diagram renders.
+   *
+   * `正在绘制图表…`
+   */
+  fDiagramLoading(): string;
+  /**
+   * Short diagnostic when a Mermaid diagram cannot render.
+   *
+   * `图表错误：{error}`
+   */
+  fDiagramError(error: string): string;
+  /**
+   * First node label in the inserted flowchart template.
+   *
+   * `开始`
+   */
+  fDiagramStart(): string;
+  /**
+   * Last node label in the inserted flowchart template.
+   *
+   * `结束`
+   */
+  fDiagramEnd(): string;
 }
 
 const catalog = createCatalog<Messages>({
@@ -3100,6 +3130,11 @@ const catalog = createCatalog<Messages>({
     "fDeleteImage": [],
     "fFormula": [],
     "fFormulaUnsupported": [],
+    "fDiagram": [],
+    "fDiagramLoading": [],
+    "fDiagramError": ["error"],
+    "fDiagramStart": [],
+    "fDiagramEnd": [],
   },
   messages: {
     "zh-Hans": {
@@ -3544,6 +3579,11 @@ const catalog = createCatalog<Messages>({
       "fDeleteImage": "删除图片",
       "fFormula": "公式",
       "fFormulaUnsupported": "公式含有不支持或不受信任的命令。",
+      "fDiagram": "图表",
+      "fDiagramLoading": "正在绘制图表…",
+      "fDiagramError": "图表错误：{error}",
+      "fDiagramStart": "开始",
+      "fDiagramEnd": "结束",
     },
     "en": {
       "fPaper": "Paper",
@@ -3987,6 +4027,11 @@ const catalog = createCatalog<Messages>({
       "fDeleteImage": "Delete image",
       "fFormula": "Formula",
       "fFormulaUnsupported": "The formula contains an unsupported or untrusted command.",
+      "fDiagram": "Diagram",
+      "fDiagramLoading": "Rendering diagram…",
+      "fDiagramError": "Diagram error: {error}",
+      "fDiagramStart": "Start",
+      "fDiagramEnd": "End",
     },
   },
 });

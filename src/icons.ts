@@ -1,6 +1,7 @@
 type IconElement=[string,Record<string,string>];
 // Lucide 1.59.0 icon nodes (ISC; notice in web/THIRD_PARTY_NOTICES.txt), keyed by the action they stand for. Copy new ones from the same release unchanged.
 const paths:Record<string,IconElement[]>={
+ mermaid:[["rect",{"width":"8","height":"8","x":"3","y":"3","rx":"2"}],["path",{"d":"M7 11v4a2 2 0 0 0 2 2h4"}],["rect",{"width":"8","height":"8","x":"13","y":"13","rx":"2"}]], // workflow
  math:[["path",{"d":"M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"}]], // sigma
  "align-left":[["path",{"d":"M21 5H3"}],["path",{"d":"M15 12H3"}],["path",{"d":"M17 19H3"}]], // text-align-start
  "align-center":[["path",{"d":"M21 5H3"}],["path",{"d":"M17 12H7"}],["path",{"d":"M19 19H5"}]], // text-align-center

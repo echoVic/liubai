@@ -4,6 +4,7 @@ import MarkdownIt from 'markdown-it';
 import {highlightPlugin} from './marks';
 import {mathPlugin,fillMath,type MathOutput} from './math';
 import DOMPurify from 'dompurify';
+import {MermaidMount,renderMermaid,type MermaidTheme} from './mermaid';
 import footnote from 'markdown-it-footnote';
 import type {PluginSimple} from 'markdown-it';
 
@@ -12,6 +13,7 @@ export interface MarkdownOptions {
  external: 'load'|'link';
  frontMatter?: 'show'|'hide';
  mathOutput?:MathOutput;
+ diagramTheme?:MermaidTheme;
 }
 
 export interface MarkdownRender {
@@ -52,11 +54,13 @@ export function headingSlug(text:string,used:Map<string,number>):string {
  return base+(count?`-${count}`:'');
 }
 
+// Keep author-HTML hooks private: Mermaid also uses DOMPurify with its own SVG policy.
+const authorPurifier=typeof window==='undefined'?DOMPurify:DOMPurify(window);
 const allowedTags='a abbr b blockquote br caption center code col colgroup dd del details div dl dt em figcaption figure h1 h2 h3 h4 h5 h6 hr i img input ins kbd li mark ol p pre q s samp section small span strike strong sub summary sup table tbody td tfoot th thead tr u ul var'.split(' ');
 // DOMPurify's default URI rule plus the app's own image scheme, so a resized <img src="liubai-asset:…"> keeps its source.
 const allowedURI=/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|liubai-asset):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
 const allowedAttributes='href src alt title width height align valign colspan rowspan open id class start reversed type checked disabled aria-label aria-hidden lang dir datetime cite scope data-line data-line-end data-image-source'.split(' ');
-if(DOMPurify.addHook)DOMPurify.addHook('uponSanitizeAttribute',(node,data)=>{
+if(authorPurifier.addHook)authorPurifier.addHook('uponSanitizeAttribute',(node,data)=>{
  if(data.attrName==='class')data.attrValue=data.attrValue.split(/\s+/).filter(value=>/^(md-|language-|task-list|contains-task-list|footnote|markdown-alert)/.test(value)).join(' ');
  else if(data.attrName==='style'&&/^T[HD]$/.test(node.nodeName)&&/^text-align:\s*(left|center|right);?$/i.test(data.attrValue))data.forceKeepAttr=true;
 });
@@ -182,6 +186,13 @@ const imageRule:NonNullable<(typeof parser.renderer.rules)['image']>=(tokens,ind
  return `<img${self.renderAttrs(token)}>`;
 };
 parser.renderer.rules.image=imageRule;
+const fenceRule=parser.renderer.rules.fence!;
+parser.renderer.rules.fence=(tokens,index,options,env,self)=>{
+ const token=tokens[index];if(token.info.trim()!=='mermaid')return fenceRule(tokens,index,options,env,self);
+ const entry=(env.mermaid??=[]).push({source:token.content.trimEnd(),fallback:fenceRule(tokens,index,options,env,self)})-1;
+ const id=env.mermaidID??=Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-');
+ return `<div class="md-mermaid-${id}-${entry}"${lineAttributes(token.map)}></div>`;
+};
 
 function imageNotice(image:HTMLImageElement,source:string,kind:'missing'|'error'|'external'):HTMLElement {
  const label=document.createElement('span');
@@ -209,7 +220,7 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
  const root=document.createElement('article');
  root.className='markdown-document';
  const meta=splitFrontMatter(content);
- const env:{lineOffset:number;math?:{source:string;display:boolean}[];mathID?:string}={lineOffset:meta.lines};
+ const env:{lineOffset:number;math?:{source:string;display:boolean}[];mathID?:string;mermaid?:{source:string;fallback:string}[];mermaidID?:string}={lineOffset:meta.lines};
  const tokens=parser.parse(meta.body,env);
  const authorHTML=tokens.some(t=>(t.type==='html_block'&&!t.meta?.liubai)||(t.children||[]).some(c=>c.type==='html_inline'&&!c.meta?.liubai));
  const rendered=parser.renderer.render(tokens,parser.options,env);
@@ -217,7 +228,7 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
  const template=document.createElement('template');
  if(authorHTML){
   sanitizeStats.calls++;
-  template.innerHTML=DOMPurify.sanitize(properties+rendered,{ALLOWED_TAGS:allowedTags,ALLOWED_ATTR:allowedAttributes,ADD_URI_SAFE_ATTR:['data-image-source','data-line','data-line-end'],ALLOW_DATA_ATTR:false,FORBID_ATTR:['style'],ALLOWED_URI_REGEXP:allowedURI});
+  template.innerHTML=authorPurifier.sanitize(properties+rendered,{ALLOWED_TAGS:allowedTags,ALLOWED_ATTR:allowedAttributes,ADD_URI_SAFE_ATTR:['data-image-source','data-line','data-line-end'],ALLOW_DATA_ATTR:false,FORBID_ATTR:['style'],ALLOWED_URI_REGEXP:allowedURI});
  }else template.innerHTML=properties+rendered;
  for(const input of template.content.querySelectorAll('input')){
   if(input.type!=='checkbox')input.remove();
@@ -234,7 +245,22 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
  }
  root.append(template.content);
  let active=true;
- const pending:Promise<void>[]=[];
+ const pending:Promise<void>[]=[],diagrams:MermaidMount[]=[];
+ // Only parser-generated, unguessable placeholders receive strict Mermaid SVG after sanitization.
+ for(const [index,diagram] of (env.mermaid||[]).entries()){
+  const element=root.querySelector<HTMLElement>('.md-mermaid-'+env.mermaidID+'-'+index);if(!element)continue;
+  element.className='rendered-mermaid';
+  // A failed reader/export diagram retains the parser's escaped code block and a short text diagnostic.
+  const mount=new MermaidMount(element,()=>{},()=>false,async(source,theme)=>{
+   const result=await renderMermaid(source,theme);
+   if(result.error&&active){
+    const code=document.createElement('div');code.innerHTML=diagram.fallback;
+    return {svg:code.innerHTML+'<div class="mermaid-error">'+parser.utils.escapeHtml(messages.fDiagramError(result.error.split('\n').filter(Boolean).slice(0,2).join(' ').slice(0,500)))+'</div>'};
+   }
+   return result;
+  },options.diagramTheme);
+  diagrams.push(mount);mount.update(diagram.source);pending.push(mount.ready);
+ }
 
  const install=(image:HTMLImageElement,source:string,url:string|undefined)=>{
   if(!active)return;
@@ -268,7 +294,7 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
  return {
   root,
   ready:Promise.all(pending).then(()=>{}),
-  dispose:()=>{active=false},
+  dispose:()=>{active=false;for(const diagram of diagrams)diagram.dispose()},
  };
 }
 

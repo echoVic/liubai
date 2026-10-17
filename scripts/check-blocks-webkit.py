@@ -29,7 +29,8 @@ def main():
     assert report["tableMarkdown"] == "前文。\n\n| 表头 | 说明 |\n| --- | --- |\n| 甲WK | 乙 |\n\n尾文。", report
     assert report["imageFixture"] and report["imageSelected"] and report["imageResizeBadge"] and report["imageWidthWritten"], report
     assert report["mathRendered"] and report["mathFontLoaded"], report
-    print("PASS: WebKit hover grip alignment, drag past a list, slash menu inline table input and image selection/resize, KaTeX rendering and bundled font loading")
+    assert report["mermaidRendered"] and report["mermaidCSP"] == [], report
+    print("PASS: WebKit hover grip alignment, drag past a list, slash menu inline table input and image selection/resize, KaTeX rendering and bundled font loading, Mermaid SVG under the app CSP")
 
 
 main()

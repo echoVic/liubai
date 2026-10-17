@@ -11,13 +11,15 @@ import { GFM } from '@lezer/markdown';
 import type { SyntaxNode } from '@lezer/common';
 import {TableWidget,tableComposition} from './table-ui';
 import {ImageWidget,imageSelection,imageSelected} from './image-ui';
-import {imageRanges,tableRanges,mathRanges,mapImageRanges} from './images';
+import {imageRanges,tableRanges,mathRanges,mermaidRanges,mapImageRanges} from './images';
 import type { Doc } from './types';
 import {createBlockUI,blockRichMode,type BlockUIOptions} from './block-ui';
 import {createSlashMenu} from './slash';
 import {Highlight,inlineTagPairs,tagHosts} from './marks';
 import {MathSyntax} from './math';
 import {MathWidget} from './math-ui';
+import {MermaidWidget} from './mermaid-ui';
+import {MermaidSyntax} from './mermaid';
 import {indentList,safeLink,localDocumentLink,frontMatterRange} from './editing';
 import {htmlToMarkdown,pasteText,replacePasteImage,type PasteImage} from './paste';
 
@@ -86,9 +88,13 @@ export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promis
   if(meta&&formula.from<meta.to||touched(formula.from,formula.to))continue;
   decorations.push({...formula,dec:Decoration.replace({widget:new MathWidget(formula.source,true,formula.from,composing),block:true})});
  }
+ for(const diagram of mermaidRanges(state)){
+  if(meta&&diagram.from<meta.to||touched(diagram.from,diagram.to))continue;
+  decorations.push({...diagram,dec:Decoration.replace({widget:new MermaidWidget(diagram.source,diagram.from,composing),block:true})});
+ }
  const builder=new RangeSetBuilder<Decoration>();for(const d of decorations.sort((a,b)=>a.from-b.from))builder.add(d.from,d.to,d.dec);return builder.finish();
 }
-// Ordinary single-line prose edits cannot change image, table or math widgets. Map their ranges rather than rebuilding every widget in a long document.
+// Ordinary single-line prose edits cannot change image, table, math or Mermaid widgets. Map their ranges rather than rebuilding every widget in a long document.
 function proseEdit(tr:Transaction){
  if(!tr.docChanged||tr.reconfigured||tr.startState.field(composing)||tr.startState.readOnly!==tr.state.readOnly||tr.startState.field(imageSelection,false)!==tr.state.field(imageSelection,false)||syntaxTree(tr.startState).length!==tr.startState.doc.length||syntaxTree(tr.state).length!==tr.state.doc.length)return false;
  const paragraph=(state:EditorState,pos:number)=>{let node:SyntaxNode|null=syntaxTree(state).resolveInner(pos,1);while(node&&node.name!=='Paragraph')node=node.parent;return node};
@@ -114,6 +120,7 @@ export function createBlockField(resolve:(dest:string)=>Promise<string>):StateFi
 }
 export function inlineDecorations(state:EditorState,ranges:readonly {from:number;to:number}[]):DecorationSet{
  const decorations:{from:number;to:number;dec:Decoration}[]=[],touched=selectedLines(state),marked=new Set<string>(),meta=frontMatterRange(state),images=imageRanges(state).filter(i=>ranges.some(range=>i.from<=range.to&&i.to>=range.from)&&(!touched(i.from,i.to)||imageSelected(state,i.from)));
+ const diagrams=mermaidRanges(state).filter(d=>!touched(d.from,d.to));
  const active=(from:number,to:number)=>state.selection.ranges.some(sel=>sel.from<=to&&sel.to>=from);
  for(const range of ranges){
   const lineClass=(from:number,to:number,cls:string)=>{
@@ -131,7 +138,7 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
     if(pair.closeFrom>pair.openTo)decorations.push({from:pair.openTo,to:pair.closeFrom,dec:Decoration.mark({class:pair.tag==='u'?'md-underline':'md-'+pair.tag})});
     if(!active(pair.from,pair.to))for(const [from,to] of [[pair.from,pair.openTo],[pair.closeFrom,pair.to]])decorations.push({from,to,dec:Decoration.replace({})});
    }
-   if(name==='MathBlock'||name==='MathFence')return false;
+   if(name==='MathBlock'||name==='MathFence'||diagrams.some(d=>n.from>=d.from&&n.to<=d.to))return false;
    if(name==='InlineMath'){
     if(!touched(n.from,n.to)&&!marked.has(n.from+':math')){marked.add(n.from+':math');decorations.push({from:n.from,to:n.to,dec:Decoration.replace({widget:new MathWidget(state.sliceDoc(n.from+1,n.to-1),false,n.from,composing)})})}
     return false;
@@ -143,7 +150,7 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
    if(name==='Table')return false;
    if(/^ATXHeading[1-6]$/.test(name))lineClass(n.from,n.from,'md-heading md-h'+name.slice(-1));
    if(name==='Blockquote')lineClass(n.from,n.to,'md-quote');
-   if(name==='FencedCode')lineClass(n.from,n.to,'md-code-line');
+   if(name==='FencedCode'||name==='MermaidFence')lineClass(n.from,n.to,'md-code-line');
    const add=(dec:Decoration)=>{const key=n.from+':'+n.to+':'+name;if(!marked.has(key)){marked.add(key);decorations.push({from:n.from,to:n.to,dec})}};
    if(name==='Link')add(Decoration.mark({class:'md-link',attributes:{'data-href':destination(state,n.node),title:messages.fCtrlClickToOpenTheLink()}}));
    if(name==='InlineCode')add(Decoration.mark({class:'md-inline-code'}));
@@ -170,7 +177,7 @@ export function richExtensions(resolve:(dest:string)=>Promise<string>):Extension
 export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions){
  const state=EditorState.create({doc:doc.content,selection:{anchor:Math.min(doc.position.anchor||0,doc.content.length),head:Math.min(doc.position.head||0,doc.content.length)},extensions:[
   tableComposition.of((view,active,commit)=>{view.dispatch({effects:setComposing.of(active)});commit?.();onCompose(active)}),
-  history(),composing,focusField,focusDecorations,createSlashMenu(composing,focusField,()=>blocks?.action('image')),blocks?createBlockUI(composing,focusField,blocks):[],markdown({base:markdownLanguage,codeLanguages:languages,extensions:[GFM,Highlight,MathSyntax]}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),
+  history(),composing,focusField,focusDecorations,createSlashMenu(composing,focusField,()=>blocks?.action('image')),blocks?createBlockUI(composing,focusField,blocks):[],markdown({base:markdownLanguage,codeLanguages:languages,extensions:[GFM,Highlight,MathSyntax,MermaidSyntax]}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),
   EditorView.editorAttributes.of(view=>({class:view.state.field(focusField)?'cm-focus-on':''})),
   // ⌘U underlines like the toolbar, so CodeMirror's undo-selection binding is dropped.
   keymap.of([...(blocks?[{key:'Alt-Shift-ArrowUp',run:()=>{blocks.action('up');return true}},{key:'Alt-Shift-ArrowDown',run:()=>{blocks.action('down');return true}},{key:'Mod-/',run:()=>{blocks.action('menu');return true}}]:[]),...([1,-1] as const).map(direction=>({key:direction>0?'Tab':'Shift-Tab',run:(view:EditorView)=>{if(view.composing||view.state.field(composing)||view.state.readOnly)return false;const spec=indentList(view.state,direction);if(!spec)return false;view.dispatch(spec);return true}})),...markdownKeymap,...historyKeymap.filter(binding=>binding.key!=='Mod-u'),...searchKeymap,...defaultKeymap,indentWithTab]),

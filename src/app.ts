@@ -13,6 +13,7 @@ import {blockFormat,setHeading,headingLevel,inlineMarkers,clearFormatting,inList
 import {isolateHistory} from '@codemirror/commands';
 import {applyIcons,icon} from './icons';
 import {attachMenu} from './menu';
+import {disposeMermaid} from './mermaid';
 import {renderDelivery,waitImages,copyRich,type Delivery} from './delivery';
 import {createPreviewController,type PreviewController} from './preview';
 import {normalizeImageDestination} from './markdown';
@@ -240,6 +241,7 @@ $('#export-anyway').onclick=()=>{closeDialog('missing-dialog');void run(pendingM
 async function prepareDelivery(kind:string,allowMissing=false){
  if(!await saveForAction())return;const data=await call<Delivery>('Delivery',doc.id);
  if(data.missing.length&&!allowMissing){pendingMissing=()=>prepareDelivery(kind,true);$('#missing-list').textContent=data.missing.join('\n');dialog('missing-dialog');return}
+ if(prepared)disposeMermaid(prepared);
  prepared=renderDelivery(data,kind==='pdf'?'htmlAndMathml':'mathml');$('#print-document').replaceChildren(prepared);await waitImages(prepared);await document.fonts.ready;readyAction=kind;
  readyData=data;renderReadyInfo();dialog('ready-dialog');
 }
@@ -260,7 +262,7 @@ $('#ready-go').onclick=()=>{if(!prepared)return;const root=prepared;
 async function closeApp(){if(compositionActive){pendingClose=true;toast(messages.fFinishComposingYourTextToSaveAndQuit());return}if(busy){pendingClose=true;return}if(closeRequested)return;closeRequested=true;try{await appearanceQueue.catch(()=>{});const ok=await save();if(!ok||dirty){dialog('close-dialog');return}if(desktop)await call('Close');else toast(messages.fYourDocumentIsSavedLocallyYouCanCloseThis())}finally{closeRequested=false}}
 $('#discard-close').onclick=()=>{if(desktop)void call('Close');else closeDialog('close-dialog')};
 const commands=()=>[
- ['language:system',messages.fLanguageSystem(),''],['language:zh-Hans',messages.fLanguageChinese(),''],['language:en',messages.fLanguageEnglish(),''],['capture',messages.fQuickNote(),''],['captureSettings',messages.fQuickNoteSettings(),''],['new',messages.fNewDocument(),'⌘ N'],['rename',messages.fRename(),''],['open',messages.fOpenDocument(),'⌘ O'],['save',messages.fSave(),'⌘ S'],['saveAs',messages.fSaveAs(),'⌘ ⇧ S'],['deliver',messages.fExport(),''],['export',messages.fDocumentAndImagesZIP(),'ZIP'],['pdf',messages.fExportPDF(),''],['copyRich',messages.fCopyRichText(),''],['pastePlain',messages.fPasteAsPlainText(),'⌘ ⇧ V'],['html',messages.fDownloadHTML(),''],['focus',messages.fFocusMode(),'⌘ ⇧ F'],['recent',messages.fRecentDocuments(),''],['remove',messages.fRemoveCurrentDocumentFromRecents(),''],['outline',messages.fOutline(),''],['find',messages.fFindInDocument(),'⌘ F'],['layout',messages.fToggleSplitView(),'⌘ \\'],['read',messages.fReadingMode(),'⌘ ⇧ R'],['source',messages.fShowMarkdownSource(),'⌘ ⇧ M'],['image',messages.fInsertImage(),''],['theme',messages.fAppearanceAndTypography(),''],['commands',messages.fAllCommands(),'⌘ K'],...names().map(t=>['theme:'+t.id,messages.fSwitchTheme(t.name),'']),['bold',messages.fBoldSelection(),'⌘ B'],['italic',messages.fItalicizeSelection(),''],['paragraph',messages.fBody(),''],['h1',messages.fHeading1(),''],['h2',messages.fHeading2(),''],['h3',messages.fHeading3(),''],['h4',messages.fHeading4(),''],['h5',messages.fHeading5(),''],['h6',messages.fHeading6(),''],['underline',messages.fUnderline(),'⌘ U'],['highlight',messages.fHighlight(),''],['superscript',messages.fSuperscript(),''],['subscript',messages.fSubscript(),''],['clearFormatting',messages.fClearFormatting(),''],['indent',messages.fIndent(),''],['outdent',messages.fOutdent(),''],['strike',messages.fStrikethrough(),''],['inlineCode',messages.fInlineCode(),''],['quote',messages.fInsertBlockquote(),''],['task',messages.fInsertTaskList(),''],['code',messages.fInsertCodeBlock(),''],['math',messages.fFormula(),''],['table',messages.fInsertTable(),''],['link',messages.fInsertEditLink(),'⌘ L'],['bullet',messages.fBulletedList(),''],['ordered',messages.fNumberedList(),''],['undo',messages.fUndo(),'⌘ Z'],['redo',messages.fRedo(),'⌘ ⇧ Z']
+ ['language:system',messages.fLanguageSystem(),''],['language:zh-Hans',messages.fLanguageChinese(),''],['language:en',messages.fLanguageEnglish(),''],['capture',messages.fQuickNote(),''],['captureSettings',messages.fQuickNoteSettings(),''],['new',messages.fNewDocument(),'⌘ N'],['rename',messages.fRename(),''],['open',messages.fOpenDocument(),'⌘ O'],['save',messages.fSave(),'⌘ S'],['saveAs',messages.fSaveAs(),'⌘ ⇧ S'],['deliver',messages.fExport(),''],['export',messages.fDocumentAndImagesZIP(),'ZIP'],['pdf',messages.fExportPDF(),''],['copyRich',messages.fCopyRichText(),''],['pastePlain',messages.fPasteAsPlainText(),'⌘ ⇧ V'],['html',messages.fDownloadHTML(),''],['focus',messages.fFocusMode(),'⌘ ⇧ F'],['recent',messages.fRecentDocuments(),''],['remove',messages.fRemoveCurrentDocumentFromRecents(),''],['outline',messages.fOutline(),''],['find',messages.fFindInDocument(),'⌘ F'],['layout',messages.fToggleSplitView(),'⌘ \\'],['read',messages.fReadingMode(),'⌘ ⇧ R'],['source',messages.fShowMarkdownSource(),'⌘ ⇧ M'],['image',messages.fInsertImage(),''],['theme',messages.fAppearanceAndTypography(),''],['commands',messages.fAllCommands(),'⌘ K'],...names().map(t=>['theme:'+t.id,messages.fSwitchTheme(t.name),'']),['bold',messages.fBoldSelection(),'⌘ B'],['italic',messages.fItalicizeSelection(),''],['paragraph',messages.fBody(),''],['h1',messages.fHeading1(),''],['h2',messages.fHeading2(),''],['h3',messages.fHeading3(),''],['h4',messages.fHeading4(),''],['h5',messages.fHeading5(),''],['h6',messages.fHeading6(),''],['underline',messages.fUnderline(),'⌘ U'],['highlight',messages.fHighlight(),''],['superscript',messages.fSuperscript(),''],['subscript',messages.fSubscript(),''],['clearFormatting',messages.fClearFormatting(),''],['indent',messages.fIndent(),''],['outdent',messages.fOutdent(),''],['strike',messages.fStrikethrough(),''],['inlineCode',messages.fInlineCode(),''],['quote',messages.fInsertBlockquote(),''],['task',messages.fInsertTaskList(),''],['code',messages.fInsertCodeBlock(),''],['math',messages.fFormula(),''],['mermaid',messages.fDiagram(),''],['table',messages.fInsertTable(),''],['link',messages.fInsertEditLink(),'⌘ L'],['bullet',messages.fBulletedList(),''],['ordered',messages.fNumberedList(),''],['undo',messages.fUndo(),'⌘ Z'],['redo',messages.fRedo(),'⌘ ⇧ Z']
 ];
 function renderCommands(){const q=$<HTMLInputElement>('#command-search').value.trim();const list=$('#command-list');list.replaceChildren();commands().filter(c=>c[1].includes(q)).forEach(([id,title,key])=>{const b=node('button','command');b.append(node('span','',title),node('kbd','',key));if(id==='language:zh-Hans')b.dataset.languageAutonym='true';b.onclick=()=>{closeDialog('commands');void action(id)};list.append(b)})}
 $('#command-search').oninput=renderCommands;$('#command-search').onkeydown=e=>{if(e.key==='ArrowDown'){e.preventDefault();$('#command-list button')?.focus()}if(e.key==='Enter'){e.preventDefault();$('#command-list button')?.click()}};
@@ -268,7 +270,7 @@ async function action(id:string){
  if(id.startsWith('language:')){try{await setPageLocale(id.slice(9)==='system'?'':id.slice(9))}catch(error){toast(errorText(error))}return}
  if(id==='undo'||id==='redo'){const el=document.activeElement;if(el instanceof HTMLInputElement||el instanceof HTMLTextAreaElement){document.execCommand(id);return}}
  if(!view||!doc)return;
- if(reading()&&(id in inlineMarkers||id==='clearFormatting'||id==='indent'||id==='outdent'||id==='insert'||['paragraph','h1','h2','h3','h4','h5','h6','strike','inlineCode','heading','quote','bullet','ordered','task','bold','italic','code','math','link','table','image','pastePlain','undo','redo','find','source','focus'].includes(id))){toast(messages.fEditingIsUnavailableInReadingModePressRTo());return}
+ if(reading()&&(id in inlineMarkers||id==='clearFormatting'||id==='indent'||id==='outdent'||id==='insert'||['paragraph','h1','h2','h3','h4','h5','h6','strike','inlineCode','heading','quote','bullet','ordered','task','bold','italic','code','math','mermaid','link','table','image','pastePlain','undo','redo','find','source','focus'].includes(id))){toast(messages.fEditingIsUnavailableInReadingModePressRTo());return}
  if(busy){if(id==='close')pendingClose=true;return;}
  if(compositionActive&&id!=='close'){toast(messages.fFinishComposingYourTextFirst());return}
  const imageRange=focusedImageRange(view),cellRange=imageRange||focusedTableRange(view);
@@ -277,7 +279,7 @@ async function action(id:string){
   if(id==='math'&&!imageRange){formatTableCell(view,id);return}
   if(id in inlineMarkers||id==='clearFormatting'||id==='link'){formatTableCell(view,id);return}
   if(['paragraph','h1','h2','h3','h4','h5','h6','heading','quote','bullet','ordered','task','indent','outdent'].includes(id))return;
-  if(['image','table','code','math'].includes(id)){
+  if(['image','table','code','math','mermaid'].includes(id)){
    view.dispatch(insertToolbarItem(view.state,id as SlashItemID,cellRange));
    if(id==='image'){view.focus();$('#image-input').click()}else if(id!=='table'||!focusTableCell(view))view.focus();return;
   }
@@ -300,6 +302,7 @@ async function action(id:string){
   const target=view;
   try{const text=desktop?await call<string>('ClipboardText'):await navigator.clipboard.readText();if(view!==target||view.state.readOnly||compositionActive)return;view.dispatch(pasteText(view.state,text));view.focus()}catch(error){toast(messages.fClipboardError(errorText(error)))}return;
  }
+ if(id==='mermaid'){view.dispatch(insertToolbarItem(view.state,'mermaid'));view.focus();return}
  if(id==='math'){view.dispatch(insertMath(view.state));view.focus();return}
  if(id==='code'){view.dispatch(codeBlock(view.state));view.focus();return}
  if(id==='link'){openLinkEditor();return}if(id==='table'){view.dispatch(insertTable(view.state));if(!focusTableCell(view))view.focus();return}
@@ -378,7 +381,7 @@ const formatButtons=()=>[
  [['undo',messages.fUndo(),'⌘Z'],['redo',messages.fRedo(),'⌘⇧Z']],
  [['bold',messages.fBold(),'⌘B'],['italic',messages.fItalic()],['underline',messages.fUnderline(),'⌘U'],['strike',messages.fStrikethrough()],['highlight',messages.fHighlight()],['inlineCode',messages.fInlineCode()],['superscript',messages.fSuperscript()],['subscript',messages.fSubscript()],['clearFormatting',messages.fClearFormatting()]],
  [['quote',messages.fBlockquote()],['bullet',messages.fBulletedList()],['ordered',messages.fNumberedList()],['task',messages.fTaskList()],['outdent',messages.fOutdent()],['indent',messages.fIndent()]],
- [['link',messages.fLink(),'⌘L'],['image',messages.fImage()],['table',messages.fTable()],['code',messages.fCodeBlock()],['math',messages.fFormula()]],
+ [['link',messages.fLink(),'⌘L'],['image',messages.fImage()],['table',messages.fTable()],['code',messages.fCodeBlock()],['math',messages.fFormula()],['mermaid',messages.fDiagram()]],
  [['find',messages.fFindReplace(),'⌘F']],
 ];
 const group=$('.format-group'),headingButton=$('#heading-button');headingButton.remove();
@@ -477,7 +480,7 @@ function refreshLanguage(){
  if(!$('#drawer').hidden)renderDrawer();
  if($<HTMLDialogElement>('#commands').open)renderCommands();
  if(doc.conflict||statusFailed(doc))banner(statusText(doc),doc.conflict?'conflict':'error');else if(failedSaveError)banner(messages.fSaveError(errorText(failedSaveError)),'error');
- if($<HTMLDialogElement>('#ready-dialog').open&&readyData){renderReadyInfo();prepared=renderDelivery(readyData,readyAction==='pdf'?'htmlAndMathml':'mathml');$('#print-document').replaceChildren(prepared)}
+ if($<HTMLDialogElement>('#ready-dialog').open&&readyData){renderReadyInfo();if(prepared)disposeMermaid(prepared);prepared=renderDelivery(readyData,readyAction==='pdf'?'htmlAndMathml':'mathml');$('#print-document').replaceChildren(prepared);const button=$<HTMLButtonElement>('#ready-go');button.disabled=true;void waitImages(prepared).then(()=>{button.disabled=false}).catch(error=>toast(errorText(error)))}
  if($<HTMLDialogElement>('#link-dialog').open&&!$('#link-error').hidden){try{makeLink($<HTMLInputElement>('#link-text').value,$<HTMLInputElement>('#link-url').value)}catch(error){$('#link-error').textContent=errorText(error)}}
  if(bannerKind==='notice'&&retainedNotices.length)banner(retainedNotices.map(noticeText).join('; '),'notice',quarantineReveal);
  $('#toast').hidden=true;

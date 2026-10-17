@@ -74,6 +74,11 @@ Task { @MainActor in
   await wait(700)
   report["mathRendered"] = (await js("return document.querySelectorAll('.rendered-math .katex-html').length===2") as? Bool) ?? false
   report["mathFontLoaded"] = (await js("await document.fonts.ready;await document.fonts.load('16px KaTeX_Main');return document.fonts.check('16px KaTeX_Main')&&[...document.fonts].some(f=>f.family.replace(/[\\\"']/g,'')==='KaTeX_Main'&&f.status==='loaded')") as? Bool) ?? false
+  // Mermaid must produce inline SVG through a local module import under the unchanged app CSP.
+  _ = await js("window.mermaidCSP=[];document.addEventListener('securitypolicyviolation',e=>window.mermaidCSP.push(e.violatedDirective));const c=document.querySelector('.cm-content');c.focus();document.execCommand('selectAll');document.execCommand('insertText',false,'图表前文。\\n\\n```mermaid\\nflowchart LR\\n  A[开始] --> B[结束]\\n```\\n\\n尾文。');return true")
+  for _ in 0..<150 { if (await js("return !!document.querySelector('.rendered-mermaid svg')") as? Bool) == true { break }; await wait(100) }
+  report["mermaidRendered"] = (await js("const svg=document.querySelector('.rendered-mermaid svg');return !!svg&&svg.textContent.includes('开始')&&svg.textContent.includes('结束')") as? Bool) ?? false
+  report["mermaidCSP"] = (await js("return window.mermaidCSP") as? [String]) ?? ["missing"]
   let data = try! JSONSerialization.data(withJSONObject: report, options: [.sortedKeys])
   FileHandle.standardOutput.write(data); FileHandle.standardOutput.write(Data("\n".utf8))
   exit(0)

@@ -1914,5 +1914,15 @@
   "fFormula": "公式",
   "@fFormula": {"description": "Formula insertion button, tooltip and math block menu item."},
   "fFormulaUnsupported": "公式含有不支持或不受信任的命令。",
-  "@fFormulaUnsupported": {"description": "Tooltip for a formula whose commands KaTeX cannot safely render."}
+  "@fFormulaUnsupported": {"description": "Tooltip for a formula whose commands KaTeX cannot safely render."},
+  "fDiagram": "图表",
+  "@fDiagram": {"description": "Diagram toolbar button, tooltip and Mermaid block menu item."},
+  "fDiagramLoading": "正在绘制图表…",
+  "@fDiagramLoading": {"description": "Shown while an on-demand Mermaid diagram renders."},
+  "fDiagramError": "图表错误：{error}",
+  "@fDiagramError": {"description": "Short diagnostic when a Mermaid diagram cannot render."},
+  "fDiagramStart": "开始",
+  "@fDiagramStart": {"description": "First node label in the inserted flowchart template."},
+  "fDiagramEnd": "结束",
+  "@fDiagramEnd": {"description": "Last node label in the inserted flowchart template."}
 }

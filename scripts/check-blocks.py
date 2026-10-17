@@ -75,7 +75,7 @@ def slash_checks(page):
 
     start()
     expect(menu).to_have_attribute('role', 'listbox')
-    expect(menu.get_by_role('option')).to_have_count(14)
+    expect(menu.get_by_role('option')).to_have_count(15)
     page.keyboard.insert_text('bt')
     expect(menu.get_by_role('option')).to_have_count(3)
     expect(menu.get_by_role('option').first).to_have_text('标题 1')
@@ -309,7 +309,7 @@ def run(page):
     page.keyboard.insert_text('\n\n')
     page.keyboard.insert_text('/')
     expect(page.locator('#slash-menu')).to_have_accessible_name('Insert block')
-    for label in ('Body', 'Heading 1', 'Heading 2', 'Heading 3', 'Bulleted List', 'Numbered List', 'Task List', 'Blockquote', 'Code Block', 'Formula', 'Table', 'Image', 'Horizontal Rule', 'Callout'):
+    for label in ('Body', 'Heading 1', 'Heading 2', 'Heading 3', 'Bulleted List', 'Numbered List', 'Task List', 'Blockquote', 'Code Block', 'Formula', 'Diagram', 'Table', 'Image', 'Horizontal Rule', 'Callout'):
         expect(page.locator('#slash-menu').get_by_role('option', name=label, exact=True)).to_be_visible()
     page.keyboard.press('Escape')
     print("PASS: handles/visibility, pointer drag/undo/Escape, selection/Shift range, conversions, nested list move, composition, plus/cursor, themes, keyboard menu, English")

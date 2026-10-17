@@ -6041,3 +6041,171 @@ func FDeleteTable() string { return In(i18n.Locale()).FDeleteTable() }
 func (msgs Messages) FDeleteTable() string {
 	return Catalog.Format(msgs.locale, "fDeleteTable", nil)
 }
+
+// FUnderline says "下划线"
+// in the language the app shows.
+//
+// Format toolbar: Underline.
+func FUnderline() string { return In(i18n.Locale()).FUnderline() }
+
+// FUnderline says "下划线"
+// in the language of msgs.
+//
+// Format toolbar: Underline.
+func (msgs Messages) FUnderline() string {
+	return Catalog.Format(msgs.locale, "fUnderline", nil)
+}
+
+// FHighlight says "高亮"
+// in the language the app shows.
+//
+// Format toolbar: Highlight.
+func FHighlight() string { return In(i18n.Locale()).FHighlight() }
+
+// FHighlight says "高亮"
+// in the language of msgs.
+//
+// Format toolbar: Highlight.
+func (msgs Messages) FHighlight() string {
+	return Catalog.Format(msgs.locale, "fHighlight", nil)
+}
+
+// FSuperscript says "上标"
+// in the language the app shows.
+//
+// Format toolbar: Superscript.
+func FSuperscript() string { return In(i18n.Locale()).FSuperscript() }
+
+// FSuperscript says "上标"
+// in the language of msgs.
+//
+// Format toolbar: Superscript.
+func (msgs Messages) FSuperscript() string {
+	return Catalog.Format(msgs.locale, "fSuperscript", nil)
+}
+
+// FSubscript says "下标"
+// in the language the app shows.
+//
+// Format toolbar: Subscript.
+func FSubscript() string { return In(i18n.Locale()).FSubscript() }
+
+// FSubscript says "下标"
+// in the language of msgs.
+//
+// Format toolbar: Subscript.
+func (msgs Messages) FSubscript() string {
+	return Catalog.Format(msgs.locale, "fSubscript", nil)
+}
+
+// FClearFormatting says "清除格式"
+// in the language the app shows.
+//
+// Format toolbar: Clear Formatting.
+func FClearFormatting() string { return In(i18n.Locale()).FClearFormatting() }
+
+// FClearFormatting says "清除格式"
+// in the language of msgs.
+//
+// Format toolbar: Clear Formatting.
+func (msgs Messages) FClearFormatting() string {
+	return Catalog.Format(msgs.locale, "fClearFormatting", nil)
+}
+
+// FOutdent says "减少缩进"
+// in the language the app shows.
+//
+// Format toolbar: Decrease Indent.
+func FOutdent() string { return In(i18n.Locale()).FOutdent() }
+
+// FOutdent says "减少缩进"
+// in the language of msgs.
+//
+// Format toolbar: Decrease Indent.
+func (msgs Messages) FOutdent() string {
+	return Catalog.Format(msgs.locale, "fOutdent", nil)
+}
+
+// FIndent says "增加缩进"
+// in the language the app shows.
+//
+// Format toolbar: Increase Indent.
+func FIndent() string { return In(i18n.Locale()).FIndent() }
+
+// FIndent says "增加缩进"
+// in the language of msgs.
+//
+// Format toolbar: Increase Indent.
+func (msgs Messages) FIndent() string {
+	return Catalog.Format(msgs.locale, "fIndent", nil)
+}
+
+// FInsert says "插入"
+// in the language the app shows.
+//
+// Format toolbar: Insert.
+func FInsert() string { return In(i18n.Locale()).FInsert() }
+
+// FInsert says "插入"
+// in the language of msgs.
+//
+// Format toolbar: Insert.
+func (msgs Messages) FInsert() string {
+	return Catalog.Format(msgs.locale, "fInsert", nil)
+}
+
+// FFindReplace says "查找替换"
+// in the language the app shows.
+//
+// Format toolbar: Find and Replace.
+func FFindReplace() string { return In(i18n.Locale()).FFindReplace() }
+
+// FFindReplace says "查找替换"
+// in the language of msgs.
+//
+// Format toolbar: Find and Replace.
+func (msgs Messages) FFindReplace() string {
+	return Catalog.Format(msgs.locale, "fFindReplace", nil)
+}
+
+// FHeading4 says "标题 4"
+// in the language the app shows.
+//
+// Format toolbar: Heading 4.
+func FHeading4() string { return In(i18n.Locale()).FHeading4() }
+
+// FHeading4 says "标题 4"
+// in the language of msgs.
+//
+// Format toolbar: Heading 4.
+func (msgs Messages) FHeading4() string {
+	return Catalog.Format(msgs.locale, "fHeading4", nil)
+}
+
+// FHeading5 says "标题 5"
+// in the language the app shows.
+//
+// Format toolbar: Heading 5.
+func FHeading5() string { return In(i18n.Locale()).FHeading5() }
+
+// FHeading5 says "标题 5"
+// in the language of msgs.
+//
+// Format toolbar: Heading 5.
+func (msgs Messages) FHeading5() string {
+	return Catalog.Format(msgs.locale, "fHeading5", nil)
+}
+
+// FHeading6 says "标题 6"
+// in the language the app shows.
+//
+// Format toolbar: Heading 6.
+func FHeading6() string { return In(i18n.Locale()).FHeading6() }
+
+// FHeading6 says "标题 6"
+// in the language of msgs.
+//
+// Format toolbar: Heading 6.
+func (msgs Messages) FHeading6() string {
+	return Catalog.Format(msgs.locale, "fHeading6", nil)
+}

@@ -13,7 +13,8 @@ import {TableWidget,tableComposition} from './table-ui';
 import type { Doc } from './types';
 import {createBlockUI,blockRichMode,type BlockUIOptions} from './block-ui';
 import {createSlashMenu} from './slash';
-import {safeLink,localDocumentLink,frontMatterRange} from './editing';
+import {Highlight,inlineTagPairs,tagHosts} from './marks';
+import {indentList,safeLink,localDocumentLink,frontMatterRange} from './editing';
 import {htmlToMarkdown,pasteText,replacePasteImage,type PasteImage} from './paste';
 
 export const mode=new Compartment();
@@ -52,7 +53,7 @@ class TaskWidget extends WidgetType {
 
 const colours=HighlightStyle.define([
  {tag:tags.heading,color:'var(--foreground)',fontWeight:'600'},
- {tag:tags.strong,fontWeight:'700'}, {tag:tags.emphasis,fontStyle:'italic'},
+ {tag:tags.strong,fontWeight:'700'}, {tag:tags.emphasis,fontStyle:'italic'}, {tag:tags.strikethrough,textDecoration:'line-through'},
  {tag:[tags.keyword,tags.bool,tags.null],color:'var(--primary)'},
  {tag:[tags.string,tags.regexp],color:'var(--quote)'},
  {tag:[tags.comment,tags.meta],color:'var(--muted-foreground)'},
@@ -106,6 +107,7 @@ export function createBlockField(resolve:(dest:string)=>Promise<string>):StateFi
 }
 export function inlineDecorations(state:EditorState,ranges:readonly {from:number;to:number}[]):DecorationSet{
  const decorations:{from:number;to:number;dec:Decoration}[]=[],touched=selectedLines(state),marked=new Set<string>(),meta=frontMatterRange(state);
+ const active=(from:number,to:number)=>state.selection.ranges.some(sel=>sel.from<=to&&sel.to>=from);
  for(const range of ranges){
   const lineClass=(from:number,to:number,cls:string)=>{
    const first=state.doc.lineAt(Math.max(from,range.from)).number,last=state.doc.lineAt(Math.min(to,range.to)).number;
@@ -116,6 +118,15 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
    if(meta&&n.from<meta.to&&n.name!=='Document')return false;
    if(n.to<=range.from||n.from>=range.to)return false;
    const name=n.name;
+   if(tagHosts.test(name))for(const pair of inlineTagPairs(n.node,(a,b)=>state.sliceDoc(a,b))){
+    const key=pair.from+':tag';if(marked.has(key))continue;marked.add(key);
+    if(pair.closeFrom>pair.openTo)decorations.push({from:pair.openTo,to:pair.closeFrom,dec:Decoration.mark({class:pair.tag==='u'?'md-underline':'md-'+pair.tag})});
+    if(!active(pair.from,pair.to))for(const [from,to] of [[pair.from,pair.openTo],[pair.closeFrom,pair.to]])decorations.push({from,to,dec:Decoration.replace({})});
+   }
+   if(name==='Highlight'){
+    const marks=n.node.getChildren('HighlightMark');if(marks.length===2)decorations.push({from:marks[0].to,to:marks[1].from,dec:Decoration.mark({class:'md-highlight'})});
+    if(!active(n.from,n.to))for(const mark of marks)decorations.push({from:mark.from,to:mark.to,dec:Decoration.replace({})});
+   }
    if(name==='Table')return false;
    if(name==='Image'&&!touched(n.from,n.to)&&imageOnLine(state,n.node)&&destination(state,n.node))return false;
    if(/^ATXHeading[1-6]$/.test(name))lineClass(n.from,n.from,'md-heading md-h'+name.slice(-1));
@@ -147,9 +158,10 @@ export function richExtensions(resolve:(dest:string)=>Promise<string>):Extension
 export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions){
  const state=EditorState.create({doc:doc.content,selection:{anchor:Math.min(doc.position.anchor||0,doc.content.length),head:Math.min(doc.position.head||0,doc.content.length)},extensions:[
   tableComposition.of((view,active,commit)=>{view.dispatch({effects:setComposing.of(active)});commit?.();onCompose(active)}),
-  history(),composing,focusField,focusDecorations,createSlashMenu(composing,focusField,()=>blocks?.action('image')),blocks?createBlockUI(composing,focusField,blocks):[],markdown({base:markdownLanguage,codeLanguages:languages,extensions:GFM}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),
+  history(),composing,focusField,focusDecorations,createSlashMenu(composing,focusField,()=>blocks?.action('image')),blocks?createBlockUI(composing,focusField,blocks):[],markdown({base:markdownLanguage,codeLanguages:languages,extensions:[GFM,Highlight]}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),
   EditorView.editorAttributes.of(view=>({class:view.state.field(focusField)?'cm-focus-on':''})),
-  keymap.of([...(blocks?[{key:'Alt-Shift-ArrowUp',run:()=>{blocks.action('up');return true}},{key:'Alt-Shift-ArrowDown',run:()=>{blocks.action('down');return true}},{key:'Mod-/',run:()=>{blocks.action('menu');return true}}]:[]),...markdownKeymap,...historyKeymap,...searchKeymap,...defaultKeymap,indentWithTab]),
+  // ⌘U underlines like the toolbar, so CodeMirror's undo-selection binding is dropped.
+  keymap.of([...(blocks?[{key:'Alt-Shift-ArrowUp',run:()=>{blocks.action('up');return true}},{key:'Alt-Shift-ArrowDown',run:()=>{blocks.action('down');return true}},{key:'Mod-/',run:()=>{blocks.action('menu');return true}}]:[]),...([1,-1] as const).map(direction=>({key:direction>0?'Tab':'Shift-Tab',run:(view:EditorView)=>{if(view.composing||view.state.field(composing)||view.state.readOnly)return false;const spec=indentList(view.state,direction);if(!spec)return false;view.dispatch(spec);return true}})),...markdownKeymap,...historyKeymap.filter(binding=>binding.key!=='Mod-u'),...searchKeymap,...defaultKeymap,indentWithTab]),
   mode.of(doc.position.source?[]:richExtensions(resolve)),EditorView.lineWrapping,editorLocale.of(localizedEditor()),
   EditorView.updateListener.of(u=>{if(u.docChanged||u.selectionSet)onChange(u.docChanged)}),
   EditorView.domEventHandlers({

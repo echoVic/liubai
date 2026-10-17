@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {EditorState,StateField,StateEffect,Compartment} from '@codemirror/state';
+import {markdown} from '@codemirror/lang-markdown';
+import {GFM} from '@lezer/markdown';
 import {history,undo} from '@codemirror/commands';
 import {blockRichMode} from '../src/block-ui';
 import * as slash from '../src/slash';
@@ -69,3 +71,17 @@ assert.equal(s.field(field)?.items.length,13,'plus opens on an empty paragraph w
 s=type(s,'table');assert.equal(s.field(field)?.items[0].id,'table');
 s=s.update(slash.applySlashItem(s,'table')).state;assert.equal(s.field(field),null,'applying closes');
 console.log('PASS: slash search, all templates/cursors/undo/neighbours, punctuation, composition, mode/read-only guards, dismissal and plus state');
+
+assert.equal(typeof slash.insertToolbarItem,'function','toolbar inserts independently of slash trigger');
+for(const [doc,pos,expected] of [['',0,'> '],['before\ncontinued\n\nafter',3,'before\ncontinued\n\n> \n\nafter']] as const){
+ const state=EditorState.create({doc,selection:{anchor:pos},extensions:markdown()}),next=state.update(slash.insertToolbarItem(state,'quote')).state;
+ assert.equal(next.doc.toString(),expected);
+}
+
+const raw='| A | B |\n| --- | --- |\n| a | b |',prefix='before\n\n',suffix='\n\nafter';
+for(const [id,block] of [['quote','> '],['code','```\n\n```'],['table','|  |  |\n| --- | --- |\n|  |  |']] as const){
+ const state=EditorState.create({doc:prefix+raw+suffix,selection:{anchor:0},extensions:[history(),markdown({extensions:GFM})]});
+ let next=state.update(slash.insertToolbarItem(state,id,{from:prefix.length,to:prefix.length+raw.length})).state;
+ assert.equal(next.doc.toString(),prefix+raw+'\n\n'+block+suffix,'toolbar must insert below the focused table, not at the CodeMirror cursor');
+ assert.ok(undo({state:next,dispatch:tr=>next=tr.state}));assert.equal(next.doc.toString(),state.doc.toString(),'one undo restores table insertion');
+}

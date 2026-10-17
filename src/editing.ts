@@ -1,7 +1,9 @@
 import {messages} from './i18n';
 import {EditorState, type TransactionSpec} from '@codemirror/state';
 import {isolateHistory} from '@codemirror/commands';
-import {syntaxTree} from '@codemirror/language';
+import {syntaxTree,ensureSyntaxTree} from '@codemirror/language';
+import type {SyntaxNode} from '@lezer/common';
+import {inlineTagPairs,tagHosts} from './marks';
 
 export type BlockKind='heading'|'quote'|'bullet'|'ordered'|'task';
 export function headingLevel(state:EditorState):number {
@@ -34,11 +36,93 @@ export function blockFormat(state:EditorState,kind:BlockKind,preserveBody=false)
  });
  return {changes,userEvent:'input.format'};
 }
-export function wrapSelection(state:EditorState,marker:string):TransactionSpec {
- const {from,to}=state.selection.main;const selected=state.sliceDoc(from,to);
- if(from>=marker.length&&state.sliceDoc(from-marker.length,from)===marker&&state.sliceDoc(to,to+marker.length)===marker)
-  return {changes:[{from:from-marker.length,to:from},{from:to,to:to+marker.length}],selection:{anchor:from-marker.length,head:to-marker.length},userEvent:'input.format'};
- return {changes:{from,to,insert:marker+selected+marker},selection:{anchor:from+marker.length,head:to+marker.length},userEvent:'input.format'};
+export const inlineMarkers:Record<string,[string,string]>={bold:['**','**'],italic:['_','_'],underline:['<u>','</u>'],strike:['~~','~~'],highlight:['==','=='],inlineCode:['`','`'],superscript:['<sup>','</sup>'],subscript:['<sub>','</sub>']};
+export function wrapSelection(state:EditorState,open:string,close=open):TransactionSpec {
+ const {from,to}=state.selection.main,selected=state.sliceDoc(from,to);
+ if(from>=open.length&&state.sliceDoc(from-open.length,from)===open&&state.sliceDoc(to,to+close.length)===close)
+  return {changes:[{from:from-open.length,to:from},{from:to,to:to+close.length}],selection:{anchor:from-open.length,head:to-open.length},userEvent:'input.format'};
+ const wrapped=selected.length>=open.length+close.length&&selected.startsWith(open)&&selected.endsWith(close);
+ const insert=wrapped?selected.slice(open.length,-close.length):open+selected+close,anchor=from+(wrapped?0:open.length);
+ return {changes:{from,to,insert},selection:{anchor,head:anchor+(wrapped?insert.length:selected.length)},userEvent:'input.format'};
+}
+interface InlineWrapper {from:number;to:number;openTo:number;closeFrom:number}
+export function clearFormatting(state:EditorState):TransactionSpec {
+ let {from,to}=state.selection.main;
+ if(from===to){
+  const line=state.doc.lineAt(from),offset=from-line.from,word=/[\p{L}\p{N}]+/gu;
+  for(const match of line.text.matchAll(word))if(match.index!<=offset&&match.index!+match[0].length>=offset){from=line.from+match.index!;to=from+match[0].length;break}
+ }
+ if(from===to)return {};
+ const tree=ensureSyntaxTree(state,to,200)||syntaxTree(state),wrappers:InlineWrapper[]=[];
+ // Inline formatting never leaves its block, so only the blocks around the selection are read.
+ let lo=from,hi=to;
+ for(const [pos,side] of [[from,1],[to,-1]] as const)for(let n:SyntaxNode|null=tree.resolveInner(pos,side);n&&n.parent;n=n.parent)if(/^(Document|Blockquote|BulletList|OrderedList|ListItem)$/.test(n.parent.name)){lo=Math.min(lo,n.from);hi=Math.max(hi,n.to);break}
+ tree.iterate({from:lo,to:hi,enter(ref){
+  const name=ref.name;
+  if(name==='FencedCode'||name==='CodeBlock'||name==='HTMLBlock')return false;
+  const marker=({StrongEmphasis:'EmphasisMark',Emphasis:'EmphasisMark',Strikethrough:'StrikethroughMark',Highlight:'HighlightMark',InlineCode:'CodeMark'} as Record<string,string>)[name];
+  if(!marker&&name!=='Link'&&!tagHosts.test(name))return;
+  const n=ref.node;
+  for(const pair of inlineTagPairs(n,(a,b)=>state.sliceDoc(a,b)))wrappers.push(pair);
+  if(marker){const marks=n.getChildren(marker);if(marks.length>=2)wrappers.push({from:n.from,to:n.to,openTo:marks[0].to,closeFrom:marks.at(-1)!.from})}
+  if(name==='Link'){
+   const marks=n.getChildren('LinkMark');if(marks.length>=2)wrappers.push({from:n.from,to:n.to,openTo:marks[0].to,closeFrom:marks[1].from});
+  }
+ }});
+ // Render the affected wrappers recursively; split a partially cleared mark around the selection.
+ function render(start:number,end:number,list:InlineWrapper[]):string{
+  let output='',pos=start;
+  for(let i=0;i<list.length;i++){
+   const w=list[i];if(w.to<=pos||w.from>=end)continue;
+   const children:InlineWrapper[]=[];while(i+1<list.length&&list[i+1].from>=w.openTo&&list[i+1].to<=w.closeFrom)children.push(list[++i]);
+   output+=state.sliceDoc(pos,Math.max(pos,w.from));
+   const innerFrom=Math.max(start,w.openTo),innerTo=Math.min(end,w.closeFrom),a=Math.max(innerFrom,from),b=Math.min(innerTo,to),open=state.sliceDoc(w.from,w.openTo),close=state.sliceDoc(w.closeFrom,w.to);
+   if(innerFrom>=innerTo){pos=Math.min(end,w.to);continue}
+   if(a<b){
+    const wrap=(text:string)=>{const match=/^(\s*)([\s\S]*?)(\s*)$/.exec(text)!;return match[1]+(match[2]?open+match[2]+close:'')+match[3]};
+    // Links clear to their label; never parse or alter the destination as formatting.
+    if(open==='[')output+=render(innerFrom,innerTo,children);
+    else output+=wrap(render(innerFrom,a,children))+render(a,b,children)+wrap(render(b,innerTo,children));
+   }else output+=open+render(innerFrom,innerTo,children)+close;
+   pos=Math.min(end,w.to);
+  }
+  return output+state.sliceDoc(pos,end);
+ }
+ wrappers.sort((a,b)=>a.from-b.from||b.to-a.to);
+ // Limit the replacement to whole wrappers that meet the selection, retaining unrelated blocks verbatim.
+ const relevant=wrappers.filter(w=>w.openTo<to&&w.closeFrom>from);
+ if(!relevant.length)return {};
+ const start=Math.min(from,...relevant.map(w=>w.from)),end=Math.max(to,...relevant.map(w=>w.to)),insert=render(start,end,wrappers.filter(w=>w.from>=start&&w.to<=end));
+ return {changes:{from:start,to:end,insert},selection:{anchor:start,head:start+insert.length},userEvent:'input.format'};
+}
+function listItem(state:EditorState,pos:number):SyntaxNode|null {
+ const tree=ensureSyntaxTree(state,pos,50)||syntaxTree(state);
+ for(let n:SyntaxNode|null=tree.resolveInner(Math.min(pos+1,state.doc.lineAt(pos).to),-1);n;n=n.parent)if(n.name==='ListItem')return n;
+ return null;
+}
+export function inList(state:EditorState){return !!listItem(state,state.selection.main.head)}
+export function indentList(state:EditorState,direction:1|-1):TransactionSpec|null {
+ const {from,to}=state.selection.main,first=listItem(state,from);if(!first)return null;
+ const roots:SyntaxNode[]=[];
+ const last=state.doc.lineAt(Math.max(from,to-1)).number;
+ for(let line=state.doc.lineAt(from).number;line<=last;line++){
+  const item=listItem(state,state.doc.line(line).to);if(item&&!roots.some(root=>root.from<=item.from&&root.to>=item.to))roots.push(item);
+ }
+ const changes:{from:number;to:number;insert:string}[]=[];
+ for(const item of roots){
+  const line=state.doc.lineAt(item.from),indent=/^[ \t]*/.exec(line.text)![0].length;
+  const parent=item.parent?.parent?.name==='ListItem'?item.parent.parent:null;
+  const marker=(node:SyntaxNode)=>/^([-+*]|\d+[.)])[ \t]+/.exec(state.sliceDoc(node.from,state.doc.lineAt(node.from).to))?.[0].length||2;
+  const previous=item.prevSibling;
+  const width=direction<0&&parent?marker(parent):previous?.name==='ListItem'?marker(previous):parent?marker(parent):marker(item);
+  for(let n=line.number;n<=state.doc.lineAt(item.to).number;n++){
+   const child=state.doc.line(n),spaces=/^[ \t]*/.exec(child.text)![0].length;
+   const remove=direction<0?Math.min(width,indent,spaces):0;
+   changes.push({from:child.from,to:child.from+remove,insert:direction>0?' '.repeat(width):''});
+  }
+ }
+ const set=state.changes(changes);
+ return {changes:set,selection:state.selection.map(set,1),userEvent:'input.indent'};
 }
 export function codeBlock(state:EditorState):TransactionSpec {
  const {from,to}=state.selection.main;const selected=state.sliceDoc(from,to);

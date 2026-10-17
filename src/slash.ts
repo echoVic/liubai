@@ -3,6 +3,7 @@ import {EditorView,ViewPlugin,keymap,type ViewUpdate} from '@codemirror/view';
 import {isolateHistory} from '@codemirror/commands';
 import {blockRichMode} from './block-ui';
 import {blockFormat,setHeading,insertTable} from './editing';
+import {blockAt,insertParagraphBelow} from './blocks';
 import {focusTableCell} from './table-ui';
 import {messages} from './i18n';
 import {messagesIn,type Messages} from '../locales';
@@ -83,6 +84,17 @@ export function applySlashItem(state:EditorState,id:SlashItemID):TransactionSpec
  else if(id==='note')insert='> [!NOTE]\n> ';
  cursor=id==='code'?4:insert.length;
  return {changes:{from:line.from,to:line.to,insert},selection:{anchor:line.from+cursor},userEvent:'input.slash',annotations:isolateHistory.of('full'),scrollIntoView:true};
+}
+
+// Toolbar insertion shares slash templates, but can start below an existing block or focused table.
+export function insertToolbarItem(state:EditorState,id:SlashItemID,below?:{from:number;to:number}):TransactionSpec{
+ const line=state.doc.lineAt(state.selection.main.head);
+ if(!below&&!line.text.trim())return applySlashItem(state,id);
+ const range=below||blockAt(state,state.selection.main.head)||{from:line.from,to:line.to};
+ let opening=insertParagraphBelow(state,range);
+ if(!opening.changes)opening={changes:{from:range.to,insert:'\n\n'+(range.to<state.doc.length?'\n':'')},selection:{anchor:range.to+2}};
+ const first=state.update(opening),next=first.state.update(applySlashItem(first.state,id));
+ return {changes:first.changes.compose(next.changes),selection:next.state.selection,userEvent:'input.slash',annotations:isolateHistory.of('full'),scrollIntoView:true};
 }
 
 const controls=new WeakMap<EditorView,SlashMenu>();

@@ -420,5 +420,17 @@
   "fAlignColumnLeft": "Align column left",
   "fAlignColumnCenter": "Align column center",
   "fAlignColumnRight": "Align column right",
-  "fDeleteTable": "Delete table"
+  "fDeleteTable": "Delete table",
+  "fUnderline": "Underline",
+  "fHighlight": "Highlight",
+  "fSuperscript": "Superscript",
+  "fSubscript": "Subscript",
+  "fClearFormatting": "Clear Formatting",
+  "fOutdent": "Decrease Indent",
+  "fIndent": "Increase Indent",
+  "fInsert": "Insert",
+  "fFindReplace": "Find and Replace",
+  "fHeading4": "Heading 4",
+  "fHeading5": "Heading 5",
+  "fHeading6": "Heading 6"
 }

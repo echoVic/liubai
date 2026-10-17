@@ -3,7 +3,10 @@ import {EditorView,WidgetType} from '@codemirror/view';
 import {syntaxTree,ensureSyntaxTree} from '@codemirror/language';
 import type {SyntaxNode} from '@lezer/common';
 import {undo,redo,isolateHistory} from '@codemirror/commands';
-import {editTable,parseTable,frontMatterRange,type TableAction} from './editing';
+import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
+import {GFM} from '@lezer/markdown';
+import {Highlight} from './marks';
+import {wrapSelection,clearFormatting,inlineMarkers,editTable,parseTable,frontMatterRange,type TableAction} from './editing';
 import {messages,activeLocale} from './i18n';
 import {attachMenu} from './menu';
 
@@ -64,6 +67,12 @@ export function focusTableCell(view:EditorView,position=view.state.selection.mai
  }
  return false;
 }
+function focusedTable(view:EditorView){
+ const cell=document.activeElement as HTMLElement|null,dom=cell?.closest<HTMLElement>('.rendered-table');
+ return dom&&view.dom.contains(dom)&&cell?.matches('[role=textbox]')?tables.get(dom):undefined;
+}
+export function focusedTableRange(view:EditorView){const table=focusedTable(view);return table?{from:table.from,to:table.from+table.raw.length}:null}
+export function formatTableCell(view:EditorView,id:string){const table=focusedTable(view);if(!table)return false;table.format(document.activeElement as HTMLElement,id);return true}
 export class TableWidget extends WidgetType{
  readonly locale=activeLocale;
  constructor(readonly raw:string,readonly from:number,readonly composing:StateField<boolean>,readonly readOnly=false){super()}
@@ -179,14 +188,16 @@ class TableDOM{
   if(this.disposed){this.view.focus();return}
   this.focus(action==='rowBelow'?row+1:row,action==='columnRight'?column+1:column);
  }
- private wrap(cell:HTMLElement,open:string,close:string){
-  const sel=getSelection();if(!sel?.rangeCount||!cell.contains(sel.anchorNode))return;
+ format(cell:HTMLElement,id:string){
+  if(this.blocked())return;
+  const sel=getSelection();if(!sel?.rangeCount||!cell.contains(sel.anchorNode)||!cell.contains(sel.focusNode))return;
   const r=sel.getRangeAt(0),before=document.createRange();before.selectNodeContents(cell);before.setEnd(r.startContainer,r.startOffset);
-  const text=cell.textContent||'',start=before.toString().length,end=start+r.toString().length,inner=text.slice(start,end);
-  const wrapped=inner.length>=open.length+close.length&&inner.startsWith(open)&&inner.endsWith(close);
-  const body=wrapped?inner.slice(open.length,inner.length-close.length):inner,next=wrapped?body:open+body+close;
-  cell.textContent=text.slice(0,start)+next+text.slice(end);
-  const node=cell.firstChild;if(node){const range=document.createRange(),at=start+(wrapped?0:open.length);range.setStart(node,at);range.setEnd(node,at+body.length);sel.removeAllRanges();sel.addRange(range)}
+  const text=cell.textContent||'',start=before.toString().length,end=start+r.toString().length;
+  const state=EditorState.create({doc:text,selection:{anchor:start,head:end},extensions:markdown({base:markdownLanguage,extensions:[GFM,Highlight]})});
+  const marks=id==='link'?['[',']()']:inlineMarkers[id];
+  const spec=id==='clearFormatting'?clearFormatting(state):marks?wrapSelection(state,marks[0],marks[1]):null;if(!spec)return;
+  const next=state.update(spec).state;cell.textContent=next.doc.toString();
+  const node=cell.firstChild||cell.appendChild(document.createTextNode('')),range=document.createRange();range.setStart(node,next.selection.main.from);range.setEnd(node,next.selection.main.to);sel.removeAllRanges();sel.addRange(range);
   this.commit(cell);
  }
  private key(e:KeyboardEvent){
@@ -200,8 +211,8 @@ class TableDOM{
    // Browsers select the whole editor for ⌘A inside a nested editable cell; keep it to the cell.
    if(k==='a'){e.preventDefault();e.stopPropagation();getSelection()?.selectAllChildren(cell);return}
    // Format shortcuts apply to the cell's text, never to the document behind the table.
-   const mark=({b:['**','**'],i:['*','*'],u:['<u>','</u>'],l:['[',']()']} as Record<string,[string,string]>)[k];
-   if(mark){e.preventDefault();e.stopPropagation();this.wrap(cell,mark[0],mark[1]);return}
+   const action=({b:'bold',i:'italic',u:'underline',l:'link'} as Record<string,string>)[k];
+   if(action){e.preventDefault();e.stopPropagation();this.format(cell,action);return}
   }
   if(e.altKey||e.metaKey||e.ctrlKey)return;
   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();this.leave();return}

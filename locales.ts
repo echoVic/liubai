@@ -2517,6 +2517,78 @@ export interface Messages {
    * `删除表格`
    */
   fDeleteTable(): string;
+  /**
+   * Format toolbar: Underline.
+   *
+   * `下划线`
+   */
+  fUnderline(): string;
+  /**
+   * Format toolbar: Highlight.
+   *
+   * `高亮`
+   */
+  fHighlight(): string;
+  /**
+   * Format toolbar: Superscript.
+   *
+   * `上标`
+   */
+  fSuperscript(): string;
+  /**
+   * Format toolbar: Subscript.
+   *
+   * `下标`
+   */
+  fSubscript(): string;
+  /**
+   * Format toolbar: Clear Formatting.
+   *
+   * `清除格式`
+   */
+  fClearFormatting(): string;
+  /**
+   * Format toolbar: Decrease Indent.
+   *
+   * `减少缩进`
+   */
+  fOutdent(): string;
+  /**
+   * Format toolbar: Increase Indent.
+   *
+   * `增加缩进`
+   */
+  fIndent(): string;
+  /**
+   * Format toolbar: Insert.
+   *
+   * `插入`
+   */
+  fInsert(): string;
+  /**
+   * Format toolbar: Find and Replace.
+   *
+   * `查找替换`
+   */
+  fFindReplace(): string;
+  /**
+   * Format toolbar: Heading 4.
+   *
+   * `标题 4`
+   */
+  fHeading4(): string;
+  /**
+   * Format toolbar: Heading 5.
+   *
+   * `标题 5`
+   */
+  fHeading5(): string;
+  /**
+   * Format toolbar: Heading 6.
+   *
+   * `标题 6`
+   */
+  fHeading6(): string;
 }
 
 const catalog = createCatalog<Messages>({
@@ -2946,6 +3018,18 @@ const catalog = createCatalog<Messages>({
     "fAlignColumnCenter": [],
     "fAlignColumnRight": [],
     "fDeleteTable": [],
+    "fUnderline": [],
+    "fHighlight": [],
+    "fSuperscript": [],
+    "fSubscript": [],
+    "fClearFormatting": [],
+    "fOutdent": [],
+    "fIndent": [],
+    "fInsert": [],
+    "fFindReplace": [],
+    "fHeading4": [],
+    "fHeading5": [],
+    "fHeading6": [],
   },
   messages: {
     "zh-Hans": {
@@ -3368,6 +3452,18 @@ const catalog = createCatalog<Messages>({
       "fAlignColumnCenter": "居中",
       "fAlignColumnRight": "右对齐",
       "fDeleteTable": "删除表格",
+      "fUnderline": "下划线",
+      "fHighlight": "高亮",
+      "fSuperscript": "上标",
+      "fSubscript": "下标",
+      "fClearFormatting": "清除格式",
+      "fOutdent": "减少缩进",
+      "fIndent": "增加缩进",
+      "fInsert": "插入",
+      "fFindReplace": "查找替换",
+      "fHeading4": "标题 4",
+      "fHeading5": "标题 5",
+      "fHeading6": "标题 6",
     },
     "en": {
       "fPaper": "Paper",
@@ -3789,6 +3885,18 @@ const catalog = createCatalog<Messages>({
       "fAlignColumnCenter": "Align column center",
       "fAlignColumnRight": "Align column right",
       "fDeleteTable": "Delete table",
+      "fUnderline": "Underline",
+      "fHighlight": "Highlight",
+      "fSuperscript": "Superscript",
+      "fSubscript": "Subscript",
+      "fClearFormatting": "Clear Formatting",
+      "fOutdent": "Decrease Indent",
+      "fIndent": "Increase Indent",
+      "fInsert": "Insert",
+      "fFindReplace": "Find and Replace",
+      "fHeading4": "Heading 4",
+      "fHeading5": "Heading 5",
+      "fHeading6": "Heading 6",
     },
   },
 });

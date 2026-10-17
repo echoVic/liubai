@@ -1,6 +1,17 @@
 type IconElement=[string,Record<string,string>];
 const paths:Record<string,IconElement[]>={
  "grip-vertical":[["circle",{"cx":"9","cy":"5","r":"1"}],["circle",{"cx":"9","cy":"12","r":"1"}],["circle",{"cx":"9","cy":"19","r":"1"}],["circle",{"cx":"15","cy":"5","r":"1"}],["circle",{"cx":"15","cy":"12","r":"1"}],["circle",{"cx":"15","cy":"19","r":"1"}]],
+
+ underline:[["path",{"d":"M6 4v6a6 6 0 0 0 12 0V4"}],["line",{"x1":"4","x2":"20","y1":"20","y2":"20"}]],
+ highlight:[["path",{"d":"m9 11-6 6v3h9l3-3"}],["path",{"d":"m22 12-4-4a2 2 0 0 0-2.8 0l-4.4 4.4a2 2 0 0 0 0 2.8l4 4"}],["path",{"d":"M22 12 12 2"}]],
+ superscript:[["path",{"d":"m4 19 8-8"}],["path",{"d":"m12 19-8-8"}],["path",{"d":"M20 12h-4c0-4 4-3 4-6a2 2 0 0 0-4 0"}]],
+ subscript:[["path",{"d":"m4 5 8 8"}],["path",{"d":"m12 5-8 8"}],["path",{"d":"M20 20h-4c0-4 4-3 4-6a2 2 0 0 0-4 0"}]],
+ clearFormatting:[["path",{"d":"M4 7V4h16v3"}],["path",{"d":"M5 20h6"}],["path",{"d":"M13 4 8 20"}],["path",{"d":"m15 15 5 5"}],["path",{"d":"m20 15-5 5"}]],
+ indent:[["path",{"d":"M21 5H3"}],["path",{"d":"M21 12H11"}],["path",{"d":"M21 19H3"}],["path",{"d":"m3 8 4 4-4 4"}]],
+ outdent:[["path",{"d":"M21 5H3"}],["path",{"d":"M21 12H11"}],["path",{"d":"M21 19H3"}],["path",{"d":"m7 8-4 4 4 4"}]],
+ undo:[["path",{"d":"M3 7v6h6"}],["path",{"d":"M21 17a9 9 0 0 0-15.5-6.5L3 13"}]],
+ redo:[["path",{"d":"M21 7v6h-6"}],["path",{"d":"M3 17a9 9 0 0 1 15.5-6.5L21 13"}]],
+ find:[["path",{"d":"m21 21-4.34-4.34"}],["circle",{"cx":"11","cy":"11","r":"8"}]],
  plus:[["path",{"d":"M12 5v14"}],["path",{"d":"M5 12h14"}]],
  bold:[["path",{"d":"M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"}]],
  italic:[["line",{"x1":"19","x2":"10","y1":"4","y2":"4"}],["line",{"x1":"14","x2":"5","y1":"20","y2":"20"}],["line",{"x1":"15","x2":"9","y1":"4","y2":"20"}]],

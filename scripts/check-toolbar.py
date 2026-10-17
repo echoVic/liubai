@@ -65,8 +65,8 @@ def check_format_bar(page):
     source_item = page.locator('#more-menu [data-menu-action="source"]')
     expect(bar).to_have_attribute("role", "toolbar")
     expect(bar).to_have_attribute("aria-label", "格式")
-    order = bar.locator(".format-group").evaluate("el => [...el.children].map(el => el.classList.contains('format-sep') ? '|' : el.dataset.action || el.id)")
-    assert order == ["heading-button", "|", "bold", "italic", "strike", "inlineCode", "|", "quote", "bullet", "ordered", "task", "|", "link", "image", "table", "code", "|", "source"], order
+    order = bar.locator(".format-group").evaluate("el => [...el.children].flatMap(el => el.classList.contains('format-cluster') ? [...el.children] : [el]).map(el => el.classList.contains('format-sep') ? '|' : el.dataset.action || el.id)")
+    assert order == ["insert-button", "undo", "redo", "|", "heading-button", "|", "bold", "italic", "underline", "strike", "highlight", "inlineCode", "superscript", "subscript", "clearFormatting", "|", "quote", "bullet", "ordered", "task", "outdent", "indent", "|", "link", "image", "table", "code", "|", "find", "|", "source"], order
     for separator in bar.locator(".format-sep").all():
         expect(separator).to_have_attribute("aria-hidden", "true")
     expect(heading).to_have_attribute("title", "标题级别")
@@ -79,10 +79,12 @@ def check_format_bar(page):
     expect(page.locator("#source-button, .source-toggle, .paper-top button")).to_have_count(0)
     expect(bar.locator('[data-action="image"]')).to_have_count(1)
     icons = bar.locator("button.tool").evaluate_all("els => els.map(el => ({action:el.dataset.action, svg:el.querySelector('svg').outerHTML}))")
-    assert len(icons) == 12
+    assert len(icons) == 22
     assert len({item["svg"] for item in icons}) == len(icons), icons
     assert bar.locator("button.tool").evaluate_all("els => els.every(el => el.getAttribute('aria-label') && getComputedStyle(el).width === '32px' && getComputedStyle(el).height === '32px')")
     accessible_buttons(page)
+    for button in bar.locator("button:visible").all():
+        assert button.get_attribute("title"), button.evaluate("el => el.outerHTML")
 
     with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
         more_action(page, "new")
@@ -91,10 +93,10 @@ def check_format_bar(page):
     expect(page.locator(".cm-placeholder")).to_be_visible()
     content.focus()
     page.keyboard.insert_text("格式测试")
-    for action, text, label in [("h1", "# 格式测试", "标题 1"), ("h3", "### 格式测试", "标题 3"), ("paragraph", "格式测试", "正文")]:
+    for action, text, label in [("h1", "# 格式测试", "标题 1"), ("h3", "### 格式测试", "标题 3"), ("h4", "#### 格式测试", "标题 4"), ("h5", "##### 格式测试", "标题 5"), ("h6", "###### 格式测试", "标题 6"), ("paragraph", "格式测试", "正文")]:
         heading.click()
         expect(menu).to_be_visible()
-        expect(menu.get_by_role("menuitemradio")).to_have_text(["正文", "标题 1", "标题 2", "标题 3"])
+        expect(menu.get_by_role("menuitemradio")).to_have_text(["正文"] + [f"标题 {i}" for i in range(1, 7)])
         # The heading menu stays under its button after moving the row.
         button_box, menu_box = heading.bounding_box(), menu.bounding_box()
         assert abs(menu_box["x"] - button_box["x"]) <= 1 and menu_box["y"] >= button_box["y"] + button_box["height"], (button_box, menu_box)
@@ -104,6 +106,8 @@ def check_format_bar(page):
         expect(menu).to_be_hidden()
         expect(content).to_be_focused()
         expect(content).to_have_text(text)
+        expect(page.locator("#save-status")).to_have_text("草稿已保存")
+        assert api(page, "State")["current"]["content"] == text
         expect(heading).to_have_text(label)
         expect(menu.locator(f'[data-menu-action="{action}"]')).to_have_attribute("aria-checked", "true")
     # Radio items use the shared menu's full keyboard navigation and dismissal.
@@ -112,7 +116,7 @@ def check_format_bar(page):
     expect(menu.get_by_role("menuitemradio", name="正文", exact=True)).to_be_focused()
     page.keyboard.press("End")
     page.keyboard.press("Enter")
-    expect(content).to_have_text("### 格式测试")
+    expect(content).to_have_text("###### 格式测试")
     expect(content).to_be_focused()
     heading.click()
     page.keyboard.press("Escape")
@@ -127,15 +131,83 @@ def check_format_bar(page):
     expect(heading).to_have_text("标题 1")
     page.keyboard.press("Meta+End")
     expect(heading).to_have_text("正文")
-    for action, marker in [("strike", "~~"), ("inlineCode", "`")]:
+    for action, marker, close in [("strike", "~~", "~~"), ("inlineCode", "`", "`"), ("underline", "<u>", "</u>"), ("highlight", "==", "=="), ("superscript", "<sup>", "</sup>"), ("subscript", "<sub>", "</sub>")]:
         page.keyboard.press("Meta+a")
         page.keyboard.insert_text("选中文字")
         page.keyboard.press("Meta+a")
         bar.locator(f'[data-action="{action}"]').click()
         expect(content).to_be_focused()
-        expect(content).to_have_text(marker + "选中文字" + marker)
+        expect(content).to_have_text(marker + "选中文字" + close)
+        expect(page.locator("#save-status")).to_have_text("草稿已保存")
+        assert api(page, "State")["current"]["content"] == marker + "选中文字" + close
         bar.locator(f'[data-action="{action}"]').click()
         expect(content).to_have_text("选中文字")
+
+    def replace(text):
+        content.focus()
+        page.keyboard.press("Meta+a")
+        if text:
+            page.keyboard.insert_text(text)
+        else:
+            page.keyboard.press("Backspace")
+
+    def saved_text(text):
+        expect(page.locator("#save-status")).to_have_text("草稿已保存")
+        assert api(page, "State")["current"]["content"] == text
+
+    replace("下划线")
+    page.keyboard.press("Meta+a")
+    page.keyboard.press("Meta+u")
+    saved_text("<u>下划线</u>")
+    page.keyboard.press("Meta+u")
+    saved_text("下划线")
+    replace("**粗体** ==高亮== [链接](https://example.com/a_b)")
+    page.keyboard.press("Meta+a")
+    bar.locator('[data-action="clearFormatting"]').click()
+    saved_text("粗体 高亮 链接")
+    bar.locator('[data-action="undo"]').click()
+    saved_text("**粗体** ==高亮== [链接](https://example.com/a_b)")
+    bar.locator('[data-action="redo"]').click()
+    saved_text("粗体 高亮 链接")
+    for initial, expected in [("", "> "), ("已有正文", "已有正文\n\n> ")]:
+        replace(initial)
+        page.locator("#insert-button").click()
+        expect(page.locator("#insert-menu [role=menuitem]")).to_have_count(13)
+        page.locator('#insert-menu [data-menu-action="quote"]').click()
+        saved_text(expected)
+    replace("- 父项\n- 子项\n  - 孙项")
+    page.keyboard.press("Meta+Home")
+    page.keyboard.press("ArrowDown")
+    page.keyboard.press("End")
+    expect(bar.locator('[data-action="indent"]')).to_be_enabled()
+    bar.locator('[data-action="indent"]').click()
+    saved_text("- 父项\n  - 子项\n    - 孙项")
+    bar.locator('[data-action="outdent"]').click()
+    saved_text("- 父项\n- 子项\n  - 孙项")
+    page.keyboard.press("Tab")
+    saved_text("- 父项\n  - 子项\n    - 孙项")
+    page.keyboard.press("Shift+Tab")
+    saved_text("- 父项\n- 子项\n  - 孙项")
+    replace("正文")
+    for action in ("indent", "outdent"):
+        expect(bar.locator(f'[data-action="{action}"]')).to_be_disabled()
+    bar.locator('[data-action="find"]').click()
+    expect(page.locator(".cm-search")).to_be_visible()
+    page.keyboard.press("Escape")
+    replace("==亮== <u>线</u> <sup>上</sup> <sub>下</sub> ~~删~~\n\n光标")
+    for selector, prop, expected in [(".md-underline", "textDecorationLine", "underline"), (".md-sup", "verticalAlign", "super"), (".md-sub", "verticalAlign", "sub")]:
+        assert page.locator(selector).first.evaluate("(el, p) => getComputedStyle(el)[p]", prop) == expected
+    # Hidden ~~ markers would leave struck text looking plain.
+    assert page.locator(".cm-line span", has_text="删").last.evaluate("el => getComputedStyle(el).textDecorationLine") == "line-through"
+    for theme in ("paper", "warm", "mist", "ink"):
+        page.evaluate("t => document.documentElement.dataset.liubaiTheme = t", theme)
+        assert page.locator(".md-highlight").evaluate("el => getComputedStyle(el).backgroundColor") not in ("transparent", "rgba(0, 0, 0, 0)")
+    page.evaluate("delete document.documentElement.dataset.liubaiTheme")
+    select_view(page, "read")
+    for tag in ("mark", "u", "sup", "sub"):
+        expect(page.locator(f"#preview-content {tag}")).to_have_count(1)
+    select_view(page, "single")
+    content.focus()
 
     page.keyboard.press("Meta+a")
     page.keyboard.insert_text("# 源码测试\n\n**格式标记**\n\n正文")
@@ -440,7 +512,7 @@ def check_docked_sidebar_and_outline(page):
     page.set_viewport_size({"width": 680, "height": 820})
     for layout in ("single", "split"):
         select_view(page, layout)
-        expect(page.locator("#format-bar button:visible")).to_have_count(14 if layout == "split" else 13)
+        expect(page.locator("#format-bar button:visible")).to_have_count(25 if layout == "split" else 24)
         boxes = page.locator("#format-bar button:visible").evaluate_all("els => els.map(el => {const r=el.getBoundingClientRect();return {x:r.x,right:r.right,y:r.y,bottom:r.bottom}})")
         assert len({b["y"] for b in boxes}) >= 2, boxes
         bar = page.locator("#format-bar").bounding_box()
@@ -654,10 +726,23 @@ def run(page):
               return {scroll:bar.scrollWidth, width:bar.clientWidth, outside:[...bar.querySelectorAll('button')].filter(b => b.offsetParent).map(b => b.getBoundingClientRect()).filter(q => q.x < r.x - 1 || q.right > r.right + 1).length};
             }""")
             assert format_geometry["scroll"] <= format_geometry["width"] and format_geometry["outside"] == 0, (width, view, format_geometry)
+            # Groups wrap whole, and no visible separator is left at the start or end of a row.
+            page.wait_for_function("""() => [...document.querySelectorAll('#format-bar .format-group > .format-sep')].filter(s => s.offsetParent && getComputedStyle(s).visibility !== 'hidden').every(s => {
+              const m = e => {const r = e.getBoundingClientRect(); return r.top + r.height / 2};
+              return Math.abs(m(s.previousElementSibling) - m(s)) <= 8 && Math.abs(m(s.nextElementSibling) - m(s)) <= 8;
+            }) && [...document.querySelectorAll('#format-bar .format-cluster')].every(c => new Set([...c.children].filter(b => b.offsetParent).map(b => Math.round(b.getBoundingClientRect().top))).size <= 1)""")
             expect(page.locator("#format-bar .format-source")).to_be_visible() if view == "split" else None
             page.locator("#format-bar").screenshot(path=str(ARTIFACTS / f"format-bar-{width}-{view}.png"))
         page.locator('[data-view="single"]').click()
         page.locator(".topbar").screenshot(path=str(ARTIFACTS / f"toolbar-{width}.png"))
+    page.evaluate("localStorage.setItem('mygo:locale','en')")
+    page.reload()
+    for action, label in [("underline", "Underline"), ("highlight", "Highlight"), ("superscript", "Superscript"), ("subscript", "Subscript"), ("clearFormatting", "Clear Formatting"), ("indent", "Increase Indent"), ("outdent", "Decrease Indent"), ("find", "Find and Replace")]:
+        expect(page.locator(f'#format-bar [data-action="{action}"]')).to_have_accessible_name(label)
+    expect(page.locator("#insert-button")).to_have_accessible_name("Insert")
+    page.locator("#heading-button").click()
+    expect(page.locator("#heading-menu [role=menuitemradio]")).to_have_text(["Body"] + [f"Heading {i}" for i in range(1, 7)])
+    page.keyboard.press("Escape")
     print("PASS: whole-page bounds/flat panes/centred normal-wide-full columns, format row/word count/long-document/click-to-write, equal split/stacked divider/full reader, format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, docked/overlay sidebar persistence/resizing, right outline geometry/jumps/active heading/visibility, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
 
 

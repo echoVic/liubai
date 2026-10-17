@@ -59,6 +59,9 @@ def menu_action(page, action, row=1, column=1):
 def run(page):
     page.goto(BASE)
     expect(page.locator('.cm-content')).to_be_visible()
+    # Focus history for the failure evidence.
+    page.evaluate("""() => { window.focusLog = []; const name = el => el ? el.tagName + (el.dataset?.row ? '[' + el.dataset.row + ',' + el.dataset.column + ']' : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.split(' ')[0] : '') : 'null';
+      for (const type of ['focusin', 'focusout']) document.addEventListener(type, e => { window.focusLog.push([type, name(e.target), name(e.relatedTarget), Math.round(performance.now())]); if (window.focusLog.length > 60) window.focusLog.shift() }, true); }""")
     source(page, TEXT)
     target = cell(page, 1, 1)
     target.click()
@@ -258,6 +261,33 @@ def run(page):
     expect(first).to_be_focused()
     page.keyboard.press('Meta+z')
     saved(page, TEXT)
+    # Toolbar and shortcuts share cell transforms, retain focus and leave surrounding Markdown intact.
+    for action, initial, expected in [('bold', '文字', '**文字**'), ('highlight', '文字', '==文字=='), ('clearFormatting', '**字** ==词==', '字 词'), ('underline', '文字', '<u>文字</u>'), ('superscript', '文字', '<sup>文字</sup>'), ('subscript', '文字', '<sub>文字</sub>'), ('link', '文字', '[文字]()')]:
+        original = TEXT.replace('[链接](x)', initial)
+        source(page, original)
+        target = cell(page, 1, 1)
+        target.click()
+        page.keyboard.press('Meta+a')
+        for blocked in ('quote', 'bullet', 'ordered', 'task', 'indent', 'outdent'):
+            expect(page.locator(f'#format-bar [data-action="{blocked}"]')).to_be_disabled()
+        expect(page.locator('#heading-button')).to_be_disabled()
+        expect(target).to_be_focused()
+        page.locator(f'#format-bar [data-action="{action}"]').click()
+        expect(target).to_be_focused()
+        saved(page, TEXT.replace('[链接](x)', expected))
+    source(page, TEXT)
+    cell(page, 1, 1).click()
+    page.locator('#insert-button').click()
+    page.locator('#insert-menu [data-menu-action="quote"]').click()
+    saved(page, PREFIX + TABLE + '\n\n> ' + SUFFIX)
+    for action in ('table', 'code'):
+        source(page, TEXT)
+        cell(page, 1, 1).click()
+        page.locator(f'#format-bar [data-action="{action}"]').click()
+        current = saved(page)['content']
+        assert current.startswith(PREFIX + TABLE + '\n\n'), current
+        assert current.endswith(SUFFIX), current
+
     source(page, TEXT)
     page.evaluate("localStorage.setItem('mygo:locale','en')")
     page.reload()
@@ -282,6 +312,10 @@ with sync_playwright() as playwright:
     except Exception:
         page.screenshot(path=str(ARTIFACTS / 'failure.png'))
         (ARTIFACTS / 'errors.json').write_text(json.dumps(errors, ensure_ascii=False))
+        try:
+            (ARTIFACTS / 'focus.json').write_text(json.dumps(page.evaluate('window.focusLog || []'), ensure_ascii=False))
+        except Exception:
+            pass
         raise
     finally:
         print(f'Evidence: {ARTIFACTS}')

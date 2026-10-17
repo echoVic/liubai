@@ -1,5 +1,6 @@
 import {messages} from './i18n';
 import MarkdownIt from 'markdown-it';
+import {highlightPlugin} from './marks';
 import DOMPurify from 'dompurify';
 import footnote from 'markdown-it-footnote';
 import type {PluginSimple} from 'markdown-it';
@@ -166,7 +167,7 @@ const githubAlerts:PluginSimple=md=>{
  });
 };
 
-parser.use(footnote).use(lineMapPlugin).use(taskPlugin).use(semanticClassPlugin).use(githubAlerts);
+parser.use(highlightPlugin).use(footnote).use(lineMapPlugin).use(taskPlugin).use(semanticClassPlugin).use(githubAlerts);
 const imageRule:NonNullable<(typeof parser.renderer.rules)['image']>=(tokens,index,options,env,self)=>{
  const token=tokens[index];
  const source=token.attrGet('src')||'';

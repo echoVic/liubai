@@ -50,3 +50,21 @@ assert.equal(collect(state.field(field)).filter(x=>x.value.spec.widget?.construc
 const codeLine=state.doc.line(9);
 assert.equal(collect(inlineDecorations(state,[{from:codeLine.from,to:codeLine.to}])).filter(x=>x.value.spec.class==='md-code-line').length,1,'multiline classes stay in viewport');
 console.log('任务与表格装饰、中文组合输入期间保留文本和暂停排版检查通过');
+
+// Inline marks stay styled with the caret away and reveal only their own syntax at the caret.
+const {Highlight}=await import('../src/marks');
+const marks='==亮== <u>线 <sup>上</sup></u> <sub>下</sub> `==代码==`';
+state=EditorState.create({doc:'光标\n\n'+marks,extensions:[markdown({base:markdownLanguage,extensions:[GFM,Highlight]}),composing]});
+let markedInline=collect(inlineDecorations(state,[{from:0,to:state.doc.length}]));
+for(const cls of ['md-highlight','md-underline','md-sup','md-sub'])assert.ok(markedInline.some(x=>x.value.spec.class===cls),cls);
+const hidden=(position:number)=>markedInline.some(x=>x.from===position&&!x.value.spec.class&&!x.value.spec.attributes&&x.to>x.from);
+assert.ok(hidden(4),'highlight opener hidden');assert.ok(hidden(10),'underline opener hidden');
+state=state.update({selection:{anchor:7}}).state;
+markedInline=collect(inlineDecorations(state,[{from:0,to:state.doc.length}]));
+assert.ok(!hidden(4),'active highlight reveals markers');assert.ok(hidden(10),'unrelated tag remains hidden on same line');
+console.log('PASS: highlight and paired HTML decorations, caret reveal and code exclusion');
+for(const doc of ['<u></u>','<sup></sup>','<sub></sub>']){
+ state=EditorState.create({doc:'光标\n\n'+doc,extensions:[markdown({base:markdownLanguage,extensions:[GFM,Highlight]}),composing]});
+ const decorations=collect(inlineDecorations(state,[{from:0,to:state.doc.length}]));
+ assert.ok(decorations.every(x=>x.from<x.to),'empty HTML wrappers never create empty mark decorations');
+}

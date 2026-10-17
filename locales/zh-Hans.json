@@ -1830,5 +1830,53 @@
   "fDeleteTable": "删除表格",
   "@fDeleteTable": {
     "description": "Table editing: Delete table."
+  },
+  "fUnderline": "下划线",
+  "@fUnderline": {
+    "description": "Format toolbar: Underline."
+  },
+  "fHighlight": "高亮",
+  "@fHighlight": {
+    "description": "Format toolbar: Highlight."
+  },
+  "fSuperscript": "上标",
+  "@fSuperscript": {
+    "description": "Format toolbar: Superscript."
+  },
+  "fSubscript": "下标",
+  "@fSubscript": {
+    "description": "Format toolbar: Subscript."
+  },
+  "fClearFormatting": "清除格式",
+  "@fClearFormatting": {
+    "description": "Format toolbar: Clear Formatting."
+  },
+  "fOutdent": "减少缩进",
+  "@fOutdent": {
+    "description": "Format toolbar: Decrease Indent."
+  },
+  "fIndent": "增加缩进",
+  "@fIndent": {
+    "description": "Format toolbar: Increase Indent."
+  },
+  "fInsert": "插入",
+  "@fInsert": {
+    "description": "Format toolbar: Insert."
+  },
+  "fFindReplace": "查找替换",
+  "@fFindReplace": {
+    "description": "Format toolbar: Find and Replace."
+  },
+  "fHeading4": "标题 4",
+  "@fHeading4": {
+    "description": "Format toolbar: Heading 4."
+  },
+  "fHeading5": "标题 5",
+  "@fHeading5": {
+    "description": "Format toolbar: Heading 5."
+  },
+  "fHeading6": "标题 6",
+  "@fHeading6": {
+    "description": "Format toolbar: Heading 6."
   }
 }

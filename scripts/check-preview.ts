@@ -342,5 +342,15 @@ export async function runPreviewChecks(): Promise<string> {
  assert(!unsafeMarkdown.root.querySelector('a[href^="javascript"], a[href^="data"], script, [onerror]'),'plain Markdown produced an unsafe element');
  equal(unsafeMarkdown.root.querySelector('code')?.textContent,'<script>alert(1)</script>','inline code was not escaped');
  await unsafeMarkdown.ready;
+ const inlineMarks='==**亮**== <u>线</u> <sup>上</sup> <sub>下</sub> `==literal==`';
+ const marksView=renderMarkdown(inlineMarks,{resolve:()=>undefined,external:'load'});
+ const marksExport=renderDelivery({title:'marks',content:inlineMarks,images:{},missing:[],external:0});
+ for(const root of [marksView.root,marksExport]){
+  for(const tag of ['mark','u','sup','sub'])equal(root.querySelectorAll(tag).length,1,'inline '+tag+' is rendered');
+  equal(root.querySelector('code')?.textContent,'==literal==','code remains literal');
+  equal(root.querySelector('mark strong')?.textContent,'亮','highlight retains nested emphasis');
+ }
+ assert(marksExport.querySelector('mark')!.getAttribute('style')!.includes('background'),'export highlight style');
+ await marksView.ready;
  return 'shared renderer and delivery DOM checks passed';
 }

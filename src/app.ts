@@ -3,10 +3,10 @@ import {call,desktop,type Summary,type LocaleNotice,type Doc,type DocStatus,type
 import {createEditor,mode,editorLocale,closeSearchPanel,localizedEditor,richExtensions,setFocus,undo,redo,openSearchPanel,EditorState,EditorView} from './editor';
 import {blockAt,convertBlocks,duplicateBlocks,deleteBlocks,moveBlocks,insertParagraphBelow,type BlockConversion} from './blocks';
 import {blockControls} from './block-ui';
-import {focusTableCell,leaveTable,tableAround} from './table-ui';
-import {openSlashMenu} from './slash';
+import {focusTableCell,focusedTableRange,formatTableCell,leaveTable,tableAround} from './table-ui';
+import {filterSlashItems,insertToolbarItem,type SlashItemID,openSlashMenu} from './slash';
 import {Transaction,Compartment,StateEffect} from '@codemirror/state';
-import {blockFormat,setHeading,headingLevel,wrapSelection,codeBlock,linkAt,makeLink,safeLink,localDocumentLink,insertTable,headings,type BlockKind} from './editing';
+import {blockFormat,setHeading,headingLevel,inlineMarkers,clearFormatting,inList,indentList,wrapSelection,codeBlock,linkAt,makeLink,safeLink,localDocumentLink,insertTable,headings,type BlockKind} from './editing';
 import {isolateHistory} from '@codemirror/commands';
 import {applyIcons,icon} from './icons';
 import {attachMenu} from './menu';
@@ -56,6 +56,11 @@ const sourceActive=()=>split()&&source;
 function position(){const r=view.state.selection.main;return {anchor:r.anchor,head:r.head,scroll:$('.editor-scroll').scrollTop,source:false}}
 function header(){if(!doc)return;const isSplit=split(),isSource=sourceActive();$('#doc-title').textContent=doc.title;$('#save-status').textContent=dirty?(compositionActive?messages.fTyping():messages.fUnsaved()):statusText(doc);const current=reading()?'read':isSplit?'split':'single';$$('[data-view]').forEach(b=>{const checked=b.dataset.view===current;b.setAttribute('aria-checked',String(checked));b.tabIndex=checked?0:-1});const sourceItem=$('[data-menu-action=source]');sourceItem.setAttribute('aria-checked',String(isSource));sourceItem.setAttribute('aria-disabled',String(!isSplit));sourceItem.querySelector('small')!.hidden=isSplit;$('[data-menu-action=focus]').setAttribute('aria-disabled',String(reading()));const sourceButton=$('#format-bar [data-action=source]');sourceButton.hidden=!isSplit;$('.format-source-sep').hidden=!isSplit;sourceButton.setAttribute('aria-pressed',String(isSource));updateHeading();$('.paper').classList.toggle('source-mode',isSource)}
 function updateHeading(){
+ const cell=!!focusedTableRange(view);
+ $<HTMLButtonElement>('#heading-button').disabled=cell;
+ for(const id of ['quote','bullet','ordered','task','indent','outdent']){
+  const b=$<HTMLButtonElement>('#format-bar [data-action='+id+']');if(b)b.disabled=cell||(['indent','outdent'].includes(id)&&!inList(view.state));
+ }
  const level=headingLevel(view.state);$('#heading-label').textContent=level?messages.fHeading(level):messages.fBody();
  $$('#heading-menu [data-menu-action]').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.menuAction===(level?'h'+level:'paragraph'))));
 }
@@ -251,7 +256,7 @@ $('#ready-go').onclick=()=>{if(!prepared)return;const root=prepared;
 async function closeApp(){if(compositionActive){pendingClose=true;toast(messages.fFinishComposingYourTextToSaveAndQuit());return}if(busy){pendingClose=true;return}if(closeRequested)return;closeRequested=true;try{await appearanceQueue.catch(()=>{});const ok=await save();if(!ok||dirty){dialog('close-dialog');return}if(desktop)await call('Close');else toast(messages.fYourDocumentIsSavedLocallyYouCanCloseThis())}finally{closeRequested=false}}
 $('#discard-close').onclick=()=>{if(desktop)void call('Close');else closeDialog('close-dialog')};
 const commands=()=>[
- ['language:system',messages.fLanguageSystem(),''],['language:zh-Hans',messages.fLanguageChinese(),''],['language:en',messages.fLanguageEnglish(),''],['capture',messages.fQuickNote(),''],['captureSettings',messages.fQuickNoteSettings(),''],['new',messages.fNewDocument(),'⌘ N'],['rename',messages.fRename(),''],['open',messages.fOpenDocument(),'⌘ O'],['save',messages.fSave(),'⌘ S'],['saveAs',messages.fSaveAs(),'⌘ ⇧ S'],['deliver',messages.fExport(),''],['export',messages.fDocumentAndImagesZIP(),'ZIP'],['pdf',messages.fExportPDF(),''],['copyRich',messages.fCopyRichText(),''],['pastePlain',messages.fPasteAsPlainText(),'⌘ ⇧ V'],['html',messages.fDownloadHTML(),''],['focus',messages.fFocusMode(),'⌘ ⇧ F'],['recent',messages.fRecentDocuments(),''],['remove',messages.fRemoveCurrentDocumentFromRecents(),''],['outline',messages.fOutline(),''],['find',messages.fFindInDocument(),'⌘ F'],['layout',messages.fToggleSplitView(),'⌘ \\'],['read',messages.fReadingMode(),'⌘ ⇧ R'],['source',messages.fShowMarkdownSource(),'⌘ ⇧ M'],['image',messages.fInsertImage(),''],['theme',messages.fAppearanceAndTypography(),''],['commands',messages.fAllCommands(),'⌘ K'],...names().map(t=>['theme:'+t.id,messages.fSwitchTheme(t.name),'']),['bold',messages.fBoldSelection(),'⌘ B'],['italic',messages.fItalicizeSelection(),''],['paragraph',messages.fBody(),''],['h1',messages.fHeading1(),''],['h2',messages.fHeading2(),''],['h3',messages.fHeading3(),''],['strike',messages.fStrikethrough(),''],['inlineCode',messages.fInlineCode(),''],['quote',messages.fInsertBlockquote(),''],['task',messages.fInsertTaskList(),''],['code',messages.fInsertCodeBlock(),''],['table',messages.fInsertTable(),''],['link',messages.fInsertEditLink(),'⌘ L'],['bullet',messages.fBulletedList(),''],['ordered',messages.fNumberedList(),''],['undo',messages.fUndo(),'⌘ Z'],['redo',messages.fRedo(),'⌘ ⇧ Z']
+ ['language:system',messages.fLanguageSystem(),''],['language:zh-Hans',messages.fLanguageChinese(),''],['language:en',messages.fLanguageEnglish(),''],['capture',messages.fQuickNote(),''],['captureSettings',messages.fQuickNoteSettings(),''],['new',messages.fNewDocument(),'⌘ N'],['rename',messages.fRename(),''],['open',messages.fOpenDocument(),'⌘ O'],['save',messages.fSave(),'⌘ S'],['saveAs',messages.fSaveAs(),'⌘ ⇧ S'],['deliver',messages.fExport(),''],['export',messages.fDocumentAndImagesZIP(),'ZIP'],['pdf',messages.fExportPDF(),''],['copyRich',messages.fCopyRichText(),''],['pastePlain',messages.fPasteAsPlainText(),'⌘ ⇧ V'],['html',messages.fDownloadHTML(),''],['focus',messages.fFocusMode(),'⌘ ⇧ F'],['recent',messages.fRecentDocuments(),''],['remove',messages.fRemoveCurrentDocumentFromRecents(),''],['outline',messages.fOutline(),''],['find',messages.fFindInDocument(),'⌘ F'],['layout',messages.fToggleSplitView(),'⌘ \\'],['read',messages.fReadingMode(),'⌘ ⇧ R'],['source',messages.fShowMarkdownSource(),'⌘ ⇧ M'],['image',messages.fInsertImage(),''],['theme',messages.fAppearanceAndTypography(),''],['commands',messages.fAllCommands(),'⌘ K'],...names().map(t=>['theme:'+t.id,messages.fSwitchTheme(t.name),'']),['bold',messages.fBoldSelection(),'⌘ B'],['italic',messages.fItalicizeSelection(),''],['paragraph',messages.fBody(),''],['h1',messages.fHeading1(),''],['h2',messages.fHeading2(),''],['h3',messages.fHeading3(),''],['h4',messages.fHeading4(),''],['h5',messages.fHeading5(),''],['h6',messages.fHeading6(),''],['underline',messages.fUnderline(),'⌘ U'],['highlight',messages.fHighlight(),''],['superscript',messages.fSuperscript(),''],['subscript',messages.fSubscript(),''],['clearFormatting',messages.fClearFormatting(),''],['indent',messages.fIndent(),''],['outdent',messages.fOutdent(),''],['strike',messages.fStrikethrough(),''],['inlineCode',messages.fInlineCode(),''],['quote',messages.fInsertBlockquote(),''],['task',messages.fInsertTaskList(),''],['code',messages.fInsertCodeBlock(),''],['table',messages.fInsertTable(),''],['link',messages.fInsertEditLink(),'⌘ L'],['bullet',messages.fBulletedList(),''],['ordered',messages.fNumberedList(),''],['undo',messages.fUndo(),'⌘ Z'],['redo',messages.fRedo(),'⌘ ⇧ Z']
 ];
 function renderCommands(){const q=$<HTMLInputElement>('#command-search').value.trim();const list=$('#command-list');list.replaceChildren();commands().filter(c=>c[1].includes(q)).forEach(([id,title,key])=>{const b=node('button','command');b.append(node('span','',title),node('kbd','',key));if(id==='language:zh-Hans')b.dataset.languageAutonym='true';b.onclick=()=>{closeDialog('commands');void action(id)};list.append(b)})}
 $('#command-search').oninput=renderCommands;$('#command-search').onkeydown=e=>{if(e.key==='ArrowDown'){e.preventDefault();$('#command-list button')?.focus()}if(e.key==='Enter'){e.preventDefault();$('#command-list button')?.click()}};
@@ -259,9 +264,21 @@ async function action(id:string){
  if(id.startsWith('language:')){try{await setPageLocale(id.slice(9)==='system'?'':id.slice(9))}catch(error){toast(errorText(error))}return}
  if(id==='undo'||id==='redo'){const el=document.activeElement;if(el instanceof HTMLInputElement||el instanceof HTMLTextAreaElement){document.execCommand(id);return}}
  if(!view||!doc)return;
- if(reading()&&['paragraph','h1','h2','h3','strike','inlineCode','heading','quote','bullet','ordered','task','bold','italic','code','link','table','image','pastePlain','undo','redo','find','source','focus'].includes(id)){toast(messages.fEditingIsUnavailableInReadingModePressRTo());return}
+ if(reading()&&(id in inlineMarkers||id==='clearFormatting'||id==='indent'||id==='outdent'||id==='insert'||['paragraph','h1','h2','h3','h4','h5','h6','strike','inlineCode','heading','quote','bullet','ordered','task','bold','italic','code','link','table','image','pastePlain','undo','redo','find','source','focus'].includes(id))){toast(messages.fEditingIsUnavailableInReadingModePressRTo());return}
  if(busy){if(id==='close')pendingClose=true;return;}
  if(compositionActive&&id!=='close'){toast(messages.fFinishComposingYourTextFirst());return}
+ const cellRange=focusedTableRange(view);
+ if(cellRange){
+  if(id in inlineMarkers||id==='clearFormatting'||id==='link'){formatTableCell(view,id);return}
+  if(['paragraph','h1','h2','h3','h4','h5','h6','heading','quote','bullet','ordered','task','indent','outdent'].includes(id))return;
+  if(['image','table','code'].includes(id)){
+   view.dispatch(insertToolbarItem(view.state,id as SlashItemID,cellRange));
+   if(id==='image'){view.focus();$('#image-input').click()}else if(id!=='table'||!focusTableCell(view))view.focus();return;
+  }
+ }
+ if(id==='insert'){insertMenu.open();return}
+ if(id==='clearFormatting'){view.dispatch(clearFormatting(view.state));view.focus();return}
+ if(id==='indent'||id==='outdent'){const spec=indentList(view.state,id==='indent'?1:-1);if(spec)view.dispatch(spec);view.focus();return}
  if(id.startsWith('block:')){
   if(view.state.readOnly||compositionActive||sourceActive()||focusMode)return;
   const control=blockControls(view),name=id.slice(6);if(name==='menu'){control?.open();return}
@@ -270,9 +287,9 @@ async function action(id:string){
   const spec=name==='up'||name==='down'?moveBlocks(view.state,range,name==='up'?-1:1):name==='duplicate'?duplicateBlocks(view.state,range):name==='delete'?deleteBlocks(view.state,range):convertBlocks(view.state,range,name as BlockConversion);
   if(spec)view.dispatch(spec);view.focus();return;
  }
- if(['paragraph','h1','h2','h3'].includes(id)){view.dispatch(setHeading(view.state,id==='paragraph'?0:Number(id.slice(1))));view.focus();return}
+ if(['paragraph','h1','h2','h3','h4','h5','h6'].includes(id)){view.dispatch(setHeading(view.state,id==='paragraph'?0:Number(id.slice(1))));view.focus();return}
  if(['heading','quote','bullet','ordered','task'].includes(id)){view.dispatch(blockFormat(view.state,id as BlockKind));view.focus();return}
- if(id==='bold'||id==='italic'||id==='strike'||id==='inlineCode'){view.dispatch(wrapSelection(view.state,{bold:'**',italic:'_',strike:'~~',inlineCode:'`'}[id]));view.focus();return}
+ if(id in inlineMarkers){view.dispatch(wrapSelection(view.state,...inlineMarkers[id]));view.focus();return}
  if(id==='pastePlain'){
   const target=view;
   try{const text=desktop?await call<string>('ClipboardText'):await navigator.clipboard.readText();if(view!==target||view.state.readOnly||compositionActive)return;view.dispatch(pasteText(view.state,text));view.focus()}catch(error){toast(messages.fClipboardError(errorText(error)))}return;
@@ -351,18 +368,44 @@ $('#link-form').onsubmit=e=>{e.preventDefault();try{applyRange(makeLink($<HTMLIn
 $('#link-open').onclick=()=>openLink($<HTMLInputElement>('#link-url').value);
 $('#link-remove').onclick=()=>{try{applyRange($<HTMLInputElement>('#link-text').value.replace(/[\\`*_{}[\]()#+.!|>~-]/g,'\\$&'));closeDialog('link-dialog');view.focus()}catch(e){toast(errorText(e))}};
 const formatButtons=()=>[
- [['bold',messages.fBold(),'⌘B'],['italic',messages.fItalic()],['strike',messages.fStrikethrough()],['inlineCode',messages.fInlineCode()]],
- [['quote',messages.fBlockquote()],['bullet',messages.fBulletedList()],['ordered',messages.fNumberedList()],['task',messages.fTaskList()]],
+ [['undo',messages.fUndo(),'⌘Z'],['redo',messages.fRedo(),'⌘⇧Z']],
+ [['bold',messages.fBold(),'⌘B'],['italic',messages.fItalic()],['underline',messages.fUnderline(),'⌘U'],['strike',messages.fStrikethrough()],['highlight',messages.fHighlight()],['inlineCode',messages.fInlineCode()],['superscript',messages.fSuperscript()],['subscript',messages.fSubscript()],['clearFormatting',messages.fClearFormatting()]],
+ [['quote',messages.fBlockquote()],['bullet',messages.fBulletedList()],['ordered',messages.fNumberedList()],['task',messages.fTaskList()],['outdent',messages.fOutdent()],['indent',messages.fIndent()]],
  [['link',messages.fLink(),'⌘L'],['image',messages.fImage()],['table',messages.fTable()],['code',messages.fCodeBlock()]],
+ [['find',messages.fFindReplace(),'⌘F']],
 ];
-for(const group of formatButtons()){
- const sep=node('span','format-sep');sep.setAttribute('aria-hidden','true');$('.format-group').append(sep);
- for(const [id,label,shortcut] of group){const b=node('button','tool');b.dataset.action=id;b.setAttribute('aria-label',label);b.title=label+(shortcut?' '+shortcut:'');b.append(icon(id));$('.format-group').append(b)}
+const group=$('.format-group'),headingButton=$('#heading-button');headingButton.remove();
+const insertButton=node('button','format-text');insertButton.id='insert-button';insertButton.setAttribute('aria-haspopup','menu');insertButton.setAttribute('aria-controls','insert-menu');insertButton.setAttribute('aria-expanded','false');insertButton.setAttribute('aria-label',messages.fInsert());insertButton.title=messages.fInsert();insertButton.append(icon('plus'),node('span','',messages.fInsert()),icon('chevron-down'));
+const insertPopup=node('div','menu');insertPopup.id='insert-menu';insertPopup.setAttribute('role','menu');insertPopup.setAttribute('aria-label',messages.fInsert());insertPopup.hidden=true;document.body.append(insertPopup);
+function populateInsertMenu(){insertPopup.replaceChildren(...filterSlashItems('').map(item=>{const b=node('button','',(messages[item.label] as ()=>string)());b.setAttribute('type','button');b.tabIndex=-1;b.setAttribute('role','menuitem');b.dataset.menuAction=item.id;return b}))}
+populateInsertMenu();
+let insertBelow:{from:number;to:number}|undefined;
+const captureInsert=()=>{insertBelow=focusedTableRange(view)||undefined};
+insertButton.addEventListener('pointerdown',captureInsert);insertButton.addEventListener('keydown',captureInsert);
+insertButton.addEventListener('click',()=>{if(focusedTableRange(view))captureInsert()});
+const insertMenu=attachMenu(insertButton,insertPopup,id=>{
+ if(compositionActive||view.composing||view.state.readOnly)return;
+ view.dispatch(insertToolbarItem(view.state,id as SlashItemID,insertBelow));insertBelow=undefined;
+ if(id!=='table'||!focusTableCell(view))view.focus();if(id==='image')void action('image');
+});
+function separator(){const sep=node('span','format-sep');sep.setAttribute('aria-hidden','true');group.append(sep)}
+// Each group wraps as a whole, so a narrow toolbar never splits one across rows.
+let cluster=node('span','format-cluster');cluster.append(insertButton);group.prepend(cluster);
+for(const [index,buttons] of formatButtons().entries()){
+ if(index===1){separator();group.append(headingButton)}
+ if(index){separator();cluster=node('span','format-cluster');group.append(cluster)}
+ for(const [id,label,shortcut] of buttons){const b=node('button','tool');b.dataset.action=id;b.setAttribute('aria-label',label);b.title=label+(shortcut?' '+shortcut:'');b.append(icon(id));cluster.append(b)}
 }
-const sourceSeparator=node('span','format-sep format-source-sep');sourceSeparator.setAttribute('aria-hidden','true');sourceSeparator.hidden=true;$('.format-group').append(sourceSeparator);
-const sourceButton=node('button','format-text format-source',messages.fSource());sourceButton.dataset.action='source';sourceButton.title=messages.fShowMarkdownSourceM();sourceButton.setAttribute('aria-pressed','false');sourceButton.hidden=true;sourceButton.dataset.i18n='fSource';sourceButton.dataset.i18nTitle='fShowMarkdownSourceM';$('.format-group').append(sourceButton);
+const sourceSeparator=node('span','format-sep format-source-sep');sourceSeparator.setAttribute('aria-hidden','true');sourceSeparator.hidden=true;group.append(sourceSeparator);
+const sourceButton=node('button','format-text format-source',messages.fSource());sourceButton.dataset.action='source';sourceButton.title=messages.fShowMarkdownSourceM();sourceButton.setAttribute('aria-pressed','false');sourceButton.hidden=true;sourceButton.dataset.i18n='fSource';sourceButton.dataset.i18nTitle='fShowMarkdownSourceM';group.append(sourceButton);
 $$('#format-bar button').forEach(b=>b.onmousedown=e=>e.preventDefault());
-attachMenu($('#heading-button'),$('#heading-menu'),id=>{void action(id);view.focus()});
+// A separator left at either end of a wrapped row is hidden.
+const middle=(el:Element)=>{const r=el.getBoundingClientRect();return r.top+r.height/2};
+const separators=new ResizeObserver(()=>{for(const sep of group.querySelectorAll<HTMLElement>(':scope>.format-sep')){const a=sep.previousElementSibling,b=sep.nextElementSibling;sep.style.visibility=a&&b&&Math.max(Math.abs(middle(a)-middle(sep)),Math.abs(middle(b)-middle(sep)))>8?'hidden':''}});
+separators.observe(group);separators.observe(sourceButton);
+attachMenu(headingButton,$('#heading-menu'),id=>{void action(id)});
+// Focus entering or leaving a cell changes the toolbar's block affordances even if its CodeMirror cursor did not move.
+document.addEventListener('focusin',()=>{if(view)updateHeading()});document.addEventListener('focusout',()=>setTimeout(()=>{if(view)updateHeading()}));
 $$('[data-deliver]').forEach(b=>b.onclick=()=>{closeDialog('delivery-dialog');void action(b.dataset.deliver!)});
 localizePage();
 applyIcons();
@@ -377,7 +420,7 @@ if(!desktop){
 document.addEventListener('keydown',e=>{
  if(e.isComposing||e.defaultPrevented)return;if(e.key==='Escape'&&!document.querySelector('dialog[open]')){if(focusMode)void action('focus');const drawerOpen=!dockQuery.matches&&!$('#drawer').hidden;closeOverlayDrawer();if(drawerOpen)$('#sidebar-button').focus();else if(view)focusContent()}
  if(!document.querySelector('dialog[open]')&&view&&!compositionActive){if(e.altKey&&e.shiftKey&&['ArrowUp','ArrowDown'].includes(e.key)&&(view.hasFocus||!!blockControls(view)?.range)){e.preventDefault();void action('block:'+(e.key==='ArrowUp'?'up':'down'));return}if((e.metaKey||e.ctrlKey)&&e.key==='/'&&(view.hasFocus||!!blockControls(view)?.range)){e.preventDefault();void action('block:menu');return}}
- if(!(e.metaKey||e.ctrlKey))return;const k=e.key.toLowerCase();let id='';if(document.querySelector('dialog[open]'))return;if(k==='p')id='pdf';if(k==='l')id='link';if(k==='f'&&e.shiftKey)id='focus';if(k==='b')id='bold';if(k==='n')id='new';if(k==='o')id='open';if(k==='s')id=e.shiftKey?'saveAs':'save';if(k==='k')id='commands';if(!desktop&&k==='\\')id='layout';if(!desktop&&k==='m'&&e.shiftKey)id='source';if(!desktop&&k==='r'&&e.shiftKey)id='read';if(!desktop&&k==='v'&&e.shiftKey)id='pastePlain';if(id){e.preventDefault();void action(id)}
+ if(!(e.metaKey||e.ctrlKey))return;const k=e.key.toLowerCase();let id='';if(document.querySelector('dialog[open]'))return;if(k==='p')id='pdf';if(k==='l')id='link';if(k==='f'&&e.shiftKey)id='focus';if(k==='b')id='bold';if(k==='u')id='underline';if(k==='n')id='new';if(k==='o')id='open';if(k==='s')id=e.shiftKey?'saveAs':'save';if(k==='k')id='commands';if(!desktop&&k==='\\')id='layout';if(!desktop&&k==='m'&&e.shiftKey)id='source';if(!desktop&&k==='r'&&e.shiftKey)id='read';if(!desktop&&k==='v'&&e.shiftKey)id='pastePlain';if(id){e.preventDefault();void action(id)}
 });
 $('.editor-pane').addEventListener('mousedown',e=>{
  if(e.button!==0||e.shiftKey||e.metaKey||e.ctrlKey||e.altKey||!view||view.state.readOnly||compositionActive)return;
@@ -413,6 +456,7 @@ window.addEventListener('focus',()=>void pollStatus());
 function refreshLanguage(){
  if(compositionActive){localePending=true;return}
  if(!desktop)$('#workspace-label').textContent=messages.fLocalDevelopmentSeparateDrafts();
+ insertButton.setAttribute('aria-label',messages.fInsert());insertButton.title=messages.fInsert();insertButton.querySelector('span')!.textContent=messages.fInsert();insertPopup.setAttribute('aria-label',messages.fInsert());populateInsertMenu();
  for(const group of formatButtons())for(const [id,label,shortcut] of group){const button=$<HTMLButtonElement>('#format-bar [data-action='+id+']');button.setAttribute('aria-label',label);button.title=label+(shortcut?' '+shortcut:'')}
  if(!view||!doc)return;
  if(!doc.path&&!doc.customTitle&&!doc.content.trim())doc.title=messages.fUntitledDocument();

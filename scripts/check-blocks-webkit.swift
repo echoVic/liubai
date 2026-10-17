@@ -32,6 +32,9 @@ func fail(_ m: String) -> Never { FileHandle.standardError.write(Data("blocks we
 Task { @MainActor in
   web.load(URLRequest(url: url))
   for _ in 0..<100 { if (await js("return !!document.querySelector('.cm-content')") as? Bool) == true { break }; await wait(100) }
+  // WebKit stops rendering occluded windows, which every window is while the screen is locked or the display sleeps.
+  // Drags and resizes then never update, so say why instead of failing on them.
+  if (await js("return await new Promise(r=>{requestAnimationFrame(()=>r(true));setTimeout(()=>r(false),2000)})") as? Bool) != true { fail("no animation frames; unlock the screen or wake the display and run again") }
   _ = await js("const c=document.querySelector('.cm-content');c.focus();document.execCommand('selectAll');document.execCommand('insertText',false,'# 标题\\n\\n第一段。\\n\\n第二段。\\n\\n- 甲\\n  - 乙\\n- 丙\\n\\n第三段。');return true")
   await wait(1500)
   var report: [String: Any] = ["typed": await content()]

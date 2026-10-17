@@ -40,6 +40,8 @@ def rich_fixture(page, text=TEXT):
     page.keyboard.press('Meta+ArrowDown')
     source.click()
     page.locator('[data-view="single"]').click()
+    # The layout switch restores the editor's scroll position on the next frame; let it land before a check scrolls.
+    page.evaluate('()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
 
 
 def select_text(page, text):

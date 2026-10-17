@@ -17,6 +17,11 @@ func TestInferredTitle(t *testing.T) {
 		"- [ ] [留白](https://example.com) 的待办\n":             "留白 的待办",
 		"<!-- 注释 -->\n\n> 引用开头\n":                           "引用开头",
 		"\n\n   \n":                                         "未命名文稿",
+		"> [!NOTE]\n这是提示块的正文":                       "这是提示块的正文",
+		"> [!note]\n第一行是空标记，标题取这里":                "第一行是空标记，标题取这里",
+		"[!WARNING] 注意事项\n正文":                          "注意事项",
+		"> [!TIP]\n\n提示块之后的标题":                        "提示块之后的标题",
+		"[!NOTE]\n[!TIP]\n连续两个标记后":                       "连续两个标记后",
 	} {
 		if got := inferredTitle(in); got != want {
 			t.Errorf("inferredTitle(%q) = %q, want %q", in, got, want)

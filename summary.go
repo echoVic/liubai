@@ -37,6 +37,9 @@ var summaryPrefix = regexp.MustCompile(`^(?:#+\s*|>\s*|[-+*]\s+|\d+[.)]\s+|\[[ x
 var summaryRule = regexp.MustCompile(`^(?:\*\s*){3,}$|^(?:-\s*){3,}$|^(?:_\s*){3,}$`)
 var summaryTable = regexp.MustCompile(`^\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?$`)
 
+// GitHub 风格提示块标记 [!NOTE] / [!TIP] / [!WARNING] …，独占一行时不应成为标题。
+var summaryCallout = regexp.MustCompile(`(?i)^\s*\[!?[A-Z]+\]\s*[:：-]?\s*`)
+
 func inferredTitle(s string) string {
 	if title := inferredContentTitle(s); title != "" {
 		return title
@@ -84,6 +87,11 @@ func inferredContentTitle(s string) string {
 		line = summaryImage.ReplaceAllString(line, "")
 		line = summaryLink.ReplaceAllString(line, "$1")
 		line = strings.TrimSpace(strings.NewReplacer("**", "", "__", "", "`", "", "~~", "").Replace(line))
+		if callout := summaryCallout.FindString(line); callout != "" {
+			// 提示块标题行去掉 [!NOTE] 标记后若没有正文，就继续找下一行；
+			// 若标记后还有文字（如「[!NOTE] 备注」），把文字当作标题。
+			line = strings.TrimSpace(strings.TrimPrefix(line, callout))
+		}
 		if line != "" {
 			return shortTitle(line)
 		}

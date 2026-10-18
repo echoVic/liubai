@@ -65,7 +65,7 @@ def main():
             assert lines, (name, page, "empty page")
             assert not re.fullmatch(r"第 \d+ 节", lines[-1]), (name, page, "stranded heading", lines[-1])
     assert not has_radicals(fixed_info["text"]), "fixed.pdf still contains CJK radical aliases"
-    for text in ("长文导出测试", "第 1 节", "第 40 节", "全文结束标记：尾声。"):
+    for text in ("长文导出测试", "第 1 节", "第 40 节", "全文结束标记：尾声。", "门口", "人口", "出口", "口语"):
         assert text in fixed_info["text"], ("missing PDF text", text)
     comparison = read_json(helper, "compare", raw, fixed)
     assert comparison["pages"] == raw_info["pages"] == fixed_info["pages"], comparison

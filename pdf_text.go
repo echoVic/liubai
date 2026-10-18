@@ -7,42 +7,428 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf16"
 )
 
-var errPDFText = errors.New("invalid or unsupported PDF text mapping")
-
-// fixPDFTextMapping preserves the original PDF and appends replacements for only
-// the ToUnicode streams whose destinations contain known radical aliases.
-// Unsupported or malformed files are left intact; PDF export must still work.
+// fixPDFTextMapping appends corrected ToUnicode maps without changing the pages.
+// CoreGraphics names radicals for shared glyphs. A static table cannot recover
+// the text: Songti SC draws ⼜ (the radical of 又) as 口. Ask the font instead.
+// Unsupported or malformed PDFs are left intact so export still works.
 func fixPDFTextMapping(pdf []byte) []byte {
-	fixed, err := appendPDFTextUpdate(pdf)
-	if err != nil {
-		return pdf
-	}
-	return fixed
+	return fixPDFText(pdf, fontIdeographs)
 }
 
-type pdfTextToken struct {
+func fixPDFText(pdf []byte, ideographs func(font string, radicals []rune) map[rune]rune) []byte {
+	if fixed, err := fixPDFTextMaps(pdf, ideographs); err == nil {
+		return fixed
+	}
+	return pdf
+}
+
+var errPDF = errors.New("liubai: unsupported PDF")
+
+func isRadical(r rune) bool { return r >= 0x2E80 && r <= 0x2FDF }
+
+func fixPDFTextMaps(data []byte, ideographs func(string, []rune) map[rune]rune) ([]byte, error) {
+	d, err := readPDF(data)
+	if err != nil {
+		return nil, err
+	}
+	type textMap struct {
+		gen  int
+		font string // the PostScript name, "" if unknown or if fonts of other names share the map
+		cmap *pdfCMap
+		dict pdfValue
+	}
+	texts := map[int]*textMap{}
+	for n, x := range d.xref {
+		// CoreGraphics lists unused numbers as in use at offset 0.
+		if !x.used || x.offset == 0 {
+			continue
+		}
+		obj, _, err := d.object(n, x.gen)
+		if err != nil {
+			return nil, err
+		}
+		if t, ok := obj.get("Type"); ok && t.named("ObjStm") {
+			return nil, errPDF
+		}
+		ref, ok := obj.get("ToUnicode")
+		if !ok {
+			continue
+		}
+		if ref.kind != pdfRef {
+			return nil, errPDF
+		}
+		font := ""
+		if base, ok := obj.get("BaseFont"); ok {
+			font = postScriptName(base)
+		}
+		if m := texts[ref.n]; m != nil {
+			if m.gen != ref.gen {
+				return nil, errPDF
+			}
+			if m.font != font {
+				m.font = ""
+			}
+			continue
+		}
+		texts[ref.n] = &textMap{gen: ref.gen, font: font}
+	}
+	numbers := make([]int, 0, len(texts))
+	for n := range texts {
+		numbers = append(numbers, n)
+	}
+	slices.Sort(numbers)
+	radicals := map[string][]rune{}
+	for _, n := range numbers {
+		m := texts[n]
+		if m.font == "" {
+			continue
+		}
+		dict, end, err := d.object(n, m.gen)
+		if err != nil || dict.kind != pdfDict {
+			return nil, errPDF
+		}
+		if filter, ok := dict.get("Filter"); ok {
+			if filter.kind == pdfArray && len(filter.list) == 1 {
+				filter = filter.list[0]
+			}
+			if !filter.named("FlateDecode") {
+				continue
+			}
+		}
+		// Decode parameters would change what the stream holds.
+		if params, ok := dict.get("DecodeParms"); ok && params.raw != "null" {
+			continue
+		}
+		stream, err := d.stream(dict, end)
+		if err != nil {
+			return nil, err
+		}
+		if m.cmap, err = readToUnicode(stream); err != nil {
+			return nil, err
+		}
+		m.dict = dict
+		radicals[m.font] = append(radicals[m.font], m.cmap.radicals()...)
+	}
+	fonts := map[string]map[rune]rune{}
+	for font, rs := range radicals {
+		slices.Sort(rs)
+		if rs = slices.Compact(rs); len(rs) > 0 {
+			fonts[font] = ideographs(font, rs)
+		}
+	}
+	var update bytes.Buffer
+	update.WriteByte('\n')
+	offsets := map[int]int{}
+	for _, n := range numbers {
+		m := texts[n]
+		if m.cmap == nil {
+			continue
+		}
+		cmap, changed := m.cmap.rewrite(fonts[m.font])
+		if !changed {
+			continue
+		}
+		var stream bytes.Buffer
+		w := zlib.NewWriter(&stream)
+		w.Write(cmap)
+		if err := w.Close(); err != nil {
+			return nil, err
+		}
+		offsets[n] = len(data) + update.Len()
+		if offsets[n] > 9999999999 {
+			return nil, errPDF
+		}
+		fmt.Fprintf(&update, "%d %d obj\n%s /Length %d /Filter /FlateDecode >>\nstream\n", n, m.gen, m.dict.dictionaryWithout("Length", "Filter", "DecodeParms"), stream.Len())
+		update.Write(stream.Bytes())
+		update.WriteString("\nendstream\nendobj\n")
+	}
+	if len(offsets) == 0 {
+		return data, nil
+	}
+	xref := len(data) + update.Len()
+	update.WriteString("xref\n")
+	for _, n := range numbers {
+		if at, ok := offsets[n]; ok {
+			fmt.Fprintf(&update, "%d 1\n%010d %05d n \n", n, at, texts[n].gen)
+		}
+	}
+	fmt.Fprintf(&update, "trailer\n%s /Prev %d >>\nstartxref\n%d\n%%%%EOF\n", d.trailer.dictionaryWithout("Prev", "XRefStm"), d.start, xref)
+	return append(slices.Clip(data), update.Bytes()...), nil
+}
+
+// postScriptName returns the PostScript name of a font from its BaseFont,
+// without the tag that marks a subset ("ABCDEF+").
+func postScriptName(base pdfValue) string {
+	if base.kind != pdfName {
+		return ""
+	}
+	name, err := pdfNameText(base.raw)
+	if err != nil {
+		return ""
+	}
+	if len(name) > 7 && name[6] == '+' && strings.Trim(name[:6], "ABCDEFGHIJKLMNOPQRSTUVWXYZ") == "" {
+		name = name[7:]
+	}
+	return name
+}
+
+// pdfCMap keeps mappings in order and the section span a rewrite replaces.
+type pdfCMap struct {
+	data        []byte
+	mappings    []pdfMapping
+	first, last int
+}
+
+type pdfMapping struct {
+	code string
+	text []rune
+}
+
+const maxPDFMappings = 1 << 20
+
+func readToUnicode(data []byte) (*pdfCMap, error) {
+	c := &pdfCMap{data: data, first: -1}
+	p := pdfParser{data: data}
+	add := func(code, text string) error {
+		if len(c.mappings) >= maxPDFMappings {
+			return errPDF
+		}
+		runes, err := pdfUTF16(text)
+		if err != nil {
+			return err
+		}
+		c.mappings = append(c.mappings, pdfMapping{code, runes})
+		return nil
+	}
+	hexToken := func() (string, error) {
+		t, err := p.token()
+		if err != nil {
+			return "", err
+		}
+		return pdfHex(t.text)
+	}
+	var previous pdfToken
+	for {
+		t, err := p.token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if t.text != "beginbfchar" && t.text != "beginbfrange" {
+			if t.text == "endbfchar" || t.text == "endbfrange" {
+				return nil, errPDF
+			}
+			previous = t
+			continue
+		}
+		count, err := strconv.Atoi(previous.text)
+		if err != nil || count < 0 || count > maxPDFMappings {
+			return nil, errPDF
+		}
+		// A rewrite replaces all from the first section to the last, so
+		// nothing else may be between them.
+		if c.first < 0 {
+			c.first = previous.start
+		} else if len(bytes.TrimFunc(data[c.last:previous.start], func(r rune) bool { return r < 0x80 && pdfSpace(byte(r)) })) > 0 {
+			return nil, errPDF
+		}
+		for range count {
+			code, err := hexToken()
+			if err != nil {
+				return nil, err
+			}
+			if t.text == "beginbfchar" {
+				text, err := hexToken()
+				if err != nil {
+					return nil, err
+				}
+				if err := add(code, text); err != nil {
+					return nil, err
+				}
+				continue
+			}
+			high, err := hexToken()
+			if err != nil || len(high) != len(code) || len(code) > 8 {
+				return nil, errPDF
+			}
+			lo, _ := strconv.ParseUint(code, 16, 32)
+			hi, _ := strconv.ParseUint(high, 16, 32)
+			if hi < lo || hi-lo >= uint64(maxPDFMappings-len(c.mappings)) {
+				return nil, errPDF
+			}
+			next, err := p.token()
+			if err != nil {
+				return nil, err
+			}
+			if next.text == "[" {
+				for i := lo; i <= hi; i++ {
+					text, err := hexToken()
+					if err != nil {
+						return nil, err
+					}
+					if err := add(fmt.Sprintf("%0*X", len(code), i), text); err != nil {
+						return nil, err
+					}
+				}
+				if p.expect("]") != nil {
+					return nil, errPDF
+				}
+				continue
+			}
+			// The codes of the range map to the text with its last byte
+			// incremented, which may not pass 255 (ISO 32000-1, 9.10.3).
+			text, err := pdfHex(next.text)
+			if err != nil || len(text) < 2 || len(text)%2 != 0 {
+				return nil, errPDF
+			}
+			last, _ := strconv.ParseUint(text[len(text)-2:], 16, 8)
+			if last+hi-lo > 0xFF {
+				return nil, errPDF
+			}
+			for i := lo; i <= hi; i++ {
+				if err := add(fmt.Sprintf("%0*X", len(code), i), fmt.Sprintf("%s%02X", text[:len(text)-2], last+i-lo)); err != nil {
+					return nil, err
+				}
+			}
+		}
+		end, err := p.token()
+		want := "endbfchar"
+		if t.text == "beginbfrange" {
+			want = "endbfrange"
+		}
+		if err != nil || end.text != want {
+			return nil, errPDF
+		}
+		c.last = end.end
+		previous = end
+	}
+	return c, nil
+}
+
+func (c *pdfCMap) radicals() []rune {
+	var rs []rune
+	for _, m := range c.mappings {
+		for _, r := range m.text {
+			if isRadical(r) {
+				rs = append(rs, r)
+			}
+		}
+	}
+	return rs
+}
+
+func (c *pdfCMap) rewrite(ideographs map[rune]rune) ([]byte, bool) {
+	changed := false
+	for _, m := range c.mappings {
+		for i, r := range m.text {
+			if to := ideographs[r]; to != 0 && isRadical(r) {
+				m.text[i] = to
+				changed = true
+			}
+		}
+	}
+	if !changed {
+		return nil, false
+	}
+	var b bytes.Buffer
+	b.Write(c.data[:c.first])
+	// A section has at most 100 mappings.
+	for start := 0; start < len(c.mappings); start += 100 {
+		chunk := c.mappings[start:min(start+100, len(c.mappings))]
+		fmt.Fprintf(&b, "%d beginbfchar\n", len(chunk))
+		for _, m := range chunk {
+			units := utf16.Encode(m.text)
+			text := make([]byte, 2*len(units))
+			for i, u := range units {
+				text[2*i], text[2*i+1] = byte(u>>8), byte(u)
+			}
+			fmt.Fprintf(&b, "<%s> <%s>\n", m.code, strings.ToUpper(hex.EncodeToString(text)))
+		}
+		b.WriteString("endbfchar\n")
+	}
+	b.Write(c.data[c.last:])
+	return b.Bytes(), true
+}
+
+func pdfUTF16(h string) ([]rune, error) {
+	if len(h)%4 != 0 {
+		return nil, errPDF
+	}
+	b, err := hex.DecodeString(h)
+	if err != nil {
+		return nil, errPDF
+	}
+	units := make([]uint16, len(b)/2)
+	for i := range units {
+		units[i] = uint16(b[2*i])<<8 | uint16(b[2*i+1])
+	}
+	// An unpaired surrogate would come back as U+FFFD.
+	for i := 0; i < len(units); i++ {
+		switch u := units[i]; {
+		case u >= 0xD800 && u <= 0xDBFF:
+			if i+1 == len(units) || units[i+1] < 0xDC00 || units[i+1] > 0xDFFF {
+				return nil, errPDF
+			}
+			i++
+		case u >= 0xDC00 && u <= 0xDFFF:
+			return nil, errPDF
+		}
+	}
+	return utf16.Decode(units), nil
+}
+
+func pdfHex(s string) (string, error) {
+	if len(s) < 2 || s[0] != '<' || s[1] == '<' || s[len(s)-1] != '>' {
+		return "", errPDF
+	}
+	var b strings.Builder
+	for i := 1; i < len(s)-1; i++ {
+		c := s[i]
+		switch {
+		case pdfSpace(c):
+		case c >= '0' && c <= '9', c >= 'A' && c <= 'F':
+			b.WriteByte(c)
+		case c >= 'a' && c <= 'f':
+			b.WriteByte(c - 'a' + 'A')
+		default:
+			return "", errPDF
+		}
+	}
+	if b.Len() == 0 {
+		return "", errPDF
+	}
+	return b.String(), nil
+}
+
+// Read CoreGraphics PDF syntax: classic xref tables, no encryption (ISO 32000-1, 7.2–7.5).
+
+type pdfToken struct {
 	text       string
 	start, end int
 }
-type pdfTextParser struct {
+
+type pdfParser struct {
 	data []byte
 	pos  int
 }
 
-func pdfTextSpace(c byte) bool { return c == 0 || c == 9 || c == 10 || c == 12 || c == 13 || c == 32 }
-func pdfTextDelimiter(c byte) bool {
-	return pdfTextSpace(c) || strings.ContainsRune("()<>[]{}/%", rune(c))
+func pdfSpace(c byte) bool {
+	return c == 0 || c == '\t' || c == '\n' || c == '\f' || c == '\r' || c == ' '
 }
-func (p *pdfTextParser) token() (pdfTextToken, error) {
+
+func pdfDelimiter(c byte) bool { return pdfSpace(c) || strings.IndexByte("()<>[]{}/%", c) >= 0 }
+
+func (p *pdfParser) token() (pdfToken, error) {
 	for p.pos < len(p.data) {
-		if pdfTextSpace(p.data[p.pos]) {
+		if pdfSpace(p.data[p.pos]) {
 			p.pos++
 			continue
 		}
@@ -56,7 +442,7 @@ func (p *pdfTextParser) token() (pdfTextToken, error) {
 	}
 	start := p.pos
 	if start == len(p.data) {
-		return pdfTextToken{}, io.EOF
+		return pdfToken{}, io.EOF
 	}
 	c := p.data[p.pos]
 	p.pos++
@@ -78,713 +464,424 @@ func (p *pdfTextParser) token() (pdfTextToken, error) {
 			}
 		}
 		if depth != 0 {
-			return pdfTextToken{}, errPDFText
+			return pdfToken{}, errPDF
 		}
 	case '<':
 		if p.pos < len(p.data) && p.data[p.pos] == '<' {
 			p.pos++
-		} else {
-			for p.pos < len(p.data) && p.data[p.pos] != '>' {
-				p.pos++
-			}
-			if p.pos == len(p.data) {
-				return pdfTextToken{}, errPDFText
-			}
+			break
+		}
+		for p.pos < len(p.data) && p.data[p.pos] != '>' {
 			p.pos++
 		}
-	case '>':
-		if p.pos >= len(p.data) || p.data[p.pos] != '>' {
-			return pdfTextToken{}, errPDFText
+		if p.pos == len(p.data) {
+			return pdfToken{}, errPDF
 		}
 		p.pos++
-	case '/':
-		for p.pos < len(p.data) && !pdfTextDelimiter(p.data[p.pos]) {
-			p.pos++
+	case '>':
+		if p.pos == len(p.data) || p.data[p.pos] != '>' {
+			return pdfToken{}, errPDF
 		}
+		p.pos++
 	case '[', ']', '{', '}':
 	default:
-		if pdfTextDelimiter(c) {
-			return pdfTextToken{}, errPDFText
+		if c != '/' && pdfDelimiter(c) {
+			return pdfToken{}, errPDF
 		}
-		for p.pos < len(p.data) && !pdfTextDelimiter(p.data[p.pos]) {
+		for p.pos < len(p.data) && !pdfDelimiter(p.data[p.pos]) {
 			p.pos++
 		}
 	}
-	return pdfTextToken{string(p.data[start:p.pos]), start, p.pos}, nil
+	return pdfToken{string(p.data[start:p.pos]), start, p.pos}, nil
 }
-func (p *pdfTextParser) expect(s string) error {
-	t, e := p.token()
-	if e != nil || t.text != s {
-		return errPDFText
+
+func (p *pdfParser) expect(s string) error {
+	if t, err := p.token(); err != nil || t.text != s {
+		return errPDF
 	}
 	return nil
 }
-func (p *pdfTextParser) integer() (int, error) {
-	t, e := p.token()
-	if e != nil {
-		return 0, e
+
+func (p *pdfParser) integer() (int, error) {
+	t, err := p.token()
+	if err != nil {
+		return 0, err
 	}
-	n, e := strconv.Atoi(t.text)
-	if e != nil {
-		return 0, errPDFText
+	n, err := strconv.Atoi(t.text)
+	if err != nil {
+		return 0, errPDF
 	}
 	return n, nil
 }
 
-type pdfTextEntry struct {
-	key, keyRaw string
-	value       pdfTextValue
-}
-type pdfTextValue struct {
-	kind, raw string
-	n, gen    int
-	entries   []pdfTextEntry
-	list      []pdfTextValue
+type pdfKind uint8
+
+const (
+	pdfAtom      pdfKind = iota // a real number, a boolean or null
+	pdfInt                      // n
+	pdfRef                      // n and gen, of the object it refers to
+	pdfName                     // raw, with its #xx escapes
+	pdfString                   // raw, a literal string
+	pdfHexString                // raw
+	pdfArray                    // list
+	pdfDict                     // entries
+)
+
+// pdfValue is an object of the PDF syntax. raw is its source, which the
+// dictionaries of an update copy as they were.
+type pdfValue struct {
+	kind    pdfKind
+	raw     string
+	n, gen  int
+	entries []pdfEntry
+	list    []pdfValue
 }
 
-func pdfTextName(raw string) (string, error) {
+type pdfEntry struct {
+	key, raw string // the name, and as it was written
+	value    pdfValue
+}
+
+func pdfNameText(raw string) (string, error) {
 	if !strings.HasPrefix(raw, "/") {
-		return "", errPDFText
+		return "", errPDF
 	}
 	var b strings.Builder
 	for i := 1; i < len(raw); i++ {
-		if raw[i] == '#' {
-			if i+2 >= len(raw) {
-				return "", errPDFText
-			}
-			v, e := strconv.ParseUint(raw[i+1:i+3], 16, 8)
-			if e != nil {
-				return "", errPDFText
-			}
-			b.WriteByte(byte(v))
-			i += 2
-		} else {
+		if raw[i] != '#' {
 			b.WriteByte(raw[i])
+			continue
 		}
+		if i+2 >= len(raw) {
+			return "", errPDF
+		}
+		v, err := strconv.ParseUint(raw[i+1:i+3], 16, 8)
+		if err != nil {
+			return "", errPDF
+		}
+		b.WriteByte(byte(v))
+		i += 2
 	}
 	return b.String(), nil
 }
-func (p *pdfTextParser) value(depth int) (pdfTextValue, error) {
+
+func (p *pdfParser) value(depth int) (pdfValue, error) {
 	if depth > 64 {
-		return pdfTextValue{}, errPDFText
+		return pdfValue{}, errPDF
 	}
 	t, err := p.token()
 	if err != nil {
-		return pdfTextValue{}, err
+		return pdfValue{}, err
 	}
-	v := pdfTextValue{raw: t.text, kind: "atom"}
+	v := pdfValue{kind: pdfAtom}
 	switch {
 	case t.text == "<<":
-		v.kind = "dict"
+		v.kind = pdfDict
 		keys := map[string]bool{}
 		for {
-			key, e := p.token()
-			if e != nil {
-				return v, e
+			key, err := p.token()
+			if err != nil {
+				return v, err
 			}
 			if key.text == ">>" {
 				break
 			}
-			name, e := pdfTextName(key.text)
-			if e != nil || keys[name] {
-				return v, errPDFText
+			name, err := pdfNameText(key.text)
+			if err != nil || keys[name] {
+				return v, errPDF
 			}
 			keys[name] = true
-			value, e := p.value(depth + 1)
-			if e != nil {
-				return v, e
+			value, err := p.value(depth + 1)
+			if err != nil {
+				return v, err
 			}
-			v.entries = append(v.entries, pdfTextEntry{name, key.text, value})
+			v.entries = append(v.entries, pdfEntry{name, key.text, value})
 		}
 	case t.text == "[":
-		v.kind = "array"
+		v.kind = pdfArray
 		for {
-			save := p.pos
-			next, e := p.token()
-			if e != nil {
-				return v, e
+			at := p.pos
+			next, err := p.token()
+			if err != nil {
+				return v, err
 			}
 			if next.text == "]" {
 				break
 			}
-			p.pos = save
-			item, e := p.value(depth + 1)
-			if e != nil {
-				return v, e
+			p.pos = at
+			item, err := p.value(depth + 1)
+			if err != nil {
+				return v, err
 			}
 			v.list = append(v.list, item)
 		}
-	case strings.HasPrefix(t.text, "/"):
-		v.kind = "name"
-		if _, err = pdfTextName(t.text); err != nil {
+	case t.text[0] == '/':
+		v.kind = pdfName
+		if _, err := pdfNameText(t.text); err != nil {
 			return v, err
 		}
-	case strings.HasPrefix(t.text, "("):
-		v.kind = "string"
-	case strings.HasPrefix(t.text, "<") && t.text != "<<":
-		v.kind = "hex"
-		if _, err = pdfTextHex(t.text); err != nil {
+	case t.text[0] == '(':
+		v.kind = pdfString
+	case t.text[0] == '<':
+		v.kind = pdfHexString
+		if _, err := pdfHex(t.text); err != nil {
 			return v, err
 		}
 	default:
-		if n, e := strconv.Atoi(t.text); e == nil {
-			v.kind = "int"
-			v.n = n
-			save := p.pos
-			second, e := p.token()
-			if e == nil {
-				gen, e := strconv.Atoi(second.text)
-				if e == nil {
-					third, e := p.token()
-					if e == nil && third.text == "R" {
-						if n < 0 || gen < 0 || gen > 65535 {
-							return v, errPDFText
-						}
-						v.kind = "ref"
-						v.gen = gen
-					} else {
-						p.pos = save
-					}
-				} else {
-					p.pos = save
-				}
-			} else {
-				p.pos = save
+		n, err := strconv.Atoi(t.text)
+		if err != nil {
+			if t.text == "true" || t.text == "false" || t.text == "null" {
+				break
 			}
-		} else if t.text != "true" && t.text != "false" && t.text != "null" {
-			// Real numbers may occur in arbitrary dictionaries/arrays.
+			// Only plain reals, as PDF writes no exponents, NaN or infinities.
 			if strings.ContainsAny(t.text, "eENaInf") {
-				return v, errPDFText
+				return v, errPDF
 			}
-			if _, e := strconv.ParseFloat(t.text, 64); e != nil {
-				return v, errPDFText
+			if _, err := strconv.ParseFloat(t.text, 64); err != nil {
+				return v, errPDF
+			}
+			break
+		}
+		v.kind, v.n = pdfInt, n
+		at := p.pos
+		if second, err := p.token(); err == nil {
+			if gen, err := strconv.Atoi(second.text); err == nil {
+				if third, err := p.token(); err == nil && third.text == "R" {
+					if n < 0 || gen < 0 || gen > 65535 {
+						return v, errPDF
+					}
+					v.kind, v.gen = pdfRef, gen
+					break
+				}
 			}
 		}
+		p.pos = at
 	}
 	v.raw = string(p.data[t.start:p.pos])
 	return v, nil
 }
-func (v pdfTextValue) get(key string) (pdfTextValue, bool) {
+
+func (v pdfValue) get(key string) (pdfValue, bool) {
 	for _, e := range v.entries {
 		if e.key == key {
 			return e.value, true
 		}
 	}
-	return pdfTextValue{}, false
+	return pdfValue{}, false
 }
-func (v pdfTextValue) named(name string) bool {
-	if v.kind != "name" {
+
+func (v pdfValue) named(name string) bool {
+	if v.kind != pdfName {
 		return false
 	}
-	n, e := pdfTextName(v.raw)
-	return e == nil && n == name
+	n, err := pdfNameText(v.raw)
+	return err == nil && n == name
 }
-func (v pdfTextValue) dictionaryWithout(excluded ...string) string {
+
+// dictionaryWithout writes the dictionary without the keys and without its
+// closing ">>", which the caller writes after the entries it adds.
+func (v pdfValue) dictionaryWithout(keys ...string) string {
 	var b strings.Builder
 	b.WriteString("<<")
 	for _, e := range v.entries {
-		skip := false
-		for _, key := range excluded {
-			if e.key == key {
-				skip = true
-			}
-		}
-		if !skip {
-			fmt.Fprintf(&b, " %s %s", e.keyRaw, e.value.raw)
+		if !slices.Contains(keys, e.key) {
+			fmt.Fprintf(&b, " %s %s", e.raw, e.value.raw)
 		}
 	}
 	return b.String()
 }
 
-type pdfTextXref struct {
+type pdfXref struct {
 	offset, gen int
 	used        bool
 }
-type pdfTextDocument struct {
+
+type pdfFile struct {
 	data    []byte
-	xref    map[int]pdfTextXref
-	trailer pdfTextValue
-	start   int
+	xref    map[int]pdfXref // the newest entry of every object
+	trailer pdfValue        // the newest trailer
+	start   int             // the offset of the newest cross-reference table
 }
 
-func readPDFTextDocument(data []byte) (*pdfTextDocument, error) {
+func readPDF(data []byte) (*pdfFile, error) {
 	if !bytes.HasPrefix(data, []byte("%PDF-")) {
-		return nil, errPDFText
+		return nil, errPDF
 	}
-	end := bytes.TrimRightFunc(data, func(r rune) bool { return r <= 127 && pdfTextSpace(byte(r)) })
+	end := bytes.TrimRightFunc(data, func(r rune) bool { return r < 0x80 && pdfSpace(byte(r)) })
 	if !bytes.HasSuffix(end, []byte("%%EOF")) {
-		return nil, errPDFText
+		return nil, errPDF
 	}
 	footer := bytes.LastIndex(end, []byte("startxref"))
 	if footer < 0 {
-		return nil, errPDFText
+		return nil, errPDF
 	}
-	p := pdfTextParser{data: end, pos: footer + len("startxref")}
+	p := pdfParser{data: end, pos: footer + len("startxref")}
 	start, err := p.integer()
 	if err != nil {
 		return nil, err
 	}
-	// Unlike regular PDF comments, the EOF marker is significant here.
+	// The %%EOF that token skips as a comment.
 	if string(bytes.TrimSpace(end[p.pos:])) != "%%EOF" {
-		return nil, errPDFText
+		return nil, errPDF
 	}
-	doc := &pdfTextDocument{data: data, xref: map[int]pdfTextXref{}, start: start}
+	f := &pdfFile{data: data, xref: map[int]pdfXref{}, start: start}
 	seen := map[int]bool{}
 	for offset := start; ; {
 		if offset < 0 || offset >= len(data) || seen[offset] || !bytes.HasPrefix(data[offset:], []byte("xref")) {
-			return nil, errPDFText
+			return nil, errPDF
 		}
 		seen[offset] = true
-		p := pdfTextParser{data: data, pos: offset}
+		p := pdfParser{data: data, pos: offset}
 		if p.expect("xref") != nil {
-			return nil, errPDFText
+			return nil, errPDF
 		}
 		for {
-			save := p.pos
-			t, e := p.token()
-			if e != nil {
-				return nil, e
+			at := p.pos
+			t, err := p.token()
+			if err != nil {
+				return nil, err
 			}
 			if t.text == "trailer" {
 				break
 			}
-			p.pos = save
-			first, e := p.integer()
-			if e != nil || first < 0 {
-				return nil, errPDFText
+			p.pos = at
+			first, err := p.integer()
+			if err != nil || first < 0 {
+				return nil, errPDF
 			}
-			count, e := p.integer()
-			if e != nil || count < 0 || count > len(data)/4 || first > int(^uint(0)>>1)-count {
-				return nil, errPDFText
+			count, err := p.integer()
+			if err != nil || count < 0 || count > len(data)/20 || first > int(^uint(0)>>1)-count {
+				return nil, errPDF
 			}
-			for i := 0; i < count; i++ {
-				at, e := p.integer()
-				if e != nil || at < 0 {
-					return nil, errPDFText
+			for i := range count {
+				at, err := p.integer()
+				if err != nil || at < 0 {
+					return nil, errPDF
 				}
-				gen, e := p.integer()
-				if e != nil || gen < 0 || gen > 65535 {
-					return nil, errPDFText
+				gen, err := p.integer()
+				if err != nil || gen < 0 || gen > 65535 {
+					return nil, errPDF
 				}
-				flag, e := p.token()
-				if e != nil || (flag.text != "n" && flag.text != "f") {
-					return nil, errPDFText
+				flag, err := p.token()
+				if err != nil || flag.text != "n" && flag.text != "f" {
+					return nil, errPDF
 				}
 				if flag.text == "n" && at >= len(data) {
-					return nil, errPDFText
+					return nil, errPDF
 				}
-				if _, exists := doc.xref[first+i]; !exists {
-					doc.xref[first+i] = pdfTextXref{at, gen, flag.text == "n"}
+				// A newer section, read first, overrides an older one.
+				if _, ok := f.xref[first+i]; !ok {
+					f.xref[first+i] = pdfXref{at, gen, flag.text == "n"}
 				}
 			}
 		}
-		trailer, e := p.value(0)
-		if e != nil || trailer.kind != "dict" {
-			return nil, errPDFText
+		trailer, err := p.value(0)
+		if err != nil || trailer.kind != pdfDict {
+			return nil, errPDF
 		}
 		if offset == start {
-			doc.trailer = trailer
+			f.trailer = trailer
 		}
 		prev, ok := trailer.get("Prev")
 		if !ok {
 			break
 		}
-		if prev.kind != "int" || prev.n < 0 {
-			return nil, errPDFText
+		if prev.kind != pdfInt || prev.n < 0 {
+			return nil, errPDF
 		}
 		offset = prev.n
 	}
-	size, ok := doc.trailer.get("Size")
-	if !ok || size.kind != "int" || size.n < 1 {
-		return nil, errPDFText
+	size, ok := f.trailer.get("Size")
+	if !ok || size.kind != pdfInt || size.n < 1 {
+		return nil, errPDF
 	}
-	for n := range doc.xref {
+	for n := range f.xref {
 		if n >= size.n {
-			return nil, errPDFText
+			return nil, errPDF
 		}
 	}
-	if _, encrypted := doc.trailer.get("Encrypt"); encrypted {
-		return nil, errPDFText
+	if _, ok := f.trailer.get("Encrypt"); ok {
+		return nil, errPDF
 	}
-	return doc, nil
+	return f, nil
 }
-func (d *pdfTextDocument) object(n, gen int) (pdfTextValue, int, error) {
-	x, ok := d.xref[n]
+
+// object reads object n of generation gen, and returns where it ends,
+// before "endobj" or a dictionary's "stream".
+func (f *pdfFile) object(n, gen int) (pdfValue, int, error) {
+	x, ok := f.xref[n]
 	if !ok || !x.used || x.offset == 0 || x.gen != gen {
-		return pdfTextValue{}, 0, errPDFText
+		return pdfValue{}, 0, errPDF
 	}
-	p := pdfTextParser{data: d.data, pos: x.offset}
-	number, e := p.integer()
-	if e != nil || number != n {
-		return pdfTextValue{}, 0, errPDFText
+	p := pdfParser{data: f.data, pos: x.offset}
+	if number, err := p.integer(); err != nil || number != n {
+		return pdfValue{}, 0, errPDF
 	}
-	generation, e := p.integer()
-	if e != nil || generation != gen || p.expect("obj") != nil {
-		return pdfTextValue{}, 0, errPDFText
+	if generation, err := p.integer(); err != nil || generation != gen || p.expect("obj") != nil {
+		return pdfValue{}, 0, errPDF
 	}
-	v, e := p.value(0)
-	if e != nil {
-		return v, 0, e
+	v, err := p.value(0)
+	if err != nil {
+		return v, 0, err
 	}
 	end := p.pos
-	t, e := p.token()
-	if e != nil || (t.text != "endobj" && (t.text != "stream" || v.kind != "dict")) {
-		return v, 0, errPDFText
+	t, err := p.token()
+	if err != nil || t.text != "endobj" && (t.text != "stream" || v.kind != pdfDict) {
+		return v, 0, errPDF
 	}
 	return v, end, nil
 }
-func (d *pdfTextDocument) stream(dict pdfTextValue, end int) ([]byte, error) {
+
+// stream returns the data of the stream of dict, which ends at end,
+// inflated if it has a filter: the caller allows FlateDecode alone.
+func (f *pdfFile) stream(dict pdfValue, end int) ([]byte, error) {
 	length, ok := dict.get("Length")
 	if !ok {
-		return nil, errPDFText
+		return nil, errPDF
 	}
-	if length.kind == "ref" {
-		v, _, e := d.object(length.n, length.gen)
-		if e != nil {
-			return nil, e
+	if length.kind == pdfRef {
+		v, _, err := f.object(length.n, length.gen)
+		if err != nil {
+			return nil, err
 		}
 		length = v
 	}
-	if length.kind != "int" || length.n < 0 {
-		return nil, errPDFText
+	if length.kind != pdfInt || length.n < 0 {
+		return nil, errPDF
 	}
-	p := pdfTextParser{data: d.data, pos: end}
+	p := pdfParser{data: f.data, pos: end}
 	if p.expect("stream") != nil {
-		return nil, errPDFText
+		return nil, errPDF
 	}
-	if p.pos < len(d.data) && d.data[p.pos] == '\r' {
+	// The keyword ends with CR LF or LF.
+	switch {
+	case bytes.HasPrefix(f.data[p.pos:], []byte("\r\n")):
+		p.pos += 2
+	case bytes.HasPrefix(f.data[p.pos:], []byte("\n")):
 		p.pos++
-		if p.pos < len(d.data) && d.data[p.pos] == '\n' {
-			p.pos++
-		}
-	} else if p.pos < len(d.data) && d.data[p.pos] == '\n' {
-		p.pos++
-	} else {
-		return nil, errPDFText
+	default:
+		return nil, errPDF
 	}
-	if length.n > len(d.data)-p.pos {
-		return nil, errPDFText
+	if length.n > len(f.data)-p.pos {
+		return nil, errPDF
 	}
-	data := d.data[p.pos : p.pos+length.n]
+	data := f.data[p.pos : p.pos+length.n]
 	p.pos += length.n
 	if p.expect("endstream") != nil || p.expect("endobj") != nil {
-		return nil, errPDFText
+		return nil, errPDF
 	}
-	if _, filtered := dict.get("Filter"); filtered {
-		reader, e := zlib.NewReader(bytes.NewReader(data))
-		if e != nil {
-			return nil, e
-		}
-		// Bound allocations on damaged/untrusted export files.
-		const maxCMapBytes = 64 << 20
-		decoded, e := io.ReadAll(io.LimitReader(reader, maxCMapBytes+1))
-		closeErr := reader.Close()
-		if e != nil || closeErr != nil || len(decoded) > maxCMapBytes {
-			return nil, errPDFText
-		}
-		return decoded, nil
-	}
-	return data, nil
-}
-func appendPDFTextUpdate(data []byte) ([]byte, error) {
-	d, err := readPDFTextDocument(data)
-	if err != nil {
-		return nil, err
-	}
-	refs := map[int]int{}
-	for n, x := range d.xref {
-		// CoreGraphics emits unused entries marked 'n' with offset zero.
-		if !x.used || x.offset == 0 {
-			continue
-		}
-		obj, _, e := d.object(n, x.gen)
-		if e != nil {
-			return nil, e
-		}
-		if typ, ok := obj.get("Type"); ok && typ.named("ObjStm") {
-			return nil, errPDFText
-		}
-		if ref, ok := obj.get("ToUnicode"); ok {
-			if ref.kind != "ref" {
-				return nil, errPDFText
-			}
-			if gen, exists := refs[ref.n]; exists && gen != ref.gen {
-				return nil, errPDFText
-			}
-			refs[ref.n] = ref.gen
-		}
-	}
-	numbers := make([]int, 0, len(refs))
-	for n := range refs {
-		numbers = append(numbers, n)
-	}
-	sort.Ints(numbers)
-	var update bytes.Buffer
-	update.WriteByte('\n')
-	offsets := map[int]int{}
-	for _, n := range numbers {
-		dict, end, e := d.object(n, refs[n])
-		if e != nil || dict.kind != "dict" {
-			return nil, errPDFText
-		}
-		if filter, ok := dict.get("Filter"); ok {
-			if filter.kind == "array" && len(filter.list) == 1 {
-				filter = filter.list[0]
-			}
-			if !filter.named("FlateDecode") {
-				continue
-			}
-		}
-		// Non-default decode parameters would change the stream's interpretation.
-		if params, ok := dict.get("DecodeParms"); ok && params.raw != "null" {
-			continue
-		}
-		cmap, e := d.stream(dict, end)
-		if e != nil {
-			return nil, e
-		}
-		fixed, changed, e := rewritePDFCMap(cmap)
-		if e != nil {
-			return nil, e
-		}
-		if !changed {
-			continue
-		}
-		var compressed bytes.Buffer
-		writer := zlib.NewWriter(&compressed)
-		if _, e = writer.Write(fixed); e != nil {
-			return nil, e
-		}
-		if e = writer.Close(); e != nil {
-			return nil, e
-		}
-		offsets[n] = len(data) + update.Len()
-		if int64(offsets[n]) > 9999999999 {
-			return nil, errPDFText
-		}
-		fmt.Fprintf(&update, "%d %d obj\n%s /Length %d /Filter /FlateDecode >>\nstream\n", n, refs[n], dict.dictionaryWithout("Length", "Filter", "DecodeParms"), compressed.Len())
-		update.Write(compressed.Bytes())
-		update.WriteString("\nendstream\nendobj\n")
-	}
-	if len(offsets) == 0 {
+	if _, ok := dict.get("Filter"); !ok {
 		return data, nil
 	}
-	xrefOffset := len(data) + update.Len()
-	update.WriteString("xref\n")
-	for _, n := range numbers {
-		if at, ok := offsets[n]; ok {
-			fmt.Fprintf(&update, "%d 1\n%010d %05d n \n", n, at, refs[n])
-		}
+	r, err := zlib.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, errPDF
 	}
-	fmt.Fprintf(&update, "trailer\n%s /Prev %d >>\nstartxref\n%d\n%%%%EOF\n", d.trailer.dictionaryWithout("Prev", "XRefStm"), d.start, xrefOffset)
-	result := make([]byte, 0, len(data)+update.Len())
-	result = append(result, data...)
-	result = append(result, update.Bytes()...)
-	return result, nil
-}
-
-// CMap sources retain their hex width; destinations are UTF-16BE byte strings.
-type pdfTextMapping struct{ source, destination string }
-
-func pdfTextHex(s string) (string, error) {
-	if len(s) < 2 || s[0] != '<' || s[1] == '<' || s[len(s)-1] != '>' {
-		return "", errPDFText
+	// A map is a few kilobytes; a damaged stream may inflate without end.
+	const limit = 64 << 20
+	data, err = io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil || r.Close() != nil || len(data) > limit {
+		return nil, errPDF
 	}
-	var b strings.Builder
-	for i := 1; i < len(s)-1; i++ {
-		c := s[i]
-		if pdfTextSpace(c) {
-			continue
-		}
-		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F') {
-			return "", errPDFText
-		}
-		b.WriteByte(c)
-	}
-	if b.Len() == 0 {
-		return "", errPDFText
-	}
-	return strings.ToUpper(b.String()), nil
-}
-func rewritePDFDestination(h string) (string, bool, error) {
-	if len(h)%4 != 0 {
-		return "", false, errPDFText
-	}
-	b, e := hex.DecodeString(h)
-	if e != nil {
-		return "", false, e
-	}
-	units := make([]uint16, len(b)/2)
-	for i := range units {
-		units[i] = uint16(b[2*i])<<8 | uint16(b[2*i+1])
-	}
-	// Reject unpaired surrogates rather than silently introducing U+FFFD.
-	for i := 0; i < len(units); i++ {
-		u := units[i]
-		if u >= 0xd800 && u <= 0xdbff {
-			if i+1 == len(units) || units[i+1] < 0xdc00 || units[i+1] > 0xdfff {
-				return "", false, errPDFText
-			}
-			i++
-		} else if u >= 0xdc00 && u <= 0xdfff {
-			return "", false, errPDFText
-		}
-	}
-	runes := utf16.Decode(units)
-	changed := false
-	for i, r := range runes {
-		if target, ok := pdfRadicalIdeographs[r]; ok {
-			runes[i] = target
-			changed = true
-		}
-	}
-	if !changed {
-		return h, false, nil
-	}
-	units = utf16.Encode(runes)
-	b = make([]byte, 2*len(units))
-	for i, u := range units {
-		b[2*i] = byte(u >> 8)
-		b[2*i+1] = byte(u)
-	}
-	return strings.ToUpper(hex.EncodeToString(b)), true, nil
-}
-func rewritePDFCMap(cmap []byte) ([]byte, bool, error) {
-	p := pdfTextParser{data: cmap}
-	var previous pdfTextToken
-	first, last := -1, -1
-	var mappings []pdfTextMapping
-	changed := false
-	const maxMappings = 1 << 20
-	add := func(source, dest string) error {
-		if len(mappings) >= maxMappings {
-			return errPDFText
-		}
-		fixed, didChange, e := rewritePDFDestination(dest)
-		if e != nil {
-			return e
-		}
-		changed = changed || didChange
-		mappings = append(mappings, pdfTextMapping{source, fixed})
-		return nil
-	}
-	readHex := func() (string, error) {
-		t, e := p.token()
-		if e != nil {
-			return "", e
-		}
-		return pdfTextHex(t.text)
-	}
-	for {
-		token, e := p.token()
-		if e == io.EOF {
-			break
-		}
-		if e != nil {
-			return cmap, false, e
-		}
-		if token.text != "beginbfchar" && token.text != "beginbfrange" {
-			if token.text == "endbfchar" || token.text == "endbfrange" {
-				return cmap, false, errPDFText
-			}
-			previous = token
-			continue
-		}
-		count, e := strconv.Atoi(previous.text)
-		if e != nil || count < 0 || count > maxMappings {
-			return cmap, false, errPDFText
-		}
-		if first < 0 {
-			first = previous.start
-		}
-		for row := 0; row < count; row++ {
-			source, e := readHex()
-			if e != nil {
-				return cmap, false, e
-			}
-			if token.text == "beginbfchar" {
-				dest, e := readHex()
-				if e != nil {
-					return cmap, false, e
-				}
-				if e = add(source, dest); e != nil {
-					return cmap, false, e
-				}
-				continue
-			}
-			high, e := readHex()
-			if e != nil || len(source) != len(high) {
-				return cmap, false, errPDFText
-			}
-			lowInt, _ := new(big.Int).SetString(source, 16)
-			highInt, _ := new(big.Int).SetString(high, 16)
-			distance := new(big.Int).Sub(highInt, lowInt)
-			if !distance.IsInt64() || distance.Sign() < 0 || distance.Int64() >= int64(maxMappings-len(mappings)) {
-				return cmap, false, errPDFText
-			}
-			size := int(distance.Int64()) + 1
-			destination, e := p.token()
-			if e != nil {
-				return cmap, false, e
-			}
-			array := destination.text == "["
-			var dest string
-			var destInt *big.Int
-			if !array {
-				dest, e = pdfTextHex(destination.text)
-				if e != nil {
-					return cmap, false, e
-				}
-				destInt, _ = new(big.Int).SetString(dest, 16)
-			}
-			for j := 0; j < size; j++ {
-				code := fmt.Sprintf("%0*X", len(source), lowInt)
-				value := dest
-				if array {
-					value, e = readHex()
-					if e != nil {
-						return cmap, false, e
-					}
-				} else {
-					value = fmt.Sprintf("%0*X", len(dest), destInt)
-					if len(value) != len(dest) {
-						return cmap, false, errPDFText
-					}
-					destInt.Add(destInt, big.NewInt(1))
-				}
-				if e = add(code, value); e != nil {
-					return cmap, false, e
-				}
-				lowInt.Add(lowInt, big.NewInt(1))
-			}
-			if array && p.expect("]") != nil {
-				return cmap, false, errPDFText
-			}
-		}
-		end, e := p.token()
-		want := "endbfchar"
-		if token.text == "beginbfrange" {
-			want = "endbfrange"
-		}
-		if e != nil || end.text != want {
-			return cmap, false, errPDFText
-		}
-		last = end.end
-		previous = end
-	}
-	if !changed {
-		return cmap, false, nil
-	}
-	var out bytes.Buffer
-	out.Write(cmap[:first])
-	for start := 0; start < len(mappings); start += 100 {
-		end := min(start+100, len(mappings))
-		fmt.Fprintf(&out, "%d beginbfchar\n", end-start)
-		for _, m := range mappings[start:end] {
-			fmt.Fprintf(&out, "<%s> <%s>\n", m.source, m.destination)
-		}
-		out.WriteString("endbfchar\n")
-	}
-	out.Write(cmap[last:])
-	return out.Bytes(), true, nil
+	return data, nil
 }

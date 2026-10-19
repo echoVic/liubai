@@ -1,5 +1,7 @@
 # 留白
 
+简体中文 | [English](README.en.md)
+
 Mac 上一页就能开始写的 Markdown 编辑器。打开就写，没保存的内容自动留成草稿；整页都是纸面，边写边看到格式；文件始终是你自己的 `.md`。免费开源。
 
 介绍和截图见 [liubai.echovic.com](https://liubai.echovic.com/)。

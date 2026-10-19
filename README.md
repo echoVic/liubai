@@ -23,7 +23,7 @@
 - 界面支持简体中文和 English，默认跟随系统语言；「显示 → 语言」可手动切换，菜单和页面立即更新。
 - 文件被其他应用修改且本地没有改动时会立即载入；打开过的文件会出现在 Dock 菜单和「文件 → 打开最近使用」里；保存失败或长时间未保存时，窗口关闭按钮显示未保存圆点。
 - 桌面版随手记：在任何应用里按默认快捷键 ⌃⌥⌘N，输入想法后按 ⌘↩，每次存为一篇新草稿，主窗口继续显示原来的文稿；「更多 → 随手记设置…」可改快捷键与登录后台启动。
-- 自动更新：每 4 小时在后台检查一次 GitHub Releases，有新版本时显示更新说明，可选择「安装更新」「稍后提醒我」或「跳过这个版本」；「留白 → 检查更新…」随时手动检查。留白需要放在「应用程序」或 `~/Applications` 中才能自行更新。
+- 自动更新：每 4 小时在后台检查一次 GitHub Releases，有新版本时显示更新说明，可选择「安装更新」「稍后提醒我」或「跳过这个版本」；「留白 → 检查更新…」随时手动检查。从最近几个版本升级只下载几 MB 的增量包。留白需要放在「应用程序」或 `~/Applications` 中才能自行更新。
 - 粘贴网页、文档和 Word 内容会转为 Markdown，保留表格、列表、链接、代码和图片；`⇧⌘V` 粘贴为纯文本。
 - 公式：行内 `$…$`、整段 `$$…$$` 和 ` ```math ` 代码块用 KaTeX 排版（规则与 GitHub 一致，金额不会被当作公式），光标移入时显示源码；阅读视图和 PDF 用同样的排版，导出的 HTML 与富文本复制使用 MathML。
 - 图表：` ```mermaid ` 代码块显示为图，配色跟随主题，导出时内嵌 SVG；图表组件只在文稿含有图表时加载。
@@ -54,7 +54,7 @@
 
 ## 开发
 
-运行时无需 Node、Bun 或联网下载依赖。`web/` 是提交到源码的嵌入前端，`src/` 是可维护的原始 TypeScript/CSS。
+运行时无需 Node、Bun 或联网下载依赖。`src/` 是可维护的原始 TypeScript/CSS；`web/` 是提交到源码的前端构建产物，打包时作为应用资源放进 `Contents/Resources/web`，通用安装包里只有一份。未打包运行（`go run .`、`--web`）读取当前目录下的 `web/`，请在仓库根目录运行。
 
 开发依赖：Go 1.27.1（可自动获取工具链）、Node 24、Bun。安装前端依赖使用 `bun install --frozen-lockfile`；构建前端使用 `node scripts/build.mjs`；桌面运行使用 `go run .`。
 
@@ -86,7 +86,8 @@ scripts/e2e.sh check-images
 scripts/e2e.sh check-math
 scripts/e2e.sh check-mermaid
 scripts/e2e.sh check-extras
-scripts/e2e.sh check-blocks-webkit   # 块操作、表格输入、图片拖动柄、公式字体与图表在 WebKit（桌面版引擎）中的表现
+scripts/e2e.sh check-docx
+scripts/e2e.sh check-blocks-webkit   # 块操作、表格输入、图片拖动柄、公式字体、图表与 Word 转换在 WebKit（桌面版引擎）中的表现
 npx --yes bun@1.4.3 scripts/check-blocks.ts
 npx --yes bun@1.4.3 scripts/check-slash.ts
 npx --yes bun@1.4.3 scripts/check-tables.ts
@@ -95,9 +96,10 @@ npx --yes bun@1.4.3 scripts/check-marks.ts
 npx --yes bun@1.4.3 scripts/check-math.ts
 npx --yes bun@1.4.3 scripts/check-mermaid.ts
 npx --yes bun@1.4.3 scripts/check-extras.ts
+npx --yes bun@1.4.3 scripts/check-docx.ts
 ```
 
-`scripts/e2e.sh` 为每项浏览器回归编译一次程序，用新的数据目录启动本地网页服务，跑完后关闭。Python 浏览器回归使用已安装的 Chrome channel，不下载 Playwright Chromium。应用依赖 macOS 13 或以上。
+`scripts/e2e.sh` 为每项浏览器回归编译一次程序，用新的数据目录启动本地网页服务，跑完后关闭。Python 浏览器回归使用已安装的 Chrome channel，不下载 Playwright Chromium。`check-blocks-webkit` 在屏幕外的 WebKit 窗口里运行，不抢焦点；锁屏或显示器休眠时 WebKit 暂停绘制，拖动等步骤无法进行，检查会直接说明原因。应用依赖 macOS 13 或以上。
 
 性能对比：`ROUNDS=2 scripts/bench/run.sh 29925c3 docs/performance/raw/<日期>` 在同一台机器上交替运行 0.3.0 与当前工作区的编辑、预览、存储基准，并生成 `summary.md`，约 8 分钟。存储基准也可单独运行：`go test -tags perf -run '^$' -bench . -benchtime 20x .`，普通 `go test` 不会运行它们。
 
@@ -107,29 +109,23 @@ npx --yes bun@1.4.3 scripts/check-extras.ts
 
 签名与公证验证：对应用运行 `codesign --verify --deep --strict` 和 `spctl -a -t exec -vv`，对 DMG 运行 `spctl -a -t open --context context:primary-signature -vv`；分别运行 `xcrun stapler validate` 检查应用和 DMG 的公证票据。`scripts/package-macos.sh` 仅生成未公证的临时预览 ZIP，会重新签名，不应用于正式签名的应用。
 
-## 0.1.1
-
-新增自动更新。0.1.0 没有更新功能，需要手动下载一次 0.1.1，之后的新版本会在应用内提示。正式通用包 `Liubai 0.1.1.dmg` 由 `v0.1.1` 标签所在的提交构建，已完成 Developer ID 签名与 Apple 公证，发布在 [GitHub Releases](https://github.com/echoVic/liubai/releases/tag/v0.1.1)。
-
-## 0.1.0（首个公开版本）
-
-0.1.0 是首个公开版本，在未公开的内部版本 0.3.0 之上修复评审中复现的 6 个可靠性问题（中文/空格图片路径、坏草稿导致闪退、写回丢 Finder 标签、另存为改写图片引用、外部修改处理、退出打断关机），降低长文与多草稿下的开销（10 万字文稿每输入一个字由约 25 ms 降到约 2.6 ms，300 份草稿时的空闲轮询由约 65 ms 降到约 2 µs），并补齐阅读器入口与渲染；工具栏按常见写作应用重排（编辑/分栏/阅读、侧栏、导出、更多），PDF 导出修正了标题落在页底和中文复制、搜索不匹配的问题。随后升级到 MyGo 0.5.5，接入文件监听、系统最近文稿和未保存标记，新增富文本粘贴转 Markdown、随手记和英文界面，只读文件不再被自动保存覆盖；是否整体迁移到 MyGo Documents 的评估见 [评估](docs/superpowers/specs/2026-10-16-mygo-documents-evaluation.md)。设计见 [规格](docs/superpowers/specs/2026-10-15-reader-foundation-design.md)；命令、原生应用实测与剩余边界见 [验证记录](docs/superpowers/validation/2026-10-15-reader-foundation.md)；与 0.3.0 的对比数据见 [性能测试报告](docs/performance/2026-10-15-reader-foundation.md)。
-
-正式通用包 `Liubai 0.1.0.dmg` 由 `v0.1.0` 标签所在的提交构建，已完成 Developer ID 签名与 Apple 公证，发布在 [GitHub Releases](https://github.com/echoVic/liubai/releases/tag/v0.1.0)。签名、Gatekeeper、公证票据与 DMG 完整性检查见验证记录。
-
-## 内部版本 0.3.0 验证边界
-
-本轮新增全局记忆的分栏阅读预览。自动化验证覆盖共享 Markdown/交付 DOM、主模式与分栏源码切换、CodeMirror 撤销历史、跨块光标软跟随、手动阅读滚动独立、合成 composition 保护、重载/新文稿/最近文稿偏好、换稿后的过期图片结果隔离、本地图片导入与 HTML 导出、四主题/字号，以及 1440/1120/800/680px 长代码和表格布局。
-
-最终审查及修复复核已通过，补齐了空白分隔行的前置块定位，并验证重载、新建、Recent 与同 ID 载入均只渲染一次预览。[完整验证记录](docs/superpowers/validation/2026-10-15-split-preview.md)包含命令、截图和实施取舍。
-
-正式通用包已完成 Developer ID 签名与 Apple 公证，位于 `build/preview-0.3.0/darwin-universal/Liubai 0.3.0.dmg`（约 7.83 MiB）。应用和 DMG 的签名、Gatekeeper、公证票据与 DMG 完整性检查均通过；支持 Apple Silicon 和 Intel，最低 macOS 13。原 0.2.0 产物保持不变。
-
-这些浏览器检查不等同于 Mac 原生中文输入法候选验证，也没有验证系统 PDF 对话框与最终分页、跨应用富文本粘贴。
+## 排版与导出说明
 
 即时排版使用 CodeMirror 装饰而不重序列化 Markdown。图片/表格在光标离开相关区块后预览。复杂跨行图片语法或扩展语法保留源码，无法安全转换资源时停止保存并提示。外部图片在编辑区保持原链接且可能联网加载；ZIP 保留原引用，PDF、Word、HTML 与富文本中转为可点击链接，准备交付时不抓取外部图片。缺失图片会提示处理或明确继续；图文准备上限为 48 MB，较大文稿可使用 ZIP。接收应用对富文本与内嵌图片的支持不同。
 
-没有广告、遥测和云同步；检查更新只访问 GitHub Releases。内存、启动速度及包体大小以实测记录为准。
+PDF 的文字层由 WebKit 生成时，系统中文字体常把部首和汉字画成同一个字形，复制出来会是部首（如「⼈」而不是「人」）。导出后留白向系统查询 PDF 所用字体的字形，把这些码位改回对应的汉字，以增量更新追加到文件末尾，页面画面不变；找不到原字体（如网页字体）时保留原样。
+
+## 隐私
+
+没有广告、遥测和云同步；检查更新只访问 GitHub Releases，不上传文稿内容。
+
+## 版本、设计与验证
+
+- 各版本的变化见 [CHANGELOG](CHANGELOG.md)。0.1.0 是首个公开版本，在未公开的内部版本 0.3.0 之上修复评审发现的可靠性问题；0.1.0 没有自动更新，需要手动下载一次新版本，此后会在应用内提示。
+- 每个版本的提交、测试、原生应用实测与发布核对（签名、公证、SHA-256、更新源）见 [验证记录](docs/superpowers/validation/2026-10-15-reader-foundation.md)；分栏预览另见 [分栏预览验证记录](docs/superpowers/validation/2026-10-15-split-preview.md)。
+- 设计：[阅读器与可靠性](docs/superpowers/specs/2026-10-15-reader-foundation-design.md)、[分栏预览](docs/superpowers/specs/2026-10-15-split-preview-design.md)、[块编辑](docs/superpowers/specs/2026-10-17-block-editing-design.md)，以及 [是否迁移到 MyGo Documents 的评估](docs/superpowers/specs/2026-10-16-mygo-documents-evaluation.md)；各阶段的实施计划在 `docs/superpowers/plans/`。
+- 性能：[与内部版本 0.3.0 的对比](docs/performance/2026-10-15-reader-foundation.md)。10 万字文稿每输入一个字由约 25 ms 降到约 2.6 ms，300 份草稿时的空闲轮询由约 65 ms 降到约 2 µs。
+- 自动化检查在 Chrome 和屏幕外的 WebKit 中运行，不等同于 Mac 原生中文输入法候选、系统 PDF 对话框与最终分页、跨应用富文本粘贴的实测；原生应用实测的范围和仍未覆盖的部分见验证记录。
 
 ## 许可
 

@@ -52,3 +52,39 @@ func TestOpenLinkedFollowsWindowsDrivePaths(t *testing.T) {
 		}
 	}
 }
+
+// Opening a document must not reach the hosts it names: Windows would offer
+// the user's credentials to an SMB server. liubai.invalid never resolves, so a
+// regression fails rather than reaching a network.
+func TestWindowsShareImagesAndLinksAreRefused(t *testing.T) {
+	w := workspace(t)
+	for _, dest := range []string{`\\liubai.invalid\share\x.png`, "//liubai.invalid/share/x.png", `%5C%5Cliubai.invalid%5Cshare%5Cx.png`} {
+		d := edit(t, w, "![]("+dest+")\n<img src=\""+dest+"\">\n")
+		if r, err := w.ReadImage(d.ID, dest); err == nil {
+			t.Errorf("ReadImage(%q) = %+v", dest, r)
+		}
+		if delivery, err := w.Delivery(d.ID); err != nil || len(delivery.Images) != 0 {
+			t.Errorf("Delivery with %q: images %v, %v", dest, delivery.Images, err)
+		}
+	}
+	_, from := openFile(t, w, "a.md", "")
+	for _, href := range []string{`\\liubai.invalid\share\b.md`, "//liubai.invalid/share/b.md", `%5C%5Cliubai.invalid%5Cshare%5Cb.md`} {
+		if _, err := w.OpenLinked(from.ID, href); err == nil || err.Error() != "不支持的链接" {
+			t.Errorf("OpenLinked(%q) error %v, want 不支持的链接", href, err)
+		}
+	}
+}
+
+// The reading view gets links from markdown-it, which escapes backslashes.
+func TestOpenLinkedFollowsEscapedWindowsDrivePaths(t *testing.T) {
+	w := workspace(t)
+	target := filepath.Join(t.TempDir(), "b.md")
+	if err := os.WriteFile(target, []byte("# B\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, from := openFile(t, w, "a.md", "[b]("+target+")\n")
+	href := strings.ReplaceAll(target, `\`, "%5C") + "#b"
+	if s, err := w.OpenLinked(from.ID, href); err != nil || filepath.Base(s.Current.Path) != "b.md" {
+		t.Errorf("OpenLinked(%q) = %q, %v", href, s.Current.Path, err)
+	}
+}

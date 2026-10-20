@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -774,13 +775,16 @@ func markdownPath(path string) bool {
 }
 
 // linkedPath returns the path a link to a local document names, without its
-// query and fragment.
+// query and fragment. Links to shares are refused, as images are.
 func linkedPath(href string) (string, bool) {
-	if isVolumePath(href) {
-		raw, _, _ := strings.Cut(href, "#")
-		raw, _, _ = strings.Cut(raw, "?")
-		p, err := url.PathUnescape(raw)
-		return p, err == nil
+	raw, _, _ := strings.Cut(href, "#")
+	raw, _, _ = strings.Cut(raw, "?")
+	if p, err := url.PathUnescape(raw); err == nil {
+		if drive, share := volumePath(runtime.GOOS, p); share {
+			return "", false
+		} else if drive {
+			return p, true
+		}
 	}
 	u, err := url.Parse(href)
 	if err != nil || u.Scheme != "" || u.Host != "" || u.Path == "" {

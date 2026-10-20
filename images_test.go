@@ -130,3 +130,30 @@ func TestMarkdownDestination(t *testing.T) {
 		}
 	}
 }
+
+// Windows paths are told apart as Windows reads them, on every system the tests run on.
+func TestVolumePath(t *testing.T) {
+	for _, tt := range []struct {
+		goos, path   string
+		drive, share bool
+	}{
+		{"windows", `C:\notes\a.png`, true, false},
+		{"windows", "c:/notes/a.png", true, false},
+		{"windows", "C:a.png", false, false},
+		{"windows", "a:b.md", false, false},
+		{"windows", `\\server\share\a.png`, false, true},
+		{"windows", "//server/share/a.md", false, true},
+		{"windows", `\/server/share/a.md`, false, true},
+		{"windows", `\\?\C:\notes\a.png`, false, true},
+		{"windows", `\\.\pipe\liubai`, false, true},
+		{"windows", `\notes\a.png`, false, false},
+		{"windows", "images/a.png", false, false},
+		{"darwin", `C:\notes\a.png`, false, false},
+		{"darwin", `\\server\share\a.png`, false, false},
+		{"darwin", "//server/share/a.md", false, false},
+	} {
+		if drive, share := volumePath(tt.goos, tt.path); drive != tt.drive || share != tt.share {
+			t.Errorf("volumePath(%s, %q) = drive %v, share %v; want %v, %v", tt.goos, tt.path, drive, share, tt.drive, tt.share)
+		}
+	}
+}

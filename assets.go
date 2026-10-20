@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"unicode/utf16"
@@ -127,8 +128,14 @@ func (w *Workspace) imagePath(d *Document, dest string) (string, error) {
 			}
 		}
 	}
-	if isVolumePath(dest) {
-		return url.PathUnescape(dest)
+	if p, err := url.PathUnescape(dest); err == nil {
+		// Opening a document must not reach the hosts it names: Windows
+		// would offer the user's credentials to an SMB server.
+		if drive, share := volumePath(runtime.GOOS, p); share {
+			return "", messageError("bLocalImagesOnly", nil)
+		} else if drive {
+			return p, nil
+		}
 	}
 	u, err := url.Parse(dest)
 	if err != nil {
@@ -571,8 +578,10 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 		}
 		internal := strings.HasPrefix(dest, "liubai-asset:")
 		originalPath := canonicalDestination(dest)
-		if u, e := url.Parse(dest); e == nil && !isVolumePath(dest) {
-			originalPath = canonicalDestination(u.Path)
+		if u, e := url.Parse(dest); e == nil {
+			if drive, share := volumePath(runtime.GOOS, originalPath); !drive && !share {
+				originalPath = canonicalDestination(u.Path)
+			}
 		}
 		if !internal {
 			if filepath.IsAbs(originalPath) {

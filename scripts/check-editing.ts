@@ -73,6 +73,9 @@ assert.deepEqual(localDocumentLink('C:\\notes\\b.md#B',true),{path:'C:\\notes\\b
 assert.deepEqual(localDocumentLink('C:/notes/b.md',true),{path:'C:/notes/b.md',fragment:''});
 for(const href of ['C:\\notes\\b.md','C:/notes/b.md'])assert.equal(localDocumentLink(href,false),null,href);
 assert.equal(localDocumentLink('https://example.com/a.md',true),null);
+// The reading view's links come from markdown-it, which escapes backslashes.
+assert.deepEqual(localDocumentLink('C:%5Cnotes%5Cb.md#B',true),{path:'C:%5Cnotes%5Cb.md',fragment:'B'});
+assert.equal(localDocumentLink('C:%5Cnotes%5Cb.md',false),null);
 for(const path of ['a.MD','a.MDOWN','a.mkd','a.txt','docs/a%2Emd','100%25.md','bad%ZZ.md'])assert.deepEqual(localDocumentLink(path+'?raw=1#%E6%A0%87%E9%A2%98'),{path,fragment:'标题'});
 assert.deepEqual(localDocumentLink('a.md#bad%ZZ'),{path:'a.md',fragment:'bad%ZZ'});
 assert.deepEqual(localDocumentLink('a.md?next=other.md#one#two'),{path:'a.md',fragment:'one#two'});

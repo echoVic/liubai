@@ -210,6 +210,9 @@ func TestWindowsMenusFollowWindowsHabits(t *testing.T) {
 					switch item.Role {
 					case mygo.RoleHide, mygo.RoleHideOthers, mygo.RoleUnhide, mygo.RoleFront, mygo.RoleZoom, mygo.RoleClose:
 						t.Errorf("Windows menus hold the macOS item %q", item.Role)
+					case mygo.RoleCut, mygo.RoleCopy, mygo.RolePaste, mygo.RoleSelectAll:
+						// MyGo would take Ctrl+X/C/V/A from WebView2 and paste text alone.
+						t.Errorf("Windows menus hold the edit role %q", item.Role)
 					}
 					walk(item.Submenu)
 				}
@@ -230,7 +233,7 @@ func TestWindowsMenuShortcuts(t *testing.T) {
 	}
 	walk(menuTemplateFor("windows", locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }))
 	// Chinese input methods switch to Traditional Chinese on Ctrl+Shift+F.
-	for label, key := range map[string]string{"专注模式": "F8", "重做": "Ctrl+Y", "撤销": "CmdOrCtrl+Z", "阅读模式": "CmdOrCtrl+Shift+R"} {
+	for label, key := range map[string]string{"专注模式": "F8", "重做": "Ctrl+Y", "撤销": "CmdOrCtrl+Z", "阅读模式": "CmdOrCtrl+Shift+R", "粘贴为纯文本": "CmdOrCtrl+Shift+V"} {
 		if actual, exists := got[label]; !exists || actual != key {
 			t.Errorf("menu %q shortcut = %q (exists %v), want %q", label, actual, exists, key)
 		}

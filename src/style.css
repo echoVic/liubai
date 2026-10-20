@@ -91,5 +91,5 @@ dialog{padding:24px;width:470px;max-width:calc(100vw - 32px);border:1px solid va
 .md-footnote-ref{color:var(--link);font-size:.75em;line-height:0;vertical-align:super;cursor:pointer}.md-footnote-definition{color:var(--muted-foreground)}.md-footnote-tooltip{max-width:360px;padding:8px 12px;white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.6 -apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif;color:var(--popover-foreground);background:var(--popover)}
 /* Windows: MyGo draws minimize, maximize and close at the right of the top bar. */
 .windows .desktop .topbar{padding-left:24px;padding-right:max(24px,calc(var(--mygo-titlebar-inset-right,0px) + 12px))}
-/* Chromium's Windows scrollbars are 17px of light gray, glaring in the ink theme. */
-.windows,.windows *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--muted-foreground) 45%,transparent) transparent}
+/* Chromium's Windows scrollbars are 17px of light gray, glaring in the ink theme. :where keeps the scrollbar colours rules give. */
+:where(.windows),:where(.windows) *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--muted-foreground) 45%,transparent) transparent}

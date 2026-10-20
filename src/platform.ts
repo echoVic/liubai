@@ -14,7 +14,9 @@ export function keyLabel(keys:string,{spaced=false,macOS=mac}:{spaced?:boolean;m
 // focus mode is F8 off macOS, as in Typora; redo is Ctrl+Y there.
 export const focusKeys=mac?'Mod+Shift+F':'F8';
 export const redoKeys=mac?'Mod+Shift+Z':'Mod+Y';
-// WebView2 reloads the page, and with it the editor, on F5 and Ctrl+R.
-export function isReloadKey(e:Pick<KeyboardEvent,'key'|'ctrlKey'|'altKey'|'shiftKey'|'metaKey'>){
- return e.key==='F5'||e.ctrlKey&&!e.altKey&&!e.shiftKey&&!e.metaKey&&e.key.toLowerCase()==='r';
+// WebView2 reloads the page, and with it the editor, on F5, Ctrl+R and Ctrl+Shift+R
+// (menus take the last in the editor, but the quick note panel has none). e.code
+// finds R on non-Latin layouts, as the browser's own shortcut does.
+export function isReloadKey(e:Pick<KeyboardEvent,'key'|'code'|'ctrlKey'|'altKey'|'metaKey'>){
+ return e.key==='F5'||e.ctrlKey&&!e.altKey&&!e.metaKey&&(e.key.toLowerCase()==='r'||e.code==='KeyR');
 }

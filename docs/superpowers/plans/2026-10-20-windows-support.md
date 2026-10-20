@@ -280,15 +280,15 @@ export function isReloadKey(e:Pick<KeyboardEvent,'key'|'ctrlKey'|'altKey'|'shift
 - Consumes: `mac`, `windows`, `isReloadKey`, `focusKeys` (Task 4); `Desktop.CheckForUpdates` / `Desktop.About` (Task 3); `fShowInFileExplorer` (Task 5).
 - Produces: `<html class="windows">` on Windows; `localDocumentLink(href, drivePaths = windows)`.
 
-- [ ] **Step 1: Test** (`scripts/check-editing.ts`): `localDocumentLink('C:\\notes\\b.md#B',true)` → `{path:'C:\\notes\\b.md',fragment:'B'}`; `localDocumentLink('C:/notes/b.md',true)` → path `C:/notes/b.md`; both `null` with `drivePaths=false`.
-- [ ] **Step 2: Implement.**
+- [x] **Step 1: Test** (`scripts/check-editing.ts`): `localDocumentLink('C:\\notes\\b.md#B',true)` → `{path:'C:\\notes\\b.md',fragment:'B'}`; `localDocumentLink('C:/notes/b.md',true)` → path `C:/notes/b.md`; both `null` with `drivePaths=false`.
+- [x] **Step 2: Implement.**
   - `app.ts` at start-up: `document.documentElement.classList.toggle('windows',windows)`; on Windows `#reveal-quarantine` uses `data-i18n="fShowInFileExplorer"`; `if(desktop&&!mac)window.addEventListener('keydown',e=>{if(isReloadKey(e))e.preventDefault()},true)`.
   - Global keydown: off macOS, a bare `F8` with no dialog open runs `focus`; the Mod shortcut handler ignores `ctrlKey&&altKey` off macOS (AltGr) and maps `Ctrl+Shift+Z` to `redo`.
   - Palette (desktop only): `['checkUpdates',messages.bMenuCheckForUpdates(),'']`, `['about',messages.bMenuAbout(),'']`; `action()` handles them before needing a document: `void call(id==='about'?'About':'CheckForUpdates').catch(e=>toast(errorText(e)))`.
   - `capture.ts`: the same `windows` class and reload guard (`window.mygo&&!mac`).
   - `editing.ts`: `localDocumentLink(href,drivePaths=windows)` lets `/^[a-z]:[\\/]/i` through when `drivePaths`.
-- [ ] **Step 3: Verify**: `bun scripts/check-editing.ts`, `tsc --noEmit`, `node scripts/check-i18n.mjs`.
-- [ ] **Step 4: Commit** `feat(windows): F8 focus, reload guard, File Explorer label and drive links in the page`.
+- [x] **Step 3: Verify**: `bun scripts/check-editing.ts`, `tsc --noEmit`, `node scripts/check-i18n.mjs`.
+- [x] **Step 4: Commit** `feat(windows): F8 focus, reload guard, File Explorer label and drive links in the page`.
 
 ### Task 7: Fonts, title bar room, scrollbars and the quick note panel
 

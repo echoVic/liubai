@@ -4,6 +4,7 @@ import {isolateHistory} from '@codemirror/commands';
 import {syntaxTree,ensureSyntaxTree} from '@codemirror/language';
 import type {SyntaxNode} from '@lezer/common';
 import {inlineTagPairs,tagHosts} from './marks';
+import {windows} from './platform';
 
 export type BlockKind='heading'|'quote'|'bullet'|'ordered'|'task';
 export function headingLevel(state:EditorState):number {
@@ -141,8 +142,9 @@ export function safeLink(raw:string):boolean {
  const value=raw.trim();if(!value||/[\u0000-\u0020\u007f<>]/.test(value))return false;
  return /^(https?:\/\/|mailto:|#)/i.test(value);
 }
-export function localDocumentLink(href:string):{path:string;fragment:string}|null {
- if(href.startsWith('#')||href.startsWith('//')||/^[a-z][a-z\d+.-]*:/i.test(href))return null;
+// On Windows, C:\notes\b.md is a path, not a URL with the scheme c.
+export function localDocumentLink(href:string,drivePaths=windows):{path:string;fragment:string}|null {
+ if(href.startsWith('#')||href.startsWith('//')||/^[a-z][a-z\d+.-]*:/i.test(href)&&!(drivePaths&&/^[a-z]:[\\/]/i.test(href)))return null;
  const path=href.split(/[?#]/,1)[0];let decoded=path;
  try{decoded=decodeURIComponent(path)}catch{}
  if(!/\.(md|markdown|mdown|mkd|txt)$/i.test(decoded))return null;

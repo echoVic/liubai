@@ -68,6 +68,11 @@ assert.deepEqual(localDocumentLink('docs/guide.md#安装'),{path:'docs/guide.md'
 assert.deepEqual(localDocumentLink('docs/%E5%AE%89%E8%A3%85.md#%E5%AE%89%E8%A3%85'),{path:'docs/%E5%AE%89%E8%A3%85.md',fragment:'安装'});
 assert.deepEqual(localDocumentLink('./a b.markdown'),{path:'./a b.markdown',fragment:''});
 for(const href of ['https://example.com/a.md','#标题','images/a.png','mailto:a@b.c','//cdn.example.com/a.md'])assert.equal(localDocumentLink(href),null,href);
+// On Windows a drive starts a path, not a URL scheme.
+assert.deepEqual(localDocumentLink('C:\\notes\\b.md#B',true),{path:'C:\\notes\\b.md',fragment:'B'});
+assert.deepEqual(localDocumentLink('C:/notes/b.md',true),{path:'C:/notes/b.md',fragment:''});
+for(const href of ['C:\\notes\\b.md','C:/notes/b.md'])assert.equal(localDocumentLink(href,false),null,href);
+assert.equal(localDocumentLink('https://example.com/a.md',true),null);
 for(const path of ['a.MD','a.MDOWN','a.mkd','a.txt','docs/a%2Emd','100%25.md','bad%ZZ.md'])assert.deepEqual(localDocumentLink(path+'?raw=1#%E6%A0%87%E9%A2%98'),{path,fragment:'标题'});
 assert.deepEqual(localDocumentLink('a.md#bad%ZZ'),{path:'a.md',fragment:'bad%ZZ'});
 assert.deepEqual(localDocumentLink('a.md?next=other.md#one#two'),{path:'a.md',fragment:'one#two'});

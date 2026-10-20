@@ -169,6 +169,10 @@ func atomicWriteHook(path string, data []byte, mode os.FileMode, beforeRename fu
 	})
 }
 
+// errKeptTemp marks a commit that lost the document: its temporary file is
+// the only copy on disk, so atomicWriteWith keeps it.
+var errKeptTemp = errors.New("the document is kept in its temporary file")
+
 // atomicWriteWith writes data to a synced file beside path; commit puts it in place.
 func atomicWriteWith(path string, data []byte, mode os.FileMode, commit func(tmp string) error) error {
 	f, err := os.CreateTemp(filepath.Dir(path), ".liubai-*")
@@ -176,7 +180,12 @@ func atomicWriteWith(path string, data []byte, mode os.FileMode, commit func(tmp
 		return err
 	}
 	name := f.Name()
-	defer os.Remove(name)
+	kept := false
+	defer func() {
+		if !kept {
+			os.Remove(name)
+		}
+	}()
 	if err = f.Chmod(mode); err == nil {
 		_, err = f.Write(data)
 	}
@@ -191,6 +200,7 @@ func atomicWriteWith(path string, data []byte, mode os.FileMode, commit func(tmp
 		return err
 	}
 	if err = commit(name); err != nil {
+		kept = errors.Is(err, errKeptTemp)
 		return err
 	}
 	if dir, e := os.Open(filepath.Dir(path)); e == nil {

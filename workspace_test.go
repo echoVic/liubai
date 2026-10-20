@@ -4,6 +4,8 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"image"
 	"image/png"
 	"io"
@@ -462,5 +464,24 @@ func TestRecoverySavesLatestContentAndImagesWithoutOverwritingOriginal(t *testin
 	}
 	if _, e = w.SaveRecovery(d.ID, latest, original); e == nil {
 		t.Fatal("recovery may overwrite original")
+	}
+}
+
+// A commit that lost the document (ReplaceFileW's ERROR_UNABLE_TO_MOVE_REPLACEMENT
+// followed by a failed rename) leaves the only copy on disk in the temporary file.
+func TestAtomicWriteKeepsTheTemporaryFileWhenCommitLostTheDocument(t *testing.T) {
+	for _, tt := range []struct {
+		err  error
+		kept bool
+	}{
+		{errors.New("busy"), false},
+		{fmt.Errorf("%w: rename failed", errKeptTemp), true},
+	} {
+		dir := t.TempDir()
+		err := atomicWriteWith(filepath.Join(dir, "a.md"), []byte("text"), 0644, func(string) error { return tt.err })
+		entries, _ := os.ReadDir(dir)
+		if !errors.Is(err, tt.err) || (len(entries) == 1) != tt.kept {
+			t.Errorf("commit error %q: atomicWriteWith = %v with %d files left, want kept %v", tt.err, err, len(entries), tt.kept)
+		}
 	}
 }

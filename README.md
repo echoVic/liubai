@@ -53,8 +53,8 @@ go run . --web 127.0.0.1:4193 --data-dir /tmp/liubai-dev   # 在浏览器里运�
 go test ./... && go vet ./...
 node_modules/.bin/tsc --noEmit
 node scripts/check-i18n.mjs && node scripts/check-editor.mjs
-npx --yes bun@1.4.3 scripts/check-<名称>.ts   # editing、rendering、performance、paste、capture-input、blocks、slash、tables、images、marks、math、mermaid、extras、docx
-scripts/e2e.sh check-<名称>                    # Chrome 中的回归：split-preview、reader、toolbar、capture、english、blocks、tables、images、math、mermaid、extras、docx
+npx --yes bun@1.4.3 scripts/check-<名称>.ts   # editing、rendering、performance、paste、capture-input、platform、blocks、slash、tables、images、marks、math、mermaid、extras、docx
+scripts/e2e.sh check-<名称>                    # Chrome 中的回归：split-preview、reader、toolbar、capture、english、windows、blocks、tables、images、math、mermaid、extras、docx
 scripts/e2e.sh check-blocks-webkit             # 桌面版引擎 WebKit 中的块操作、图片、公式、图表与 Word 转换
 python3 scripts/check-preview.py               # 渲染与导出
 python3 scripts/check-pdf.py                   # PDF 分页、中文文字层与画面
@@ -62,7 +62,7 @@ python3 scripts/check-pdf.py                   # PDF 分页、中文文字层与
 
 `scripts/e2e.sh` 每次编译程序，用新的数据目录启动网页服务，跑完关闭；Python 检查使用已安装的 Chrome。WebKit 检查在屏幕外的窗口里运行，不抢焦点；锁屏或显示器休眠时 WebKit 不绘制，检查会说明原因后停止。
 
-构建通用安装包：`go tool mygo build -platform darwin/universal .`，产物在 `build/darwin-universal/`。正式发版（签名、公证、更新包）见 [docs/RELEASING.md](docs/RELEASING.md)。
+构建通用安装包：`go tool mygo build -platform darwin/universal .`，产物在 `build/darwin-universal/`。Windows 版（预览）在 macOS 上交叉构建：`go tool mygo build -platform windows/amd64,windows/arm64 .`，产物在 `build/windows-amd64/`、`build/windows-arm64/`，装了 NSIS（`brew install makensis`）才会生成安装包；`check-windows` 在 Chrome 里模拟 Windows 检查快捷键、字体和标题栏，Windows 上的 `go test` 由 GitHub Actions 运行。正式发版（签名、公证、更新包）见 [docs/RELEASING.md](docs/RELEASING.md)。
 
 ## 文档
 

@@ -335,8 +335,8 @@ export function isReloadKey(e:Pick<KeyboardEvent,'key'|'ctrlKey'|'altKey'|'shift
 - Create: `.github/workflows/windows.yml`, `docs/superpowers/validation/2026-10-20-windows-support.md`
 - Modify: `docs/RELEASING.md`, `README.md`, `README.en.md` (development section only)
 
-- [ ] **Step 1: CI** — `windows-latest`, `actions/checkout@v7`, `actions/setup-go@v7` with `go-version-file: go.mod`, then `go vet ./...` and `go test ./...`; on pushes to `main` and `feat/**` and on pull requests.
-- [ ] **Step 2: Packaging** — `go tool mygo build -platform windows/amd64,windows/arm64 -o /tmp/liubai-windows-build .`; record the tree (`Liubai.exe` beside `web/`), sizes, `file` output, and that the installer step was skipped for want of NSIS.
-- [ ] **Step 3: Docs** — `RELEASING.md` gains a Windows section (NSIS via `brew install makensis`, the build platforms, the two `Liubai Setup <版本> <arch>.exe` installers and `update-windows-*.json`, unsigned preview wording for the notes, the SmartScreen path), README development sections add the Windows build line; the validation record lists what was checked on macOS and the device checklist from the spec.
-- [ ] **Step 4: Full verification** — `go test ./... && go vet ./...`, Windows vet/test-compile for amd64 and arm64, `tsc --noEmit`, `check-i18n`, `check-editor`, the bun checks, the Chrome checks above, `scripts/e2e.sh check-blocks-webkit` if the display is awake.
-- [ ] **Step 5: Commit** `docs(windows): CI, release steps and validation record`.
+- [x] **Step 1: CI** — `windows-latest`, `actions/checkout@v7`, `actions/setup-go@v7` with `go-version-file: go.mod`, then `go vet ./...` and `go test ./...`; on pushes to `main` and `feat/**` and on pull requests.
+- [x] **Step 2: Packaging** — `go tool mygo build -platform windows/amd64,windows/arm64 -o /tmp/liubai-windows-build .`; record the tree (`Liubai.exe` beside `web/`), sizes, `file` output, and that the installer step was skipped for want of NSIS.
+- [x] **Step 3: Docs** — `RELEASING.md` gains a Windows section (NSIS via `brew install makensis`, the build platforms, the two `Liubai Setup <版本> <arch>.exe` installers and `update-windows-*.json`, unsigned preview wording for the notes, the SmartScreen path), README development sections add the Windows build line; the validation record lists what was checked on macOS and the device checklist from the spec.
+- [x] **Step 4: Full verification** — `go test ./... && go vet ./...`, Windows vet/test-compile for amd64 and arm64, `tsc --noEmit`, `check-i18n`, `check-editor`, the bun checks, the Chrome checks above, `scripts/e2e.sh check-blocks-webkit` if the display is awake.
+- [x] **Step 5: Commit** `docs(windows): CI, release steps and validation record`.

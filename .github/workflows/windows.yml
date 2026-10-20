@@ -1,0 +1,23 @@
+name: Windows
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: go vet and go test
+    runs-on: windows-latest
+    steps:
+      # Keep files byte for byte as in the repository; the runner would check them out with CRLF.
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test ./...

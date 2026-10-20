@@ -35,4 +35,20 @@
 
 网站 [liubai.echovic.com](https://liubai.echovic.com/) 的下载链接、版本号和安装包大小会自动跟随最新发布，不需要修改。
 
+## Windows（预览）
+
+Windows 版与 macOS 版用同一个版本号、同一个 Release，在 macOS 上交叉构建即可，MyGo 不需要 cgo。
+
+1. 安装 NSIS：`brew install makensis`。没有它，构建会跳过安装包，只生成程序文件。
+2. 在上面第 3 步的命令里加上 Windows 的两个平台，一次构建全部：
+
+   ```sh
+   MYGO_UPDATER_PRIVATE_KEY="$(cat <私钥文件>)" go tool mygo build -platform darwin/universal,windows/amd64,windows/arm64 -o build/release-<版本> -upload .
+   ```
+
+   `windows-amd64/` 和 `windows-arm64/` 里有安装包 `Liubai Setup <版本> amd64.exe`、`Liubai Setup <版本> arm64.exe`，以及完整更新包和 `update-windows-amd64.json`、`update-windows-arm64.json`（第一个 Windows 版没有增量包）。它们会和 macOS 的文件上传到同一个 Release 草稿。安装包按用户安装到 `%LOCALAPPDATA%\Programs\Liubai`，不需要管理员权限；已安装的 Windows 版从这两个更新源自动更新。
+3. 签名：目前没有 Windows 代码签名证书，安装包未签名。下载后 SmartScreen 会提示「Windows 已保护你的电脑」，要点「更多信息」→「仍要运行」。发布说明里要写明这一点，并把 Windows 版标为预览版。拿到证书后，在 `mygo.json` 加 `windows.signCommand`（硬件令牌或云签名服务）或 `windows.certificate`（密码放在 `MYGO_WINDOWS_CERTIFICATE_PASSWORD`），构建时会给程序、安装包和卸载程序签名。
+4. 检查：`file windows-*/Liubai.exe` 应分别是 x86-64 和 Aarch64 的 PE32+ GUI 程序。然后在 Windows 上按 [验证记录](superpowers/validation/2026-10-20-windows-support.md) 里的清单把安装、打开、保存和更新走一遍。
+5. 发布后，GitHub 会把文件名里的空格换成点，例如 `Liubai.Setup.<版本>.amd64.exe`，说明里用这个名字。验证更新源时，也要匿名下载 `update-windows-amd64.json` 和 `update-windows-arm64.json` 核对。
+
 `scripts/package-macos.sh` 只生成未公证的临时预览 ZIP，会重新签名，不能用于正式发布。

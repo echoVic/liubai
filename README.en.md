@@ -53,8 +53,8 @@ Checks:
 go test ./... && go vet ./...
 node_modules/.bin/tsc --noEmit
 node scripts/check-i18n.mjs && node scripts/check-editor.mjs
-npx --yes bun@1.4.3 scripts/check-<name>.ts   # editing, rendering, performance, paste, capture-input, blocks, slash, tables, images, marks, math, mermaid, extras, docx
-scripts/e2e.sh check-<name>                    # regressions in Chrome: split-preview, reader, toolbar, capture, english, blocks, tables, images, math, mermaid, extras, docx
+npx --yes bun@1.4.3 scripts/check-<name>.ts   # editing, rendering, performance, paste, capture-input, platform, blocks, slash, tables, images, marks, math, mermaid, extras, docx
+scripts/e2e.sh check-<name>                    # regressions in Chrome: split-preview, reader, toolbar, capture, english, windows, blocks, tables, images, math, mermaid, extras, docx
 scripts/e2e.sh check-blocks-webkit             # blocks, images, math, diagrams and Word conversion in WebKit, the desktop app's engine
 python3 scripts/check-preview.py               # rendering and export
 python3 scripts/check-pdf.py                   # PDF pagination, Chinese text layer and rendering
@@ -62,7 +62,7 @@ python3 scripts/check-pdf.py                   # PDF pagination, Chinese text la
 
 `scripts/e2e.sh` builds the app each time, starts a web server with a fresh data directory, and stops it afterwards. The Python checks use the installed Chrome. The WebKit check runs in an off-screen window and never takes focus; WebKit stops drawing while the screen is locked or the display is asleep, and the check then stops and says why.
 
-To build the universal app, run `go tool mygo build -platform darwin/universal .`; the output is in `build/darwin-universal/`. Release steps (signing, notarization and update packages) are in [docs/RELEASING.md](docs/RELEASING.md), in Chinese.
+To build the universal app, run `go tool mygo build -platform darwin/universal .`; the output is in `build/darwin-universal/`. The Windows version (a preview) cross-builds on macOS with `go tool mygo build -platform windows/amd64,windows/arm64 .` into `build/windows-amd64/` and `build/windows-arm64/`; the installers need NSIS (`brew install makensis`). `check-windows` checks shortcuts, fonts and the title bar in Chrome with a Windows platform, and GitHub Actions runs `go test` on Windows. Release steps (signing, notarization and update packages) are in [docs/RELEASING.md](docs/RELEASING.md), in Chinese.
 
 ## Documents
 

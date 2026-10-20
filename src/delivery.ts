@@ -34,7 +34,7 @@ export function renderDelivery(data:Delivery,mathOutput:MathOutput='mathml'){
  }
  root.querySelectorAll('.markdown-alert-title svg').forEach(el=>el.setAttribute('style','width:1em;height:1em;flex:none;vertical-align:-.1em'));
  root.querySelectorAll('input[type=checkbox]').forEach(el=>el.setAttribute('style','margin:0 8px 0 0;vertical-align:middle'));
- root.style.cssText='font-family:PingFang SC,Noto Sans CJK SC,sans-serif;font-size:16px;line-height:1.9;color:#242523;background:#fff;overflow-wrap:anywhere';
+ root.style.cssText='font-family:PingFang SC,Microsoft YaHei,Noto Sans CJK SC,sans-serif;font-size:16px;line-height:1.9;color:#242523;background:#fff;overflow-wrap:anywhere';
  return root;
 }
 export async function waitImages(root:HTMLElement){await waitMermaid(root);await Promise.all([...root.querySelectorAll('img')].map(img=>new Promise<void>((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(Error(messages.fTheImageCouldNotBeDecoded()));return}const timeout=setTimeout(()=>reject(Error(messages.fTheImageTookTooLongToLoad())),10000);img.onload=()=>{clearTimeout(timeout);resolve()};img.onerror=()=>{clearTimeout(timeout);reject(Error(messages.fTheImageCouldNotBeDecoded()))}})))}

@@ -296,7 +296,7 @@ export function isReloadKey(e:Pick<KeyboardEvent,'key'|'ctrlKey'|'altKey'|'shift
 - Modify: `src/style.css`, `src/preview.css`, `src/capture.css`, `src/delivery.ts`
 - Rebuild: `web/` (`node scripts/build.mjs`)
 
-- [ ] **Step 1: Font stacks** (exact replacements, each counted):
+- [x] **Step 1: Font stacks** (exact replacements, each counted):
   - `-apple-system,BlinkMacSystemFont,'PingFang SC','Noto Sans CJK SC',sans-serif` → `-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif`
   - `-apple-system,sans-serif` → `-apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif`
   - `'Iowan Old Style','Songti SC','Noto Serif CJK SC',Georgia,serif` → `'Iowan Old Style','Songti SC','Noto Serif CJK SC','Source Han Serif SC','Noto Serif SC',Georgia,'Microsoft YaHei',serif`
@@ -304,7 +304,7 @@ export function isReloadKey(e:Pick<KeyboardEvent,'key'|'ctrlKey'|'altKey'|'shift
   - `'Iowan Old Style','Songti SC',serif` and `'Songti SC',serif` (19px / 15px) → add `'Source Han Serif SC','Noto Serif SC','Microsoft YaHei'` before `serif`
   - `capture.css`: `-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif` → add `"Segoe UI"` before and `"Microsoft YaHei UI","Microsoft YaHei"` after `"PingFang SC"`
   - `delivery.ts`: `PingFang SC,Noto Sans CJK SC` → `PingFang SC,Microsoft YaHei,Noto Sans CJK SC`
-- [ ] **Step 2: Windows rules** (end of `style.css`):
+- [x] **Step 2: Windows rules** (end of `style.css`):
 
 ```css
 /* Windows: MyGo draws minimize, maximize and close at the right of the top bar. */
@@ -314,8 +314,8 @@ export function isReloadKey(e:Pick<KeyboardEvent,'key'|'ctrlKey'|'altKey'|'shift
 ```
 
   `capture.css`: `.windows .capture{border-radius:8px}` (Windows 11 rounds the panel window by 8px).
-- [ ] **Step 3: Build and inspect**: `node scripts/build.mjs` twice; the second run leaves `git status` unchanged; `git diff --stat web/` lists `app.js`, `capture.js`, `style.css`, `capture.css`, `index.html`, `capture.html` (and the docx chunk only if `delivery.ts` lands in it).
-- [ ] **Step 4: Commit** `feat(windows): Windows fonts, title bar room, thin scrollbars`.
+- [x] **Step 3: Build and inspect**: `node scripts/build.mjs` twice; the second run leaves `git status` unchanged; `git diff --stat web/` lists `app.js`, `capture.js`, `style.css`, `capture.css`, `index.html`, `capture.html` (and the docx chunk only if `delivery.ts` lands in it).
+- [x] **Step 4: Commit** `feat(windows): Windows fonts, title bar room, thin scrollbars`.
 
 ### Task 8: Chrome regression with a Windows platform
 

@@ -2,8 +2,8 @@
 .preview-head{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid var(--border);color:var(--muted-foreground);font-size:12px}
 .preview-pill{font-size:10px;letter-spacing:.05em}
 .preview-scroll{height:calc(100% - 48px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--input) transparent}
-.markdown-document{width:min(var(--paper-width),100%);margin:0 auto;padding:42px var(--page-gutter) 72px;color:var(--foreground);font:var(--editor-size)/1.9 'Iowan Old Style','Songti SC','Noto Serif CJK SC',Georgia,serif;overflow-wrap:anywhere}
-.markdown-document h1,.markdown-document h2,.markdown-document h3,.markdown-document h4,.markdown-document h5,.markdown-document h6{font-family:'Iowan Old Style','Songti SC','Noto Serif CJK SC',Georgia,serif;line-height:1.45;margin:1.5em 0 .65em}
+.markdown-document{width:min(var(--paper-width),100%);margin:0 auto;padding:42px var(--page-gutter) 72px;color:var(--foreground);font:var(--editor-size)/1.9 'Iowan Old Style','Songti SC','Noto Serif CJK SC','Source Han Serif SC','Noto Serif SC',Georgia,'Microsoft YaHei',serif;overflow-wrap:anywhere}
+.markdown-document h1,.markdown-document h2,.markdown-document h3,.markdown-document h4,.markdown-document h5,.markdown-document h6{font-family:'Iowan Old Style','Songti SC','Noto Serif CJK SC','Source Han Serif SC','Noto Serif SC',Georgia,'Microsoft YaHei',serif;line-height:1.45;margin:1.5em 0 .65em}
 .markdown-document h1{font-size:1.9em}.markdown-document h2{font-size:1.5em}.markdown-document h3{font-size:1.2em}
 .markdown-document p{margin:0 0 1em}.markdown-document a{color:var(--link);text-decoration:underline;text-underline-offset:3px}
 .markdown-document blockquote{margin:1.2em 0;padding:.1em 0 .1em 16px;border-left:2px solid var(--quote);color:var(--quote)}
@@ -12,12 +12,12 @@
 .markdown-document img{display:inline-block;max-width:100%;height:auto;margin:0;border-radius:5px;vertical-align:bottom}
 .markdown-document table{margin:1.3em 0;font-size:.9em;table-layout:fixed}.markdown-document th,.markdown-document td{overflow-wrap:anywhere}.markdown-document ul,.markdown-document ol{padding-left:1.7em}
 .markdown-document input[type=checkbox]{accent-color:var(--primary);margin:0 7px 0 0}.markdown-document .task-list{list-style:none;padding-left:.2em}
-.markdown-image-note{display:block;padding:12px 14px;border:1px dashed var(--border);border-radius:5px;color:var(--muted-foreground);font:12px/1.7 -apple-system,sans-serif}
+.markdown-image-note{display:block;padding:12px 14px;border:1px dashed var(--border);border-radius:5px;color:var(--muted-foreground);font:12px/1.7 -apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif}
 @media(max-width:819px) and (max-height:600px){
  .preview-head{height:34px;padding:0 14px}.preview-scroll{height:calc(100% - 34px)}
  .markdown-document{padding:14px var(--page-gutter) 40px}.markdown-document>:first-child{margin-top:0}
 }
-.markdown-document .md-front-matter{margin:0 0 24px;color:var(--muted-foreground);font:12px/1.8 -apple-system,sans-serif}.markdown-document .md-front-matter summary{cursor:pointer}.markdown-document .md-front-matter pre{margin:8px 0;font-size:12px}
+.markdown-document .md-front-matter{margin:0 0 24px;color:var(--muted-foreground);font:12px/1.8 -apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif}.markdown-document .md-front-matter summary{cursor:pointer}.markdown-document .md-front-matter pre{margin:8px 0;font-size:12px}
 .markdown-document .markdown-alert{border-left:3px solid var(--alert-color);background:color-mix(in srgb,var(--alert-color) 9%,var(--card));color:var(--foreground);padding:12px 16px;border-radius:4px;font-style:normal}.markdown-document .markdown-alert-title{font-weight:700;margin:0 0 8px}.markdown-document .markdown-alert>:last-child{margin-bottom:0}
 .markdown-document kbd{border:1px solid var(--border);border-radius:4px;padding:2px 5px;background:var(--code);font:.85em 'SFMono-Regular',Consolas,monospace}.markdown-document hr{height:0;margin:2em 0;border:0;border-top:1px solid var(--border)}.markdown-document hr.footnotes-sep{margin:28px 0 12px}.markdown-document section.footnotes{font-size:.85em}
 #preview-content .tok-keyword,#preview-content .tok-bool,#preview-content .tok-atom,#preview-content .tok-number{color:var(--primary)}

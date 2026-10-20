@@ -502,22 +502,22 @@ func (msgs Messages) FPastedImage() string {
 	return Catalog.Format(msgs.locale, "fPastedImage", nil)
 }
 
-// FEditingIsUnavailableInReadingModePressRTo says "阅读模式下不能编辑，⌘⇧R 返回编辑"
+// FEditingIsUnavailableInReadingModePressRTo says "阅读模式下不能编辑，{shortcut} 返回编辑"
 // in the language the app shows.
 //
-// Interface text for Editing is unavailable in Reading Mode. Press ⌘⇧R
-// to return to editing..
-func FEditingIsUnavailableInReadingModePressRTo() string {
-	return In(i18n.Locale()).FEditingIsUnavailableInReadingModePressRTo()
+// Toast in Reading Mode: editing is unavailable, and the shortcut returns
+// to editing.
+func FEditingIsUnavailableInReadingModePressRTo(shortcut string) string {
+	return In(i18n.Locale()).FEditingIsUnavailableInReadingModePressRTo(shortcut)
 }
 
-// FEditingIsUnavailableInReadingModePressRTo says "阅读模式下不能编辑，⌘⇧R 返回编辑"
+// FEditingIsUnavailableInReadingModePressRTo says "阅读模式下不能编辑，{shortcut} 返回编辑"
 // in the language of msgs.
 //
-// Interface text for Editing is unavailable in Reading Mode. Press ⌘⇧R
-// to return to editing..
-func (msgs Messages) FEditingIsUnavailableInReadingModePressRTo() string {
-	return Catalog.Format(msgs.locale, "fEditingIsUnavailableInReadingModePressRTo", nil)
+// Toast in Reading Mode: editing is unavailable, and the shortcut returns
+// to editing.
+func (msgs Messages) FEditingIsUnavailableInReadingModePressRTo(shortcut string) string {
+	return Catalog.Format(msgs.locale, "fEditingIsUnavailableInReadingModePressRTo", map[string]any{"shortcut": shortcut})
 }
 
 // FImage says "图片"
@@ -571,7 +571,7 @@ func (msgs Messages) FMarkdownDownloadedUseExportToIncludeImages() string {
 // FTextDownloadedImagesRemainOnThisMac says "当前正文已下载；图片仍保留在本机"
 // in the language the app shows.
 //
-// Interface text for Text downloaded. Images remain on this Mac..
+// Interface text for Text downloaded. Images remain on this computer.
 func FTextDownloadedImagesRemainOnThisMac() string {
 	return In(i18n.Locale()).FTextDownloadedImagesRemainOnThisMac()
 }
@@ -579,7 +579,7 @@ func FTextDownloadedImagesRemainOnThisMac() string {
 // FTextDownloadedImagesRemainOnThisMac says "当前正文已下载；图片仍保留在本机"
 // in the language of msgs.
 //
-// Interface text for Text downloaded. Images remain on this Mac..
+// Interface text for Text downloaded. Images remain on this computer.
 func (msgs Messages) FTextDownloadedImagesRemainOnThisMac() string {
 	return Catalog.Format(msgs.locale, "fTextDownloadedImagesRemainOnThisMac", nil)
 }
@@ -1564,18 +1564,20 @@ func (msgs Messages) FSource() string {
 	return Catalog.Format(msgs.locale, "fSource", nil)
 }
 
-// FShowMarkdownSourceM says "显示 Markdown 源码 ⌘⇧M"
+// FShowMarkdownSourceM says "显示 Markdown 源码 {shortcut}"
 // in the language the app shows.
 //
-// Interface text for Show Markdown Source ⌘⇧M.
-func FShowMarkdownSourceM() string { return In(i18n.Locale()).FShowMarkdownSourceM() }
+// Tooltip of the Markdown source button, followed by its shortcut.
+func FShowMarkdownSourceM(shortcut string) string {
+	return In(i18n.Locale()).FShowMarkdownSourceM(shortcut)
+}
 
-// FShowMarkdownSourceM says "显示 Markdown 源码 ⌘⇧M"
+// FShowMarkdownSourceM says "显示 Markdown 源码 {shortcut}"
 // in the language of msgs.
 //
-// Interface text for Show Markdown Source ⌘⇧M.
-func (msgs Messages) FShowMarkdownSourceM() string {
-	return Catalog.Format(msgs.locale, "fShowMarkdownSourceM", nil)
+// Tooltip of the Markdown source button, followed by its shortcut.
+func (msgs Messages) FShowMarkdownSourceM(shortcut string) string {
+	return Catalog.Format(msgs.locale, "fShowMarkdownSourceM", map[string]any{"shortcut": shortcut})
 }
 
 // FOpen says "打开"
@@ -1622,18 +1624,22 @@ func (msgs Messages) FPressAShortcut() string {
 	return Catalog.Format(msgs.locale, "fPressAShortcut", nil)
 }
 
-// FSaveAsDraftEscClose says "⌘↩ 存为草稿 · Esc 关闭"
+// FSaveAsDraftEscClose says "{shortcut} 存为草稿 · Esc 关闭"
 // in the language the app shows.
 //
-// Interface text for ⌘↩ Save as Draft · Esc Close.
-func FSaveAsDraftEscClose() string { return In(i18n.Locale()).FSaveAsDraftEscClose() }
+// Quick note hint: the shortcut saves the note as a draft, Esc closes the
+// panel.
+func FSaveAsDraftEscClose(shortcut string) string {
+	return In(i18n.Locale()).FSaveAsDraftEscClose(shortcut)
+}
 
-// FSaveAsDraftEscClose says "⌘↩ 存为草稿 · Esc 关闭"
+// FSaveAsDraftEscClose says "{shortcut} 存为草稿 · Esc 关闭"
 // in the language of msgs.
 //
-// Interface text for ⌘↩ Save as Draft · Esc Close.
-func (msgs Messages) FSaveAsDraftEscClose() string {
-	return Catalog.Format(msgs.locale, "fSaveAsDraftEscClose", nil)
+// Quick note hint: the shortcut saves the note as a draft, Esc closes the
+// panel.
+func (msgs Messages) FSaveAsDraftEscClose(shortcut string) string {
+	return Catalog.Format(msgs.locale, "fSaveAsDraftEscClose", map[string]any{"shortcut": shortcut})
 }
 
 // FSavedAsDraft says "已存为草稿"
@@ -1754,18 +1760,22 @@ func (msgs Messages) FMarkAsComplete() string {
 	return Catalog.Format(msgs.locale, "fMarkAsComplete", nil)
 }
 
-// FCtrlClickToOpenTheLink says "⌘ / Ctrl 点击打开链接"
+// FCtrlClickToOpenTheLink says "{shortcut} 点击打开链接"
 // in the language the app shows.
 //
-// Interface text for ⌘ / Ctrl-click to open the link.
-func FCtrlClickToOpenTheLink() string { return In(i18n.Locale()).FCtrlClickToOpenTheLink() }
+// Link tooltip: click while holding the modifier key (⌘ on macOS, Ctrl
+// elsewhere) to open the link.
+func FCtrlClickToOpenTheLink(shortcut string) string {
+	return In(i18n.Locale()).FCtrlClickToOpenTheLink(shortcut)
+}
 
-// FCtrlClickToOpenTheLink says "⌘ / Ctrl 点击打开链接"
+// FCtrlClickToOpenTheLink says "{shortcut} 点击打开链接"
 // in the language of msgs.
 //
-// Interface text for ⌘ / Ctrl-click to open the link.
-func (msgs Messages) FCtrlClickToOpenTheLink() string {
-	return Catalog.Format(msgs.locale, "fCtrlClickToOpenTheLink", nil)
+// Link tooltip: click while holding the modifier key (⌘ on macOS, Ctrl
+// elsewhere) to open the link.
+func (msgs Messages) FCtrlClickToOpenTheLink(shortcut string) string {
+	return Catalog.Format(msgs.locale, "fCtrlClickToOpenTheLink", map[string]any{"shortcut": shortcut})
 }
 
 // FStartWithASentence says "从一句话开始……"
@@ -2082,20 +2092,20 @@ func (msgs Messages) FEdit() string {
 	return Catalog.Format(msgs.locale, "fEdit", nil)
 }
 
-// FShowTheEditorAndReadingViewSideBySide says "编辑区和阅读视图并排 ⌘\\"
+// FShowTheEditorAndReadingViewSideBySide says "编辑区和阅读视图并排 {shortcut}"
 // in the language the app shows.
 //
-// Interface text for Show the editor and reading view side by side ⌘\.
-func FShowTheEditorAndReadingViewSideBySide() string {
-	return In(i18n.Locale()).FShowTheEditorAndReadingViewSideBySide()
+// Tooltip of the Split view button, followed by its shortcut.
+func FShowTheEditorAndReadingViewSideBySide(shortcut string) string {
+	return In(i18n.Locale()).FShowTheEditorAndReadingViewSideBySide(shortcut)
 }
 
-// FShowTheEditorAndReadingViewSideBySide says "编辑区和阅读视图并排 ⌘\\"
+// FShowTheEditorAndReadingViewSideBySide says "编辑区和阅读视图并排 {shortcut}"
 // in the language of msgs.
 //
-// Interface text for Show the editor and reading view side by side ⌘\.
-func (msgs Messages) FShowTheEditorAndReadingViewSideBySide() string {
-	return Catalog.Format(msgs.locale, "fShowTheEditorAndReadingViewSideBySide", nil)
+// Tooltip of the Split view button, followed by its shortcut.
+func (msgs Messages) FShowTheEditorAndReadingViewSideBySide(shortcut string) string {
+	return Catalog.Format(msgs.locale, "fShowTheEditorAndReadingViewSideBySide", map[string]any{"shortcut": shortcut})
 }
 
 // FSplit says "分栏"
@@ -2112,18 +2122,20 @@ func (msgs Messages) FSplit() string {
 	return Catalog.Format(msgs.locale, "fSplit", nil)
 }
 
-// FShowTheFormattedDocumentR says "只显示排好版的文稿 ⌘⇧R"
+// FShowTheFormattedDocumentR says "只显示排好版的文稿 {shortcut}"
 // in the language the app shows.
 //
-// Interface text for Show the formatted document ⌘⇧R.
-func FShowTheFormattedDocumentR() string { return In(i18n.Locale()).FShowTheFormattedDocumentR() }
+// Tooltip of the Read view button, followed by its shortcut.
+func FShowTheFormattedDocumentR(shortcut string) string {
+	return In(i18n.Locale()).FShowTheFormattedDocumentR(shortcut)
+}
 
-// FShowTheFormattedDocumentR says "只显示排好版的文稿 ⌘⇧R"
+// FShowTheFormattedDocumentR says "只显示排好版的文稿 {shortcut}"
 // in the language of msgs.
 //
-// Interface text for Show the formatted document ⌘⇧R.
-func (msgs Messages) FShowTheFormattedDocumentR() string {
-	return Catalog.Format(msgs.locale, "fShowTheFormattedDocumentR", nil)
+// Tooltip of the Read view button, followed by its shortcut.
+func (msgs Messages) FShowTheFormattedDocumentR(shortcut string) string {
+	return Catalog.Format(msgs.locale, "fShowTheFormattedDocumentR", map[string]any{"shortcut": shortcut})
 }
 
 // FRead says "阅读"
@@ -2282,6 +2294,22 @@ func (msgs Messages) FShowInFinder() string {
 	return Catalog.Format(msgs.locale, "fShowInFinder", nil)
 }
 
+// FShowInFileExplorer says "在资源管理器中显示"
+// in the language the app shows.
+//
+// Interface text for Show in File Explorer, on Windows in place of Show in
+// Finder.
+func FShowInFileExplorer() string { return In(i18n.Locale()).FShowInFileExplorer() }
+
+// FShowInFileExplorer says "在资源管理器中显示"
+// in the language of msgs.
+//
+// Interface text for Show in File Explorer, on Windows in place of Show in
+// Finder.
+func (msgs Messages) FShowInFileExplorer() string {
+	return Catalog.Format(msgs.locale, "fShowInFileExplorer", nil)
+}
+
 // FEditor says "编辑区"
 // in the language the app shows.
 //
@@ -2394,18 +2422,18 @@ func (msgs Messages) FL() string {
 	return Catalog.Format(msgs.locale, "fL", nil)
 }
 
-// FNewDocumentN says "新建文稿 ⌘N"
+// FNewDocumentN says "新建文稿 {shortcut}"
 // in the language the app shows.
 //
-// Interface text for New Document ⌘N.
-func FNewDocumentN() string { return In(i18n.Locale()).FNewDocumentN() }
+// Tooltip of the New Document button, followed by its shortcut.
+func FNewDocumentN(shortcut string) string { return In(i18n.Locale()).FNewDocumentN(shortcut) }
 
-// FNewDocumentN says "新建文稿 ⌘N"
+// FNewDocumentN says "新建文稿 {shortcut}"
 // in the language of msgs.
 //
-// Interface text for New Document ⌘N.
-func (msgs Messages) FNewDocumentN() string {
-	return Catalog.Format(msgs.locale, "fNewDocumentN", nil)
+// Tooltip of the New Document button, followed by its shortcut.
+func (msgs Messages) FNewDocumentN(shortcut string) string {
+	return Catalog.Format(msgs.locale, "fNewDocumentN", map[string]any{"shortcut": shortcut})
 }
 
 // FCloseSidebar says "关闭侧栏"
@@ -2710,22 +2738,20 @@ func (msgs Messages) FOpenLiubaiInTheBackgroundAtLogin() string {
 	return Catalog.Format(msgs.locale, "fOpenLiubaiInTheBackgroundAtLogin", nil)
 }
 
-// FUseTheShortcutInAnyAppToWriteA says "在任何应用里按快捷键，写一句话，⌘↩ 存为草稿。"
+// FUseTheShortcutInAnyAppToWriteA says "在任何应用里按快捷键，写一句话，{shortcut} 存为草稿。"
 // in the language the app shows.
 //
-// Interface text for Use the shortcut in any app to write a note. Press
-// ⌘↩ to save it as a draft..
-func FUseTheShortcutInAnyAppToWriteA() string {
-	return In(i18n.Locale()).FUseTheShortcutInAnyAppToWriteA()
+// Quick note settings note; the shortcut saves the note as a draft.
+func FUseTheShortcutInAnyAppToWriteA(shortcut string) string {
+	return In(i18n.Locale()).FUseTheShortcutInAnyAppToWriteA(shortcut)
 }
 
-// FUseTheShortcutInAnyAppToWriteA says "在任何应用里按快捷键，写一句话，⌘↩ 存为草稿。"
+// FUseTheShortcutInAnyAppToWriteA says "在任何应用里按快捷键，写一句话，{shortcut} 存为草稿。"
 // in the language of msgs.
 //
-// Interface text for Use the shortcut in any app to write a note. Press
-// ⌘↩ to save it as a draft..
-func (msgs Messages) FUseTheShortcutInAnyAppToWriteA() string {
-	return Catalog.Format(msgs.locale, "fUseTheShortcutInAnyAppToWriteA", nil)
+// Quick note settings note; the shortcut saves the note as a draft.
+func (msgs Messages) FUseTheShortcutInAnyAppToWriteA(shortcut string) string {
+	return Catalog.Format(msgs.locale, "fUseTheShortcutInAnyAppToWriteA", map[string]any{"shortcut": shortcut})
 }
 
 // FNameDraft says "为草稿命名"

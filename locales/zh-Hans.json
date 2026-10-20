@@ -136,9 +136,14 @@
   "@fPastedImage": {
     "description": "Interface text for Pasted Image."
   },
-  "fEditingIsUnavailableInReadingModePressRTo": "阅读模式下不能编辑，⌘⇧R 返回编辑",
+  "fEditingIsUnavailableInReadingModePressRTo": "阅读模式下不能编辑，{shortcut} 返回编辑",
   "@fEditingIsUnavailableInReadingModePressRTo": {
-    "description": "Interface text for Editing is unavailable in Reading Mode. Press ⌘⇧R to return to editing.."
+    "description": "Toast in Reading Mode: editing is unavailable, and the shortcut returns to editing.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
   },
   "fImage": "图片",
   "@fImage": {
@@ -154,7 +159,7 @@
   },
   "fTextDownloadedImagesRemainOnThisMac": "当前正文已下载；图片仍保留在本机",
   "@fTextDownloadedImagesRemainOnThisMac": {
-    "description": "Interface text for Text downloaded. Images remain on this Mac.."
+    "description": "Interface text for Text downloaded. Images remain on this computer."
   },
   "fTheDocumentArchiveIsNotReady": "文稿包尚未准备好",
   "@fTheDocumentArchiveIsNotReady": {
@@ -428,9 +433,14 @@
   "@fSource": {
     "description": "Interface text for Source."
   },
-  "fShowMarkdownSourceM": "显示 Markdown 源码 ⌘⇧M",
+  "fShowMarkdownSourceM": "显示 Markdown 源码 {shortcut}",
   "@fShowMarkdownSourceM": {
-    "description": "Interface text for Show Markdown Source ⌘⇧M."
+    "description": "Tooltip of the Markdown source button, followed by its shortcut.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
   },
   "fOpen": "打开",
   "@fOpen": {
@@ -444,9 +454,14 @@
   "@fPressAShortcut": {
     "description": "Interface text for Press a shortcut…."
   },
-  "fSaveAsDraftEscClose": "⌘↩ 存为草稿 · Esc 关闭",
+  "fSaveAsDraftEscClose": "{shortcut} 存为草稿 · Esc 关闭",
   "@fSaveAsDraftEscClose": {
-    "description": "Interface text for ⌘↩ Save as Draft · Esc Close."
+    "description": "Quick note hint: the shortcut saves the note as a draft, Esc closes the panel.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
   },
   "fSavedAsDraft": "已存为草稿",
   "@fSavedAsDraft": {
@@ -480,9 +495,14 @@
   "@fMarkAsComplete": {
     "description": "Interface text for Mark as Complete."
   },
-  "fCtrlClickToOpenTheLink": "⌘ / Ctrl 点击打开链接",
+  "fCtrlClickToOpenTheLink": "{shortcut} 点击打开链接",
   "@fCtrlClickToOpenTheLink": {
-    "description": "Interface text for ⌘ / Ctrl-click to open the link."
+    "description": "Link tooltip: click while holding the modifier key (⌘ on macOS, Ctrl elsewhere) to open the link.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
   },
   "fStartWithASentence": "从一句话开始……",
   "@fStartWithASentence": {
@@ -572,17 +592,27 @@
   "@fEdit": {
     "description": "Interface text for Edit."
   },
-  "fShowTheEditorAndReadingViewSideBySide": "编辑区和阅读视图并排 ⌘\\",
+  "fShowTheEditorAndReadingViewSideBySide": "编辑区和阅读视图并排 {shortcut}",
   "@fShowTheEditorAndReadingViewSideBySide": {
-    "description": "Interface text for Show the editor and reading view side by side ⌘\\."
+    "description": "Tooltip of the Split view button, followed by its shortcut.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
   },
   "fSplit": "分栏",
   "@fSplit": {
     "description": "Interface text for Split."
   },
-  "fShowTheFormattedDocumentR": "只显示排好版的文稿 ⌘⇧R",
+  "fShowTheFormattedDocumentR": "只显示排好版的文稿 {shortcut}",
   "@fShowTheFormattedDocumentR": {
-    "description": "Interface text for Show the formatted document ⌘⇧R."
+    "description": "Tooltip of the Read view button, followed by its shortcut.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
   },
   "fRead": "阅读",
   "@fRead": {
@@ -628,6 +658,10 @@
   "@fShowInFinder": {
     "description": "Interface text for Show in Finder."
   },
+  "fShowInFileExplorer": "在资源管理器中显示",
+  "@fShowInFileExplorer": {
+    "description": "Interface text for Show in File Explorer, on Windows in place of Show in Finder."
+  },
   "fEditor": "编辑区",
   "@fEditor": {
     "description": "Interface text for Editor."
@@ -660,9 +694,14 @@
   "@fL": {
     "description": "Interface text for L."
   },
-  "fNewDocumentN": "新建文稿 ⌘N",
+  "fNewDocumentN": "新建文稿 {shortcut}",
   "@fNewDocumentN": {
-    "description": "Interface text for New Document ⌘N."
+    "description": "Tooltip of the New Document button, followed by its shortcut.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
   },
   "fCloseSidebar": "关闭侧栏",
   "@fCloseSidebar": {
@@ -748,9 +787,14 @@
   "@fOpenLiubaiInTheBackgroundAtLogin": {
     "description": "Interface text for Open Liubai in the background at login."
   },
-  "fUseTheShortcutInAnyAppToWriteA": "在任何应用里按快捷键，写一句话，⌘↩ 存为草稿。",
+  "fUseTheShortcutInAnyAppToWriteA": "在任何应用里按快捷键，写一句话，{shortcut} 存为草稿。",
   "@fUseTheShortcutInAnyAppToWriteA": {
-    "description": "Interface text for Use the shortcut in any app to write a note. Press ⌘↩ to save it as a draft.."
+    "description": "Quick note settings note; the shortcut saves the note as a draft.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
   },
   "fNameDraft": "为草稿命名",
   "@fNameDraft": {

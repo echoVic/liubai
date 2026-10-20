@@ -1,11 +1,11 @@
 import {messages,localizePage,onPageLocaleChange} from './i18n';
 import {call,type Appearance,type WorkspaceState} from './types';
 import {captureKeyAction} from './capture-input';
-import {mac} from './platform';
+import {mac,keyLabel} from './platform';
 const field=document.querySelector<HTMLTextAreaElement>('#capture-text')!;
 const button=document.querySelector<HTMLButtonElement>('#capture-save')!;
 const status=document.querySelector<HTMLElement>('#capture-status')!;
-const hint=()=>messages.fSaveAsDraftEscClose();
+const hint=()=>messages.fSaveAsDraftEscClose(keyLabel('Mod+Enter'));
 let composing=false,saving=false,hideTimer:ReturnType<typeof setTimeout>|undefined;
 let appearance:Appearance;
 const mq=matchMedia('(prefers-color-scheme:dark)');

@@ -253,7 +253,7 @@ export function isReloadKey(e:Pick<KeyboardEvent,'key'|'ctrlKey'|'altKey'|'shift
 - Consumes: `keyLabel`, `focusKeys`, `redoKeys` from Task 4.
 - Produces: elements may carry `data-shortcut="Mod+N"`; message functions `fEditingIsUnavailableInReadingModePressRTo(shortcut)`, `fShowMarkdownSourceM(shortcut)`, `fSaveAsDraftEscClose(shortcut)`, `fCtrlClickToOpenTheLink(shortcut)`, `fShowTheEditorAndReadingViewSideBySide(shortcut)`, `fShowTheFormattedDocumentR(shortcut)`, `fNewDocumentN(shortcut)`, `fUseTheShortcutInAnyAppToWriteA(shortcut)`.
 
-- [ ] **Step 1: Catalog.** zh-Hans / en texts (each `@` entry gains `"placeholders": {"shortcut": {"type": "String"}}` and a description without ⌘):
+- [x] **Step 1: Catalog.** zh-Hans / en texts (each `@` entry gains `"placeholders": {"shortcut": {"type": "String"}}` and a description without ⌘):
 
 | key | zh-Hans | en |
 |---|---|---|
@@ -267,9 +267,9 @@ export function isReloadKey(e:Pick<KeyboardEvent,'key'|'ctrlKey'|'altKey'|'shift
 | fUseTheShortcutInAnyAppToWriteA | 在任何应用里按快捷键，写一句话，{shortcut} 存为草稿。 | Use the shortcut in any app to write a note. Press {shortcut} to save it as a draft. |
 
   New `fShowInFileExplorer`: 在资源管理器中显示 / Show in File Explorer. `go tool mygo generate .`; `node_modules/.bin/tsc --noEmit` now lists every call site that lacks the argument.
-- [ ] **Step 2: Call sites.** `localizePage` calls each message with `keyLabel(el.dataset.shortcut)` when the element has `data-shortcut` (messages without a placeholder ignore it). `index.html`: split `data-shortcut="Mod+\"`, read `Mod+Shift+R`, new `Mod+N`, quick note note `Mod+Enter`; `capture.html` status `Mod+Enter`. `app.ts`: both reading-mode toasts pass `keyLabel('Mod+Shift+R')`; the source button sets `dataset.shortcut='Mod+Shift+M'` and its title with `keyLabel('Mod+Shift+M')`; palette labels use `const kbd=(keys:string)=>keyLabel(keys,{spaced:true})` (`'⌘ ⇧ F'` → `kbd(focusKeys)`, `'⌘ ⇧ Z'` → `kbd(redoKeys)`, others `Mod+…`); format buttons use `keyLabel('Mod+Z')`, `keyLabel(redoKeys)`, `keyLabel('Mod+B')`, `keyLabel('Mod+U')`, `keyLabel('Mod+L')`, `keyLabel('Mod+F')`. `editor.ts` link title: a module constant `keyLabel('Mod')`. `capture.ts` hint: `keyLabel('Mod+Enter')`.
-- [ ] **Step 3: Verify**: `tsc --noEmit`, `node scripts/check-i18n.mjs`, `go tool mygo i18n check .`, `grep -n "⌘" src/app.ts src/editor.ts src/capture.ts` shows only comments, `go test ./...`.
-- [ ] **Step 4: Commit** `feat(windows): show shortcuts the way each platform writes them`.
+- [x] **Step 2: Call sites.** `localizePage` calls each message with `keyLabel(el.dataset.shortcut)` when the element has `data-shortcut` (messages without a placeholder ignore it). `index.html`: split `data-shortcut="Mod+\"`, read `Mod+Shift+R`, new `Mod+N`, quick note note `Mod+Enter`; `capture.html` status `Mod+Enter`. `app.ts`: both reading-mode toasts pass `keyLabel('Mod+Shift+R')`; the source button sets `dataset.shortcut='Mod+Shift+M'` and its title with `keyLabel('Mod+Shift+M')`; palette labels use `const kbd=(keys:string)=>keyLabel(keys,{spaced:true})` (`'⌘ ⇧ F'` → `kbd(focusKeys)`, `'⌘ ⇧ Z'` → `kbd(redoKeys)`, others `Mod+…`); format buttons use `keyLabel('Mod+Z')`, `keyLabel(redoKeys)`, `keyLabel('Mod+B')`, `keyLabel('Mod+U')`, `keyLabel('Mod+L')`, `keyLabel('Mod+F')`. `editor.ts` link title: a module constant `keyLabel('Mod')`. `capture.ts` hint: `keyLabel('Mod+Enter')`.
+- [x] **Step 3: Verify**: `tsc --noEmit`, `node scripts/check-i18n.mjs`, `go tool mygo i18n check .`, `grep -n "⌘" src/app.ts src/editor.ts src/capture.ts` shows only comments, `go test ./...`.
+- [x] **Step 4: Commit** `feat(windows): show shortcuts the way each platform writes them`.
 
 ### Task 6: Windows behavior in the page
 

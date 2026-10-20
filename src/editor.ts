@@ -24,6 +24,9 @@ import {extraRanges,extraMarkers,createDetailsFolding} from './extras';
 import {CalloutWidget,DetailsWidget,FootnoteWidget,detailsExpanded,footnoteInteractions} from './extras-ui';
 import {indentList,safeLink,localDocumentLink,frontMatterRange} from './editing';
 import {htmlToMarkdown,pasteText,replacePasteImage,type PasteImage} from './paste';
+import {keyLabel} from './platform';
+// Links open on a click with ⌘ on macOS, Ctrl elsewhere.
+const linkModifier=keyLabel('Mod');
 
 export const mode=new Compartment();
 export const editorLocale=new Compartment();
@@ -179,7 +182,7 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
    if(name==='Blockquote')lineClass(n.from,n.to,'md-quote');
    if(name==='FencedCode'||name==='MermaidFence')lineClass(n.from,n.to,'md-code-line');
    const add=(dec:Decoration)=>{const key=n.from+':'+n.to+':'+name;if(!marked.has(key)){marked.add(key);decorations.push({from:n.from,to:n.to,dec})}};
-   if(name==='Link')add(Decoration.mark({class:'md-link',attributes:{'data-href':destination(state,n.node),title:messages.fCtrlClickToOpenTheLink()}}));
+   if(name==='Link')add(Decoration.mark({class:'md-link',attributes:{'data-href':destination(state,n.node),title:messages.fCtrlClickToOpenTheLink(linkModifier)}}));
    if(name==='InlineCode')add(Decoration.mark({class:'md-inline-code'}));
    if(!touched(n.from,n.to)){
     if(name==='TaskMarker'){add(Decoration.replace({widget:new TaskWidget(n.from,state.sliceDoc(n.from,n.to).toLowerCase()==='[x]')}));return false}

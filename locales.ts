@@ -196,11 +196,11 @@ export interface Messages {
    */
   fPastedImage(): string;
   /**
-   * Interface text for Editing is unavailable in Reading Mode. Press ⌘⇧R to return to editing..
+   * Toast in Reading Mode: editing is unavailable, and the shortcut returns to editing.
    *
-   * `阅读模式下不能编辑，⌘⇧R 返回编辑`
+   * `阅读模式下不能编辑，{shortcut} 返回编辑`
    */
-  fEditingIsUnavailableInReadingModePressRTo(): string;
+  fEditingIsUnavailableInReadingModePressRTo(shortcut: string): string;
   /**
    * Interface text for Image.
    *
@@ -220,7 +220,7 @@ export interface Messages {
    */
   fMarkdownDownloadedUseExportToIncludeImages(): string;
   /**
-   * Interface text for Text downloaded. Images remain on this Mac..
+   * Interface text for Text downloaded. Images remain on this computer.
    *
    * `当前正文已下载；图片仍保留在本机`
    */
@@ -634,11 +634,11 @@ export interface Messages {
    */
   fSource(): string;
   /**
-   * Interface text for Show Markdown Source ⌘⇧M.
+   * Tooltip of the Markdown source button, followed by its shortcut.
    *
-   * `显示 Markdown 源码 ⌘⇧M`
+   * `显示 Markdown 源码 {shortcut}`
    */
-  fShowMarkdownSourceM(): string;
+  fShowMarkdownSourceM(shortcut: string): string;
   /**
    * Interface text for Open.
    *
@@ -658,11 +658,11 @@ export interface Messages {
    */
   fPressAShortcut(): string;
   /**
-   * Interface text for ⌘↩ Save as Draft · Esc Close.
+   * Quick note hint: the shortcut saves the note as a draft, Esc closes the panel.
    *
-   * `⌘↩ 存为草稿 · Esc 关闭`
+   * `{shortcut} 存为草稿 · Esc 关闭`
    */
-  fSaveAsDraftEscClose(): string;
+  fSaveAsDraftEscClose(shortcut: string): string;
   /**
    * Interface text for Saved as Draft.
    *
@@ -712,11 +712,11 @@ export interface Messages {
    */
   fMarkAsComplete(): string;
   /**
-   * Interface text for ⌘ / Ctrl-click to open the link.
+   * Link tooltip: click while holding the modifier key (⌘ on macOS, Ctrl elsewhere) to open the link.
    *
-   * `⌘ / Ctrl 点击打开链接`
+   * `{shortcut} 点击打开链接`
    */
-  fCtrlClickToOpenTheLink(): string;
+  fCtrlClickToOpenTheLink(shortcut: string): string;
   /**
    * Interface text for Start with a sentence….
    *
@@ -850,11 +850,11 @@ export interface Messages {
    */
   fEdit(): string;
   /**
-   * Interface text for Show the editor and reading view side by side ⌘\.
+   * Tooltip of the Split view button, followed by its shortcut.
    *
-   * `编辑区和阅读视图并排 ⌘\`
+   * `编辑区和阅读视图并排 {shortcut}`
    */
-  fShowTheEditorAndReadingViewSideBySide(): string;
+  fShowTheEditorAndReadingViewSideBySide(shortcut: string): string;
   /**
    * Interface text for Split.
    *
@@ -862,11 +862,11 @@ export interface Messages {
    */
   fSplit(): string;
   /**
-   * Interface text for Show the formatted document ⌘⇧R.
+   * Tooltip of the Read view button, followed by its shortcut.
    *
-   * `只显示排好版的文稿 ⌘⇧R`
+   * `只显示排好版的文稿 {shortcut}`
    */
-  fShowTheFormattedDocumentR(): string;
+  fShowTheFormattedDocumentR(shortcut: string): string;
   /**
    * Interface text for Read.
    *
@@ -934,6 +934,12 @@ export interface Messages {
    */
   fShowInFinder(): string;
   /**
+   * Interface text for Show in File Explorer, on Windows in place of Show in Finder.
+   *
+   * `在资源管理器中显示`
+   */
+  fShowInFileExplorer(): string;
+  /**
    * Interface text for Editor.
    *
    * `编辑区`
@@ -982,11 +988,11 @@ export interface Messages {
    */
   fL(): string;
   /**
-   * Interface text for New Document ⌘N.
+   * Tooltip of the New Document button, followed by its shortcut.
    *
-   * `新建文稿 ⌘N`
+   * `新建文稿 {shortcut}`
    */
-  fNewDocumentN(): string;
+  fNewDocumentN(shortcut: string): string;
   /**
    * Interface text for Close Sidebar.
    *
@@ -1114,11 +1120,11 @@ export interface Messages {
    */
   fOpenLiubaiInTheBackgroundAtLogin(): string;
   /**
-   * Interface text for Use the shortcut in any app to write a note. Press ⌘↩ to save it as a draft..
+   * Quick note settings note; the shortcut saves the note as a draft.
    *
-   * `在任何应用里按快捷键，写一句话，⌘↩ 存为草稿。`
+   * `在任何应用里按快捷键，写一句话，{shortcut} 存为草稿。`
    */
-  fUseTheShortcutInAnyAppToWriteA(): string;
+  fUseTheShortcutInAnyAppToWriteA(shortcut: string): string;
   /**
    * Interface text for Name Draft.
    *
@@ -2817,7 +2823,7 @@ const catalog = createCatalog<Messages>({
     "fTheImageCouldNotBeRead": [],
     "fTheDocumentChangedInsertTheImageAgain": [],
     "fPastedImage": [],
-    "fEditingIsUnavailableInReadingModePressRTo": [],
+    "fEditingIsUnavailableInReadingModePressRTo": ["shortcut"],
     "fImage": [],
     "fSaveTheCurrentDocumentFirstFindTheOpenedFile": [],
     "fMarkdownDownloadedUseExportToIncludeImages": [],
@@ -2890,11 +2896,11 @@ const catalog = createCatalog<Messages>({
     "fTable": [],
     "fCodeBlock": [],
     "fSource": [],
-    "fShowMarkdownSourceM": [],
+    "fShowMarkdownSourceM": ["shortcut"],
     "fOpen": [],
     "fLoadedTheLatestVersionFromDisk": [],
     "fPressAShortcut": [],
-    "fSaveAsDraftEscClose": [],
+    "fSaveAsDraftEscClose": ["shortcut"],
     "fSavedAsDraft": [],
     "fTheImageCouldNotBeDecoded": [],
     "fTheImageTookTooLongToLoad": [],
@@ -2903,7 +2909,7 @@ const catalog = createCatalog<Messages>({
     "fATableNeedsAtLeastOneColumn": [],
     "fMarkAsIncomplete": [],
     "fMarkAsComplete": [],
-    "fCtrlClickToOpenTheLink": [],
+    "fCtrlClickToOpenTheLink": ["shortcut"],
     "fStartWithASentence": [],
     "fDocumentText": [],
     "fComplete": [],
@@ -2926,9 +2932,9 @@ const catalog = createCatalog<Messages>({
     "fView": [],
     "fShowTheEditor": [],
     "fEdit": [],
-    "fShowTheEditorAndReadingViewSideBySide": [],
+    "fShowTheEditorAndReadingViewSideBySide": ["shortcut"],
     "fSplit": [],
-    "fShowTheFormattedDocumentR": [],
+    "fShowTheFormattedDocumentR": ["shortcut"],
     "fRead": [],
     "fAppearanceAndTypography2": [],
     "fExportPDFHTMLZIPOrCopyRichText": [],
@@ -2940,6 +2946,7 @@ const catalog = createCatalog<Messages>({
     "fViewDiskVersion": [],
     "fOverwriteWithCurrentVersion": [],
     "fShowInFinder": [],
+    "fShowInFileExplorer": [],
     "fEditor": [],
     "fFormat": [],
     "fDocumentEditor": [],
@@ -2948,7 +2955,7 @@ const catalog = createCatalog<Messages>({
     "fReadingView": [],
     "fReadOnly": [],
     "fL": [],
-    "fNewDocumentN": [],
+    "fNewDocumentN": ["shortcut"],
     "fCloseSidebar": [],
     "fFindADocument": [],
     "fSearchRecentDocuments": [],
@@ -2970,7 +2977,7 @@ const catalog = createCatalog<Messages>({
     "fEnableQuickNote": [],
     "fKeyboardShortcut": [],
     "fOpenLiubaiInTheBackgroundAtLogin": [],
-    "fUseTheShortcutInAnyAppToWriteA": [],
+    "fUseTheShortcutInAnyAppToWriteA": ["shortcut"],
     "fNameDraft": [],
     "fGiveThisPageAName": [],
     "fDocumentName": [],
@@ -3282,7 +3289,7 @@ const catalog = createCatalog<Messages>({
       "fTheImageCouldNotBeRead": "图片无法读取",
       "fTheDocumentChangedInsertTheImageAgain": "文稿已切换，请重新插入",
       "fPastedImage": "粘贴图片",
-      "fEditingIsUnavailableInReadingModePressRTo": "阅读模式下不能编辑，⌘⇧R 返回编辑",
+      "fEditingIsUnavailableInReadingModePressRTo": "阅读模式下不能编辑，{shortcut} 返回编辑",
       "fImage": "图片",
       "fSaveTheCurrentDocumentFirstFindTheOpenedFile": "当前文稿尚未保存，请先处理；打开的文件可从最近文稿进入",
       "fMarkdownDownloadedUseExportToIncludeImages": "浏览器已下载 Markdown；含图片请使用“导出”",
@@ -3355,11 +3362,11 @@ const catalog = createCatalog<Messages>({
       "fTable": "表格",
       "fCodeBlock": "代码块",
       "fSource": "源码",
-      "fShowMarkdownSourceM": "显示 Markdown 源码 ⌘⇧M",
+      "fShowMarkdownSourceM": "显示 Markdown 源码 {shortcut}",
       "fOpen": "打开",
       "fLoadedTheLatestVersionFromDisk": "已载入磁盘上的新版本",
       "fPressAShortcut": "按下快捷键…",
-      "fSaveAsDraftEscClose": "⌘↩ 存为草稿 · Esc 关闭",
+      "fSaveAsDraftEscClose": "{shortcut} 存为草稿 · Esc 关闭",
       "fSavedAsDraft": "已存为草稿",
       "fTheImageCouldNotBeDecoded": "图片无法解码",
       "fTheImageTookTooLongToLoad": "图片加载超时",
@@ -3368,7 +3375,7 @@ const catalog = createCatalog<Messages>({
       "fATableNeedsAtLeastOneColumn": "表格至少需要一列",
       "fMarkAsIncomplete": "标记为未完成",
       "fMarkAsComplete": "标记为已完成",
-      "fCtrlClickToOpenTheLink": "⌘ / Ctrl 点击打开链接",
+      "fCtrlClickToOpenTheLink": "{shortcut} 点击打开链接",
       "fStartWithASentence": "从一句话开始……",
       "fDocumentText": "文稿正文",
       "fComplete": "已完成",
@@ -3391,9 +3398,9 @@ const catalog = createCatalog<Messages>({
       "fView": "视图",
       "fShowTheEditor": "只显示编辑区",
       "fEdit": "编辑",
-      "fShowTheEditorAndReadingViewSideBySide": "编辑区和阅读视图并排 ⌘\\",
+      "fShowTheEditorAndReadingViewSideBySide": "编辑区和阅读视图并排 {shortcut}",
       "fSplit": "分栏",
-      "fShowTheFormattedDocumentR": "只显示排好版的文稿 ⌘⇧R",
+      "fShowTheFormattedDocumentR": "只显示排好版的文稿 {shortcut}",
       "fRead": "阅读",
       "fAppearanceAndTypography2": "外观与排版",
       "fExportPDFHTMLZIPOrCopyRichText": "导出 PDF、HTML、ZIP 或复制富文本",
@@ -3405,6 +3412,7 @@ const catalog = createCatalog<Messages>({
       "fViewDiskVersion": "查看磁盘版本",
       "fOverwriteWithCurrentVersion": "用当前版本覆盖",
       "fShowInFinder": "在 Finder 中显示",
+      "fShowInFileExplorer": "在资源管理器中显示",
       "fEditor": "编辑区",
       "fFormat": "格式",
       "fDocumentEditor": "文稿编辑区",
@@ -3413,7 +3421,7 @@ const catalog = createCatalog<Messages>({
       "fReadingView": "阅读视图",
       "fReadOnly": "只读",
       "fL": "白",
-      "fNewDocumentN": "新建文稿 ⌘N",
+      "fNewDocumentN": "新建文稿 {shortcut}",
       "fCloseSidebar": "关闭侧栏",
       "fFindADocument": "找一篇文稿…",
       "fSearchRecentDocuments": "搜索最近文稿",
@@ -3435,7 +3443,7 @@ const catalog = createCatalog<Messages>({
       "fEnableQuickNote": "启用随手记",
       "fKeyboardShortcut": "快捷键",
       "fOpenLiubaiInTheBackgroundAtLogin": "登录时在后台打开留白",
-      "fUseTheShortcutInAnyAppToWriteA": "在任何应用里按快捷键，写一句话，⌘↩ 存为草稿。",
+      "fUseTheShortcutInAnyAppToWriteA": "在任何应用里按快捷键，写一句话，{shortcut} 存为草稿。",
       "fNameDraft": "为草稿命名",
       "fGiveThisPageAName": "给这一页一个名字",
       "fDocumentName": "文稿名称",
@@ -3746,11 +3754,11 @@ const catalog = createCatalog<Messages>({
       "fTheImageCouldNotBeRead": "The image could not be read.",
       "fTheDocumentChangedInsertTheImageAgain": "The document changed. Insert the image again.",
       "fPastedImage": "Pasted Image",
-      "fEditingIsUnavailableInReadingModePressRTo": "Editing is unavailable in Reading Mode. Press ⌘⇧R to return to editing.",
+      "fEditingIsUnavailableInReadingModePressRTo": "Editing is unavailable in Reading Mode. Press {shortcut} to return to editing.",
       "fImage": "Image",
       "fSaveTheCurrentDocumentFirstFindTheOpenedFile": "Save the current document first. Find the opened file in Recent Documents.",
       "fMarkdownDownloadedUseExportToIncludeImages": "Markdown downloaded. Use Export to include images.",
-      "fTextDownloadedImagesRemainOnThisMac": "Text downloaded. Images remain on this Mac.",
+      "fTextDownloadedImagesRemainOnThisMac": "Text downloaded. Images remain on this computer.",
       "fTheDocumentArchiveIsNotReady": "The document archive is not ready.",
       "fDocumentArchiveDownloaded": "Document archive downloaded",
       "fMissingImageReferencesPreserved": " · Missing image references preserved",
@@ -3819,11 +3827,11 @@ const catalog = createCatalog<Messages>({
       "fTable": "Table",
       "fCodeBlock": "Code Block",
       "fSource": "Source",
-      "fShowMarkdownSourceM": "Show Markdown Source ⌘⇧M",
+      "fShowMarkdownSourceM": "Show Markdown Source {shortcut}",
       "fOpen": "Open",
       "fLoadedTheLatestVersionFromDisk": "Loaded the Latest Version from Disk",
       "fPressAShortcut": "Press a shortcut…",
-      "fSaveAsDraftEscClose": "⌘↩ Save as Draft · Esc Close",
+      "fSaveAsDraftEscClose": "{shortcut} Save as Draft · Esc Close",
       "fSavedAsDraft": "Saved as Draft",
       "fTheImageCouldNotBeDecoded": "The image could not be decoded.",
       "fTheImageTookTooLongToLoad": "The image took too long to load.",
@@ -3832,7 +3840,7 @@ const catalog = createCatalog<Messages>({
       "fATableNeedsAtLeastOneColumn": "A table needs at least one column.",
       "fMarkAsIncomplete": "Mark as Incomplete",
       "fMarkAsComplete": "Mark as Complete",
-      "fCtrlClickToOpenTheLink": "⌘ / Ctrl-click to open the link",
+      "fCtrlClickToOpenTheLink": "{shortcut}-click to open the link",
       "fStartWithASentence": "Start with a sentence…",
       "fDocumentText": "Document Text",
       "fComplete": "Complete",
@@ -3855,9 +3863,9 @@ const catalog = createCatalog<Messages>({
       "fView": "View",
       "fShowTheEditor": "Show the editor",
       "fEdit": "Edit",
-      "fShowTheEditorAndReadingViewSideBySide": "Show the editor and reading view side by side ⌘\\",
+      "fShowTheEditorAndReadingViewSideBySide": "Show the editor and reading view side by side {shortcut}",
       "fSplit": "Split",
-      "fShowTheFormattedDocumentR": "Show the formatted document ⌘⇧R",
+      "fShowTheFormattedDocumentR": "Show the formatted document {shortcut}",
       "fRead": "Read",
       "fAppearanceAndTypography2": "Appearance and Typography",
       "fExportPDFHTMLZIPOrCopyRichText": "Export PDF, HTML, ZIP, or copy rich text",
@@ -3869,6 +3877,7 @@ const catalog = createCatalog<Messages>({
       "fViewDiskVersion": "View Disk Version",
       "fOverwriteWithCurrentVersion": "Overwrite with Current Version",
       "fShowInFinder": "Show in Finder",
+      "fShowInFileExplorer": "Show in File Explorer",
       "fEditor": "Editor",
       "fFormat": "Format",
       "fDocumentEditor": "Document Editor",
@@ -3877,7 +3886,7 @@ const catalog = createCatalog<Messages>({
       "fReadingView": "Reading View",
       "fReadOnly": "Read Only",
       "fL": "L",
-      "fNewDocumentN": "New Document ⌘N",
+      "fNewDocumentN": "New Document {shortcut}",
       "fCloseSidebar": "Close Sidebar",
       "fFindADocument": "Find a document…",
       "fSearchRecentDocuments": "Search Recent Documents",
@@ -3899,7 +3908,7 @@ const catalog = createCatalog<Messages>({
       "fEnableQuickNote": "Enable Quick Note",
       "fKeyboardShortcut": "Keyboard Shortcut",
       "fOpenLiubaiInTheBackgroundAtLogin": "Open Liubai in the background at login",
-      "fUseTheShortcutInAnyAppToWriteA": "Use the shortcut in any app to write a note. Press ⌘↩ to save it as a draft.",
+      "fUseTheShortcutInAnyAppToWriteA": "Use the shortcut in any app to write a note. Press {shortcut} to save it as a draft.",
       "fNameDraft": "Name Draft",
       "fGiveThisPageAName": "Give This Page a Name",
       "fDocumentName": "Document Name",

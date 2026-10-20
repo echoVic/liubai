@@ -1,5 +1,6 @@
 import {messagesIn,type Messages} from '../locales';
 import type {DocStatus,LocaleNotice} from './types';
+import {keyLabel} from './platform';
 
 const localeKey='mygo:locale';
 const listeners=new Set<()=>void>();
@@ -23,9 +24,11 @@ export async function setPageLocale(locale:string){
 }
 export function localizePage(root:ParentNode=document){
  document.documentElement.lang=pageLocale();document.documentElement.dir='ltr';
- const lookup=messages as unknown as Record<string,()=>string>;
- for(const el of root.querySelectorAll<HTMLElement>('[data-i18n]')){const say=lookup[el.dataset.i18n!];if(say)el.textContent=say()}
- for(const attr of ['title','aria-label','placeholder'])for(const el of root.querySelectorAll<HTMLElement>('[data-i18n-'+attr+']')){const say=lookup[el.getAttribute('data-i18n-'+attr)!];if(say)el.setAttribute(attr,say())}
+ // Messages with a {shortcut} take the element's data-shortcut, written for this platform; others ignore it.
+ const lookup=messages as unknown as Record<string,(shortcut?:string)=>string>;
+ const shortcut=(el:HTMLElement)=>el.dataset.shortcut?keyLabel(el.dataset.shortcut):undefined;
+ for(const el of root.querySelectorAll<HTMLElement>('[data-i18n]')){const say=lookup[el.dataset.i18n!];if(say)el.textContent=say(shortcut(el))}
+ for(const attr of ['title','aria-label','placeholder'])for(const el of root.querySelectorAll<HTMLElement>('[data-i18n-'+attr+']')){const say=lookup[el.getAttribute('data-i18n-'+attr)!];if(say)el.setAttribute(attr,say(shortcut(el)))}
 }
 const statusMessages={
  draftSaved:'bStatusDraftSaved',fileSaved:'bStatusFileSaved',fileReadOnly:'bStatusFileReadOnly',fileUnavailable:'bStatusFileUnavailable',diskUnreadable:'bStatusDiskUnreadable',diskReloaded:'bStatusDiskReloaded',reloadRecoveryFailed:'bStatusReloadRecoveryFailed',diskConflict:'bStatusDiskConflict',imageSaveFailed:'bStatusImageSaveFailed',fileSaveFailed:'bStatusFileSaveFailed',saveFailed:'bStatusSaveFailed',recoveryUpdateFailed:'bStatusRecoveryUpdateFailed',

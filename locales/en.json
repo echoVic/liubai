@@ -293,6 +293,8 @@
   "bMenuHideOthers": "Hide Others",
   "bMenuShowAll": "Show All",
   "bMenuQuit": "Quit Liubai",
+  "bMenuExit": "Exit",
+  "bMenuHelp": "Help",
   "bMenuFile": "File",
   "bMenuNew": "New Document",
   "bMenuOpen": "Open Document…",

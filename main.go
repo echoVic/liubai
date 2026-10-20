@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -286,22 +287,48 @@ func (d *Desktop) SetPending(pending bool) {
 	}
 }
 func (d *Desktop) Reveal(path string) { mygo.Shell.ShowItemInFolder(path) }
+func (d *Desktop) CheckForUpdates()   { updater.CheckForUpdates() }
+func (d *Desktop) About()             { showAbout(locales.In(i18n.Locale())) }
 func (d *Desktop) requestClose()      { _ = desktopAction.Broadcast("close") }
 
 func quitAllowed(allowClose, pending bool) bool { return allowClose || !pending }
 
 func menuTemplate(action func(string) func(*mygo.MenuItem, *mygo.Window)) []*mygo.MenuItem {
-	return menuTemplateIn(locales.In(i18n.Locale()), action)
+	return menuTemplateFor(runtime.GOOS, locales.In(i18n.Locale()), action)
 }
 
-func menuTemplateIn(msgs locales.Messages, action func(string) func(*mygo.MenuItem, *mygo.Window)) []*mygo.MenuItem {
+func showAbout(msgs locales.Messages) {
+	mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: msgs.BMenuAppName(), ApplicationVersion: "0.5.0"})
+}
+
+// menuTemplateFor follows the habits of each system. macOS has the app menu
+// and the Window menu. Windows has neither: Exit ends File, and Help holds the
+// update check and About. Its menus open with Alt or F10, since the window has
+// no menu bar under its hidden title bar.
+func menuTemplateFor(goos string, msgs locales.Messages, action func(string) func(*mygo.MenuItem, *mygo.Window)) []*mygo.MenuItem {
+	mac := goos == "darwin"
+	about := &mygo.MenuItem{Label: msgs.BMenuAbout(), Click: func(*mygo.MenuItem, *mygo.Window) { showAbout(msgs) }}
+	updates := &mygo.MenuItem{Label: msgs.BMenuCheckForUpdates(), Click: func(*mygo.MenuItem, *mygo.Window) { updater.CheckForUpdates() }}
+	// Microsoft Pinyin and Sogou switch to Traditional Chinese on Ctrl+Shift+F,
+	// so Windows has Typora's F8 for focus mode, and its Ctrl+Y for redo.
+	focus, redo := "CmdOrCtrl+Shift+F", "CmdOrCtrl+Shift+Z"
+	if !mac {
+		focus, redo = "F8", "Ctrl+Y"
+	}
+	file := []*mygo.MenuItem{{Label: msgs.BMenuNew(), Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: msgs.BMenuOpen(), Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Role: mygo.RoleOpenRecent, Label: msgs.BMenuOpenRecent()}, {Label: msgs.BMenuCapture(), Click: action("capture")}, mygo.Separator(), {Label: msgs.BMenuSave(), Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: msgs.BMenuSaveAs(), Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, mygo.Separator(), {Label: msgs.BMenuExport(), Click: action("deliver")}, {Label: msgs.BMenuExportPDF(), Accelerator: "CmdOrCtrl+P", Click: action("pdf")}, mygo.Separator()}
+	edit := &mygo.MenuItem{Label: msgs.BMenuEdit(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuUndo(), Accelerator: "CmdOrCtrl+Z", Click: action("undo")}, {Label: msgs.BMenuRedo(), Accelerator: redo, Click: action("redo")}, mygo.Separator(), {Role: mygo.RoleCut, Label: msgs.BMenuCut()}, {Role: mygo.RoleCopy, Label: msgs.BMenuCopy()}, {Role: mygo.RolePaste, Label: msgs.BMenuPaste()}, {Label: msgs.BMenuPastePlain(), Accelerator: "CmdOrCtrl+Shift+V", Click: action("pastePlain")}, {Role: mygo.RoleSelectAll, Label: msgs.BMenuSelectAll()}, mygo.Separator(), {Label: msgs.BMenuFind(), Accelerator: "CmdOrCtrl+F", Click: action("find")}}}
+	view := &mygo.MenuItem{Label: msgs.BMenuView(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuFocus(), Accelerator: focus, Click: action("focus")}, {Label: msgs.BMenuAppearance(), Click: action("theme")}, {Label: msgs.BMenuLayout(), Accelerator: "CmdOrCtrl+\\", Click: action("layout")}, {Label: msgs.BMenuRead(), Accelerator: "CmdOrCtrl+Shift+R", Click: action("read")}, {Label: msgs.BMenuSource(), Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: msgs.BMenuCommands(), Accelerator: "CmdOrCtrl+K", Click: action("commands")}, mygo.Separator(), {Role: mygo.RoleToggleFullScreen, Label: msgs.BMenuFullscreen()}, mygo.Separator(), {Label: msgs.BMenuLanguage(), Submenu: languageMenu(msgs, action)}}}
+	if !mac {
+		return []*mygo.MenuItem{
+			{Label: msgs.BMenuFile(), Submenu: append(file, &mygo.MenuItem{Role: mygo.RoleQuit, Label: msgs.BMenuExit()})},
+			edit, view,
+			{Label: msgs.BMenuHelp(), Submenu: []*mygo.MenuItem{updates, mygo.Separator(), about}},
+		}
+	}
 	return []*mygo.MenuItem{
-		{Label: msgs.BMenuAppName(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuAbout(), Click: func(*mygo.MenuItem, *mygo.Window) {
-			mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: msgs.BMenuAppName(), ApplicationVersion: "0.5.0"})
-		}}, {Label: msgs.BMenuCheckForUpdates(), Click: func(*mygo.MenuItem, *mygo.Window) { updater.CheckForUpdates() }}, mygo.Separator(), {Role: mygo.RoleHide, Label: msgs.BMenuHide()}, {Role: mygo.RoleHideOthers, Label: msgs.BMenuHideOthers()}, {Role: mygo.RoleUnhide, Label: msgs.BMenuShowAll()}, mygo.Separator(), {Role: mygo.RoleQuit, Label: msgs.BMenuQuit()}}},
-		{Label: msgs.BMenuFile(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuNew(), Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: msgs.BMenuOpen(), Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Role: mygo.RoleOpenRecent, Label: msgs.BMenuOpenRecent()}, {Label: msgs.BMenuCapture(), Click: action("capture")}, mygo.Separator(), {Label: msgs.BMenuSave(), Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: msgs.BMenuSaveAs(), Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, mygo.Separator(), {Label: msgs.BMenuExport(), Click: action("deliver")}, {Label: msgs.BMenuExportPDF(), Accelerator: "CmdOrCtrl+P", Click: action("pdf")}, mygo.Separator(), {Role: mygo.RoleClose, Label: msgs.BMenuCloseWindow()}}},
-		{Label: msgs.BMenuEdit(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuUndo(), Accelerator: "CmdOrCtrl+Z", Click: action("undo")}, {Label: msgs.BMenuRedo(), Accelerator: "CmdOrCtrl+Shift+Z", Click: action("redo")}, mygo.Separator(), {Role: mygo.RoleCut, Label: msgs.BMenuCut()}, {Role: mygo.RoleCopy, Label: msgs.BMenuCopy()}, {Role: mygo.RolePaste, Label: msgs.BMenuPaste()}, {Label: msgs.BMenuPastePlain(), Accelerator: "CmdOrCtrl+Shift+V", Click: action("pastePlain")}, {Role: mygo.RoleSelectAll, Label: msgs.BMenuSelectAll()}, mygo.Separator(), {Label: msgs.BMenuFind(), Accelerator: "CmdOrCtrl+F", Click: action("find")}}},
-		{Label: msgs.BMenuView(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuFocus(), Accelerator: "CmdOrCtrl+Shift+F", Click: action("focus")}, {Label: msgs.BMenuAppearance(), Click: action("theme")}, {Label: msgs.BMenuLayout(), Accelerator: "CmdOrCtrl+\\", Click: action("layout")}, {Label: msgs.BMenuRead(), Accelerator: "CmdOrCtrl+Shift+R", Click: action("read")}, {Label: msgs.BMenuSource(), Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: msgs.BMenuCommands(), Accelerator: "CmdOrCtrl+K", Click: action("commands")}, mygo.Separator(), {Role: mygo.RoleToggleFullScreen, Label: msgs.BMenuFullscreen()}, mygo.Separator(), {Label: msgs.BMenuLanguage(), Submenu: languageMenu(msgs, action)}}},
+		{Label: msgs.BMenuAppName(), Submenu: []*mygo.MenuItem{about, updates, mygo.Separator(), {Role: mygo.RoleHide, Label: msgs.BMenuHide()}, {Role: mygo.RoleHideOthers, Label: msgs.BMenuHideOthers()}, {Role: mygo.RoleUnhide, Label: msgs.BMenuShowAll()}, mygo.Separator(), {Role: mygo.RoleQuit, Label: msgs.BMenuQuit()}}},
+		{Label: msgs.BMenuFile(), Submenu: append(file, &mygo.MenuItem{Role: mygo.RoleClose, Label: msgs.BMenuCloseWindow()})},
+		edit, view,
 		{Label: msgs.BMenuWindow(), Submenu: []*mygo.MenuItem{{Role: mygo.RoleMinimize, Label: msgs.BMenuMinimize()}, {Role: mygo.RoleZoom, Label: msgs.BMenuZoom()}, mygo.Separator(), {Role: mygo.RoleFront, Label: msgs.BMenuFront()}}},
 	}
 }
@@ -383,7 +410,8 @@ func main() {
 		if dark {
 			bg = "#191b1a"
 		}
-		d.win = mygo.NewWindow(mygo.WindowOptions{Title: locales.BMenuAppName(), URL: "/", Width: 1120, Height: 820, MinWidth: 680, MinHeight: 540, Hidden: true, TitleBarStyle: mygo.TitleBarHidden, BackgroundColor: bg, StateKey: "liubai-editor"})
+		// On Windows the window buttons are as tall as the 64px top bar; macOS ignores TitleBarHeight.
+		d.win = mygo.NewWindow(mygo.WindowOptions{Title: locales.BMenuAppName(), URL: "/", Width: 1120, Height: 820, MinWidth: 680, MinHeight: 540, Hidden: true, TitleBarStyle: mygo.TitleBarHidden, TitleBarHeight: 64, BackgroundColor: bg, StateKey: "liubai-editor"})
 		go d.native.run(d.win)
 		openedAtLogin := mygo.App.WasOpenedAtLogin()
 		d.win.OnReadyToShow(func() {

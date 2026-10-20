@@ -1750,6 +1750,18 @@ export interface Messages {
    */
   bMenuQuit(): string;
   /**
+   * Native menu label: Exit, the last item of the File menu on Windows
+   *
+   * `退出`
+   */
+  bMenuExit(): string;
+  /**
+   * Native menu label: Help, the last menu on Windows
+   *
+   * `帮助`
+   */
+  bMenuHelp(): string;
+  /**
    * Native menu label: File
    *
    * `文件`
@@ -3064,6 +3076,8 @@ const catalog = createCatalog<Messages>({
     "bMenuHideOthers": [],
     "bMenuShowAll": [],
     "bMenuQuit": [],
+    "bMenuExit": [],
+    "bMenuHelp": [],
     "bMenuFile": [],
     "bMenuNew": [],
     "bMenuOpen": [],
@@ -3527,6 +3541,8 @@ const catalog = createCatalog<Messages>({
       "bMenuHideOthers": "隐藏其他",
       "bMenuShowAll": "全部显示",
       "bMenuQuit": "退出留白",
+      "bMenuExit": "退出",
+      "bMenuHelp": "帮助",
       "bMenuFile": "文件",
       "bMenuNew": "新建文稿",
       "bMenuOpen": "打开文稿…",
@@ -3989,6 +4005,8 @@ const catalog = createCatalog<Messages>({
       "bMenuHideOthers": "Hide Others",
       "bMenuShowAll": "Show All",
       "bMenuQuit": "Quit Liubai",
+      "bMenuExit": "Exit",
+      "bMenuHelp": "Help",
       "bMenuFile": "File",
       "bMenuNew": "New Document",
       "bMenuOpen": "Open Document…",

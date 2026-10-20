@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -13,7 +14,14 @@ import (
 	"liubai/locales"
 )
 
-const defaultCaptureShortcut = "Ctrl+Alt+Cmd+N"
+// defaultCaptureShortcut is ⌃⌥⌘N on macOS. Elsewhere Cmd would be the
+// Windows key, so the default is Ctrl+Alt+N, Evernote's new-note shortcut.
+func defaultCaptureShortcut() string {
+	if runtime.GOOS == "darwin" {
+		return "Ctrl+Alt+Cmd+N"
+	}
+	return "Ctrl+Alt+N"
+}
 
 type CaptureSettings struct {
 	Enabled     bool   `json:"enabled"`
@@ -22,7 +30,7 @@ type CaptureSettings struct {
 }
 
 func defaultCaptureSettings() CaptureSettings {
-	return CaptureSettings{Enabled: true, Shortcut: defaultCaptureShortcut}
+	return CaptureSettings{Enabled: true, Shortcut: defaultCaptureShortcut()}
 }
 
 // Decode fields separately so unknown settings do not discard the workspace index.
@@ -123,7 +131,7 @@ func (w *Workspace) SetCaptureSettings(p CaptureSettings) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if !validCaptureShortcut(p.Shortcut) {
-		p.Shortcut = defaultCaptureShortcut
+		p.Shortcut = defaultCaptureShortcut()
 	}
 	old := w.capture
 	w.capture = p

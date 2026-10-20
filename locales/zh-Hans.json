@@ -1172,6 +1172,14 @@
   "@bMenuQuit": {
     "description": "Native menu label: Quit"
   },
+  "bMenuExit": "退出",
+  "@bMenuExit": {
+    "description": "Native menu label: Exit, the last item of the File menu on Windows"
+  },
+  "bMenuHelp": "帮助",
+  "@bMenuHelp": {
+    "description": "Native menu label: Help, the last menu on Windows"
+  },
   "bMenuFile": "文件",
   "@bMenuFile": {
     "description": "Native menu label: File"

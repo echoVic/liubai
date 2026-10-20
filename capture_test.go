@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -76,7 +77,7 @@ func TestCaptureRejectsEmptyAndInvalidContent(t *testing.T) {
 func TestCaptureSettingsDefaultsValidationAndPersistence(t *testing.T) {
 	root := t.TempDir()
 	w, _ := openWorkspace(root)
-	want := CaptureSettings{Enabled: true, Shortcut: "Ctrl+Alt+Cmd+N"}
+	want := CaptureSettings{Enabled: true, Shortcut: defaultCaptureShortcut()}
 	if got := w.State().Capture; got != want {
 		t.Fatalf("defaults = %+v", got)
 	}
@@ -105,6 +106,17 @@ func TestCaptureSettingsDefaultsValidationAndPersistence(t *testing.T) {
 	}
 	if got := w.State().Capture; got != want {
 		t.Fatalf("unknown settings = %+v", got)
+	}
+}
+
+// Cmd would be the Windows key, so other systems default to Ctrl+Alt+N.
+func TestQuickNoteShortcutDefaultsPerPlatform(t *testing.T) {
+	want := "Ctrl+Alt+N"
+	if runtime.GOOS == "darwin" {
+		want = "Ctrl+Alt+Cmd+N"
+	}
+	if got := defaultCaptureShortcut(); got != want || !validCaptureShortcut(got) {
+		t.Fatalf("default shortcut %q, want %q", got, want)
 	}
 }
 

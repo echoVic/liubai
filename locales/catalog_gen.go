@@ -4226,6 +4226,34 @@ func (msgs Messages) BMenuQuit() string {
 	return Catalog.Format(msgs.locale, "bMenuQuit", nil)
 }
 
+// BMenuExit says "退出"
+// in the language the app shows.
+//
+// Native menu label: Exit, the last item of the File menu on Windows
+func BMenuExit() string { return In(i18n.Locale()).BMenuExit() }
+
+// BMenuExit says "退出"
+// in the language of msgs.
+//
+// Native menu label: Exit, the last item of the File menu on Windows
+func (msgs Messages) BMenuExit() string {
+	return Catalog.Format(msgs.locale, "bMenuExit", nil)
+}
+
+// BMenuHelp says "帮助"
+// in the language the app shows.
+//
+// Native menu label: Help, the last menu on Windows
+func BMenuHelp() string { return In(i18n.Locale()).BMenuHelp() }
+
+// BMenuHelp says "帮助"
+// in the language of msgs.
+//
+// Native menu label: Help, the last menu on Windows
+func (msgs Messages) BMenuHelp() string {
+	return Catalog.Format(msgs.locale, "bMenuHelp", nil)
+}
+
 // BMenuFile says "文件"
 // in the language the app shows.
 //

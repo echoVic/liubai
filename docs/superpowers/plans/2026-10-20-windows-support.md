@@ -14,6 +14,7 @@
 
 - macOS behavior and look do not change: Mac labels stay `⌘⇧R` / `⌘ ⇧ R`, the Mac menu template is unchanged, Mac font stacks keep their first families.
 - Focus mode is `F8` on Windows (menu accelerator and page); `Ctrl+Shift+F` keeps working.
+- Redo is `Ctrl+Y` in Windows menus and labels; off macOS the page also redoes on `Ctrl+Shift+Z`, which CodeMirror binds only on Linux.
 - Quick note default: `Ctrl+Alt+Cmd+N` on macOS, `Ctrl+Alt+N` elsewhere; save with `Ctrl+Enter` off macOS.
 - Desktop pages off macOS swallow `F5` and `Ctrl+R` (any `F5`; `Ctrl+R` without Alt/Shift/Meta).
 - `TitleBarHeight: 64`; `.windows .desktop .topbar` pads `24px` left and `max(24px, calc(var(--mygo-titlebar-inset-right, 0px) + 12px))` right.
@@ -160,13 +161,13 @@ func linkedPath(href string) (string, bool) {
 **Interfaces:**
 - Produces: `menuTemplateFor(goos string, msgs locales.Messages, action func(string) func(*mygo.MenuItem, *mygo.Window)) []*mygo.MenuItem`; `defaultCaptureShortcut() string`; bound `Desktop.CheckForUpdates()` and `Desktop.About()` (page calls `call('CheckForUpdates')`, `call('About')`).
 
-- [ ] **Step 1: Tests.** Every existing `menuTemplateIn(` call in `menu_test.go` becomes `menuTemplateFor("darwin", `. New:
+- [x] **Step 1: Tests.** Every existing `menuTemplateIn(` call in `menu_test.go` becomes `menuTemplateFor("darwin", `. New:
   - `TestWindowsMenusFollowWindowsHabits` (zh-Hans and en): four menus, File first and Help last; File ends with `RoleQuit` labelled 退出 / Exit; Help = 检查更新… / Check for Updates… (with Click), separator, 关于留白 / About Liubai (with Click); nowhere `RoleHide`, `RoleHideOthers`, `RoleUnhide`, `RoleFront`, `RoleClose`, `RoleZoom`.
   - `TestWindowsFocusModeUsesF8`: 专注模式 has accelerator `F8` in the Windows template.
 
   `capture_test.go` expects `defaultCaptureShortcut()`, and a new `TestQuickNoteShortcutDefaultsPerPlatform` checks it is `Ctrl+Alt+Cmd+N` on darwin and `Ctrl+Alt+N` elsewhere, both valid. The two `chmod 0` tests in `external_test.go` skip on Windows (`chmod 0 leaves files readable on Windows`); `TestSaveAsKeepsReferencesThroughDirectorySymlink` skips on Windows when `os.Symlink` fails.
-- [ ] **Step 2: Run** `go test -run 'Menu|Capture' .` → fails to compile (`menuTemplateFor` missing).
-- [ ] **Step 3: Implement.** Catalog: after `bMenuQuit` add `bMenuExit` (退出 / Exit, "Native menu label: Exit, the last item of the File menu on Windows") and `bMenuHelp` (帮助 / Help, "Native menu label: Help"). `go tool mygo generate .`.
+- [x] **Step 2: Run** `go test -run 'Menu|Capture' .` → fails to compile (`menuTemplateFor` missing).
+- [x] **Step 3: Implement.** Catalog: after `bMenuQuit` add `bMenuExit` (退出 / Exit, "Native menu label: Exit, the last item of the File menu on Windows") and `bMenuHelp` (帮助 / Help, "Native menu label: Help"). `go tool mygo generate .`.
 
   `main.go`: `menuTemplate` calls `menuTemplateFor(runtime.GOOS, …)`; `menuTemplateIn` is removed. `menuTemplateFor` builds the shared File items (New … Export PDF), Edit and View once; on darwin it returns exactly today's five menus; elsewhere File + Exit, Edit, View, Help. The focus accelerator is `F8` off darwin, with the reason in a comment: Microsoft Pinyin and Sogou use Ctrl+Shift+F to switch to Traditional Chinese. `showAbout(msgs)` holds the `ShowAboutPanel` call with the `"0.5.0"` literal (the release checklist's version spot). `func (d *Desktop) CheckForUpdates() { updater.CheckForUpdates() }`, `func (d *Desktop) About() { showAbout(locales.In(i18n.Locale())) }`. `NewWindow` gains `TitleBarHeight: 64`.
 
@@ -182,8 +183,8 @@ func defaultCaptureShortcut() string {
 	return "Ctrl+Alt+N"
 }
 ```
-- [ ] **Step 4: Verify**: `go test ./... && go vet ./...`; Windows vet/test-compile as in Task 1; `git diff --stat` shows `bindings.ts` gaining exactly the two methods.
-- [ ] **Step 5: Commit** `feat(windows): Windows menus, quick note default and title bar height`.
+- [x] **Step 4: Verify**: `go test ./... && go vet ./...`; Windows vet/test-compile as in Task 1; `git diff --stat` shows `bindings.ts` gaining exactly the two methods.
+- [x] **Step 5: Commit** `feat(windows): Windows menus, quick note default and title bar height`.
 
 ### Task 4: Platform module and quick note keys
 
@@ -282,7 +283,7 @@ export function isReloadKey(e:Pick<KeyboardEvent,'key'|'ctrlKey'|'altKey'|'shift
 - [ ] **Step 1: Test** (`scripts/check-editing.ts`): `localDocumentLink('C:\\notes\\b.md#B',true)` → `{path:'C:\\notes\\b.md',fragment:'B'}`; `localDocumentLink('C:/notes/b.md',true)` → path `C:/notes/b.md`; both `null` with `drivePaths=false`.
 - [ ] **Step 2: Implement.**
   - `app.ts` at start-up: `document.documentElement.classList.toggle('windows',windows)`; on Windows `#reveal-quarantine` uses `data-i18n="fShowInFileExplorer"`; `if(desktop&&!mac)window.addEventListener('keydown',e=>{if(isReloadKey(e))e.preventDefault()},true)`.
-  - Global keydown: off macOS, a bare `F8` with no dialog open runs `focus`; the Mod shortcut handler ignores `ctrlKey&&altKey` off macOS (AltGr).
+  - Global keydown: off macOS, a bare `F8` with no dialog open runs `focus`; the Mod shortcut handler ignores `ctrlKey&&altKey` off macOS (AltGr) and maps `Ctrl+Shift+Z` to `redo`.
   - Palette (desktop only): `['checkUpdates',messages.bMenuCheckForUpdates(),'']`, `['about',messages.bMenuAbout(),'']`; `action()` handles them before needing a document: `void call(id==='about'?'About':'CheckForUpdates').catch(e=>toast(errorText(e)))`.
   - `capture.ts`: the same `windows` class and reload guard (`window.mygo&&!mac`).
   - `editing.ts`: `localDocumentLink(href,drivePaths=windows)` lets `/^[a-z]:[\\/]/i` through when `drivePaths`.

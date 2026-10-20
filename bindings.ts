@@ -137,6 +137,9 @@ export interface WorkspaceState {
 // ---- Services ----
 
 export const Desktop = {
+  about(): Promise<void> {
+    return call("Desktop.About");
+  },
   activate(id: string): Promise<WorkspaceState> {
     return call("Desktop.Activate", id);
   },
@@ -145,6 +148,9 @@ export const Desktop = {
   },
   capture(text: string): Promise<Summary> {
     return call("Desktop.Capture", text);
+  },
+  checkForUpdates(): Promise<void> {
+    return call("Desktop.CheckForUpdates");
   },
   clipboardText(): Promise<string> {
     return call("Desktop.ClipboardText");

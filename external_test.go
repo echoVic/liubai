@@ -3,10 +3,19 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
+
+// chmod 0 makes a file unreadable on Unix only; Windows keeps it readable.
+func requireUnreadableMode(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 0 leaves files readable on Windows")
+	}
+}
 
 func openFile(t *testing.T, w *Workspace, name, content string) (string, Document) {
 	t.Helper()
@@ -134,6 +143,7 @@ func TestOverwriteKeepsDiskVersionAsRecoveryDraft(t *testing.T) {
 }
 
 func TestStatusSkipsReadingWhenMetadataIsUnchanged(t *testing.T) {
+	requireUnreadableMode(t)
 	w := workspace(t)
 	p, d := openFile(t, w, "a.md", "one\n")
 	if err := os.Chmod(p, 0); err != nil {
@@ -146,6 +156,7 @@ func TestStatusSkipsReadingWhenMetadataIsUnchanged(t *testing.T) {
 }
 
 func TestStatusAfterOwnSaveIsANoop(t *testing.T) {
+	requireUnreadableMode(t)
 	w := workspace(t)
 	p, d := openFile(t, w, "a.md", "one\n")
 	saved, err := w.Update(Edit{ID: d.ID, Revision: d.Revision, Content: "our save\n"})

@@ -11,7 +11,7 @@ import (
 )
 
 func TestMenuTemplateUsesChineseLabelsAndStandardItems(t *testing.T) {
-	items := menuTemplateIn(locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
+	items := menuTemplateFor("darwin", locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
 	labels := map[mygo.MenuRole]string{}
 	var walk func([]*mygo.MenuItem)
 	walk = func(list []*mygo.MenuItem) {
@@ -44,7 +44,7 @@ func TestAppMenuOffersCheckForUpdatesAfterAbout(t *testing.T) {
 		{"en", "About Liubai", "Check for Updates…"},
 	} {
 		t.Run(tt.locale, func(t *testing.T) {
-			items := menuTemplateIn(locales.In(tt.locale), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
+			items := menuTemplateFor("darwin", locales.In(tt.locale), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
 			app := items[0].Submenu
 			if len(app) < 4 || app[0].Label != tt.about {
 				t.Fatalf("app menu must start with %q", tt.about)
@@ -82,7 +82,7 @@ func TestMenuUsesToolbarNamesAndShortcuts(t *testing.T) {
 			walk(item.Submenu)
 		}
 	}
-	walk(menuTemplateIn(locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }))
+	walk(menuTemplateFor("darwin", locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }))
 	for label, key := range map[string]string{
 		"导出…": "", "专注模式": "CmdOrCtrl+Shift+F", "外观与排版…": "",
 		"切换分栏": "CmdOrCtrl+\\", "阅读模式": "CmdOrCtrl+Shift+R",
@@ -95,7 +95,7 @@ func TestMenuUsesToolbarNamesAndShortcuts(t *testing.T) {
 }
 
 func TestFileMenuOffersOpenRecentAfterOpen(t *testing.T) {
-	for _, menu := range menuTemplateIn(locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
+	for _, menu := range menuTemplateFor("darwin", locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
 		if menu.Label != "文件" {
 			continue
 		}
@@ -112,7 +112,7 @@ func TestFileMenuOffersOpenRecentAfterOpen(t *testing.T) {
 }
 
 func TestEditMenuOffersPastePlainAfterPaste(t *testing.T) {
-	for _, menu := range menuTemplateIn(locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
+	for _, menu := range menuTemplateFor("darwin", locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
 		if menu.Label != "编辑" {
 			continue
 		}
@@ -129,7 +129,7 @@ func TestEditMenuOffersPastePlainAfterPaste(t *testing.T) {
 }
 
 func TestFileMenuOffersCaptureAfterOpenRecent(t *testing.T) {
-	for _, menu := range menuTemplateIn(locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
+	for _, menu := range menuTemplateFor("darwin", locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }) {
 		if menu.Label != "文件" {
 			continue
 		}
@@ -146,7 +146,7 @@ func TestFileMenuOffersCaptureAfterOpenRecent(t *testing.T) {
 }
 
 func TestMenuTemplateEnglishLabelsAndLanguageChoices(t *testing.T) {
-	items := menuTemplateIn(locales.In("en"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
+	items := menuTemplateFor("darwin", locales.In("en"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
 	labels := map[string]*mygo.MenuItem{}
 	var walk func([]*mygo.MenuItem)
 	walk = func(items []*mygo.MenuItem) {
@@ -169,7 +169,7 @@ func TestMenuTemplateEnglishLabelsAndLanguageChoices(t *testing.T) {
 }
 
 func TestLanguageChoicesAreInsideViewMenu(t *testing.T) {
-	items := menuTemplateIn(locales.In("en"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
+	items := menuTemplateFor("darwin", locales.In("en"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
 	for _, item := range items {
 		if item.Label == "Language" {
 			t.Fatal("Language must be inside View")
@@ -184,4 +184,55 @@ func TestLanguageChoicesAreInsideViewMenu(t *testing.T) {
 		}
 	}
 	t.Fatal("View > Language must contain three choices")
+}
+
+func TestWindowsMenusFollowWindowsHabits(t *testing.T) {
+	for _, tt := range []struct{ locale, file, exit, help, updates, about string }{
+		{"zh-Hans", "文件", "退出", "帮助", "检查更新…", "关于留白"},
+		{"en", "File", "Exit", "Help", "Check for Updates…", "About Liubai"},
+	} {
+		t.Run(tt.locale, func(t *testing.T) {
+			items := menuTemplateFor("windows", locales.In(tt.locale), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
+			if len(items) != 4 || items[0].Label != tt.file || items[3].Label != tt.help {
+				t.Fatalf("menus %d: want File, Edit, View and Help", len(items))
+			}
+			file := items[0].Submenu
+			if exit := file[len(file)-1]; exit.Role != mygo.RoleQuit || exit.Label != tt.exit {
+				t.Errorf("File ends with %+v, want %q", exit, tt.exit)
+			}
+			help := items[3].Submenu
+			if len(help) != 3 || help[0].Label != tt.updates || help[0].Click == nil || help[1].Type != mygo.MenuItemSeparator || help[2].Label != tt.about || help[2].Click == nil {
+				t.Errorf("Help menu %+v", help)
+			}
+			var walk func([]*mygo.MenuItem)
+			walk = func(list []*mygo.MenuItem) {
+				for _, item := range list {
+					switch item.Role {
+					case mygo.RoleHide, mygo.RoleHideOthers, mygo.RoleUnhide, mygo.RoleFront, mygo.RoleZoom, mygo.RoleClose:
+						t.Errorf("Windows menus hold the macOS item %q", item.Role)
+					}
+					walk(item.Submenu)
+				}
+			}
+			walk(items)
+		})
+	}
+}
+
+func TestWindowsMenuShortcuts(t *testing.T) {
+	got := map[string]string{}
+	var walk func([]*mygo.MenuItem)
+	walk = func(items []*mygo.MenuItem) {
+		for _, item := range items {
+			got[item.Label] = item.Accelerator
+			walk(item.Submenu)
+		}
+	}
+	walk(menuTemplateFor("windows", locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }))
+	// Chinese input methods switch to Traditional Chinese on Ctrl+Shift+F.
+	for label, key := range map[string]string{"专注模式": "F8", "重做": "Ctrl+Y", "撤销": "CmdOrCtrl+Z", "阅读模式": "CmdOrCtrl+Shift+R"} {
+		if actual, exists := got[label]; !exists || actual != key {
+			t.Errorf("menu %q shortcut = %q (exists %v), want %q", label, actual, exists, key)
+		}
+	}
 }

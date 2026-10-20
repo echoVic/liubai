@@ -7,6 +7,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -129,6 +130,9 @@ func TestSaveAsKeepsReferencesThroughDirectorySymlink(t *testing.T) {
 	}
 	link := filepath.Join(t.TempDir(), "linked")
 	if err := os.Symlink(dir, link); err != nil {
+		if runtime.GOOS == "windows" {
+			t.Skip("symbolic links need Developer Mode or administrator rights on Windows")
+		}
 		t.Fatal(err)
 	}
 	r, err := w.SaveAs(s.Current.ID, filepath.Join(link, "copy.md"))

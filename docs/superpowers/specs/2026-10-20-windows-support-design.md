@@ -18,6 +18,7 @@ MyGo 本身支持 Windows：页面在 WebView2 中显示，`mygo build` 生成�
 - **快捷键**：Windows 上 ⌘ 换成 Ctrl，界面里的快捷键提示按平台显示（⌘⇧R / Ctrl+Shift+R）。
   - 专注模式在 Windows 上用 **F8**（与 Typora 相同）。微软拼音和搜狗输入法的「简繁切换」默认占用 Ctrl+Shift+F，按下去会切到繁体。Ctrl+Shift+F 照旧可用。
   - 随手记默认全局快捷键：macOS 不变（⌃⌥⌘N），Windows 为 **Ctrl+Alt+N**（Windows 没有 Command 键，按原样会变成 Ctrl+Alt+Win+N）。随手记里按 Ctrl+Enter 存为草稿。
+  - **重做**在 Windows 上是 Ctrl+Y（菜单快捷键和界面提示）；Ctrl+Shift+Z 由页面接住，两种都能用。
   - 桌面版拦下 **F5 / Ctrl+R**：WebView2 会把它们当作刷新，重载整个编辑器。MyGo 不会就刷新询问应用，`OnWillNavigate` 拦不住。
 - **菜单**：隐藏标题栏的窗口在 Windows 上没有菜单栏，按 Alt 或 F10 从左上角弹出。Windows 的菜单按习惯排成「文件 / 编辑 / 视图 / 帮助」：「退出」在文件菜单末尾，「检查更新…」「关于留白」在帮助菜单；不出现 macOS 的应用菜单和窗口菜单。命令面板（Ctrl+K）在桌面版加入「检查更新…」和「关于留白」，不知道按 Alt 也能找到。
 - **写回文件**：Windows 上用 `ReplaceFileW` 写回打开的文稿，保留文件属性、权限、备用数据流和创建时间，对应 macOS 版保留 Finder 标签和创建时间。杀毒软件、搜索索引或 OneDrive 短暂占用文件时重试。留白自己的原子写入（草稿、索引、导出）在重命名遇到占用时也重试。

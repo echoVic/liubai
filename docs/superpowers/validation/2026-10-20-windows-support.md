@@ -29,6 +29,11 @@ scripts/e2e.sh check-reader && scripts/e2e.sh check-split-preview && scripts/e2e
   - 随手记用 Ctrl+Enter 保存，⌘↩ 无效；设置里的快捷键显示为 Ctrl+Alt+Win+N。
   - 微软雅黑和 Segoe UI 在字体栈里，滚动条是细款，顶栏右侧给窗口按钮留了 150px。
   - 同一检查在 macOS 平台下确认原有写法、88px 留白和 ⌘↩ 保存都没有变。
+- **macOS 上能看到的变化**（有意为之）：
+  - 链接提示从「⌘ / Ctrl 点击打开链接」改为「⌘ 点击打开链接」：在 macOS 上 Ctrl 点击是右键。
+  - 英文的 "this Mac" 改为 "this computer"。
+  - 命令面板多了「检查更新…」「关于留白」。
+  - 随手记快捷键里的 Enter 显示为 ↩，如 ⌃↩。
 - **`check-extras` 性能预算**：第一次跑出超出 15ms，当时 load average 约 12。与 `main` 交替各跑三次：main 是 16.37 / 14.17 / 11.36ms，本分支是 12.08 / 11.87 / 11.12ms，没有回退，是负载噪声。之后的完整运行通过。
 - **前端构建**：`node scripts/build.mjs` 连续两次产物相同。
 - **生成文件**：`go tool mygo generate .` 无变化。
@@ -45,6 +50,18 @@ scripts/e2e.sh check-reader && scripts/e2e.sh check-split-preview && scripts/e2e
 - `web/` 放在 exe 旁边，与仓库里的 `web/` 完全一致，打包后 `frontendFiles()` 从这里读取。
 - 没有生成安装包：本机没装 NSIS，构建提示跳过。生成安装包要先 `brew install makensis`。
 - 产物里多了 macOS 专用的 `en.lproj/`、`zh-Hans.lproj/`（各一个 `InfoPlist.strings`），这是因为它们放在 `resources/` 根目录，没有放进 `resources/darwin/`。它们对 Windows 版没有影响。挪到 `resources/darwin/` 会改变 macOS 正式包的输入，要等下次 macOS 正式构建时一起验证，这次没有挪。
+
+## 审查
+
+一位独立审查者通读了整个分支，并对照 MyGo 和 Go 的源码核实。指出的问题都已修复，并补上了测试，详见计划末尾的 Review fixes：
+
+- 在 Windows 上，`filepath.VolumeName` 会把 `//host/…` 当作共享路径。这既会让 `links_test.go` 在 Windows 上失败，也会让打开文稿时就去连接文稿里写的 SMB 主机，泄露凭据。现在共享和设备路径一律拒绝。
+- MyGo 在 Windows 上的编辑角色会截走 Ctrl+V，只粘贴纯文本。现在 Windows 的编辑菜单不放这些角色。
+- 阅读视图里编码过的盘符链接打不开，现已修复。
+- `ReplaceFileW` 返回 1176 后，如果重命名也失败，文稿会从磁盘上消失。现在会保留临时文件。
+- 随手记面板里 Ctrl+Shift+R 会刷新；AltGr 与 Ctrl+/ 冲突；滚动条颜色覆盖了编辑区原有的设定。三处均已修复。
+
+审查后重跑了 Go 测试、Windows 交叉编译、tsc、bun 检查和 `check-windows`，全部通过。暂不处理的已知限制记在设计文档的「不做」里。
 
 ## 未能运行
 
@@ -66,7 +83,8 @@ scripts/e2e.sh check-reader && scripts/e2e.sh check-split-preview && scripts/e2e
 - **菜单与按键**：
   - Alt / F10 弹出菜单：文件…退出、编辑、视图、帮助（检查更新…、关于留白）。
   - 菜单快捷键生效：Ctrl+N/O/S/P/K，F8，Ctrl+Y。
-  - F5、Ctrl+R 不会刷新页面。
+  - F5、Ctrl+R、Ctrl+Shift+R 不会刷新页面（随手记面板里也是）。
+  - Ctrl+V 粘贴截图、网页、Word 内容会转成 Markdown；右键菜单里的剪切、拷贝、粘贴可用。
   - Ctrl+Shift+F 在没有输入法拦截时仍能进入专注模式。
 - **输入法**：微软拼音和搜狗下的组字、斜杠菜单（「、」），以及 Ctrl+Shift+F 不再切到繁体。
 - **文件**：
@@ -74,8 +92,10 @@ scripts/e2e.sh check-reader && scripts/e2e.sh check-split-preview && scripts/e2e
   - 跳转列表里的最近文稿。
   - 在 OneDrive 同步的「文档」目录里自动保存：内容、创建时间和隐藏属性保留，被占用时重试。
   - 只读文件不被覆盖。
-  - `C:\…` 图片显示，`C:\…\x.md` 链接能打开。
-- **随手记**：Ctrl+Alt+N 能否注册；面板在 Windows 11 上的亚克力背景和 8px 圆角，Windows 10 上的外观；Ctrl+Enter 保存；开机启动。
+  - `C:\…` 图片显示，`C:\…\x.md` 链接在编辑区（Ctrl 点击）和阅读视图里都能打开。
+  - `\\服务器\…` 和 `//服务器/…` 图片被拒绝，没有网络访问（例如用 Wireshark 确认没有 445 端口的连接）。
+- **随手记**：Ctrl+Alt+N 能否注册（含 AltGr 键盘布局）；面板在 Windows 11 上的亚克力背景和 8px 圆角，Windows 10 上的外观；Ctrl+Enter 保存；开机启动。
+- **受控文件夹访问**：开启后，未签名的留白能否保存到「文档」。
 - **导出**：
   - PDF 的分页和中文复制。Windows 上没有 CoreGraphics 的修正，如果复制出 ⼝ 之类的部首字，要另做修正。
   - Word、HTML、ZIP 导出；富文本复制粘贴到 Word 和微信。

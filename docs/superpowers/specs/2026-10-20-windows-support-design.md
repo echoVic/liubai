@@ -17,12 +17,12 @@ MyGo 本身支持 Windows：页面在 WebView2 中显示，`mygo build` 生成�
 - **字体**：Windows 没有合适的系统宋体，也不内置字体（0.5.0 刚给安装包瘦身）。正文字体栈在 macOS 字体之后依次加思源宋体 / Noto Serif SC（用户装了就用）、Georgia、微软雅黑；界面字体加 Segoe UI 和微软雅黑 UI。macOS 上字体栈的前几项不变，显示不变。
 - **快捷键**：Windows 上 ⌘ 换成 Ctrl，界面里的快捷键提示按平台显示（⌘⇧R / Ctrl+Shift+R）。
   - 专注模式在 Windows 上用 **F8**（与 Typora 相同）。微软拼音和搜狗输入法的「简繁切换」默认占用 Ctrl+Shift+F，按下去会切到繁体。Ctrl+Shift+F 照旧可用。
-  - 随手记默认全局快捷键：macOS 不变（⌃⌥⌘N），Windows 为 **Ctrl+Alt+N**（Windows 没有 Command 键，按原样会变成 Ctrl+Alt+Win+N）。随手记里按 Ctrl+Enter 存为草稿。
+  - 随手记默认全局快捷键：macOS 不变（⌃⌥⌘N），Windows 为 **Ctrl+Alt+N**（Windows 没有 Command 键，按原样会变成 Ctrl+Alt+Win+N）。随手记里按 Ctrl+Enter 存为草稿。代价：Ctrl+Alt+N 就是 AltGr+N，在波兰语等键盘上会占掉 AltGr+N 打出的字符（如 ń），这类用户需要在设置里换快捷键。
   - **重做**在 Windows 上是 Ctrl+Y（菜单快捷键和界面提示）；Ctrl+Shift+Z 由页面接住，两种都能用。
-  - 桌面版拦下 **F5 / Ctrl+R**：WebView2 会把它们当作刷新，重载整个编辑器。MyGo 不会就刷新询问应用，`OnWillNavigate` 拦不住。
-- **菜单**：隐藏标题栏的窗口在 Windows 上没有菜单栏，按 Alt 或 F10 从左上角弹出。Windows 的菜单按习惯排成「文件 / 编辑 / 视图 / 帮助」：「退出」在文件菜单末尾，「检查更新…」「关于留白」在帮助菜单；不出现 macOS 的应用菜单和窗口菜单。命令面板（Ctrl+K）在桌面版加入「检查更新…」和「关于留白」，不知道按 Alt 也能找到。
-- **写回文件**：Windows 上用 `ReplaceFileW` 写回打开的文稿，保留文件属性、权限、备用数据流和创建时间，对应 macOS 版保留 Finder 标签和创建时间。杀毒软件、搜索索引或 OneDrive 短暂占用文件时重试。留白自己的原子写入（草稿、索引、导出）在重命名遇到占用时也重试。
-- **路径**：Markdown 中 `C:\…`、`C:/…`、`\\服务器\共享\…` 形式的图片和文稿链接按本地绝对路径处理。Typora 在 Windows 上会写这种路径。
+  - 桌面版拦下 **F5 / Ctrl+R / Ctrl+Shift+R**：WebView2 会把它们当作刷新，重载整个编辑器。MyGo 不会就刷新询问应用，`OnWillNavigate` 拦不住。编辑窗口里 Ctrl+Shift+R 由菜单接走，但随手记面板没有菜单，所以也要拦。
+- **菜单**：隐藏标题栏的窗口在 Windows 上没有菜单栏，按 Alt 或 F10 从左上角弹出。Windows 的菜单按习惯排成「文件 / 编辑 / 视图 / 帮助」：「退出」在文件菜单末尾，「检查更新…」「关于留白」在帮助菜单；不出现 macOS 的应用菜单和窗口菜单。「编辑」菜单不放剪切、拷贝、粘贴、全选：MyGo 在 Windows 上会让这几个角色接管 Ctrl+X/C/V/A，粘贴时只插入纯文本，页面收不到粘贴事件，网页、Word 和截图就不能转成 Markdown。不放这几项时，按键由 WebView2 原生处理，右键菜单里照样有这几项。命令面板（Ctrl+K）在桌面版加入「检查更新…」和「关于留白」，不知道按 Alt 也能找到。
+- **写回文件**：Windows 上用 `ReplaceFileW` 写回打开的文稿，保留文件属性、权限、备用数据流和创建时间，对应 macOS 版保留 Finder 标签和创建时间。杀毒软件、搜索索引或 OneDrive 短暂占用文件时重试。留白自己的原子写入（草稿、索引、导出）在重命名遇到占用时也重试。`ReplaceFileW` 失败时退回普通重命名：有的共享不支持替换；遇到 ERROR_UNABLE_TO_MOVE_REPLACEMENT 时，原文件已被删掉，新内容还在临时文件里。重命名也失败、原文件又已不在时，保留临时文件，因为它是磁盘上唯一的一份。
+- **路径**：Markdown 中 `C:\…`、`C:/…` 形式的图片和文稿链接按本地绝对路径处理。Typora 在 Windows 上会写这种路径。共享和设备路径（`\\服务器\共享\…`、`//服务器/…`、`\\?\…`）一律拒绝，以免打开一篇文稿就去连接文稿里写的主机，而 Windows 会把用户的凭据发给对方的 SMB 服务器。文稿本身在共享上时，相对路径照常可用。
 - **数据目录**：沿用 `os.UserConfigDir()`，即 `%AppData%\Liubai`，与 Electron 类应用一致。
 - **文案**：「在 Finder 中显示」在 Windows 上为「在资源管理器中显示」；英文的 "this Mac" 改为 "this computer"。
 
@@ -33,6 +33,10 @@ MyGo 本身支持 Windows：页面在 WebView2 中显示，`mygo build` 生成�
 - **`file://` 图片地址**：macOS 上也不支持，保持一致。
 - **Windows PDF 文字层修正**：现有修正针对 CoreGraphics。在 Windows 上 `fontIdeographs` 返回 nil，修正原样返回 PDF；Chromium 生成的 PDF 是否需要修正要真机验证。
 - **代码签名、Microsoft Store、winget、Linux。**
+- **已知限制**，暂不处理：
+  - 前端（markdown-it、编辑器）会把路径里的 `\` 加标点当作转义，后端（goldmark）不会。所以盘符路径中有一段以 `_ . - [ ( #` 等标点开头时，编辑区和阅读视图里的图片会显示不出来。
+  - 留白读文件时不共享删除权限，正好撞上时，别的编辑器用重命名覆盖的方式保存会失败。
+  - 超过 MAX_PATH 的路径用不了 `ReplaceFileW`，会退回重命名，属性和创建时间保不住。
 
 ## 设计
 
@@ -76,8 +80,9 @@ MyGo 本身支持 Windows：页面在 WebView2 中显示，`mygo build` 生成�
 
 ### 路径
 
-- `imagePath`、`SaveAs`、`OpenLinked`：当 `filepath.VolumeName(dest)` 非空时（只有 Windows 上会非空），把它当作本地路径，不再按 URL 解析（URL 解析会把盘符当成协议）。
-- 前端 `localDocumentLink`：Windows 上把 `C:\…\x.md` 视为本地文稿链接。
+- `volumePath(goos, s)` 按 Windows 的读法区分盘符绝对路径和共享 / 设备路径，判断前先做百分号解码。它带 GOOS 参数，各种情况在 macOS 上也能测到。
+- `imagePath`、`SaveAs`、`OpenLinked`（`linkedPath`）：盘符路径直接当作本地路径，不再按 URL 解析（URL 解析会把盘符当成协议）；共享路径拒绝。
+- 前端 `localDocumentLink`：Windows 上把 `C:\…\x.md` 视为本地文稿链接，阅读视图里被 markdown-it 编码成 `C:%5C…` 的也算。
 
 ## 测试
 
@@ -109,10 +114,18 @@ MyGo 本身支持 Windows：页面在 WebView2 中显示，`mygo build` 生成�
   - Alt / F10 弹出的菜单；
   - 菜单快捷键（包括 F8）；
   - 深色模式下的标题栏。
-- **文件**：在 OneDrive 同步目录里保存，确认创建时间、只读文件和占用重试。
+- **文件**：
+  - 在 OneDrive 同步目录里保存，确认创建时间、只读文件和占用重试。
+  - `\\服务器\…` 图片被拒绝，不产生网络访问。
+- **粘贴**：Ctrl+V 粘贴截图、网页和 Word 内容会转成 Markdown；右键菜单的粘贴也一样。
+- **阅读视图**：反斜杠写法的盘符链接能打开。
 - **输入法**：微软拼音和搜狗下的组字、斜杠菜单「、」、Ctrl+Shift+F 冲突是否已绕开。
 - **打开文件**：双击 .md 打开；应用已在运行时由新实例转交路径，窗口能否到前台；跳转列表。
-- **随手记**：Ctrl+Alt+N 能否注册，Windows 10 上没有亚克力背景时的外观。
+- **随手记**：
+  - Ctrl+Alt+N 能否注册；
+  - Windows 10 上没有亚克力背景时的外观；
+  - Ctrl+Shift+R 不会刷新面板；
+  - AltGr 键盘布局下的表现。
 - **导出**：导出 PDF 的分页和中文复制（文字层），Word、HTML、ZIP。
-- **安装和更新**：安装、卸载、文件关联、自动更新和增量包、SmartScreen 提示。
+- **安装和更新**：安装、卸载、文件关联、自动更新和增量包、SmartScreen 提示；开启「受控文件夹访问」时，未签名的应用能否保存到「文档」。
 - **显示**：高分屏和多显示器缩放。

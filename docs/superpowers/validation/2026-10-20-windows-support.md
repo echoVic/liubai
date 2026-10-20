@@ -3,7 +3,7 @@
 **日期**：2026-10-20
 **基线**：`main` 的 `dfc982d`
 **代码**：`feat/windows` 分支，设计见 [specs/2026-10-20-windows-support-design.md](../specs/2026-10-20-windows-support-design.md)，计划见 [plans/2026-10-20-windows-support.md](../plans/2026-10-20-windows-support.md)
-**范围**：只在 macOS 上能做的验证。还没有在 Windows 真机或 Windows CI 上运行过。
+**范围**：macOS 上的验证和 Windows CI。还没有在 Windows 真机上运行过。
 
 ## 在 macOS 上通过的检查
 
@@ -63,11 +63,23 @@ scripts/e2e.sh check-reader && scripts/e2e.sh check-split-preview && scripts/e2e
 
 审查后重跑了 Go 测试、Windows 交叉编译、tsc、bun 检查和 `check-windows`，全部通过。暂不处理的已知限制记在设计文档的「不做」里。
 
-## 未能运行
+## 合并后与发版
 
-- **`scripts/e2e.sh check-blocks-webkit`**：两次都报「no animation frames」（显示器休眠或锁屏时 WKWebView 不出帧）。用 `main` 的代码跑同一检查也是同样的结果，说明是环境原因。这次对 macOS 的改动都在 Chrome 回归里覆盖了：快捷键写法、菜单提示、字体栈前几项不变。等屏幕醒着时应再跑一次。
-- **Windows CI**（`.github/workflows/windows.yml`）：分支推到 GitHub 后才会运行，还没有推。
-- **Windows 真机**：见下面的清单。
+- **WebKit 检查**：`scripts/e2e.sh check-blocks-webkit` 开发时两次因显示器休眠没跑成，用 `main` 对照也一样；发版前屏幕醒着时补跑，已通过。
+- **Windows CI**：合并后推送 `main`，`go vet ./...` 和 `go test ./...` 在 windows-latest（Go 1.27.1 x64）上通过，Windows 专属测试一并运行。`c9188cc` 是 run 39379317914，发版提交 `1eadb11` 是 run 39379632394。
+- **0.6.0 发版**：2026-10-20 发布，`go tool mygo build -platform darwin/universal,windows/amd64,windows/arm64 -upload`，约 4 分钟。
+  - **macOS**：签名、公证、钉票据和 DMG 校验全部通过；`vcs.revision` 为 `1eadb11`，`vcs.modified=false`。
+  - **增量包**：从 0.5.0 约 1.1 MB，从 0.3.0、0.4.0 约 4.1 MB。
+
+| 文件 | 大小 | SHA-256 |
+|---|---|---|
+| `Liubai.0.6.0.dmg` | 10.5 MB | `dd2230a2f4eb9e8a2cb3829d7e49eb6af608bdbe7e2f4e39b58e56c93b359dc1` |
+| `Liubai.Setup.0.6.0.amd64.exe` | 6.4 MB | `12fa4bf257c3cf5c736fc1f1e38d17272e1e2d30c2cb99f7a00264bcc4c0fe2e` |
+| `Liubai.Setup.0.6.0.arm64.exe` | 5.7 MB | `2437fd5c065ed70dc46992267fd13d8e25e1f7fdc11893708c8ce374fabfcf28` |
+
+- **Windows 产物**：两个程序是 PE32+ GUI（x86-64、Aarch64），安装包是 Nullsoft Installer，`vcs.revision` 也是 `1eadb11`。它们的 `vcs.modified=true`，来自 MyGo 构建时临时写入包目录的 `mygo_windows_<架构>.syso`，源码与标签一致；`.gitignore` 现已忽略这个文件。
+- **公开下载核对**：匿名下载 `update-darwin-universal.json`、`update-windows-amd64.json`、`update-windows-arm64.json` 和三个安装包，与本地构建逐字节一致。
+- **Windows 真机**：仍未测试，见下面的清单。
 
 ## Windows 真机清单
 

@@ -155,9 +155,21 @@ func writeQuick(path string, data []byte, mode os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	return os.Rename(name, path)
+	return renameFile(name, path)
 }
 func atomicWriteHook(path string, data []byte, mode os.FileMode, beforeRename func(tmp string) error) error {
+	return atomicWriteWith(path, data, mode, func(tmp string) error {
+		if beforeRename != nil {
+			if err := beforeRename(tmp); err != nil {
+				return err
+			}
+		}
+		return renameFile(tmp, path)
+	})
+}
+
+// atomicWriteWith writes data to a synced file beside path; commit puts it in place.
+func atomicWriteWith(path string, data []byte, mode os.FileMode, commit func(tmp string) error) error {
 	f, err := os.CreateTemp(filepath.Dir(path), ".liubai-*")
 	if err != nil {
 		return err
@@ -177,12 +189,7 @@ func atomicWriteHook(path string, data []byte, mode os.FileMode, beforeRename fu
 	if err != nil {
 		return err
 	}
-	if beforeRename != nil {
-		if err = beforeRename(name); err != nil {
-			return err
-		}
-	}
-	if err = os.Rename(name, path); err != nil {
+	if err = commit(name); err != nil {
 		return err
 	}
 	if dir, e := os.Open(filepath.Dir(path)); e == nil {
@@ -350,15 +357,15 @@ func (w *Workspace) trash(d *Document) error {
 	}
 	assets := filepath.Join(w.root, "assets", d.ID)
 	movedAssets := false
-	if err := os.Rename(assets, filepath.Join(target, "assets")); err == nil {
+	if err := renameFile(assets, filepath.Join(target, "assets")); err == nil {
 		movedAssets = true
 	} else if !errors.Is(err, os.ErrNotExist) {
 		_ = os.Remove(target)
 		return err
 	}
-	if err := os.Rename(filepath.Join(w.root, "drafts", d.ID+".json"), filepath.Join(target, "draft.json")); err != nil {
+	if err := renameFile(filepath.Join(w.root, "drafts", d.ID+".json"), filepath.Join(target, "draft.json")); err != nil {
 		if movedAssets {
-			err = errors.Join(err, os.Rename(filepath.Join(target, "assets"), assets))
+			err = errors.Join(err, renameFile(filepath.Join(target, "assets"), assets))
 		}
 		_ = os.Remove(target)
 		return err
@@ -396,7 +403,7 @@ func (w *Workspace) quarantine(path string, backup []byte) error {
 		}
 		var err error
 		if backup == nil {
-			err = os.Rename(path, target)
+			err = renameFile(path, target)
 		} else {
 			err = atomicWrite(target, backup, 0600)
 		}

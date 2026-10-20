@@ -37,13 +37,13 @@
 **Interfaces:**
 - Produces: `atomicWriteWith(path string, data []byte, mode os.FileMode, commit func(tmp string) error) error`; `renameFile(from, to string) error`; on Windows `retryWhileBusy(op func() error) error` and `busy(err error) bool`.
 
-- [ ] **Step 1: Write the Windows tests** in `replace_windows_test.go` (`//go:build windows`):
+- [x] **Step 1: Write the Windows tests** in `replace_windows_test.go` (`//go:build windows`):
   - `TestReplaceFileKeepsAttributesStreamsAndCreationTime`: write `a.md`, set creation time to 2020-01-02 03:04:05 UTC (`windows.SetFileTime` on a `FILE_WRITE_ATTRIBUTES` handle), set `FILE_ATTRIBUTE_HIDDEN`, write stream `a.md:liubai` = `kept`; `replaceFile(path, "two\n", 0644)`; expect new content, hidden attribute, stream content and creation time unchanged. (Hidden distinguishes `ReplaceFileW` from a rename: NTFS tunneling can restore creation time on rename but not the attribute.)
   - `TestReplaceFileWaitsForAReaderWithoutDeleteSharing`: hold `a.md` with `windows.CreateFile(GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE)`, close it after 200 ms with `time.AfterFunc`; `replaceFile` succeeds with the new content.
   - `TestReplaceFileGivesUpWhenTheFileStaysOpen`: hold it for the whole test; `replaceFile` fails within 5 s, content stays `one\n`, the directory holds only `a.md`.
   - `TestAtomicWriteWaitsForAReaderWithoutDeleteSharing`: same hold on `workspace.json`-like file, closed after 200 ms; `atomicWrite` succeeds.
-- [ ] **Step 2: Confirm they compile for Windows and fail to link** (no `atomicWriteWith` yet): `GOOS=windows GOARCH=amd64 go vet .` → errors naming the missing pieces.
-- [ ] **Step 3: Implement.** `workspace.go`:
+- [x] **Step 2: Confirm they compile for Windows and fail to link** (no `atomicWriteWith` yet): `GOOS=windows GOARCH=amd64 go vet .` → errors naming the missing pieces.
+- [x] **Step 3: Implement.** `workspace.go`:
 
 ```go
 func atomicWriteHook(path string, data []byte, mode os.FileMode, beforeRename func(tmp string) error) error {
@@ -102,8 +102,8 @@ func busy(err error) bool {
 ```
 
   `replace_windows.go`: `os.Stat` the target (missing → `atomicWrite`); otherwise `atomicWriteWith` whose commit calls `kernel32!ReplaceFileW(target, tmp, nil, REPLACEFILE_IGNORE_MERGE_ERRORS|REPLACEFILE_IGNORE_ACL_ERRORS, 0, 0)` inside `retryWhileBusy`, wrapping failures as `*os.LinkError{Op: "replace"}`. When it fails with an error that is not busy, fall back to `renameFile(tmp, path)`: like `replace_darwin.go`, metadata is best effort and some network shares cannot replace files. `replace_other.go` becomes `//go:build !darwin && !windows`.
-- [ ] **Step 4: Verify**: `go test ./...` (macOS paths unchanged), `GOOS=windows GOARCH=amd64 go vet ./...`, `GOOS=windows GOARCH=arm64 go vet ./...`, `GOOS=windows GOARCH=amd64 go test -c -o /tmp/liubai-windows-tests.exe .` — all succeed.
-- [ ] **Step 5: Commit** `feat(windows): replace documents with ReplaceFileW and retry busy renames`.
+- [x] **Step 4: Verify**: `go test ./...` (macOS paths unchanged), `GOOS=windows GOARCH=amd64 go vet ./...`, `GOOS=windows GOARCH=arm64 go vet ./...`, `GOOS=windows GOARCH=amd64 go test -c -o /tmp/liubai-windows-tests.exe .` — all succeed.
+- [x] **Step 5: Commit** `feat(windows): replace documents with ReplaceFileW and retry busy renames`.
 
 ### Task 2: Windows drive and share paths
 

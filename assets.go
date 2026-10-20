@@ -765,7 +765,7 @@ func (w *Workspace) Export(id, path string, allowMissing bool) (ExportResult, er
 	if err != nil {
 		return r, err
 	}
-	if err = os.Rename(tmp, path); err != nil {
+	if err = renameFile(tmp, path); err != nil {
 		return r, err
 	}
 	r.Path = path

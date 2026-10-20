@@ -1,6 +1,7 @@
 import {messages,localizePage,onPageLocaleChange} from './i18n';
 import {call,type Appearance,type WorkspaceState} from './types';
 import {captureKeyAction} from './capture-input';
+import {mac} from './platform';
 const field=document.querySelector<HTMLTextAreaElement>('#capture-text')!;
 const button=document.querySelector<HTMLButtonElement>('#capture-save')!;
 const status=document.querySelector<HTMLElement>('#capture-status')!;
@@ -26,7 +27,7 @@ field.addEventListener('compositionend',()=>{composing=false});
 field.addEventListener('input',()=>{clearTimeout(hideTimer);message(hint())});
 document.addEventListener('keydown',e=>{
  // An uncancelled Escape also closes an NSPanel; consume it while the IME owns it.
- if(composing||e.isComposing){if(e.key==='Escape'||e.key==='Enter'&&e.metaKey)e.preventDefault();return}
+ if(composing||e.isComposing){if(e.key==='Escape'||e.key==='Enter'&&(mac?e.metaKey:e.ctrlKey))e.preventDefault();return}
  const action=captureKeyAction(e);if(!action)return;e.preventDefault();
  if(action==='save')void save();else void hide();
 });

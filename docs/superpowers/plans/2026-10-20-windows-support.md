@@ -196,7 +196,7 @@ func defaultCaptureShortcut() string {
 - Produces (`src/platform.ts`): `mac: boolean`, `windows: boolean`, `keyLabel(keys: string, opts?: {spaced?: boolean; macOS?: boolean}): string`, `isReloadKey(e): boolean`, `focusKeys: string` (`Mod+Shift+F` / `F8`), `redoKeys: string` (`Mod+Shift+Z` / `Mod+Y`).
 - Produces (`src/capture-input.ts`): `captureKeyAction(e, composing = false, macOS = mac)`, `displayCaptureShortcut(shortcut, macOS = mac)`.
 
-- [ ] **Step 1: Write `scripts/check-platform.ts`**:
+- [x] **Step 1: Write `scripts/check-platform.ts`**:
 
 ```ts
 import assert from 'node:assert/strict';
@@ -212,8 +212,8 @@ console.log('平台快捷键写法与刷新键检查通过');
 ```
 
   `scripts/check-capture-input.ts`: existing asserts pass `macOS=true` explicitly; add: Ctrl+Enter saves only off macOS, ⌘+Enter only on macOS; `displayCaptureShortcut('Ctrl+Alt+N',false)==='Ctrl+Alt+N'`, `displayCaptureShortcut('Ctrl+Alt+Cmd+N',false)==='Ctrl+Alt+Win+N'`.
-- [ ] **Step 2: Run** `bun scripts/check-platform.ts` → fails (module missing).
-- [ ] **Step 3: Implement `src/platform.ts`**:
+- [x] **Step 2: Run** `bun scripts/check-platform.ts` → fails (module missing).
+- [x] **Step 3: Implement `src/platform.ts`**:
 
 ```ts
 // Key names follow the platform, as CodeMirror decides what Mod- means.
@@ -239,8 +239,8 @@ export function isReloadKey(e:Pick<KeyboardEvent,'key'|'ctrlKey'|'altKey'|'shift
 ```
 
   `capture-input.ts`: `captureKeyAction(e,composing=false,macOS=mac)` saves on `e.key==='Enter'&&(macOS?e.metaKey:e.ctrlKey)`; `displayCaptureShortcut(shortcut,macOS=mac)` returns `keyLabel(shortcut,{macOS})`. `capture.ts` line 29 uses `(mac?e.metaKey:e.ctrlKey)`.
-- [ ] **Step 4: Verify**: `bun scripts/check-platform.ts`, `bun scripts/check-capture-input.ts`, `node_modules/.bin/tsc --noEmit`.
-- [ ] **Step 5: Commit** `feat(windows): name shortcuts per platform; Ctrl+Enter saves quick notes`.
+- [x] **Step 4: Verify**: `bun scripts/check-platform.ts`, `bun scripts/check-capture-input.ts`, `node_modules/.bin/tsc --noEmit`.
+- [x] **Step 5: Commit** `feat(windows): name shortcuts per platform; Ctrl+Enter saves quick notes`.
 
 ### Task 5: Shortcuts in messages, the palette and the toolbar
 

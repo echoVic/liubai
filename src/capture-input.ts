@@ -1,8 +1,9 @@
+import {mac,keyLabel} from './platform';
 type CaptureKey=Pick<KeyboardEvent,'key'|'code'|'metaKey'|'ctrlKey'|'altKey'|'shiftKey'|'isComposing'>;
-export function captureKeyAction(e:CaptureKey,composing=false):'save'|'hide'|null{
+export function captureKeyAction(e:CaptureKey,composing=false,macOS=mac):'save'|'hide'|null{
  if(e.isComposing||composing)return null;
  if(e.key==='Escape')return 'hide';
- if(e.key==='Enter'&&e.metaKey)return 'save';
+ if(e.key==='Enter'&&(macOS?e.metaKey:e.ctrlKey))return 'save';
  return null;
 }
 export function recordCaptureShortcut(e:CaptureKey):string|null{
@@ -16,4 +17,4 @@ export function recordCaptureShortcut(e:CaptureKey):string|null{
  if(!key)return null;
  return [...(e.ctrlKey?['Ctrl']:[]),...(e.altKey?['Alt']:[]),...(e.metaKey?['Cmd']:[]),...(e.shiftKey?['Shift']:[]),key].join('+');
 }
-export function displayCaptureShortcut(shortcut:string){return shortcut.replace(/Ctrl\+/g,'⌃').replace(/Alt\+/g,'⌥').replace(/Cmd\+/g,'⌘').replace(/Shift\+/g,'⇧')}
+export function displayCaptureShortcut(shortcut:string,macOS=mac){return keyLabel(shortcut,{macOS})}

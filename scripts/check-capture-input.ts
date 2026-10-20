@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import {captureKeyAction,recordCaptureShortcut,displayCaptureShortcut} from '../src/capture-input';
 const key=(key:string,extra:object={})=>({key,code:key.length===1?'Key'+key.toUpperCase():key,metaKey:false,ctrlKey:false,altKey:false,shiftKey:false,isComposing:false,...extra});
 assert.equal(captureKeyAction(key('Enter')),null);
-assert.equal(captureKeyAction(key('Enter',{metaKey:true})),'save');
+assert.equal(captureKeyAction(key('Enter',{metaKey:true}),false,true),'save');
+assert.equal(captureKeyAction(key('Enter',{ctrlKey:true}),false,true),null);
+// Windows has no Command key: Ctrl+Enter saves there.
+assert.equal(captureKeyAction(key('Enter',{ctrlKey:true}),false,false),'save');
+assert.equal(captureKeyAction(key('Enter',{metaKey:true}),false,false),null);
 assert.equal(captureKeyAction(key('Escape')),'hide');
 for(const composing of [false,true]){
  for(const name of ['Enter','Escape'])assert.equal(captureKeyAction(key(name,{metaKey:true,isComposing:!composing}),composing),null);
@@ -15,6 +19,8 @@ assert.equal(recordCaptureShortcut(key('Meta',{metaKey:true})),null);
 assert.equal(recordCaptureShortcut(key('Escape',{metaKey:true})),null);
 assert.equal(recordCaptureShortcut(key('Enter',{metaKey:true,isComposing:true})),null);
 assert.equal(recordCaptureShortcut(key(' ',{code:'Space',ctrlKey:true})),'Ctrl+Space');
-assert.equal(displayCaptureShortcut('Ctrl+Alt+Cmd+N'),'⌃⌥⌘N');
-assert.equal(displayCaptureShortcut('Alt+Shift+Space'),'⌥⇧Space');
+assert.equal(displayCaptureShortcut('Ctrl+Alt+Cmd+N',true),'⌃⌥⌘N');
+assert.equal(displayCaptureShortcut('Alt+Shift+Space',true),'⌥⇧Space');
+assert.equal(displayCaptureShortcut('Ctrl+Alt+N',false),'Ctrl+Alt+N');
+assert.equal(displayCaptureShortcut('Ctrl+Alt+Cmd+N',false),'Ctrl+Alt+Win+N');
 console.log('随手记按键、IME 防护与快捷键录制检查通过');

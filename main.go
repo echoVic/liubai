@@ -299,7 +299,7 @@ func menuTemplate(action func(string) func(*mygo.MenuItem, *mygo.Window)) []*myg
 }
 
 func showAbout(msgs locales.Messages) {
-	mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: msgs.BMenuAppName(), ApplicationVersion: "0.5.0"})
+	mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: msgs.BMenuAppName(), ApplicationVersion: "0.6.0"})
 }
 
 // menuTemplateFor follows the habits of each system. macOS has the app menu
@@ -347,7 +347,7 @@ func main() {
 	flag.Parse()
 	if *webAddr == "" {
 		mygo.App.SetName(locales.BMenuAppName())
-		mygo.App.SetVersion("0.5.0")
+		mygo.App.SetVersion("0.6.0")
 	}
 	web := frontendFiles()
 	if *webAddr == "" && os.Getenv("MYGO_GENERATE") != "" {

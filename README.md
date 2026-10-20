@@ -2,7 +2,7 @@
 
 简体中文 | [English](README.en.md)
 
-Mac 上一页就能开始写的 Markdown 编辑器。打开就写，没保存的内容自动留成草稿；整页都是纸面，边写边看到格式；文件始终是你自己的 `.md`。免费开源。
+Mac 上一页就能开始写的 Markdown 编辑器，另有 Windows 预览版。打开就写，没保存的内容自动留成草稿；整页都是纸面，边写边看到格式；文件始终是你自己的 `.md`。免费开源。
 
 介绍和截图见 [liubai.echovic.com](https://liubai.echovic.com/)。
 
@@ -10,7 +10,9 @@ Mac 上一页就能开始写的 Markdown 编辑器。打开就写，没保存的
 
 在 [Releases](https://github.com/echoVic/liubai/releases/latest) 下载 DMG，打开后把「留白」拖进「应用程序」。需要 macOS 13 或以上，支持 Apple 芯片和 Intel；安装包已用 Developer ID 签名并经 Apple 公证。
 
-留白每 4 小时在后台检查一次更新，也可以用「留白 → 检查更新…」手动检查；从最近几个版本升级只需下载几 MB。放在「应用程序」或 `~/Applications` 里才能自行更新。各版本的变化见 [CHANGELOG](CHANGELOG.md)。
+Windows 预览版在同一个 Release 里：大多数电脑下载 `amd64` 安装包，ARM 处理器的电脑下载 `arm64` 安装包，双击即可安装，不需要管理员权限。需要 Windows 10 或 11。安装包暂未签名，首次运行时如果 Windows 提示「已保护你的电脑」，点「更多信息」→「仍要运行」。Windows 版还在预览阶段，遇到问题欢迎在 [Issues](https://github.com/echoVic/liubai/issues) 反馈。
+
+留白每 4 小时在后台检查一次更新，也可以用「留白 → 检查更新…」（Windows 上是「帮助 → 检查更新…」）手动检查；从最近几个版本升级只需下载几 MB。放在「应用程序」或 `~/Applications` 里才能自行更新。各版本的变化见 [CHANGELOG](CHANGELOG.md)。
 
 ## 功能
 
@@ -20,16 +22,16 @@ Mac 上一页就能开始写的 Markdown 编辑器。打开就写，没保存的
 - **看**：编辑、分栏、阅读三种视图，分栏时右侧跟随光标；侧栏里有最近文稿和大纲；专注模式；四套主题，字号和行宽可调。
 - **导出**：PDF、Word（.docx）、内嵌图片的 HTML、Markdown 加图片的 ZIP，以及富文本复制。PDF 里的中文可以正常复制和搜索；Word 保留标题样式、列表编号、表格、公式和脚注，可以交给用 Word、Pages 或 WPS 的人继续改。
 - **粘贴**：网页、文档和 Word 的内容粘贴后转为 Markdown，图片一并保存；`⇧⌘V` 粘贴为纯文本。
-- **随手记**：在任何应用里按 `⌃⌥⌘N` 记下想法，`⌘↩` 存为一篇新草稿。
+- **随手记**：在任何应用里按 `⌃⌥⌘N`（Windows 上是 `Ctrl+Alt+N`）记下想法，`⌘↩`（`Ctrl+Enter`）存为一篇新草稿。
 - 简体中文和英文界面，默认跟随系统语言。
 
-常用快捷键：`⌘N` 新建、`⌘O` 打开、`⌘S` 保存、`⌘⇧S` 另存、`⌘K` 所有操作、`⌘F` 查找、`⌘\` 切换分栏、`⌘⇧R` 阅读模式、`⌘⇧M` 显示 Markdown 源码、`⌘/` 块菜单、`⌘L` 编辑链接、`⌘⇧F` 专注模式、`⌘P` 导出 PDF。
+常用快捷键：`⌘N` 新建、`⌘O` 打开、`⌘S` 保存、`⌘⇧S` 另存、`⌘K` 所有操作、`⌘F` 查找、`⌘\` 切换分栏、`⌘⇧R` 阅读模式、`⌘⇧M` 显示 Markdown 源码、`⌘/` 块菜单、`⌘L` 编辑链接、`⌘⇧F` 专注模式、`⌘P` 导出 PDF。Windows 上 ⌘ 换成 Ctrl、⇧ 即 Shift；专注模式是 F8，重做是 Ctrl+Y。
 
 ## 文件和数据
 
-- 打开的 `.md` 保存时写回原文件，保留 Finder 标签和创建时间；粘贴的图片放进同目录的 `文稿名.assets/`，用相对路径引用。
+- 打开的 `.md` 保存时写回原文件，保留 Finder 标签和创建时间（Windows 上保留文件属性和创建时间）；粘贴的图片放进同目录的 `文稿名.assets/`，用相对路径引用。
 - 文件被其他应用修改时自动载入；两边都改过时先暂停，由你决定保留哪一边，另一边存成恢复副本，不会悄悄丢稿。只读文件不会被覆盖。
-- 未保存的草稿在 `~/Library/Application Support/Liubai/`。从最近文稿里移除的草稿进入其中的 `trash/`，保留 30 天；读不出的草稿移到 `quarantine/`，应用照常启动。
+- 未保存的草稿在 `~/Library/Application Support/Liubai/`（Windows 上在 `%AppData%\Liubai\`）。从最近文稿里移除的草稿进入其中的 `trash/`，保留 30 天；读不出的草稿移到 `quarantine/`，应用照常启动。
 - 文稿上限 8 MB；单张图片 20 MB、最长边 16000 像素。
 
 没有广告、遥测和云同步；检查更新只访问 GitHub Releases，不上传文稿内容。

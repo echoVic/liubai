@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | English
 
-A Markdown editor for the Mac that you can write in as soon as it opens. Unsaved writing is kept as a draft, the whole window is the page, formatting appears as you type, and your files stay plain `.md`. Free and open source.
+A Markdown editor for the Mac, with a Windows preview, that you can write in as soon as it opens. Unsaved writing is kept as a draft, the whole window is the page, formatting appears as you type, and your files stay plain `.md`. Free and open source.
 
 See [liubai.echovic.com](https://liubai.echovic.com/en/) for an introduction and screenshots.
 
@@ -10,7 +10,9 @@ See [liubai.echovic.com](https://liubai.echovic.com/en/) for an introduction and
 
 Download the DMG from [Releases](https://github.com/echoVic/liubai/releases/latest), open it and drag Liubai into Applications. It needs macOS 13 or later and runs on Apple silicon and Intel. The installer is signed with a Developer ID and notarized by Apple.
 
-Liubai checks for updates in the background every 4 hours, and you can check yourself from Liubai → Check for Updates…. Updating from a recent version downloads only a few MB. Keep Liubai in Applications or `~/Applications` so it can update itself. The [changelog](CHANGELOG.md) (in Chinese) lists the changes in each version.
+The Windows preview is in the same release: most PCs take the `amd64` installer, and PCs with ARM processors the `arm64` one. Double-click it to install; no administrator rights are needed. It needs Windows 10 or 11. The installer isn't signed yet, so if Windows says it protected your PC on the first run, choose More info → Run anyway. The Windows version is a preview; please report problems in [Issues](https://github.com/echoVic/liubai/issues).
+
+Liubai checks for updates in the background every 4 hours, and you can check yourself from Liubai → Check for Updates… (Help → Check for Updates… on Windows). Updating from a recent version downloads only a few MB. Keep Liubai in Applications or `~/Applications` so it can update itself. The [changelog](CHANGELOG.md) (in Chinese) lists the changes in each version.
 
 ## Features
 
@@ -20,16 +22,16 @@ Liubai checks for updates in the background every 4 hours, and you can check you
 - **Reading**: edit, split and read views, with the right pane following the cursor in split view. The sidebar has recent documents and an outline. There's a focus mode, four themes, and adjustable font size and line width.
 - **Export**: PDF, Word (.docx), HTML with embedded images, a ZIP of the Markdown and its images, and rich-text copy. Chinese text in the PDFs copies and searches correctly. Word documents keep heading styles, list numbering, tables, equations and footnotes, ready for anyone working in Word, Pages or WPS.
 - **Paste**: content from web pages, documents and Word becomes Markdown when pasted, images included; `⇧⌘V` pastes plain text.
-- **Quick notes**: press `⌃⌥⌘N` in any app to write something down, and `⌘↩` saves it as a new draft.
+- **Quick notes**: press `⌃⌥⌘N` (`Ctrl+Alt+N` on Windows) in any app to write something down, and `⌘↩` (`Ctrl+Enter`) saves it as a new draft.
 - Simplified Chinese and English interfaces, following the system language by default.
 
-Shortcuts: `⌘N` new, `⌘O` open, `⌘S` save, `⌘⇧S` save as, `⌘K` all commands, `⌘F` find, `⌘\` toggle split view, `⌘⇧R` reading mode, `⌘⇧M` show Markdown source, `⌘/` block menu, `⌘L` edit link, `⌘⇧F` focus mode, `⌘P` export PDF.
+Shortcuts: `⌘N` new, `⌘O` open, `⌘S` save, `⌘⇧S` save as, `⌘K` all commands, `⌘F` find, `⌘\` toggle split view, `⌘⇧R` reading mode, `⌘⇧M` show Markdown source, `⌘/` block menu, `⌘L` edit link, `⌘⇧F` focus mode, `⌘P` export PDF. On Windows ⌘ is Ctrl and ⇧ is Shift; focus mode is F8 and redo is Ctrl+Y.
 
 ## Files and data
 
-- Saving an opened `.md` writes it back to the original file, keeping its Finder tags and creation date. Pasted images go into `<document name>.assets/` beside it, referenced by relative paths.
+- Saving an opened `.md` writes it back to the original file, keeping its Finder tags and creation date (its attributes and creation date on Windows). Pasted images go into `<document name>.assets/` beside it, referenced by relative paths.
 - When another app changes a file, Liubai loads the new version. If both sides changed, it pauses and lets you decide which to keep, saving the other as a recovery copy, so nothing is lost quietly. Read-only files are never overwritten.
-- Unsaved drafts live in `~/Library/Application Support/Liubai/`. Drafts removed from recent documents go to its `trash/` folder for 30 days, and drafts that can't be read are moved to `quarantine/` while the app starts as usual.
+- Unsaved drafts live in `~/Library/Application Support/Liubai/` (`%AppData%\Liubai\` on Windows). Drafts removed from recent documents go to its `trash/` folder for 30 days, and drafts that can't be read are moved to `quarantine/` while the app starts as usual.
 - Documents can be up to 8 MB, and images up to 20 MB and 16,000 pixels on the longest side.
 
 There are no ads, telemetry or cloud sync. Checking for updates only contacts GitHub Releases and never uploads your writing.

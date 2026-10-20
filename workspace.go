@@ -772,6 +772,23 @@ func markdownPath(path string) bool {
 	}
 	return false
 }
+
+// linkedPath returns the path a link to a local document names, without its
+// query and fragment.
+func linkedPath(href string) (string, bool) {
+	if isVolumePath(href) {
+		raw, _, _ := strings.Cut(href, "#")
+		raw, _, _ = strings.Cut(raw, "?")
+		p, err := url.PathUnescape(raw)
+		return p, err == nil
+	}
+	u, err := url.Parse(href)
+	if err != nil || u.Scheme != "" || u.Host != "" || u.Path == "" {
+		return "", false
+	}
+	p, err := url.PathUnescape(u.EscapedPath())
+	return p, err == nil
+}
 func (w *Workspace) OpenLinked(fromID, href string) (WorkspaceState, error) {
 	w.mu.Lock()
 	d := w.docs[fromID]
@@ -784,12 +801,8 @@ func (w *Workspace) OpenLinked(fromID, href string) (WorkspaceState, error) {
 	if source == "" {
 		return WorkspaceState{}, messageError("bRelativeLinkWithoutFile", nil)
 	}
-	u, err := url.Parse(href)
-	if err != nil || u.Scheme != "" || u.Host != "" || u.Path == "" {
-		return WorkspaceState{}, messageError("bUnsupportedLink", nil)
-	}
-	path, err := url.PathUnescape(u.EscapedPath())
-	if err != nil {
+	path, ok := linkedPath(href)
+	if !ok {
 		return WorkspaceState{}, messageError("bUnsupportedLink", nil)
 	}
 	if !filepath.IsAbs(path) {

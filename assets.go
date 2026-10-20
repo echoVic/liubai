@@ -127,6 +127,9 @@ func (w *Workspace) imagePath(d *Document, dest string) (string, error) {
 			}
 		}
 	}
+	if isVolumePath(dest) {
+		return url.PathUnescape(dest)
+	}
 	u, err := url.Parse(dest)
 	if err != nil {
 		return "", err
@@ -568,7 +571,7 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 		}
 		internal := strings.HasPrefix(dest, "liubai-asset:")
 		originalPath := canonicalDestination(dest)
-		if u, e := url.Parse(dest); e == nil {
+		if u, e := url.Parse(dest); e == nil && !isVolumePath(dest) {
 			originalPath = canonicalDestination(u.Path)
 		}
 		if !internal {

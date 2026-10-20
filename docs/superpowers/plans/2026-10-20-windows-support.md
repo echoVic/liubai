@@ -114,10 +114,10 @@ func busy(err error) bool {
 **Interfaces:**
 - Produces: `isVolumePath(s string) bool`; `linkedPath(href string) (string, bool)`.
 
-- [ ] **Step 1: Write the Windows tests**:
+- [x] **Step 1: Write the Windows tests**:
   - `TestWindowsDrivePathImagesAreLocal`: fixture PNG in a temp dir; for `img` and `filepath.ToSlash(img)`, a draft `![](dest)` → `ReadImage` returns a URL and `Delivery` has `Images[dest]` starting with `data:image/png`.
   - `TestOpenLinkedFollowsWindowsDrivePaths`: `b.md` in a temp dir; from an opened `a.md`, `OpenLinked` with `target` and `filepath.ToSlash(target)+"#b"` opens `b.md`.
-- [ ] **Step 2: Implement.** `images.go`:
+- [x] **Step 2: Implement.** `images.go`:
 
 ```go
 // isVolumePath reports whether s starts with a drive or a share, as
@@ -146,8 +146,8 @@ func linkedPath(href string) (string, bool) {
 	return p, err == nil
 }
 ```
-- [ ] **Step 3: Verify** as in Task 1 Step 4 (plus `go test -run 'Link|Image|SaveAs' .`).
-- [ ] **Step 4: Commit** `feat(windows): treat drive and share paths in Markdown as local files`.
+- [x] **Step 3: Verify** as in Task 1 Step 4 (plus `go test -run 'Link|Image|SaveAs' .`).
+- [x] **Step 4: Commit** `feat(windows): treat drive and share paths in Markdown as local files`.
 
 ### Task 3: Native menus, quick note default, title bar and Unix-only tests
 

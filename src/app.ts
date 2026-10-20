@@ -434,6 +434,8 @@ attachMenu(headingButton,$('#heading-menu'),id=>{void action(id)});
 document.addEventListener('focusin',()=>{if(view)updateHeading()});document.addEventListener('focusout',()=>setTimeout(()=>{if(view)updateHeading()}));
 $$('[data-deliver]').forEach(b=>b.onclick=()=>{closeDialog('delivery-dialog');void action(b.dataset.deliver!)});
 localizePage();
+// Shortcut hints in the menus, written for this platform; focus mode is F8 off macOS.
+for(const kbd of $$('kbd[data-keys]'))kbd.textContent=keyLabel(kbd.dataset.keys==='focus'?focusKeys:kbd.dataset.keys!);
 applyIcons();
 $$('[data-action]').forEach(b=>b.onclick=()=>void action(b.dataset.action!));
 $('#rename-form').onsubmit=e=>{e.preventDefault();const title=$<HTMLInputElement>('#rename-input').value.trim();if(!title)return;void run(async()=>{if(!await saveForAction())return;const result=await call<WorkspaceState>('Rename',doc.id,title);result.appearance=appearance;doc.title=result.current.title;doc.customTitle=result.current.customTitle;state=result;header();closeDialog('rename-dialog')})};

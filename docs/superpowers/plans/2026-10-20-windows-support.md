@@ -321,12 +321,13 @@ export function isReloadKey(e:Pick<KeyboardEvent,'key'|'ctrlKey'|'altKey'|'shift
 
 **Files:**
 - Create: `scripts/check-windows.py`
+- Modify: `src/index.html`, `src/app.ts` — found by this check: the menus' `<kbd>` hints (⌘N, ⌘⇧F, ⌥⇧↑…) were static; they now carry `data-keys` (`focus` for focus mode) and are written with `keyLabel` at start-up. Rebuild `web/`.
 
-- [ ] **Step 1: Write the check** (run with `scripts/e2e.sh check-windows`). Two contexts, `zh-CN`, 1120×820: one with `add_init_script("Object.defineProperty(Navigator.prototype,'platform',{get:()=>'Win32'})")`, one without.
+- [x] **Step 1: Write the check** (run with `scripts/e2e.sh check-windows`). Two contexts, `zh-CN`, 1120×820: one with `add_init_script("Object.defineProperty(Navigator.prototype,'platform',{get:()=>'Win32'})")`, one without.
   - Windows context: `html` has class `windows`; new / split / read titles end in `Ctrl+N`, `Ctrl+\`, `Ctrl+Shift+R`; bold `加粗 Ctrl+B`, redo `重做 Ctrl+Y`; `Control+k` opens the palette, whose shortcut column has `Ctrl+N` and `F8` (focus) and no ⌘⇧⌥⌃ anywhere; no visible text, `title`, `aria-label` or `placeholder` holds ⌘⇧⌥⌃; `F8` toggles `body.focus-mode` and Escape leaves it; a link's title starts `Ctrl `; `.cm-content` font-family contains `Microsoft YaHei`, `body` contains `Segoe UI`; `.cm-scroller` has `scrollbar-width: thin`; with `body.desktop` and `--mygo-titlebar-inset-right:138px` set, `.topbar` pads 24px / 150px; the quick-note settings shortcut reads `Ctrl+Alt+Win+N` (the web server runs on macOS); `capture.html` saves with `Control+Enter` and not `Meta+Enter`, and its status reads `Ctrl+Enter 存为草稿 · Esc 关闭`.
   - macOS context: new title `新建文稿 ⌘N`, palette `⌘ N`, `scrollbar-width: auto`, `.desktop .topbar` pads 88px left, `capture.html` saves with `Meta+Enter`.
-- [ ] **Step 2: Run** `scripts/e2e.sh check-windows` → PASS; then the existing `scripts/e2e.sh check-english`, `check-toolbar`, `check-capture`, `check-reader` → PASS; bun checks `editing`, `capture-input`, `rendering`, `paste`, `slash` → PASS.
-- [ ] **Step 3: Commit** `test(windows): Chrome regression with a Windows platform`.
+- [x] **Step 2: Run** `scripts/e2e.sh check-windows` → PASS; then the existing `scripts/e2e.sh check-english`, `check-toolbar`, `check-capture`, `check-reader` → PASS; bun checks `editing`, `capture-input`, `rendering`, `paste`, `slash` → PASS.
+- [x] **Step 3: Commit** `test(windows): Chrome regression with a Windows platform`.
 
 ### Task 9: CI, packaging check and docs
 

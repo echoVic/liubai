@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | English
 
-A Markdown editor for the Mac, with a Windows preview, that you can write in as soon as it opens. Unsaved writing is kept as a draft, the whole window is the page, formatting appears as you type, and your files stay plain `.md`. Free and open source.
+A Markdown editor for the Mac, with a Windows beta, that you can write in as soon as it opens. Unsaved writing is kept as a draft, the whole window is the page, formatting appears as you type, and your files stay plain `.md`. Free and open source.
 
 See [liubai.echovic.com](https://liubai.echovic.com/en/) for an introduction and screenshots.
 
@@ -10,7 +10,7 @@ See [liubai.echovic.com](https://liubai.echovic.com/en/) for an introduction and
 
 Download the DMG from [Releases](https://github.com/echoVic/liubai/releases/latest), open it and drag Liubai into Applications. It needs macOS 13 or later and runs on Apple silicon and Intel. The installer is signed with a Developer ID and notarized by Apple.
 
-The Windows preview is in the same release: most PCs take the `amd64` installer, and PCs with ARM processors the `arm64` one. Double-click it to install; no administrator rights are needed. It needs Windows 10 or 11. The installer isn't signed yet, so if Windows says it protected your PC on the first run, choose More info → Run anyway. The Windows version is a preview; please report problems in [Issues](https://github.com/echoVic/liubai/issues).
+The Windows beta is in the same release: most PCs take the `amd64` installer, and PCs with ARM processors the `arm64` one. Double-click it to install; no administrator rights are needed. It needs Windows 10 or 11. The installer isn't signed yet, so if Windows says it protected your PC on the first run, choose More info → Run anyway. The Windows version is a beta: give it a try, and please report problems in [Issues](https://github.com/echoVic/liubai/issues).
 
 Liubai checks for updates in the background every 4 hours, and you can check yourself from Liubai → Check for Updates… (Help → Check for Updates… on Windows). Updating from a recent version downloads only a few MB. Keep Liubai in Applications or `~/Applications` so it can update itself. The [changelog](CHANGELOG.md) (in Chinese) lists the changes in each version.
 
@@ -64,7 +64,7 @@ python3 scripts/check-pdf.py                   # PDF pagination, Chinese text la
 
 `scripts/e2e.sh` builds the app each time, starts a web server with a fresh data directory, and stops it afterwards. The Python checks use the installed Chrome. The WebKit check runs in an off-screen window and never takes focus; WebKit stops drawing while the screen is locked or the display is asleep, and the check then stops and says why.
 
-To build the universal app, run `go tool mygo build -platform darwin/universal .`; the output is in `build/darwin-universal/`. The Windows version (a preview) cross-builds on macOS with `go tool mygo build -platform windows/amd64,windows/arm64 .` into `build/windows-amd64/` and `build/windows-arm64/`; the installers need NSIS (`brew install makensis`). `check-windows` checks shortcuts, fonts and the title bar in Chrome with a Windows platform, and GitHub Actions runs `go test` on Windows. Release steps (signing, notarization and update packages) are in [docs/RELEASING.md](docs/RELEASING.md), in Chinese.
+To build the universal app, run `go tool mygo build -platform darwin/universal .`; the output is in `build/darwin-universal/`. The Windows version (a beta) cross-builds on macOS with `go tool mygo build -platform windows/amd64,windows/arm64 .` into `build/windows-amd64/` and `build/windows-arm64/`; the installers need NSIS (`brew install makensis`). `check-windows` checks shortcuts, fonts and the title bar in Chrome with a Windows platform, and GitHub Actions runs `go test` on Windows. Release steps (signing, notarization and update packages) are in [docs/RELEASING.md](docs/RELEASING.md), in Chinese.
 
 ## Documents
 

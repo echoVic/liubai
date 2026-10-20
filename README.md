@@ -2,7 +2,7 @@
 
 简体中文 | [English](README.en.md)
 
-Mac 上一页就能开始写的 Markdown 编辑器，另有 Windows 预览版。打开就写，没保存的内容自动留成草稿；整页都是纸面，边写边看到格式；文件始终是你自己的 `.md`。免费开源。
+Mac 上一页就能开始写的 Markdown 编辑器，另有 Windows 内测版。打开就写，没保存的内容自动留成草稿；整页都是纸面，边写边看到格式；文件始终是你自己的 `.md`。免费开源。
 
 介绍和截图见 [liubai.echovic.com](https://liubai.echovic.com/)。
 
@@ -10,7 +10,7 @@ Mac 上一页就能开始写的 Markdown 编辑器，另有 Windows 预览版。
 
 在 [Releases](https://github.com/echoVic/liubai/releases/latest) 下载 DMG，打开后把「留白」拖进「应用程序」。需要 macOS 13 或以上，支持 Apple 芯片和 Intel；安装包已用 Developer ID 签名并经 Apple 公证。
 
-Windows 预览版在同一个 Release 里：大多数电脑下载 `amd64` 安装包，ARM 处理器的电脑下载 `arm64` 安装包，双击即可安装，不需要管理员权限。需要 Windows 10 或 11。安装包暂未签名，首次运行时如果 Windows 提示「已保护你的电脑」，点「更多信息」→「仍要运行」。Windows 版还在预览阶段，遇到问题欢迎在 [Issues](https://github.com/echoVic/liubai/issues) 反馈。
+Windows 内测版在同一个 Release 里：大多数电脑下载 `amd64` 安装包，ARM 处理器的电脑下载 `arm64` 安装包，双击即可安装，不需要管理员权限。需要 Windows 10 或 11。安装包暂未签名，首次运行时如果 Windows 提示「已保护你的电脑」，点「更多信息」→「仍要运行」。Windows 版还是内测版，欢迎体验，遇到问题欢迎在 [Issues](https://github.com/echoVic/liubai/issues) 反馈。
 
 留白每 4 小时在后台检查一次更新，也可以用「留白 → 检查更新…」（Windows 上是「帮助 → 检查更新…」）手动检查；从最近几个版本升级只需下载几 MB。放在「应用程序」或 `~/Applications` 里才能自行更新。各版本的变化见 [CHANGELOG](CHANGELOG.md)。
 
@@ -64,7 +64,7 @@ python3 scripts/check-pdf.py                   # PDF 分页、中文文字层与
 
 `scripts/e2e.sh` 每次编译程序，用新的数据目录启动网页服务，跑完关闭；Python 检查使用已安装的 Chrome。WebKit 检查在屏幕外的窗口里运行，不抢焦点；锁屏或显示器休眠时 WebKit 不绘制，检查会说明原因后停止。
 
-构建通用安装包：`go tool mygo build -platform darwin/universal .`，产物在 `build/darwin-universal/`。Windows 版（预览）在 macOS 上交叉构建：`go tool mygo build -platform windows/amd64,windows/arm64 .`，产物在 `build/windows-amd64/`、`build/windows-arm64/`，装了 NSIS（`brew install makensis`）才会生成安装包；`check-windows` 在 Chrome 里模拟 Windows 检查快捷键、字体和标题栏，Windows 上的 `go test` 由 GitHub Actions 运行。正式发版（签名、公证、更新包）见 [docs/RELEASING.md](docs/RELEASING.md)。
+构建通用安装包：`go tool mygo build -platform darwin/universal .`，产物在 `build/darwin-universal/`。Windows 版（内测）在 macOS 上交叉构建：`go tool mygo build -platform windows/amd64,windows/arm64 .`，产物在 `build/windows-amd64/`、`build/windows-arm64/`，装了 NSIS（`brew install makensis`）才会生成安装包；`check-windows` 在 Chrome 里模拟 Windows 检查快捷键、字体和标题栏，Windows 上的 `go test` 由 GitHub Actions 运行。正式发版（签名、公证、更新包）见 [docs/RELEASING.md](docs/RELEASING.md)。
 
 ## 文档
 

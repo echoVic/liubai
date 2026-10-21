@@ -35,6 +35,18 @@
 
 网站 [liubai.echovic.com](https://liubai.echovic.com/) 的下载链接、版本号和安装包大小会自动跟随最新发布，不需要修改。
 
+## 预发布
+
+需要先在真机上验证时，第 5 步改用 `--prerelease`，不加 `--latest`：
+
+```sh
+gh release edit v<版本> --title "留白 <版本>" --notes-file <说明文件> --draft=false --prerelease
+```
+
+已安装的留白只读取最新正式版的更新源（`releases/latest/download/…`），网站也只跟随最新正式版。所以预发布版只能手动下载安装，不会推送给用户。
+
+验证通过后，用 `gh release edit v<版本> --prerelease=false --latest` 转为正式版，再做第 6 步的检查。
+
 ## Windows（内测）
 
 Windows 版与 macOS 版用同一个版本号、同一个 Release，在 macOS 上交叉构建即可，MyGo 不需要 cgo。

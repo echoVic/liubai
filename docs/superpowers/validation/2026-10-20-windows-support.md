@@ -3,7 +3,7 @@
 **日期**：2026-10-20
 **基线**：`main` 的 `dfc982d`
 **代码**：`feat/windows` 分支，设计见 [specs/2026-10-20-windows-support-design.md](../specs/2026-10-20-windows-support-design.md)，计划见 [plans/2026-10-20-windows-support.md](../plans/2026-10-20-windows-support.md)
-**范围**：macOS 上的验证和 Windows CI。还没有在 Windows 真机上运行过。
+**范围**：macOS 上的验证和 Windows CI。发版后补做了一次 Windows 真机测试，结果和修复见文末「Windows 真机测试」。
 
 ## 在 macOS 上通过的检查
 
@@ -79,7 +79,7 @@ scripts/e2e.sh check-reader && scripts/e2e.sh check-split-preview && scripts/e2e
 
 - **Windows 产物**：两个程序是 PE32+ GUI（x86-64、Aarch64），安装包是 Nullsoft Installer，`vcs.revision` 也是 `1eadb11`。它们的 `vcs.modified=true`，来自 MyGo 构建时临时写入包目录的 `mygo_windows_<架构>.syso`，源码与标签一致；`.gitignore` 现已忽略这个文件。
 - **公开下载核对**：匿名下载 `update-darwin-universal.json`、`update-windows-amd64.json`、`update-windows-arm64.json` 和三个安装包，与本地构建逐字节一致。
-- **Windows 真机**：仍未测试，见下面的清单。
+- **Windows 真机**：发版时未测试；之后按下面的清单测了一次，见文末。
 
 ## Windows 真机清单
 
@@ -112,3 +112,63 @@ scripts/e2e.sh check-reader && scripts/e2e.sh check-split-preview && scripts/e2e
   - PDF 的分页和中文复制。Windows 上没有 CoreGraphics 的修正，如果复制出 ⼝ 之类的部首字，要另做修正。
   - Word、HTML、ZIP 导出；富文本复制粘贴到 Word 和微信。
 - **更新**：从一个 Windows 版自动更新到下一个版本。
+
+## Windows 真机测试
+
+2026-10-20 至 21，在一台 Windows 11 Pro（10.0.26200，x64）上测试预装的 0.6.0，共 48 项：
+
+- **结果**：36 项通过，3 项失败，6 项部分验证，3 项未测。
+- **未测**：全新安装与卸载；Windows 10、ARM64、多显示器、OneDrive、缺少 WebView2；版本之间的自动更新。
+- **通过**：中文组字、撤销重做、三种视图、F8、只读保护、外部修改与冲突副本、文件属性和创建时间保留、盘符图片与链接、PDF 中文搜索与复制、Word / HTML / ZIP 导出、富文本复制到 LibreOffice、随手记和刷新键保护。
+
+失败的 3 项已在 `fix/windows-qa` 修复：
+
+- **运行中再打开文稿会多开一个留白**：
+  - **原因**：MyGo 用应用名给单实例锁、PathUserData 和 WebView2 配置目录命名，而留白把应用名设成界面语言里的「留白」或「Liubai」。运行中换了语言，再打开文稿时，新进程算出另一个名字，拿到另一把锁。
+  - **修复**：macOS 以外，应用名固定为 Liubai，只有窗口标题随语言变化。第二次启动先调用 `AllowSetForegroundWindow`，再把文件交给已有窗口，让窗口能到前台；不带文件启动时也会把窗口带到前台。开机启动不调用 `AllowSetForegroundWindow`，因为那时没有要转交的东西。
+  - **代价（有意接受）**：0.6.0 以中文启动过的用户，MyGo 的状态存在 `%AppData%\留白` 和 `%LOCALAPPDATA%\留白\WebView2`。升级后会重置一次，旧目录留在原处，文稿不受影响，因为工作区一直在 `%AppData%\Liubai`。重置的内容：
+    - 窗口位置；
+    - 「最近打开」列表；
+    - 更新器记下的跳过版本和自动下载设置；
+    - 页面的外观缓存。
+  - **显示**：Windows 上，MyGo 的更新提示和没有标题的对话框会写「Liubai」，中文界面下也一样。
+- **重启后语言回到系统语言**：
+  - **原因**：Windows 上，MyGo 把选择的语言存在 PathUserData 的 `locale` 文件里。启动时先在 `%AppData%\Liubai` 读到「简体中文」，应用名于是变成「留白」；`Run` 再去 `%AppData%\留白` 找，就找不到了。
+  - **修复**：应用名固定后，路径不再变化。启动时还以 `workspace.json` 里的选择调用 `SetLocale`，0.6.0 留下的不一致会被纠正。不认识的值会被忽略，因为 `SetLocale` 遇到无效标签会崩溃。较新版本写下的 `workspace.json` 也会读出这项选择。
+- **夜墨主题下右上角按钮仍是黑色**：
+  - **原因**：这些按钮由 MyGo 画在页面上，颜色跟随 `Theme.SetSource`；没有设置时跟随系统。
+  - **修复**：Windows 上启动和切换主题时把主题告诉 MyGo：夜墨为深色，其余为浅色，跟随系统时交给系统。菜单和页面的 `prefers-color-scheme` 也随之变化；只改字号或布局时不重设。macOS 不变。
+
+测试报告里另有几处待核对的现象：
+
+- **复杂网页粘贴整段变成纯文本**：
+  - **原因**：Chrome 复制网页时会把计算样式写进 HTML，代码块因此带上 `white-space: pre-wrap` 和等宽字体，被当作从代码编辑器复制的代码，整段改为粘贴纯文本。各平台都有这个问题。
+  - **修复**：现在只有复制的内容全是代码时才粘贴纯文本。夹在其他内容中的代码转成代码块，单行代码转成行内代码，表格单元格里的代码留在单元格里。
+  - **保留原样**：代码在交给 turndown 之前先用 `<pre>` 保护，空行、缩进和不换行空格都不会丢。
+  - **复测**：在 Chrome 里实际复制测试文稿导出的 HTML 再粘贴，标题、列表、表格、代码块和图片都保留了；公式和 Mermaid 图仍是文字。
+  - **代码审查**：发现两处问题，均已修复并补了断言：`<pre>` 里分成几段的代码只留下了第一段，CodeMirror 的空行变成了两行。
+- **命令面板搜「update」没有结果**：搜索区分了大小写，已改为不区分。帮助菜单的「Check for Updates…」点了没有出现窗口，代码里找不到原因，需要真机复测。
+- **从 LibreOffice Writer 粘回的本地图片只剩说明文字**：这是设计行为。`file:` 图片不导入，`check-paste.ts` 有断言。
+- **中文组字后斜杠菜单不再出现**：这也是设计行为。`check-slash.ts` 断言组字会关闭菜单，且不会重新打开；可以用「/bg」这样的拼音缩写筛选。
+
+修复后在 macOS 上通过了以下检查：
+
+- `go vet ./...` 和 `go test ./...`。
+- Windows amd64 / arm64 的 `go vet`，以及程序和测试的交叉编译。
+- `tsc`、全部 bun 检查、`check-editor.mjs`、`check-i18n.mjs`。
+- `check-english`、`check-reader`、`check-docx`、`check-capture`、`check-windows`、`check-images`。
+
+在负载 20 左右时，`check-windows` 随手记一步和 `check-images` 图片工具条一步偶尔失败：
+
+- `check-windows` 在 `main` 上同样会失败。
+- `check-images` 在负载 15 左右连续 3 次通过。
+
+需要回到真机复测的项：
+
+- **单实例**：
+  - 先切换语言，再从资源管理器双击 .md，也从终端用 `Liubai.exe <路径>` 打开。
+  - 窗口最小化时再打开一次。
+  - 每次都应只有一个进程，文稿在已有窗口打开，窗口到前台。
+- **语言**：重启后保持中文；从 0.6.0 中文界面升级后，核对哪些状态被重置。
+- **主题**：夜墨主题在浅色系统下的按钮颜色和菜单颜色；开关「跟随系统」；随手记面板的颜色。
+- **其他**：帮助菜单的检查更新窗口；复杂网页的粘贴。

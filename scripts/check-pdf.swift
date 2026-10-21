@@ -32,50 +32,7 @@ func inspect(_ path: String) {
     text.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
   }
   json(["pages": pdf.pageCount, "size": ["width": size.width, "height": size.height],
-        "lines": lines, "text": texts.joined(separator: "\n")])
-}
-
-func pixels(_ page: CGPDFPage) -> (Int, Int, [UInt8]) {
-  let scale: CGFloat = 2
-  let size = page.getBoxRect(.mediaBox).size
-  let width = Int(ceil(size.width * scale)), height = Int(ceil(size.height * scale))
-  guard width > 0, height > 0 else { fail("invalid PDF page size") }
-  var bytes = [UInt8](repeating: 255, count: width * height * 4)
-  bytes.withUnsafeMutableBytes { buffer in
-    guard let context = CGContext(data: buffer.baseAddress, width: width, height: height,
-                                  bitsPerComponent: 8, bytesPerRow: width * 4,
-                                  space: CGColorSpaceCreateDeviceRGB(),
-                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
-      fail("cannot create PDF rendering context")
-    }
-    context.setFillColor(CGColor(gray: 1, alpha: 1))
-    context.fill(CGRect(x: 0, y: 0, width: width, height: height))
-    context.scaleBy(x: scale, y: scale)
-    context.concatenate(page.getDrawingTransform(.mediaBox, rect: CGRect(origin: .zero, size: size), rotate: 0, preserveAspectRatio: true))
-    context.drawPDFPage(page)
-  }
-  return (width, height, bytes)
-}
-
-func compare(_ first: String, _ second: String) {
-  guard let a = CGPDFDocument(URL(fileURLWithPath: first) as CFURL), a.numberOfPages > 0,
-        let b = CGPDFDocument(URL(fileURLWithPath: second) as CFURL), b.numberOfPages > 0 else {
-    fail("cannot read PDFs for comparison")
-  }
-  var maxDiff = a.numberOfPages == b.numberOfPages ? 0 : 255
-  for index in 1...min(a.numberOfPages, b.numberOfPages) {
-    guard let pageA = a.page(at: index), let pageB = b.page(at: index) else { fail("cannot read page \(index)") }
-    let (widthA, heightA, bytesA) = pixels(pageA)
-    let (widthB, heightB, bytesB) = pixels(pageB)
-    if widthA != widthB || heightA != heightB || pageA.getBoxRect(.mediaBox) != pageB.getBoxRect(.mediaBox) {
-      maxDiff = 255
-      continue
-    }
-    for offset in bytesA.indices {
-      maxDiff = max(maxDiff, abs(Int(bytesA[offset]) - Int(bytesB[offset])))
-    }
-  }
-  json(["pages": a.numberOfPages, "identical": maxDiff == 0, "maxDiff": maxDiff])
+        "lines": lines])
 }
 
 final class Printer: NSObject, WKNavigationDelegate {
@@ -171,8 +128,6 @@ case "print" where args.count == 4:
   withExtendedLifetime(printer) { app.run() }
 case "inspect" where args.count == 3:
   inspect(args[2])
-case "compare" where args.count == 4:
-  compare(args[2], args[3])
 default:
-  fail("usage: check-pdf print <page.html> <out.pdf> | inspect <file.pdf> | compare <a.pdf> <b.pdf>")
+  fail("usage: check-pdf print <page.html> <out.pdf> | inspect <file.pdf>")
 }

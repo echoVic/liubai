@@ -59,7 +59,7 @@ npx --yes bun@1.4.3 scripts/check-<名称>.ts   # editing、rendering、performa
 scripts/e2e.sh check-<名称>                    # Chrome 中的回归：split-preview、reader、toolbar、capture、english、windows、blocks、tables、images、math、mermaid、extras、docx
 scripts/e2e.sh check-blocks-webkit             # 桌面版引擎 WebKit 中的块操作、图片、公式、图表与 Word 转换
 python3 scripts/check-preview.py               # 渲染与导出
-python3 scripts/check-pdf.py                   # PDF 分页、中文文字层与画面
+python3 scripts/check-pdf.py                   # PDF 的 A4 分页与标题位置
 ```
 
 `scripts/e2e.sh` 每次编译程序，用新的数据目录启动网页服务，跑完关闭；Python 检查使用已安装的 Chrome。WebKit 检查在屏幕外的窗口里运行，不抢焦点；锁屏或显示器休眠时 WebKit 不绘制，检查会说明原因后停止。

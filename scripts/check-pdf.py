@@ -1,10 +1,12 @@
-"""Check PDF pagination, Chinese text mappings and unchanged rendering with macOS WebKit.
+"""Check PDF pagination with macOS WebKit: A4 pages with text and no heading left at a page's foot.
+
+The app's PrintToPDF (MyGo) also restores the Chinese characters that WebKit's text
+layer names as radicals; this check prints with WebKit alone, so it leaves the text be.
 
 Usage: python3 scripts/check-pdf.py
 Requires local esbuild, Go and the macOS Swift toolchain; no browser downloads.
 """
 import json
-import os
 from pathlib import Path
 import re
 import subprocess
@@ -28,10 +30,6 @@ def read_json(helper, command, *paths):
     return json.loads(result.stdout)
 
 
-def has_radicals(text):
-    return any(0x2E80 <= ord(char) <= 0x2FDF for char in text)
-
-
 def main():
     print(f"Evidence: {ARTIFACTS}", flush=True)
     esbuild = str(PROJECT / "node_modules/.bin/esbuild")
@@ -50,27 +48,18 @@ def main():
     cache = Path(tempfile.gettempdir()) / "liubai-check-pdf-module-cache"
     run("swiftc", "-O", "-module-cache-path", str(cache),
         str(PROJECT / "scripts/check-pdf.swift"), "-o", str(helper), timeout=900)
-    raw, fixed = ARTIFACTS / "raw.pdf", ARTIFACTS / "fixed.pdf"
-    run(str(helper), "print", str(html), str(raw), timeout=60)
-    go_env = dict(os.environ, LIUBAI_PDF_IN=str(raw), LIUBAI_PDF_OUT=str(fixed))
-    run("go", "test", "-run", "^TestFixPDFFile$", "-count=1", ".", env=go_env)
-    raw_info, fixed_info = [read_json(helper, "inspect", path) for path in (raw, fixed)]
-    print(f"Raw PDF radical aliases present: {has_radicals(raw_info['text'])}", flush=True)
-    for name, info in (("raw.pdf", raw_info), ("fixed.pdf", fixed_info)):
-        size = info["size"]
-        assert abs(size["width"] - 595) <= 1 and abs(size["height"] - 842) <= 1, (name, size)
-        assert info["pages"] >= 5, (name, info["pages"])
-        assert len(info["lines"]) == info["pages"], (name, "missing page text")
-        for page, lines in enumerate(info["lines"][:-1], start=1):
-            assert lines, (name, page, "empty page")
-            assert not re.fullmatch(r"第 \d+ 节", lines[-1]), (name, page, "stranded heading", lines[-1])
-    assert not has_radicals(fixed_info["text"]), "fixed.pdf still contains CJK radical aliases"
-    for text in ("长文导出测试", "第 1 节", "第 40 节", "全文结束标记：尾声。", "门口", "人口", "出口", "口语"):
-        assert text in fixed_info["text"], ("missing PDF text", text)
-    comparison = read_json(helper, "compare", raw, fixed)
-    assert comparison["pages"] == raw_info["pages"] == fixed_info["pages"], comparison
-    assert comparison["identical"] and comparison["maxDiff"] == 0, comparison
-    print(f"PASS: A4, {fixed_info['pages']} pages, no stranded headings, searchable Chinese text, identical PDF pixels")
+    pdf = ARTIFACTS / "page.pdf"
+    run(str(helper), "print", str(html), str(pdf), timeout=60)
+    info = read_json(helper, "inspect", pdf)
+    size = info["size"]
+    assert abs(size["width"] - 595) <= 1 and abs(size["height"] - 842) <= 1, size
+    assert info["pages"] >= 5, info["pages"]
+    assert len(info["lines"]) == info["pages"], "missing page text"
+    # Neither 第 nor 节 is a radical, so the headings read alike in WebKit's text layer.
+    for page, lines in enumerate(info["lines"][:-1], start=1):
+        assert lines, (page, "empty page")
+        assert not re.fullmatch(r"第 \d+ 节", lines[-1]), (page, "stranded heading", lines[-1])
+    print(f"PASS: A4, {info['pages']} pages with text, no stranded headings")
 
 
 if __name__ == "__main__":

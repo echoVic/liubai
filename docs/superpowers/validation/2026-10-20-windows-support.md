@@ -226,7 +226,7 @@ MyGo 0.6.0 于 2026-10-21 发布，合入了我们提交的 #560、#561 和 #562
   - Windows 11 上的菜单换成 Windows 11 的样式。
   - 更新器的窗口跟随应用里选择的语言，启动后不久就检查一次更新。
   - 应用自己从更新器重新启动后，窗口会回到前台（#459）。
-- **macOS 打印的 PDF**：MyGo 的 `PrintToPDF` 已经把部首还原为汉字，这正是 #490 的做法。留白自己的 `fixPDFTextMapping` 暂时保留，对已经修正过的 PDF 不起作用。要删掉它，得先在真机上用 MyGo 0.6 打印一次，确认中文复制和搜索都正常。
+- **macOS 打印的 PDF**：MyGo 的 `PrintToPDF` 已经把部首还原为汉字，这正是 #490 的做法。留白自己的 `fixPDFTextMapping` 起初保留，后来核对了它在 MyGo 修正后的 PDF 上一个字节都不改（见下面「0.6.2 真机复测与转正」），便删掉了。在 Windows 上它本来就找不到可修正的内容。
 - **与我们无关**：Windows 安装脚本加了 UTF-8 BOM，这只影响在 Windows 上构建的情况。在 macOS 上，不加 BOM 的 `makensis` 也正确读出了「Markdown 文稿」。
 - **单实例和语言没变**：MyGo 0.6.0 的单实例锁、语言文件和 PathUserData 仍按应用名区分，0.6.1 的修复照旧需要。第二个实例交出文件前不让出前台的问题记在 egoist/mygo#591。作者用 #592 修复并已合并；等 MyGo 发布含它的版本后，删掉留白自己的 `allowForegroundHandoff`。
 
@@ -286,6 +286,8 @@ macOS 的 PDF 导出另做了核对，因为 MyGo 0.6.0 的 `PrintToPDF` 现在�
 - 留白的第二遍没有改动任何字节。
 - 最终 PDF 共 21 页，没有部首字，要找的中文都在，像素与原始打印完全一致。
 
-所以 0.6.2 在 macOS 上导出的 PDF 与 0.6.1 相同。留白自己的修正今后可以删掉。
+所以 0.6.2 在 macOS 上导出的 PDF 与 0.6.1 相同。
+
+之后留白自己的修正被删掉：`pdf_text.go`、`pdf_fonts_*.go` 及其测试，共约 1700 行。`scripts/check-pdf.py` 现在只用 WebKit 打印检查 A4 分页和标题位置；文字层的修正由 MyGo 的 `PrintToPDF` 和它自己的测试负责。
 
 同日用 `gh release edit v0.6.2 --prerelease=false --latest` 转为正式版。匿名下载三个平台 `releases/latest` 的更新源，都是 0.6.2，并与本地构建逐字节一致。

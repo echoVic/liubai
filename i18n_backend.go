@@ -118,7 +118,7 @@ var statusMessageKeys = map[string]string{
 // SetLocale changes the native app's persisted preference. Browser pages keep
 // their own preference and send it with each request instead of mutating App.
 func (d *Desktop) SetLocale(tag string) error {
-	if tag != "" && tag != "zh-Hans" && tag != "en" {
+	if !knownLocale(tag) {
 		return messageError("bInvalidLocale", nil)
 	}
 	if d.native != nil {
@@ -150,6 +150,10 @@ func languageMenu(msgs locales.Messages, action func(string) func(*mygo.MenuItem
 	}
 	return items
 }
+
+// knownLocale reports whether tag is a choice of the Language menu: the
+// system's languages (""), Chinese or English.
+func knownLocale(tag string) bool { return tag == "" || tag == "zh-Hans" || tag == "en" }
 
 var nativeLocaleChoice atomic.Value
 

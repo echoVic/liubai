@@ -142,6 +142,32 @@ func TestStartupLineWidthValidation(t *testing.T) {
 	}
 }
 
+// The preference reaches mygo.App.SetLocale at startup, which panics on a tag
+// that names no language, and the Language menu offers these three only. An
+// index from a newer version keeps it too, since off macOS it decides the
+// language.
+func TestStartupLocalePreferenceValidation(t *testing.T) {
+	for _, test := range []struct{ version, stored, want string }{
+		{"1", "zh-Hans", "zh-Hans"}, {"1", "en", "en"}, {"1", "", ""}, {"1", "fr", ""}, {"1", "not a language!", ""},
+		{"2", "zh-Hans", "zh-Hans"}, {"2", "not a language!", ""},
+	} {
+		t.Run(test.version+"/"+test.stored, func(t *testing.T) {
+			w := workspace(t)
+			contents := `{"version":` + test.version + `,"localePreference":"` + test.stored + `","appearance":{"theme":"paper"}}`
+			if err := os.WriteFile(filepath.Join(w.root, "workspace.json"), []byte(contents), 0600); err != nil {
+				t.Fatal(err)
+			}
+			reopened, err := openWorkspace(w.root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := reopened.localePreference; got != test.want {
+				t.Fatalf("locale preference %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
 func TestOnlyStateDeliversPendingNotices(t *testing.T) {
 	w := workspace(t)
 	w.Notify("打开失败")

@@ -107,9 +107,31 @@ func (d *Desktop) Appearance(p Appearance) error {
 		return err
 	}
 	if d.native != nil {
+		syncWindowTheme(p)
 		_ = captureAppearance.Broadcast(p)
 	}
 	return nil
+}
+
+// themeSourceFor is the appearance the app's theme asks of native UI.
+func themeSourceFor(p Appearance) mygo.ThemeSource {
+	switch {
+	case p.FollowSystem:
+		return mygo.ThemeSystem
+	case p.Theme == "ink":
+		return mygo.ThemeDark
+	}
+	return mygo.ThemeLight
+}
+
+// syncWindowTheme has Windows draw the window buttons, which sit on the page,
+// and the menus in the app's theme rather than the system's; the pages'
+// prefers-color-scheme follows it too. macOS draws traffic lights alike in
+// either, and its menus and sheets keep the system's.
+func syncWindowTheme(p Appearance) {
+	if s := themeSourceFor(p); runtime.GOOS == "windows" && mygo.Theme.Source() != s {
+		mygo.Theme.SetSource(s)
+	}
 }
 func (d *Desktop) ImportImage(id, name, data string) (ImageResult, error) {
 	return d.w.ImportImage(id, name, data)
@@ -302,6 +324,20 @@ func showAbout(msgs locales.Messages) {
 	mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: msgs.BMenuAppName(), ApplicationVersion: "0.6.0"})
 }
 
+// appNameFor is the name MyGo knows the app by: it keys the single-instance
+// lock, PathUserData (window state, recent documents, the updater's state)
+// and on Windows the WebView2 profile. Windows also keeps the chosen language
+// in PathUserData, and a second launch finds the first by the lock, so there
+// the name is mygo.json's in every language and only the window title is
+// localized. macOS keeps the language in the app's defaults and hands
+// documents to the running app.
+func appNameFor(goos string, msgs locales.Messages) string {
+	if goos == "darwin" {
+		return msgs.BMenuAppName()
+	}
+	return "Liubai"
+}
+
 // menuTemplateFor follows the habits of each system. macOS has the app menu
 // and the Window menu. Windows has neither: Exit ends File, and Help holds the
 // update check and About. Its menus open with Alt or F10, since the window has
@@ -346,7 +382,7 @@ func main() {
 	dataDir := flag.String("data-dir", "", locales.BDataDirHelp())
 	flag.Parse()
 	if *webAddr == "" {
-		mygo.App.SetName(locales.BMenuAppName())
+		mygo.App.SetName(appNameFor(runtime.GOOS, locales.In(i18n.Locale())))
 		mygo.App.SetVersion("0.6.0")
 	}
 	web := frontendFiles()
@@ -357,8 +393,13 @@ func main() {
 		}
 		return
 	}
-	if *webAddr == "" && !mygo.App.RequestSingleInstanceLock() {
-		return
+	if *webAddr == "" {
+		// A second launch hands its files to the first instance, whose window
+		// then comes to the front, as only the process the user started allows.
+		allowForegroundHandoff()
+		if !mygo.App.RequestSingleInstanceLock() {
+			return
+		}
 	}
 	root := *dataDir
 	if root == "" {
@@ -395,6 +436,12 @@ func main() {
 	// Check every 4 hours instead of the default day, so a new release shows up the same day.
 	mygo.Use(updater.New(updater.Options{Interval: 4 * time.Hour}))
 	nativeLocaleChoice.Store(w.localePreference)
+	if runtime.GOOS != "darwin" {
+		// Off macOS MyGo keeps the chosen language in a file of PathUserData,
+		// which 0.6.0 looked for under the localized app name. The workspace's
+		// choice, the one the Language menu shows, decides.
+		mygo.App.SetLocale(w.localePreference)
+	}
 	d.native = newDesktopIntegration(w)
 	defer d.native.cancel()
 	mygo.SetFrontend(web)
@@ -410,6 +457,7 @@ func main() {
 		w.mu.Lock()
 		appearance := w.appearance
 		w.mu.Unlock()
+		syncWindowTheme(appearance)
 		dark := appearance.Theme == "ink"
 		if appearance.FollowSystem {
 			dark = mygo.Theme.IsDark()
@@ -483,6 +531,13 @@ func main() {
 	})
 	mygo.App.OnOpenFile(func(path string) {
 		go d.openPath(path)
+	})
+	// A second launch hands its files to OnOpenFile; without any, it still asks for the window.
+	mygo.App.OnSecondInstance(func([]string, string) {
+		if d.win != nil {
+			d.win.Show()
+			d.win.Focus()
+		}
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)

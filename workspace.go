@@ -268,7 +268,9 @@ func openWorkspace(root string) (*Workspace, error) {
 			w.notices = append(w.notices, localeMessage{Key: "bRebuiltIndex"})
 		} else {
 			w.current = x.Current
-			w.localePreference = x.LocalePreference
+			if knownLocale(x.LocalePreference) {
+				w.localePreference = x.LocalePreference
+			}
 			if x.Capture != nil {
 				w.capture = *x.Capture
 			}
@@ -426,12 +428,17 @@ func (w *Workspace) quarantine(path string, backup []byte) error {
 }
 func (w *Workspace) restoreIndex(b []byte) {
 	var x struct {
-		Capture    json.RawMessage            `json:"capture"`
-		Current    json.RawMessage            `json:"current"`
-		Appearance map[string]json.RawMessage `json:"appearance"`
+		Capture          json.RawMessage            `json:"capture"`
+		Current          json.RawMessage            `json:"current"`
+		LocalePreference json.RawMessage            `json:"localePreference"`
+		Appearance       map[string]json.RawMessage `json:"appearance"`
 	}
 	_ = json.Unmarshal(b, &x)
 	_ = json.Unmarshal(x.Current, &w.current)
+	var locale string
+	if json.Unmarshal(x.LocalePreference, &locale) == nil && knownLocale(locale) {
+		w.localePreference = locale
+	}
 	if len(x.Capture) > 0 {
 		_ = json.Unmarshal(x.Capture, &w.capture)
 	}

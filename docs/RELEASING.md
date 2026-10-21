@@ -5,7 +5,7 @@
 ## 准备
 
 - 钥匙串里有 `mygo.json` 中 `macos.signingIdentity` 对应的 Developer ID 证书，以及 notarytool 凭据 `clipnest-notary`。
-- 更新签名私钥不在仓库和配置里（`updates_test.go` 不允许把它写进 `mygo.json`），发版时通过环境变量 `MYGO_UPDATER_PRIVATE_KEY` 传入。没有私钥时构建照样成功，但不会生成更新包，已安装的留白就收不到这一版。
+- 更新签名私钥不在仓库和配置里（`updates_test.go` 不允许把它写进 `mygo.json`），发版时通过环境变量 `MYGO_UPDATER_PRIVATE_KEY` 传入。没有私钥时，加了 `-upload` 的构建会直接报错停止（MyGo 0.6 起）；不加 `-upload` 的构建照样成功，但不生成更新包，已安装的留白就收不到这一版。
 
 ## 步骤
 

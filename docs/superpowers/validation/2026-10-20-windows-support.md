@@ -213,3 +213,26 @@ scripts/e2e.sh check-reader && scripts/e2e.sh check-split-preview && scripts/e2e
 这次没有覆盖：自动更新与增量包、卸载重装、Windows 10、ARM64、多显示器、OneDrive、缺少 WebView2。
 
 同日用 `gh release edit v0.6.1 --prerelease=false --latest` 转为正式版。匿名下载三个平台 `releases/latest` 的更新源，都是 0.6.1，并与本地构建逐字节一致。
+
+## 升级到 MyGo 0.6.0
+
+MyGo 0.6.0 于 2026-10-21 发布，合入了我们提交的 #560、#561 和 #562。留白随之升级，`mygo-runtime` 也升到 0.6.0；后者只改了版本号。
+
+- **两处临时做法撤掉**：
+  - **刷新键**：页面自己拦 F5 和 Ctrl+R 的做法（`isReloadKey`）去掉了。MyGo 现在只在开着 DevTools 时才打开 WebView2 的浏览器快捷键，留白的正式版不开 DevTools。所以 F5、Ctrl+R、Ctrl+P、Ctrl+F 和 Ctrl+加减号都不再触发浏览器的刷新、打印、查找和缩放；Ctrl+P 和 Ctrl+F 仍是留白菜单里的导出 PDF 和查找。
+  - **编辑菜单**：Windows 的编辑菜单恢复了剪切、拷贝、粘贴和全选。MyGo 现在把 Ctrl+X/C/V/A 留给页面，所以按 Ctrl+V 粘贴网页、Word 和截图，仍会转成 Markdown。
+  - **菜单里点粘贴**：用鼠标点菜单里的「粘贴」时，MyGo 只插入剪贴板里的文字，网页内容不会转成 Markdown。这是 MyGo 在 WebView2 上的做法。
+- **直接用上的修复**：
+  - Windows 11 上的菜单换成 Windows 11 的样式。
+  - 更新器的窗口跟随应用里选择的语言，启动后不久就检查一次更新。
+  - 应用自己从更新器重新启动后，窗口会回到前台（#459）。
+- **macOS 打印的 PDF**：MyGo 的 `PrintToPDF` 已经把部首还原为汉字，这正是 #490 的做法。留白自己的 `fixPDFTextMapping` 暂时保留，对已经修正过的 PDF 不起作用。要删掉它，得先在真机上用 MyGo 0.6 打印一次，确认中文复制和搜索都正常。
+- **与我们无关**：Windows 安装脚本加了 UTF-8 BOM，这只影响在 Windows 上构建的情况。在 macOS 上，不加 BOM 的 `makensis` 也正确读出了「Markdown 文稿」。
+- **单实例和语言没变**：MyGo 0.6.0 的单实例锁、语言文件和 PathUserData 仍按应用名区分，0.6.1 的修复照旧需要。第二个实例交出文件前不让出前台的问题记在 egoist/mygo#591。作者用 #592 修复并已合并；等 MyGo 发布含它的版本后，删掉留白自己的 `allowForegroundHandoff`。
+
+需要在真机上复测：
+
+- **编辑菜单**：在编辑区按 Ctrl+X/C/V/A，再用鼠标点菜单里的剪切、拷贝、粘贴和全选；随手记面板里也试一遍。
+- **浏览器快捷键**：F5、Ctrl+R、Ctrl+Shift+R 不刷新，随手记面板里也是；Ctrl+P 打开留白的 PDF 导出，Ctrl+F 打开留白的查找；Ctrl+加减号不再缩放。
+- **菜单外观**：菜单是 Windows 11 的样式，夜墨主题下是深色。
+- **更新器**：「检查更新…」的窗口与界面语言一致。

@@ -24,7 +24,14 @@ export function dataUrlBlob(url:string):Blob{
 const block=/^(ADDRESS|ARTICLE|ASIDE|BLOCKQUOTE|BODY|DIV|H[1-6]|LI|OL|P|PRE|SECTION|TABLE|TD|TH|UL)$/;
 const punctuation=/[\p{P}\p{S}]/u;
 const word=(node:HTMLElement)=>node.nodeName==='P'&&/mso-list\s*:/i.test(node.getAttribute('style')||'');
-const style=(node:HTMLElement,name:string)=>(node.getAttribute('style')||'').match(new RegExp('(?:^|;)\\s*'+name+'\\s*:\\s*([^;]+)','i'))?.[1].trim().toLowerCase()||'';
+const style=(node:Element,name:string)=>(node.getAttribute('style')||'').match(new RegExp('(?:^|;)\\s*'+name+'\\s*:\\s*([^;]+)','i'))?.[1].trim().toLowerCase()||'';
+// Code editors mark copied code up as CodeMirror's lines or as monospace text
+// that keeps its spaces. Chrome inlines the same styles on a page's code
+// blocks when it copies the page.
+const editorCode=(node:Element)=>/\bcm-(?:content|line)\b/.test(node.getAttribute('class')||'')||/\bpre(?:-wrap)?\b/.test(style(node,'white-space'))&&/monospace|menlo|consolas|courier/i.test(style(node,'font-family'))&&!Array.from(node.getElementsByTagName('*')).some(child=>block.test(child.nodeName));
+// The text of code, with its <br> and the ends of its lines (an empty line
+// holds a <br>) as line breaks, and indentation in plain spaces.
+const codeText=(node:Node):string=>node.nodeType===3?(node.nodeValue||'').replace(/ /g,' '):node.nodeName==='BR'?'\n':Array.from(node.childNodes).map(child=>{const text=codeText(child);return block.test(child.nodeName)&&!text.endsWith('\n')?text+'\n':text}).join('');
 function formats(node:HTMLElement):string[]{
  const weight=style(node,'font-weight'),result:string[]=[];
  if((['B','STRONG'].includes(node.nodeName)&&(!weight||weight==='bolder'))||weight==='bold'||Number.parseInt(weight,10)>=600)result.push('**');
@@ -62,7 +69,23 @@ function ordinal(marker:string):number{
  return letters.charCodeAt(0)-96;
 }
 export function htmlToMarkdown(html:string,plain:string):{markdown:string;images:PasteImage[]}{
- const images:PasteImage[]=[];let plainCode=false;
+ const body=new DOMParser().parseFromString(html,'text/html').body,code:Element[]=[];
+ // A <pre> is code already: it is taken whole when code is styled inside it.
+ (function find(node:Element){for(const child of Array.from(node.children))if(editorCode(child)||child.nodeName==='PRE'&&Array.from(child.getElementsByTagName('*')).some(editorCode))code.push(child);else if(child.nodeName!=='PRE')find(child)})(body);
+ // Code that is all that was copied pastes as its text. Among other content it
+ // becomes inline code or a code block, whose <pre> keeps its spaces from turndown.
+ const squash=(text:string)=>text.replace(/\s+/g,'');
+ if(code.length&&squash(code.map(node=>node.textContent||'').join(''))===squash(plain))return {markdown:plain,images:[]};
+ for(const node of code){
+  const text=codeText(node).replace(/\n$/,''),language=((node.querySelector('code')?.getAttribute('class')||'')+' '+(node.getAttribute('class')||'')).match(/\b(?:language|lang)-([\w+-]+)/)?.[1];
+  const inline=(!block.test(node.nodeName)||/^T[DH]$/.test(node.nodeName))&&!text.includes('\n'),doc=body.ownerDocument;
+  const replacement=doc.createElement(inline?'code':'pre'),inner=inline?replacement:replacement.appendChild(doc.createElement('code'));
+  if(language)inner.className='language-'+language;
+  inner.textContent=text;
+  // A <pre> or <code> gives way to the code; other elements, such as table cells, hold it.
+  if(/^(PRE|CODE)$/.test(node.nodeName))node.parentNode!.replaceChild(replacement,node);else{node.textContent='';node.appendChild(replacement)}
+ }
+ const images:PasteImage[]=[];
  const service=new TurndownService({headingStyle:'atx',codeBlockStyle:'fenced',bulletListMarker:'-',emDelimiter:'*',strongDelimiter:'**',linkStyle:'inlined'});
  service.use(gfm);
  service.addRule('table',{
@@ -103,7 +126,8 @@ export function htmlToMarkdown(html:string,plain:string):{markdown:string;images
   replacement:(_content,input)=>{
    const node=input as HTMLElement;
    const code=node.firstChild as HTMLElement,language=(code.getAttribute('class')||node.getAttribute('class')||'').match(/\b(?:language|lang)-([\w+-]+)/)?.[1]||'';
-   const text=(code.textContent||'').replace(/\n$/,'');
+   // The whole <pre>: its lines may be in several <code> elements.
+   const text=(node.textContent||'').replace(/\n$/,'');
    const fence='`'.repeat(Math.max(3,...(text.match(/`+/g)||[]).map(run=>run.length+1)));
    return '\n\n'+fence+language+'\n'+text+'\n'+fence+'\n\n';
   }
@@ -123,17 +147,9 @@ export function htmlToMarkdown(html:string,plain:string):{markdown:string;images
    return escape(alt);
   }
  });
- service.addRule('codeEditor',{
-  filter:node=>{
-   if(/\bcm-(?:content|line)\b/.test(node.getAttribute('class')||'')){plainCode=true;return true}
-   if(!/\bpre(?:-wrap)?\b/.test(style(node,'white-space'))||!/monospace|menlo|consolas|courier/i.test(style(node,'font-family')))return false;
-   if(Array.from(node.getElementsByTagName('*')).some(child=>block.test(child.nodeName)))return false;
-   plainCode=true;return true;
-  },replacement:()=>''
- });
  service.remove(node=>['HEAD','META','STYLE','SCRIPT','TITLE','O:P'].includes(node.nodeName));
- const markdown=service.turndown(html);
+ const markdown=service.turndown(body);
  const unescaped=markdown.replace(/\\([!-/:-@[-`{-~])/g,'$1');
  const comparable=(text:string)=>text.replace(/\r\n?/g,'\n').replace(/\n+/g,'\n').trim();
- return {markdown:plainCode||!images.length&&comparable(unescaped)===comparable(plain)?plain:markdown,images:plainCode?[]:images};
+ return {markdown:!images.length&&comparable(unescaped)===comparable(plain)?plain:markdown,images};
 }

@@ -109,6 +109,14 @@ def english(context):
     palette(page, "English")
     expect(page.locator('[data-view="single"]')).to_have_text("Edit")
     expect(page.locator("#doc-title")).to_have_text("我的标题")
+    # Commands are found whatever the case of the query.
+    page.keyboard.press("Meta+k")
+    page.locator("#command-search").fill("find in document")
+    expect(page.locator("#command-list button").filter(has_text="Find in Document")).to_have_count(1)
+    # Escape in a search field clears it before it closes the dialog.
+    page.locator("#command-search").fill("")
+    page.keyboard.press("Escape")
+    expect(page.locator("#commands")).to_be_hidden()
     page.locator(".cm-content").click()
     page.keyboard.insert_text("hello")
     expect(page.locator("#save-status")).to_have_text("Draft saved")

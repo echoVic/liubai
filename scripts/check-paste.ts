@@ -3,6 +3,11 @@ import MarkdownIt from 'markdown-it';
 import {htmlToMarkdown,pasteText,replacePasteImage,dataUrlBlob} from '../src/paste';
 import {EditorState} from '@codemirror/state';
 import {history,undo,redo} from '@codemirror/commands';
+import {createRequire} from 'node:module';
+
+// Webviews parse the pasted HTML; bun has no DOMParser, so use the parser turndown brings for Node.
+const domino=createRequire(import.meta.resolve('turndown'))('@mixmark-io/domino');
+globalThis.DOMParser??=class{parseFromString(html:string){return domino.createDocument(html)}} as unknown as typeof DOMParser;
 
 let state=EditorState.create({doc:'保留原文',selection:{anchor:2,head:4},extensions:[history()]});
 state=state.update(pasteText(state,'# 标题\n\n- 列表')).state;
@@ -60,6 +65,22 @@ assert.equal(htmlToMarkdown('<div style="font-family: Menlo, monospace; white-sp
 const plain='*literal* [text] # heading\n1. ordinary\n_a_ ~b~ \\path';
 assert.equal(htmlToMarkdown('<div>*literal* [text] # heading</div><div>1. ordinary</div><div>_a_ ~b~ \\path</div>',plain).markdown,plain);
 assert.equal(htmlToMarkdown('<div class="cm-line"># 原文</div><div class="cm-line">**重点**</div>','# 原文\n**重点**').markdown,'# 原文\n**重点**');
+// Chrome inlines computed styles when it copies a page, so its code blocks look
+// like code from an editor. Among other content they stay code blocks.
+const chromeCode="const message = '留白 Windows';\nconsole.log(message);";
+const chromePage=`<h1 style="font-size: 2em;">Windows-QA</h1><p style="color: rgb(36, 37, 35);">正文<strong>加粗</strong>和 <code style="font-family: monospace;">inline code</code>。</p><pre style="background: rgb(241, 242, 239); padding: 16px; white-space: pre-wrap; font-family: monospace; font-size: 13px;"><code class="language-javascript" style="font-family: monospace;">${chromeCode}</code></pre><p><img src="data:image/png;base64,aGVsbG8=" alt="图片"></p>`;
+const page=htmlToMarkdown(chromePage,'Windows-QA\n正文加粗和 inline code。\n\n'+chromeCode+'\n\n');
+for(const part of ['# Windows-QA','正文**加粗**和 `inline code`。','```javascript\n'+chromeCode+'\n```'])assert.ok(page.markdown.includes(part),part+'\n'+page.markdown);
+assert.equal(page.images.length,1);assert.ok(page.markdown.includes(page.images[0].placeholder));
+assert.equal(htmlToMarkdown(`<pre style="white-space: pre-wrap; font-family: monospace;"><code class="language-javascript">${chromeCode}</code></pre>`,chromeCode).markdown,chromeCode,'a code block copied alone pastes as its text');
+assert.equal(htmlToMarkdown('<p>说明</p><div style="font-family: Menlo, monospace; white-space: pre">const x = 1;<br>  x++;</div>','说明\nconst x = 1;\n  x++;').markdown,'说明\n\n```\nconst x = 1;\n  x++;\n```');
+assert.equal(htmlToMarkdown('<p>运行 <code style="font-family: monospace; white-space: pre-wrap;">go test</code> 即可</p>','运行 go test 即可').markdown,'运行 `go test` 即可');
+const mono='style="white-space: pre; font-family: monospace"';
+assert.equal(htmlToMarkdown(`<p>Intro</p><pre><span ${mono}>line1</span>\n<span ${mono}>line2</span></pre>`,'Intro\nline1\nline2').markdown,'Intro\n\n```\nline1\nline2\n```','every line of a <pre>');
+assert.equal(htmlToMarkdown('<p>说明</p><div class="cm-content"><div class="cm-line">a</div><div class="cm-line"><br></div><div class="cm-line">&nbsp;&nbsp;b</div></div>','说明\na\n\n  b').markdown,'说明\n\n```\na\n\n  b\n```','CodeMirror empty lines and indentation');
+assert.equal(htmlToMarkdown(`<table><tr><th>命令</th></tr><tr><td ${mono}>go test</td></tr></table>`,'命令\ngo test').markdown,'| 命令 |\n| --- |\n| `go test` |','code in a table cell');
+assert.equal(htmlToMarkdown(`<p>运行</p><p><span ${mono}>a\nb</span></p>`,'运行\na\nb').markdown,'运行\n\n```\na\nb\n```','lines of inline code');
+assert.equal(htmlToMarkdown('<pre><code class="language-go">a</code>\n<code>b</code></pre>','').markdown,'```go\na\nb\n```','every <code> of a <pre>');
 const image=htmlToMarkdown('<p>前<img src="data:image/png;base64,aGVsbG8=" alt="示意图">后</p>','前示意图后');
 assert.equal(image.images.length,1);
 assert.deepEqual(image.images[0],{placeholder:image.images[0].placeholder,dataUrl:'data:image/png;base64,aGVsbG8=',alt:'示意图'});

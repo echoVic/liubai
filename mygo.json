@@ -1,7 +1,7 @@
 {
   "name": "Liubai",
   "identifier": "app.liubai.desktop",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "resources": ["web"],
   "out": "build",
   "bindings": "bindings.ts",

@@ -321,7 +321,7 @@ func menuTemplate(action func(string) func(*mygo.MenuItem, *mygo.Window)) []*myg
 }
 
 func showAbout(msgs locales.Messages) {
-	mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: msgs.BMenuAppName(), ApplicationVersion: "0.6.0"})
+	mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: msgs.BMenuAppName(), ApplicationVersion: "0.6.1"})
 }
 
 // appNameFor is the name MyGo knows the app by: it keys the single-instance
@@ -383,7 +383,7 @@ func main() {
 	flag.Parse()
 	if *webAddr == "" {
 		mygo.App.SetName(appNameFor(runtime.GOOS, locales.In(i18n.Locale())))
-		mygo.App.SetVersion("0.6.0")
+		mygo.App.SetVersion("0.6.1")
 	}
 	web := frontendFiles()
 	if *webAddr == "" && os.Getenv("MYGO_GENERATE") != "" {

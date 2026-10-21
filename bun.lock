@@ -21,7 +21,7 @@
         "markdown-it": "^14.1.0",
         "markdown-it-footnote": "4.0.0",
         "mermaid": "12.1.0",
-        "mygo-runtime": "0.5.5",
+        "mygo-runtime": "0.6.0",
         "turndown": "7.2.0",
         "turndown-plugin-gfm": "1.0.2",
       },
@@ -426,7 +426,7 @@
 
     "minimalistic-assert": ["minimalistic-assert@1.0.1", "", {}, "sha512-UtJcAD4yEaGtjPezWuO9wC4nwUnVH/8/Im3yEHQP4b67cXlD/Qr9hdITCU1xDbSEXg2XKNaP8jsReV7vQd00/A=="],
 
-    "mygo-runtime": ["mygo-runtime@0.5.5", "", {}, "sha512-51cwqDKMW10f0YjuoTfpd3rp3lFhP9sofSEKysqkIhRk8gheAqDyfDOhG51SCKRdJGvJDYUNpjbTe1SRxKP7Mw=="],
+    "mygo-runtime": ["mygo-runtime@0.6.0", "", {}, "sha512-aOd9XItmkChYZZ75TWWSqJ3/H/FbQ0h5Aker54AegLKBg4ZY+ctI4WEEtGNIy4y+8ooC6uJxAI9DxfQPr5bYMg=="],
 
     "nanoid": ["nanoid@6.0.2", "", { "bin": { "nanoid": "bin/nanoid.js" } }, "sha512-hIvVOb9Qr1p/9CNNLOe0OlWvgx/ziTsVwKN/GDSsuArN2K0wDiafP3s0SWmsm7o2BdnyS8Z9Z64NFBUbn6ziBg=="],
 

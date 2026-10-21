@@ -172,3 +172,23 @@ scripts/e2e.sh check-reader && scripts/e2e.sh check-split-preview && scripts/e2e
 - **语言**：重启后保持中文；从 0.6.0 中文界面升级后，核对哪些状态被重置。
 - **主题**：夜墨主题在浅色系统下的按钮颜色和菜单颜色；开关「跟随系统」；随手记面板的颜色。
 - **其他**：帮助菜单的检查更新窗口；复杂网页的粘贴。
+
+## 0.6.1 预发布
+
+2026-10-21 发布为 GitHub 预发布，`v0.6.1` = `49a72b1`。
+
+- **Windows CI**：`49a72b1` 的 run 39553940552 通过了 `go vet ./...` 和 `go test ./...`。
+- **构建**：同一条命令一次构建三个平台，约 4 分钟。
+  - macOS 的签名、公证、钉票据和 DMG 校验全部通过。
+  - 三个程序的 `vcs.revision` 都是 `49a72b1`，`vcs.modified=false`。
+- **增量包**：macOS 从 0.6.0 升级约 740 KB；Windows 第一次有增量包，从 0.6.0 升级约 390 KB。
+- **不推送给用户**：最新正式版仍是 0.6.0，三个平台的 `releases/latest` 更新源都还是 0.6.0，网站也不变。
+- **公开下载核对**：匿名下载两个安装包、DMG 和三个更新清单，与本地构建逐字节一致。
+
+| 文件 | 大小 | SHA-256 |
+|---|---|---|
+| `Liubai.0.6.1.dmg` | 10.6 MB | `9de3baadac674921a27cdfdf3b5145608a2fb5402267d44535b999f0d021c716` |
+| `Liubai.Setup.0.6.1.amd64.exe` | 6.4 MB | `17a4a0e67146341f8fa0f7d0bcb25d14990e9dc2f8d7f1dbfdf53177a8eacd68` |
+| `Liubai.Setup.0.6.1.arm64.exe` | 5.7 MB | `6bfb6048724dcca6fa13d68ddf9711dc63e47ed59c1da9f5fbb685f6b623d064` |
+
+真机复测通过后，用 `gh release edit v0.6.1 --prerelease=false --latest` 转为正式版，再核对更新源。

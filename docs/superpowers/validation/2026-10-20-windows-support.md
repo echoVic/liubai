@@ -236,3 +236,26 @@ MyGo 0.6.0 于 2026-10-21 发布，合入了我们提交的 #560、#561 和 #562
 - **浏览器快捷键**：F5、Ctrl+R、Ctrl+Shift+R 不刷新，随手记面板里也是；Ctrl+P 打开留白的 PDF 导出，Ctrl+F 打开留白的查找；Ctrl+加减号不再缩放。
 - **菜单外观**：菜单是 Windows 11 的样式，夜墨主题下是深色。
 - **更新器**：「检查更新…」的窗口与界面语言一致。
+
+## 0.6.2 预发布
+
+2026-10-21 发布为 GitHub 预发布，`v0.6.2` = `73a3a75`，用 MyGo 0.6.0 构建。
+
+- **Windows CI**：`73a3a75` 的 run 39576611787 通过。
+- **构建**：三个平台一次构建，约 6 分钟。
+  - macOS 的签名、公证、钉票据和 DMG 校验全部通过。
+  - 三个程序的 `vcs.revision` 都是 `73a3a75`，`vcs.modified=false`，依赖 MyGo v0.6.0。
+- **增量包**：
+  - 第一次构建时，读取 Windows 两个平台上一版更新清单的请求因本机网络失败（超时，以及 `can't assign requested address`），所以没有生成 Windows 增量包。
+  - 于是单独用 `-platform windows/amd64,windows/arm64 -upload` 重建 Windows 部分，输出到另一个目录。这次生成了从 0.6.1 和 0.6.0 升级的增量包，约 730 到 870 KB，并替换了草稿里的 Windows 文件。
+  - macOS 有从 0.6.1、0.6.0、0.5.0 升级的增量包，1.4 到 1.6 MB。
+- **不推送给用户**：最新正式版仍是 0.6.1，三个平台 `releases/latest` 的更新源都还是 0.6.1。
+- **公开下载核对**：匿名下载两个安装包、DMG 和三个更新清单，与本地构建逐字节一致。
+
+| 文件 | 大小 | SHA-256 |
+|---|---|---|
+| `Liubai.0.6.2.dmg` | 10.6 MB | `c8a99fdf0106db8556849f05cda02728b23ce0ad69cc4306e751387a06f8172a` |
+| `Liubai.Setup.0.6.2.amd64.exe` | 6.4 MB | `b8f3fe9279820a2541508df88106a318a8a0a57b00745e4b929de62e4941f09e` |
+| `Liubai.Setup.0.6.2.arm64.exe` | 5.8 MB | `3d9a6f16cb0b5ec9e74d3e545abddbfbaa4be8b8a05be3de38a78f1402cbbf5d` |
+
+需要在真机上复测的项，见上面「升级到 MyGo 0.6.0」一节。

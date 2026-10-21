@@ -1,7 +1,7 @@
 import {messages,localizePage,onPageLocaleChange} from './i18n';
 import {call,type Appearance,type WorkspaceState} from './types';
 import {captureKeyAction} from './capture-input';
-import {mac,windows,keyLabel,isReloadKey} from './platform';
+import {mac,windows,keyLabel} from './platform';
 const field=document.querySelector<HTMLTextAreaElement>('#capture-text')!;
 const button=document.querySelector<HTMLButtonElement>('#capture-save')!;
 const status=document.querySelector<HTMLElement>('#capture-status')!;
@@ -38,7 +38,6 @@ mq.addEventListener('change',()=>{if(appearance)theme(appearance)});
 window.addEventListener('storage',e=>{if(e.key==='liubai-appearance'&&e.newValue){try{theme(JSON.parse(e.newValue))}catch{}}});
 window.mygo?.on<Appearance>('liubai:capture-appearance',theme);
 document.documentElement.classList.toggle('windows',windows);
-if(window.mygo&&!mac)window.addEventListener('keydown',e=>{if(isReloadKey(e))e.preventDefault()},true);
 localizePage();onPageLocaleChange(()=>message(hint()));
 try{theme((await call<WorkspaceState>('State')).appearance)}catch(e){message(e instanceof Error?e.message:String(e),true)}
 field.focus();

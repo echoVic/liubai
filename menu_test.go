@@ -210,14 +210,22 @@ func TestWindowsMenusFollowWindowsHabits(t *testing.T) {
 					switch item.Role {
 					case mygo.RoleHide, mygo.RoleHideOthers, mygo.RoleUnhide, mygo.RoleFront, mygo.RoleZoom, mygo.RoleClose:
 						t.Errorf("Windows menus hold the macOS item %q", item.Role)
-					case mygo.RoleCut, mygo.RoleCopy, mygo.RolePaste, mygo.RoleSelectAll:
-						// MyGo would take Ctrl+X/C/V/A from WebView2 and paste text alone.
-						t.Errorf("Windows menus hold the edit role %q", item.Role)
 					}
 					walk(item.Submenu)
 				}
 			}
 			walk(items)
+			// Since MyGo 0.6 the page keeps these roles' keys, so Ctrl+V still
+			// pastes web pages, Word and screenshots as Markdown.
+			edit := map[mygo.MenuRole]bool{}
+			for _, item := range items[1].Submenu {
+				edit[item.Role] = true
+			}
+			for _, role := range []mygo.MenuRole{mygo.RoleCut, mygo.RoleCopy, mygo.RolePaste, mygo.RoleSelectAll} {
+				if !edit[role] {
+					t.Errorf("the Edit menu lacks %q", role)
+				}
+			}
 		})
 	}
 }

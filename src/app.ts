@@ -12,7 +12,7 @@ import {Transaction,Compartment,StateEffect} from '@codemirror/state';
 import {blockFormat,setHeading,headingLevel,inlineMarkers,clearFormatting,inList,indentList,wrapSelection,insertMath,codeBlock,linkAt,makeLink,safeLink,localDocumentLink,insertTable,headings,type BlockKind} from './editing';
 import {isolateHistory} from '@codemirror/commands';
 import {applyIcons,icon} from './icons';
-import {mac,windows,keyLabel,focusKeys,redoKeys,isReloadKey} from './platform';
+import {mac,windows,keyLabel,focusKeys,redoKeys} from './platform';
 import {attachMenu} from './menu';
 import {insertFootnote} from './extras';
 import {disposeMermaid} from './mermaid';
@@ -50,8 +50,6 @@ let overlayOpen=false;
 let outlineHeadings:ReturnType<typeof headings>=[],outlineTimer:ReturnType<typeof setTimeout>,outlineFrame=0;
 const names=():{id:Appearance['theme'];name:string;kind:string}[]=>[{id:'paper',name:messages.fPaper(),kind:messages.fAClearNeutralPage()},{id:'warm',name:messages.fWarm(),kind:messages.fSoftWarmIvory()},{id:'mist',name:messages.fMist(),kind:messages.fAQuietGrayGreenSetting()},{id:'ink',name:messages.fInk(),kind:messages.fAMutedCharcoalNight()}];
 document.documentElement.classList.toggle('windows',windows);if(windows)$('#reveal-quarantine').dataset.i18n='fShowInFileExplorer';
-// WebView2 reloads the whole editor on F5 and Ctrl+R, and MyGo does not ask the app first.
-if(desktop&&!mac)window.addEventListener('keydown',e=>{if(isReloadKey(e))e.preventDefault()},true);
 if(desktop)document.body.classList.add('desktop');else $('#workspace-label').hidden=false;
 const errorText=localizedError;
 function toast(s:string,label='',activate?:()=>void){$('#toast').textContent=s;if(activate){const b=node('button','',label);b.onclick=activate;$('#toast').append(b)}$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4200)}

@@ -19,6 +19,11 @@
 
    它会签名、公证，生成 DMG、完整更新包、从最近几个版本升级的增量包和 `update-darwin-universal.json`，建立 GitHub Release 草稿 `v<版本>` 并上传这些文件。
 
+   网络不稳时（例如 `lookup github.com: no such host`），macOS 也会出现 `No delta update from <版本>` 的警告，上传也可能失败。这时分两种情况：
+
+   - Release 草稿还没有建立：网络恢复后删掉输出目录，重新完整构建。
+   - 草稿已经建立：只重建缺增量包的平台，方法见下面 Windows 一节的第 5 步。
+
 4. 检查产物，每条都应通过：
 
    ```sh
@@ -33,7 +38,7 @@
 5. 发布：`gh release edit v<版本> --title "留白 <版本>" --notes-file <说明文件> --draft=false --latest`。GitHub 会把 `Liubai <版本>.dmg` 改名为 `Liubai.<版本>.dmg`，说明里用这个名字。
 6. 验证更新源：匿名下载 `https://github.com/echoVic/liubai/releases/latest/download/update-darwin-universal.json`，确认是新版本，并且与本地构建的文件一致。
 
-网站 [liubai.echovic.com](https://liubai.echovic.com/) 的下载链接、版本号和安装包大小会自动跟随最新发布，不需要修改。
+网站 [liubai.echovic.com](https://liubai.echovic.com/) 在浏览器里读取最新发布的下载链接、版本号和安装包大小，但页面里写好的备用值只在网站重新部署时更新。所以发版后要在网站仓库里把这些备用值改成新版本并推送，推送后会自动部署。新功能的介绍和截图也要手动更新。
 
 ## 预发布
 

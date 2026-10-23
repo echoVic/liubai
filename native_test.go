@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"liubai/locales"
 
@@ -11,19 +12,25 @@ import (
 // MyGo draws the Windows window buttons black or white by its theme source,
 // which must follow the app's theme rather than the system's.
 func TestWindowsThemeSourceFollowsTheAppTheme(t *testing.T) {
+	noon, night := time.Date(2026, 10, 22, 12, 0, 0, 0, time.Local), time.Date(2026, 10, 22, 22, 0, 0, 0, time.Local)
 	for _, c := range []struct {
 		appearance Appearance
+		now        time.Time
 		want       mygo.ThemeSource
 	}{
-		{Appearance{Theme: "ink"}, mygo.ThemeDark},
-		{Appearance{Theme: "paper"}, mygo.ThemeLight},
-		{Appearance{Theme: "warm"}, mygo.ThemeLight},
-		{Appearance{Theme: "mist"}, mygo.ThemeLight},
-		{Appearance{Theme: "ink", FollowSystem: true}, mygo.ThemeSystem},
-		{Appearance{Theme: "paper", FollowSystem: true}, mygo.ThemeSystem},
+		{Appearance{Theme: "ink", Auto: "off"}, noon, mygo.ThemeDark},
+		{Appearance{Theme: "paper", Auto: "off"}, night, mygo.ThemeLight},
+		{Appearance{Theme: "lamp", Auto: "off"}, noon, mygo.ThemeDark},
+		{Appearance{Theme: "indigo", Auto: "off"}, noon, mygo.ThemeDark},
+		{Appearance{Theme: "lotus", Auto: "off"}, night, mygo.ThemeLight},
+		{Appearance{Theme: "ink", Auto: "hours"}, noon, mygo.ThemeLight},
+		{Appearance{Theme: "paper", Auto: "hours"}, night, mygo.ThemeDark},
+		// Both read the system's appearance, which a forced source would replace.
+		{Appearance{Theme: "ink", Auto: "system"}, noon, mygo.ThemeSystem},
+		{Appearance{Theme: "paper", Auto: "seasons"}, night, mygo.ThemeSystem},
 	} {
-		if got := themeSourceFor(c.appearance); got != c.want {
-			t.Errorf("themeSourceFor(%+v) = %q, want %q", c.appearance, got, c.want)
+		if got := themeSourceFor(c.appearance, c.now); got != c.want {
+			t.Errorf("themeSourceFor(%+v, %s) = %q, want %q", c.appearance, c.now.Format("15:04"), got, c.want)
 		}
 	}
 }

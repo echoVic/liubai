@@ -27,13 +27,18 @@ const maxDocument = 8 << 20
 const maxPicture = 20 << 20
 
 type Appearance struct {
-	Theme         string `json:"theme"`
-	FontSize      int    `json:"fontSize,omitempty"`
-	LineWidth     string `json:"lineWidth,omitempty"`
+	Theme      string `json:"theme"`
+	Auto       string `json:"auto"`
+	LightTheme string `json:"lightTheme"`
+	DarkTheme  string `json:"darkTheme"`
+	FontSize   int    `json:"fontSize,omitempty"`
+	LineWidth  string `json:"lineWidth,omitempty"`
+	// FollowSystem mirrors auto == "system" for versions before auto.
 	FollowSystem  bool   `json:"followSystem"`
 	Layout        string `json:"layout"`
 	Source        bool   `json:"source"`
 	SidebarDocked bool   `json:"sidebarDocked"`
+	OutlineHidden bool   `json:"outlineHidden"`
 }
 type Position struct {
 	Anchor int     `json:"anchor"`
@@ -231,7 +236,6 @@ func diskBytes(d *Document) []byte {
 	}
 	return []byte(s)
 }
-func validTheme(s string) bool { return s == "paper" || s == "warm" || s == "mist" || s == "ink" }
 func normalizeLayout(s string) string {
 	if s == "split" || s == "read" {
 		return s
@@ -242,7 +246,7 @@ func openWorkspace(root string) (*Workspace, error) {
 	if err := os.MkdirAll(filepath.Join(root, "drafts"), 0700); err != nil {
 		return nil, err
 	}
-	w := &Workspace{capture: defaultCaptureSettings(), root: root, docs: map[string]*Document{}, positions: map[string]Position{}, appearance: Appearance{Theme: "paper", FollowSystem: true, Layout: "single"}}
+	w := &Workspace{capture: defaultCaptureSettings(), root: root, docs: map[string]*Document{}, positions: map[string]Position{}, appearance: Appearance{Theme: "paper", Auto: "system", LightTheme: "paper", DarkTheme: "ink", FollowSystem: true, Layout: "single"}}
 	if b, err := readLimited(filepath.Join(root, "positions.json"), 64<<20); err == nil {
 		var positions map[string]Position
 		if json.Unmarshal(b, &positions) == nil && positions != nil {
@@ -276,6 +280,7 @@ func openWorkspace(root string) (*Workspace, error) {
 			}
 			if validTheme(x.Appearance.Theme) {
 				x.Appearance.Layout = normalizeLayout(x.Appearance.Layout)
+				normalizeAppearance(&x.Appearance)
 				w.appearance = x.Appearance
 			}
 		}
@@ -448,6 +453,17 @@ func (w *Workspace) restoreIndex(b []byte) {
 	if json.Unmarshal(x.Appearance["theme"], &theme) == nil && validTheme(theme) {
 		p.Theme = theme
 	}
+	var auto, light, dark string
+	p.Auto = ""
+	if json.Unmarshal(x.Appearance["auto"], &auto) == nil {
+		p.Auto = auto
+	}
+	if json.Unmarshal(x.Appearance["lightTheme"], &light) == nil {
+		p.LightTheme = light
+	}
+	if json.Unmarshal(x.Appearance["darkTheme"], &dark) == nil {
+		p.DarkTheme = dark
+	}
 	if json.Unmarshal(x.Appearance["fontSize"], &size) == nil && (size == 0 || size >= 15 && size <= 22) {
 		p.FontSize = size
 	}
@@ -457,9 +473,10 @@ func (w *Workspace) restoreIndex(b []byte) {
 	if json.Unmarshal(x.Appearance["layout"], &layout) == nil && (layout == "" || layout == "single" || layout == "split" || layout == "read") {
 		p.Layout = normalizeLayout(layout)
 	}
-	for name, field := range map[string]*bool{"followSystem": &p.FollowSystem, "source": &p.Source, "sidebarDocked": &p.SidebarDocked} {
+	for name, field := range map[string]*bool{"followSystem": &p.FollowSystem, "source": &p.Source, "sidebarDocked": &p.SidebarDocked, "outlineHidden": &p.OutlineHidden} {
 		_ = json.Unmarshal(x.Appearance[name], field)
 	}
+	normalizeAppearance(p)
 }
 func safeID(s string) bool {
 	if len(s) != 24 {
@@ -874,8 +891,11 @@ func (w *Workspace) Open(path string) (WorkspaceState, error) {
 func (w *Workspace) Appearance(p Appearance) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if !validTheme(p.Theme) {
+	if !validTheme(p.Theme) || p.LightTheme != "" && (!validTheme(p.LightTheme) || darkTheme(p.LightTheme)) || p.DarkTheme != "" && !darkTheme(p.DarkTheme) {
 		return messageError("bUnknownTheme", nil)
+	}
+	if p.Auto != "" && !validAuto(p.Auto) {
+		return messageError("bUnknownAutoSwitch", nil)
 	}
 	if p.FontSize != 0 && (p.FontSize < 15 || p.FontSize > 22) {
 		return messageError("bInvalidFontSize", nil)
@@ -887,6 +907,7 @@ func (w *Workspace) Appearance(p Appearance) error {
 		return messageError("bUnknownLayout", nil)
 	}
 	p.Layout = normalizeLayout(p.Layout)
+	normalizeAppearance(&p)
 	old := w.appearance
 	w.appearance = p
 	if err := w.saveIndex(); err != nil {

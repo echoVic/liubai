@@ -2,6 +2,7 @@ import type {SyntaxNode} from '@lezer/common';
 import type {MarkdownConfig} from '@lezer/markdown';
 import type {MermaidConfig} from 'mermaid';
 import {messages} from './i18n';
+import {isDark,themes,type ThemeID} from './theme';
 
 // Like MathFence, let the enclosing Markdown parser own quote/list depth and indentation.
 export const MermaidSyntax:MarkdownConfig={
@@ -23,7 +24,7 @@ export const MermaidSyntax:MarkdownConfig={
 export function mermaidSource(node:SyntaxNode,slice:(from:number,to:number)=>string):string|null{
  return node.name==='MermaidFence'?node.getChildren('MermaidText').map(part=>slice(part.from,part.to)).join('\n').trimEnd():null;
 }
-export type MermaidTheme='paper'|'warm'|'mist'|'ink';
+export type MermaidTheme=ThemeID;
 export interface MermaidResult {svg?:string;error?:string}
 interface MermaidAPI {
  initialize:(config:MermaidConfig)=>void;
@@ -41,7 +42,7 @@ export function createMermaidRenderer(load:()=>Promise<MermaidAPI>):MermaidRende
    try{
     const mermaid=await (api??=load().catch(error=>{api=undefined;throw error}));
     if(initialized!==theme){
-     mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:theme==='ink'?'dark':'default',fontFamily:mermaidFont,htmlLabels:false,arrowMarkerAbsolute:false,flowchart:{htmlLabels:false},suppressErrorRendering:true,
+     mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:isDark(theme)?'dark':'default',fontFamily:mermaidFont,htmlLabels:false,arrowMarkerAbsolute:false,flowchart:{htmlLabels:false},suppressErrorRendering:true,
       // Diagram directives/front matter cannot override the safety, offline font or theme policy.
       secure:['secure','securityLevel','startOnLoad','maxTextSize','maxEdges','suppressErrorRendering','theme','themeVariables','themeCSS','fontFamily','htmlLabels','arrowMarkerAbsolute','flowchart','dompurifyConfig']});
      initialized=theme;
@@ -56,7 +57,7 @@ export function createMermaidRenderer(load:()=>Promise<MermaidAPI>):MermaidRende
 export const renderMermaid=createMermaidRenderer(async()=>(await import('./mermaid-runtime')).default);
 export function mermaidTheme():MermaidTheme{
  const value=typeof document==='undefined'?'paper':document.documentElement.dataset.liubaiTheme;
- return value==='warm'||value==='mist'||value==='ink'?value:'paper';
+ return themes.find(t=>t.id===value)?.id||'paper';
 }
 function uniqueSVG(svg:string):string{
  const prefix=identifier(),ids=new Map<string,string>(),tags=/<(?:[^<>"']|"[^"]*"|'[^']*')+>/g;

@@ -9,8 +9,15 @@ from playwright.sync_api import expect, sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:4196'
 ARTIFACTS = Path(tempfile.mkdtemp(prefix='liubai-mermaid-qa-'))
+THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
 TEMPLATE = '```mermaid\nflowchart LR\n  A[开始] --> B[结束]\n```'
 TEXT = '前文\n\n' + TEMPLATE + '\n\n' + TEMPLATE + '\n\n尾文'
+
+
+def set_theme(page, theme):
+    """Paint a theme the way the app does, both root attributes. Assert right after: the app repaints the stored theme on its next minute tick or window focus."""
+    scheme = 'dark' if next(t['dark'] for t in THEMES if t['id'] == theme) else 'light'
+    page.evaluate("([theme, scheme]) => { const root = document.documentElement; root.dataset.liubaiTheme = theme; root.dataset.liubaiScheme = scheme }", [theme, scheme])
 
 
 def saved(page, text):
@@ -62,9 +69,9 @@ def run(page):
     fixture(page)
     diagrams(page, '.cm-content .rendered-mermaid')
     assert any(re.search(r'/mermaid-runtime-[^/]+\.js', url) for url in requests), requests
-    page.evaluate("document.documentElement.dataset.liubaiTheme='ink'")
+    set_theme(page, 'ink')
     expect(page.locator('.cm-content .rendered-mermaid').first).to_have_attribute('data-theme', 'ink')
-    page.evaluate("document.documentElement.dataset.liubaiTheme='paper'")
+    set_theme(page, 'paper')
     expect(page.locator('.cm-content .rendered-mermaid').first).to_have_attribute('data-theme', 'paper')
     page.locator('.rendered-mermaid').first.click()
     expect(page.locator('.cm-content')).to_contain_text('```mermaid')
@@ -80,13 +87,17 @@ def run(page):
     page.keyboard.press('Meta+z')
     page.locator('[data-view="read"]').click()
     diagrams(page, '#preview-content .rendered-mermaid')
-    for theme in ('warm', 'mist', 'ink', 'paper'):
-        page.evaluate('(theme)=>document.documentElement.dataset.liubaiTheme=theme', theme)
+    for theme in [t["id"] for t in THEMES]:
+        set_theme(page, theme)
         expect(page.locator('#preview-content .rendered-mermaid').first).to_have_attribute('data-theme', theme)
         diagrams(page, '#preview-content .rendered-mermaid')
-        svg = page.locator('#preview-content .rendered-mermaid svg').first
-        if theme == 'ink':
-            assert '#333' in svg.inner_html() or '#1f2020' in svg.inner_html(), svg.inner_html()[:3000]
+        html = page.locator('#preview-content .rendered-mermaid svg').first.inner_html()
+        # #1f2020 is in Mermaid's dark palette only (the light one has #333 instead), so it tells the two apart.
+        if theme in [t["id"] for t in THEMES if t["dark"]]:
+            assert '#1f2020' in html, (theme, 'dark theme, but the diagram is not in the dark palette', html[:3000])
+        else:
+            assert '#1f2020' not in html, (theme, 'light theme, but the diagram is in the dark palette', html[:3000])
+    set_theme(page, 'paper')  # the loop used to end on the default theme; what follows does not depend on a theme
     page.locator('[data-view="single"]').click()
     fixture(page, '前\n\n```mermaid\nflowchart LR\n A[\n```\n\n尾')
     expect(page.locator('.cm-content .mermaid-error')).to_contain_text('Parse error')
@@ -121,8 +132,8 @@ def run(page):
     # Author HTML is still sanitized; successful diagrams survive through the trusted insertion boundary.
     fixture(page, TEXT + '\n\n<svg onload="alert(1)"><text>author-svg</text></svg><script>alert(1)</script>')
     # Exports print on white paper: even under 夜墨 their diagrams use the light theme.
-    page.evaluate("document.documentElement.dataset.liubaiTheme='ink'")
     for kind in ('html', 'copyRich', 'pdf'):
+        set_theme(page, 'ink')
         page.locator('.export-button').click()
         page.locator(f'[data-deliver="{kind}"]').click()
         expect(page.locator('#ready-dialog')).to_be_visible()
@@ -136,7 +147,7 @@ def run(page):
             html = Path(pending.value.path()).read_text()
             assert html.count('<svg') == 2 and '开始' in html and '结束' in html
         page.keyboard.press('Escape')
-    page.evaluate('delete document.documentElement.dataset.liubaiTheme')
+    page.evaluate('delete document.documentElement.dataset.liubaiTheme; delete document.documentElement.dataset.liubaiScheme')
     fixture(page, '前\n\n```mermaid\nnot a diagram\n```\n\n尾')
     page.locator('.export-button').click()
     page.locator('[data-deliver="html"]').click()

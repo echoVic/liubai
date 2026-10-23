@@ -15,6 +15,7 @@ from playwright.sync_api import expect, sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4197"
 ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-toolbar-qa-"))
+THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
 TEXT = "# 一\n\n第一段。\n\n## 二\n\n第二段。"
 
 
@@ -24,6 +25,13 @@ def api(page, method, *args):
     body = response.json()
     assert not body.get("error"), body
     return body["value"]
+
+
+def set_theme(page, theme):
+    """Paint a theme the way the app does, both root attributes. Assert right after: the app repaints the stored theme on its next minute tick or window focus."""
+    scheme = "dark" if next(t["dark"] for t in THEMES if t["id"] == theme) else "light"
+    page.evaluate("([theme, scheme]) => { const root = document.documentElement; root.dataset.liubaiTheme = theme; root.dataset.liubaiScheme = scheme }", [theme, scheme])
+
 
 def saved_position(page, check, timeout=7000):
     """Poll the persisted position; Playwright treats an async wait_for_function predicate as already true."""
@@ -215,10 +223,10 @@ def check_format_bar(page):
         assert page.locator(selector).first.evaluate("(el, p) => getComputedStyle(el)[p]", prop) == expected
     # Hidden ~~ markers would leave struck text looking plain.
     assert page.locator(".cm-line span", has_text="删").last.evaluate("el => getComputedStyle(el).textDecorationLine") == "line-through"
-    for theme in ("paper", "warm", "mist", "ink"):
-        page.evaluate("t => document.documentElement.dataset.liubaiTheme = t", theme)
-        assert page.locator(".md-highlight").evaluate("el => getComputedStyle(el).backgroundColor") not in ("transparent", "rgba(0, 0, 0, 0)")
-    page.evaluate("delete document.documentElement.dataset.liubaiTheme")
+    for theme in [t["id"] for t in THEMES]:
+        set_theme(page, theme)
+        assert page.locator(".md-highlight").evaluate("el => getComputedStyle(el).backgroundColor") not in ("transparent", "rgba(0, 0, 0, 0)"), theme
+    page.evaluate("delete document.documentElement.dataset.liubaiTheme; delete document.documentElement.dataset.liubaiScheme")
     select_view(page, "read")
     for tag in ("mark", "u", "sup", "sub"):
         expect(page.locator(f"#preview-content {tag}")).to_have_count(1)
@@ -539,7 +547,7 @@ def run(page):
     page.goto(BASE)
     expect(page.locator(".cm-content")).to_be_visible()
     order = page.locator(".topbar button").evaluate_all("els => els.map(el => el.id || el.dataset.view || el.dataset.action)")
-    assert order == ["sidebar-button", "doc-title", "single", "split", "read", "theme", "deliver", "more-button"], order
+    assert order == ["sidebar-button", "doc-title", "single", "split", "read", "theme", "deliver", "more-button", "outline-button"], order
     assert page.locator(".view-switch button").all_text_contents() == ["编辑", "分栏", "阅读"]
     expect(page.locator('.view-switch')).to_have_attribute("role", "radiogroup")
     expect(page.locator('.view-switch')).to_have_attribute("aria-label", "视图")
@@ -598,34 +606,15 @@ def run(page):
     sidebar.click()
     expect(drawer).to_be_visible()
     expect(sidebar).to_have_attribute("aria-expanded", "true")
-    expect(page.locator('[data-tab="recent"]')).to_have_attribute("aria-selected", "true")
+    expect(page.locator('#drawer [role="tab"]')).to_have_count(0)
+    expect(page.locator("#drawer .outline-item")).to_have_count(0)
+    expect(page.locator("#recent-search")).to_be_visible()
+    expect(page.locator(".drawer-open")).to_be_visible()
     accessible_buttons(page)
     sidebar.click()
     expect(drawer).to_be_hidden()
     expect(sidebar).to_have_attribute("aria-expanded", "false")
     sidebar.click()
-    page.locator('[data-tab="outline"]').click()
-    expect(page.locator('[data-tab="outline"]')).to_have_attribute("aria-selected", "true")
-    expect(page.locator('[data-tab="recent"]')).to_have_attribute("aria-selected", "false")
-    expect(page.locator("#drawer-list")).to_have_attribute("role", "tabpanel")
-    expect(page.locator("#recent-search")).to_be_hidden()
-    expect(page.locator(".drawer-open")).to_be_hidden()
-    expect(page.locator("#drawer-list .outline-item")).to_have_text(["一", "二"])
-    page.locator("#drawer-list .outline-item", has_text="二").click()
-    page.wait_for_function("""() => {
-      const node=getSelection()?.anchorNode;
-      return node?.parentElement?.closest('.cm-line')?.textContent.includes('二');
-    }""")
-    # Verify the actual CodeMirror selection via the separately persisted position.
-    saved_position(page, lambda current: current["position"]["anchor"] == TEXT.index("## 二"))
-    page.keyboard.press("Escape")
-    expect(drawer).to_be_hidden()
-    expect(sidebar).to_have_attribute("aria-expanded", "false")
-    sidebar.click()
-    expect(page.locator('[data-tab="outline"]')).to_have_attribute("aria-selected", "true")
-    page.locator('[data-tab="recent"]').click()
-    expect(page.locator("#recent-search")).to_be_visible()
-    expect(page.locator(".drawer-open")).to_be_visible()
     # Exact match: other test documents (第一节, 唯一标题) also contain the title character.
     expect(page.locator(".recent-item b", has_text=re.compile("^" + re.escape(title) + "$"))).to_have_count(1)
     accessible_buttons(page)
@@ -753,7 +742,7 @@ def run(page):
     page.locator("#heading-button").click()
     expect(page.locator("#heading-menu [role=menuitemradio]")).to_have_text(["Body"] + [f"Heading {i}" for i in range(1, 7)])
     page.keyboard.press("Escape")
-    print("PASS: whole-page bounds/flat panes/centred normal-wide-full columns, format row/word count/long-document/click-to-write, equal split/stacked divider/full reader, format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, docked/overlay sidebar persistence/resizing, right outline geometry/jumps/active heading/visibility, sidebar tabs/headings/recent, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
+    print("PASS: whole-page bounds/flat panes/centred normal-wide-full columns, format row/word count/long-document/click-to-write, equal split/stacked divider/full reader, format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, docked/overlay sidebar persistence/resizing, right outline geometry/jumps/active heading/visibility, sidebar recent documents only, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
 
 
 with sync_playwright() as playwright:

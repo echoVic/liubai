@@ -19,7 +19,7 @@ Liubai checks for updates in the background every 4 hours, and you can check you
 - **Writing**: start typing as soon as it opens, with headings, lists, bold and other formatting appearing as you type. Use the formatting toolbar, the insert menu that opens when you type `/` on an empty line, or the block handle to the left of a paragraph, which can drag, convert, duplicate and delete blocks.
 - **Tables and images**: tables are edited in place, with Tab moving between cells. Drag an image to resize it, and set its alignment and caption; the result is Markdown that also displays correctly on GitHub.
 - **Math, diagrams and extended syntax**: KaTeX math, Mermaid diagrams, GitHub alerts, foldable `<details>` blocks and footnotes.
-- **Reading**: edit, split and read views, with the right pane following the cursor in split view. The sidebar has recent documents and an outline. There's a focus mode, four themes, and adjustable font size and line width.
+- **Reading**: edit, split and read views, with the right pane following the cursor in split view. The sidebar has recent documents; the outline sits beside the text on the right, with an outline button in the top bar. There's a focus mode; eleven themes in two series, Hours (the light through a day) and Seasons (the colours of the year), which can switch automatically; and adjustable font size and line width.
 - **Export**: PDF, Word (.docx), HTML with embedded images, a ZIP of the Markdown and its images, and rich-text copy. Chinese text in the PDFs copies and searches correctly. Word documents keep heading styles, list numbering, tables, equations and footnotes, ready for anyone working in Word, Pages or WPS.
 - **Paste**: content from web pages, documents and Word becomes Markdown when pasted, images included; `⇧⌘V` pastes plain text.
 - **Quick notes**: press `⌃⌥⌘N` (`Ctrl+Alt+N` on Windows) in any app to write something down, and `⌘↩` (`Ctrl+Enter`) saves it as a new draft.
@@ -55,9 +55,11 @@ Checks:
 go test ./... && go vet ./...
 node_modules/.bin/tsc --noEmit
 node scripts/check-i18n.mjs && node scripts/check-editor.mjs
-npx --yes bun@1.4.3 scripts/check-<name>.ts   # editing, rendering, performance, paste, capture-input, platform, blocks, slash, tables, images, marks, math, mermaid, extras, docx
-scripts/e2e.sh check-<name>                    # regressions in Chrome: split-preview, reader, toolbar, capture, english, windows, blocks, tables, images, math, mermaid, extras, docx
+node scripts/check-themes.mjs                  # contrast floors and the theme list
+npx --yes bun@1.4.3 scripts/check-<name>.ts   # editing, rendering, performance, paste, capture-input, platform, blocks, slash, tables, images, marks, math, mermaid, extras, docx, theme
+scripts/e2e.sh check-<name>                    # regressions in Chrome: split-preview, reader, toolbar, capture, english, windows, blocks, tables, images, math, mermaid, extras, docx, themes, outline
 scripts/e2e.sh check-blocks-webkit             # blocks, images, math, diagrams and Word conversion in WebKit, the desktop app's engine
+scripts/e2e.sh shoot-themes                    # screenshots of every theme in the edit, split and read views, in /tmp/liubai-theme-shots/
 python3 scripts/check-preview.py               # rendering and export
 python3 scripts/check-pdf.py                   # PDF pagination, Chinese text layer and rendering
 ```

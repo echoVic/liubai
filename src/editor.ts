@@ -65,11 +65,11 @@ class TaskWidget extends WidgetType {
 const colours=HighlightStyle.define([
  {tag:tags.heading,color:'var(--foreground)',fontWeight:'600'},
  {tag:tags.strong,fontWeight:'700'}, {tag:tags.emphasis,fontStyle:'italic'}, {tag:tags.strikethrough,textDecoration:'line-through'},
- {tag:[tags.keyword,tags.bool,tags.null],color:'var(--primary)'},
- {tag:[tags.string,tags.regexp],color:'var(--quote)'},
+ {tag:[tags.keyword,tags.bool,tags.null],color:'var(--syntax-keyword)'},
+ {tag:[tags.string,tags.regexp],color:'var(--syntax-string)'},
  {tag:[tags.comment,tags.meta],color:'var(--muted-foreground)'},
- {tag:[tags.link,tags.url],color:'var(--link)'},
- {tag:[tags.number,tags.atom],color:'var(--primary)'}
+ {tag:[tags.link,tags.url],color:'var(--link-text,var(--link))'},
+ {tag:[tags.number,tags.atom],color:'var(--syntax-keyword)'}
 ]);
 function selectedLines(state:EditorState){
  const lines=state.selection.ranges.map(sel=>({from:state.doc.lineAt(sel.from).from,to:state.doc.lineAt(sel.to).to}));

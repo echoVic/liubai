@@ -9,6 +9,7 @@ from playwright.sync_api import expect, sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4196"
 ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-blocks-qa-"))
+THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
 TEXT = "第一段。\n\n第二段。\n\n第三段。\n\n第四段。"
 
 
@@ -18,6 +19,12 @@ def api(page, method, *args):
     body = r.json()
     assert not body.get("error"), body
     return body["value"]
+
+
+def set_theme(page, theme):
+    """Paint a theme the way the app does, both root attributes. Assert right after: the app repaints the stored theme on its next minute tick or window focus."""
+    scheme = "dark" if next(t["dark"] for t in THEMES if t["id"] == theme) else "light"
+    page.evaluate("([theme, scheme]) => { const root = document.documentElement; root.dataset.liubaiTheme = theme; root.dataset.liubaiScheme = scheme }", [theme, scheme])
 
 
 def saved(page):
@@ -162,11 +169,12 @@ def slash_checks(page):
     page.keyboard.insert_text('/')
     expect(menu).to_be_hidden()
     page.locator('#format-bar [data-action="source"]').click()
-    for theme in ('paper', 'warm', 'mist', 'ink'):
-        page.evaluate('theme => document.documentElement.dataset.liubaiTheme=theme', theme)
+    for theme in [t["id"] for t in THEMES]:
+        set_theme(page, theme)
         start()
         page.screenshot(path=str(ARTIFACTS / ('slash-' + theme + '.png')))
         page.keyboard.press('Escape')
+    set_theme(page, 'paper')
     # ArrowUp wraps and Enter on Image uses the same file input as the format bar.
     start()
     page.keyboard.press('ArrowUp')
@@ -266,10 +274,12 @@ def run(page):
     page.keyboard.press("Meta+/")
     expect(page.locator("#block-menu")).to_be_visible()
     page.keyboard.press("Escape")
-    for theme in ("paper", "warm", "mist", "ink"):
-        page.evaluate("theme => document.documentElement.dataset.liubaiTheme=theme", theme)
+    for theme in [t["id"] for t in THEMES]:
+        set_theme(page, theme)
         hover(page, "第一段。")
         page.screenshot(path=str(ARTIFACTS / (theme + ".png")))
+    # Back to the default: the last theme (黛蓝) has a sans font that leaves a long document scrolled 2px short, so the next hover on its last line made Playwright scroll, and any scroll hides the block grip.
+    set_theme(page, "paper")
     # A paragraph dragged past a list lands before/after the whole list, which stays intact.
     text(page, "第一段。\n\n- 甲\n  - 乙\n- 丙\n\n尾段。")
     hover(page, "第一段。")

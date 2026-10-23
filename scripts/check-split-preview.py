@@ -18,6 +18,7 @@ from playwright.sync_api import expect, sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4194"
 ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-preview-qa-"))
+THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
 TEXT = "# 分栏验收\n\n一句**强调**，一个[链接](https://example.com)。\n\n"
 TEXT += "- [ ] 未完成\n- [x] 已完成\n\n"
 TEXT += "| 项目 | 说明 |\n| --- | --- |\n| 留白 | 阅读与编辑 |\n\n"
@@ -59,7 +60,6 @@ def import_text(page, text, name):
 
 def open_recent(page, title):
     page.locator("#sidebar-button").click()
-    page.locator('[data-tab="recent"]').click()
     expect(page.locator("#drawer")).to_be_visible()
     item = page.locator(".recent-item").filter(
         has=page.locator("b", has_text=title)
@@ -434,14 +434,16 @@ def run(page):
 
     # Theme/font controls must not reset the new global fields.
     page.locator('[data-action="theme"]').click()
-    for theme in ["ink", "warm", "mist", "paper"]:
-        names = {"ink": "夜墨", "warm": "暖纸", "mist": "雾绿", "paper": "纸白"}
+    names = {"dawn": "晨光", "paper": "纸白", "warm": "暖纸", "lamp": "灯下", "ink": "夜墨", "moon": "月夜", "mist": "雾绿", "lotus": "藕荷", "autumn": "秋香", "moonwhite": "月白", "indigo": "黛蓝"}
+    for theme in [t["id"] for t in THEMES]:
         appearance_change(page, lambda: page.get_by_role("radio", name=names[theme], exact=True).click())
         colors = page.evaluate("""() => ({
           editor:getComputedStyle(document.querySelector('.cm-editor')).color,
           preview:getComputedStyle(document.querySelector('#preview article')).color
         })""")
         assert colors["editor"] == colors["preview"], colors
+    # The loop used to end on paper: end there again, so the layout checks below run on the default theme and not on 黛蓝's sans font.
+    appearance_change(page, lambda: page.get_by_role("radio", name=names["paper"], exact=True).click())
     appearance_change(page, lambda: page.locator("#font-size").select_option("20"))
     assert page.locator("#preview article").evaluate("(el) => getComputedStyle(el).fontSize") == "20px"
     page.locator('[data-close="appearance"]').click()

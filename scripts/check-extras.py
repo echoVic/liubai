@@ -9,7 +9,14 @@ from playwright.sync_api import expect, sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:4196'
 ARTIFACTS = Path(tempfile.mkdtemp(prefix='liubai-extras-qa-'))
+THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
 DETAILS = '<details>\n<summary>标题</summary>\n\n内容\n\n</details>'
+
+
+def set_theme(page, theme):
+    """Paint a theme the way the app does, both root attributes. Assert right after: the app repaints the stored theme on its next minute tick or window focus."""
+    scheme = 'dark' if next(t['dark'] for t in THEMES if t['id'] == theme) else 'light'
+    page.evaluate("([theme, scheme]) => { const root = document.documentElement; root.dataset.liubaiTheme = theme; root.dataset.liubaiScheme = scheme }", [theme, scheme])
 
 
 def current(page):
@@ -87,8 +94,8 @@ def run(page):
         expect(page.locator(f'.md-callout.markdown-alert-{kind} .md-callout-title')).to_have_text(label)
         expect(page.locator(f'.md-callout.markdown-alert-{kind} .md-callout-title svg')).to_have_count(1)
     page.locator('[data-view="split"]').click()
-    for theme in ('paper', 'warm', 'mist', 'ink'):
-        page.evaluate('(theme)=>document.documentElement.dataset.liubaiTheme=theme', theme)
+    for theme in [t["id"] for t in THEMES]:
+        set_theme(page, theme)
         colours = []
         for kind in kinds:
             style = '(el)=>{const s=getComputedStyle(el);return [s.borderLeftColor,s.backgroundColor]}'
@@ -99,6 +106,7 @@ def run(page):
             colours.append(editor[0])
         assert len(set(colours)) == 5
         page.screenshot(path=str(ARTIFACTS / f'callouts-{theme}.png'))
+    set_theme(page, 'paper')  # back to the default for the steps below
     page.locator('.cm-content').focus()
     page.keyboard.press('Meta+ArrowUp')
     expect(page.locator('.cm-line').first).to_contain_text('[!NOTE]')

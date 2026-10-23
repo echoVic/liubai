@@ -263,7 +263,6 @@ def run(page):
     titles = [d["title"] for d in api(page, "State")["recent"]]
     assert titles.count("未命名文稿") == 1, titles
     page.locator("#sidebar-button").click()
-    page.locator('[data-tab="recent"]').click()
     row = page.locator(".recent-row").filter(has=page.locator("b", has_text="要移除的文稿"))
     row.hover()
     remove = row.locator(".recent-remove")

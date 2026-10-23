@@ -6,12 +6,17 @@ import { call, event } from "mygo-runtime";
 
 export interface Appearance {
   theme: string;
+  auto: string;
+  lightTheme: string;
+  darkTheme: string;
   fontSize?: number;
   lineWidth?: string;
+  /** FollowSystem mirrors auto == "system" for versions before auto. */
   followSystem: boolean;
   layout: string;
   source: boolean;
   sidebarDocked: boolean;
+  outlineHidden: boolean;
 }
 
 export interface CaptureSettings {

@@ -48,20 +48,6 @@ func (msgs Messages) FPaper() string {
 	return Catalog.Format(msgs.locale, "fPaper", nil)
 }
 
-// FAClearNeutralPage says "清晰的中性纸面"
-// in the language the app shows.
-//
-// Interface text for A clear, neutral page.
-func FAClearNeutralPage() string { return In(i18n.Locale()).FAClearNeutralPage() }
-
-// FAClearNeutralPage says "清晰的中性纸面"
-// in the language of msgs.
-//
-// Interface text for A clear, neutral page.
-func (msgs Messages) FAClearNeutralPage() string {
-	return Catalog.Format(msgs.locale, "fAClearNeutralPage", nil)
-}
-
 // FWarm says "暖纸"
 // in the language the app shows.
 //
@@ -74,20 +60,6 @@ func FWarm() string { return In(i18n.Locale()).FWarm() }
 // Interface text for Warm.
 func (msgs Messages) FWarm() string {
 	return Catalog.Format(msgs.locale, "fWarm", nil)
-}
-
-// FSoftWarmIvory says "柔和的米纸暖调"
-// in the language the app shows.
-//
-// Interface text for Soft, warm ivory.
-func FSoftWarmIvory() string { return In(i18n.Locale()).FSoftWarmIvory() }
-
-// FSoftWarmIvory says "柔和的米纸暖调"
-// in the language of msgs.
-//
-// Interface text for Soft, warm ivory.
-func (msgs Messages) FSoftWarmIvory() string {
-	return Catalog.Format(msgs.locale, "fSoftWarmIvory", nil)
 }
 
 // FMist says "雾绿"
@@ -104,20 +76,6 @@ func (msgs Messages) FMist() string {
 	return Catalog.Format(msgs.locale, "fMist", nil)
 }
 
-// FAQuietGrayGreenSetting says "沉静的灰绿环境"
-// in the language the app shows.
-//
-// Interface text for A quiet gray-green setting.
-func FAQuietGrayGreenSetting() string { return In(i18n.Locale()).FAQuietGrayGreenSetting() }
-
-// FAQuietGrayGreenSetting says "沉静的灰绿环境"
-// in the language of msgs.
-//
-// Interface text for A quiet gray-green setting.
-func (msgs Messages) FAQuietGrayGreenSetting() string {
-	return Catalog.Format(msgs.locale, "fAQuietGrayGreenSetting", nil)
-}
-
 // FInk says "夜墨"
 // in the language the app shows.
 //
@@ -130,20 +88,6 @@ func FInk() string { return In(i18n.Locale()).FInk() }
 // Interface text for Ink.
 func (msgs Messages) FInk() string {
 	return Catalog.Format(msgs.locale, "fInk", nil)
-}
-
-// FAMutedCharcoalNight says "克制的深炭夜色"
-// in the language the app shows.
-//
-// Interface text for A muted charcoal night.
-func FAMutedCharcoalNight() string { return In(i18n.Locale()).FAMutedCharcoalNight() }
-
-// FAMutedCharcoalNight says "克制的深炭夜色"
-// in the language of msgs.
-//
-// Interface text for A muted charcoal night.
-func (msgs Messages) FAMutedCharcoalNight() string {
-	return Catalog.Format(msgs.locale, "fAMutedCharcoalNight", nil)
 }
 
 // FLocalDevelopmentSeparateDrafts says "本地开发版 · 独立草稿存档"
@@ -248,48 +192,6 @@ func FTrySavingAgainYourTextIsStillHere() string {
 // Interface text for Try saving again. Your text is still here..
 func (msgs Messages) FTrySavingAgainYourTextIsStillHere() string {
 	return Catalog.Format(msgs.locale, "fTrySavingAgainYourTextIsStillHere", nil)
-}
-
-// FAPageToWriteOn says "一页写作桌"
-// in the language the app shows.
-//
-// Interface text for A Page to Write On.
-func FAPageToWriteOn() string { return In(i18n.Locale()).FAPageToWriteOn() }
-
-// FAPageToWriteOn says "一页写作桌"
-// in the language of msgs.
-//
-// Interface text for A Page to Write On.
-func (msgs Messages) FAPageToWriteOn() string {
-	return Catalog.Format(msgs.locale, "fAPageToWriteOn", nil)
-}
-
-// FGiveEachSentenceTimeToArrive says "让一句话，有时间抵达。"
-// in the language the app shows.
-//
-// Interface text for Give each sentence time to arrive..
-func FGiveEachSentenceTimeToArrive() string { return In(i18n.Locale()).FGiveEachSentenceTimeToArrive() }
-
-// FGiveEachSentenceTimeToArrive says "让一句话，有时间抵达。"
-// in the language of msgs.
-//
-// Interface text for Give each sentence time to arrive..
-func (msgs Messages) FGiveEachSentenceTimeToArrive() string {
-	return Catalog.Format(msgs.locale, "fGiveEachSentenceTimeToArrive", nil)
-}
-
-// FContinueReading says "继续阅读"
-// in the language the app shows.
-//
-// Interface text for Continue Reading.
-func FContinueReading() string { return In(i18n.Locale()).FContinueReading() }
-
-// FContinueReading says "继续阅读"
-// in the language of msgs.
-//
-// Interface text for Continue Reading.
-func (msgs Messages) FContinueReading() string {
-	return Catalog.Format(msgs.locale, "fContinueReading", nil)
 }
 
 // FAddAHeadingToSeeTheOutlineHere says "输入 # 标题后，大纲会出现在这里。"
@@ -1992,20 +1894,18 @@ func (msgs Messages) FLiubai() string {
 	return Catalog.Format(msgs.locale, "fLiubai", nil)
 }
 
-// FSidebarRecentDocumentsAndOutline says "侧栏：最近文稿与大纲"
+// FSidebarRecentDocuments says "侧栏：最近文稿"
 // in the language the app shows.
 //
-// Interface text for Sidebar: Recent Documents and Outline.
-func FSidebarRecentDocumentsAndOutline() string {
-	return In(i18n.Locale()).FSidebarRecentDocumentsAndOutline()
-}
+// Interface text for Sidebar: Recent Documents.
+func FSidebarRecentDocuments() string { return In(i18n.Locale()).FSidebarRecentDocuments() }
 
-// FSidebarRecentDocumentsAndOutline says "侧栏：最近文稿与大纲"
+// FSidebarRecentDocuments says "侧栏：最近文稿"
 // in the language of msgs.
 //
-// Interface text for Sidebar: Recent Documents and Outline.
-func (msgs Messages) FSidebarRecentDocumentsAndOutline() string {
-	return Catalog.Format(msgs.locale, "fSidebarRecentDocumentsAndOutline", nil)
+// Interface text for Sidebar: Recent Documents.
+func (msgs Messages) FSidebarRecentDocuments() string {
+	return Catalog.Format(msgs.locale, "fSidebarRecentDocuments", nil)
 }
 
 // FSidebar says "侧栏"
@@ -2492,20 +2392,6 @@ func (msgs Messages) FOpenLocalMarkdown() string {
 	return Catalog.Format(msgs.locale, "fOpenLocalMarkdown", nil)
 }
 
-// FColorsForThisMoment says "适合此刻的颜色"
-// in the language the app shows.
-//
-// Interface text for Colors for This Moment.
-func FColorsForThisMoment() string { return In(i18n.Locale()).FColorsForThisMoment() }
-
-// FColorsForThisMoment says "适合此刻的颜色"
-// in the language of msgs.
-//
-// Interface text for Colors for This Moment.
-func (msgs Messages) FColorsForThisMoment() string {
-	return Catalog.Format(msgs.locale, "fColorsForThisMoment", nil)
-}
-
 // FCloseAppearance says "关闭外观"
 // in the language the app shows.
 //
@@ -2546,22 +2432,6 @@ func FFollowSystem() string { return In(i18n.Locale()).FFollowSystem() }
 // Interface text for Follow System.
 func (msgs Messages) FFollowSystem() string {
 	return Catalog.Format(msgs.locale, "fFollowSystem", nil)
-}
-
-// FPaperForLightModeInkForDarkMode says "浅色用纸白，深色用夜墨"
-// in the language the app shows.
-//
-// Interface text for Paper for light mode, Ink for dark mode.
-func FPaperForLightModeInkForDarkMode() string {
-	return In(i18n.Locale()).FPaperForLightModeInkForDarkMode()
-}
-
-// FPaperForLightModeInkForDarkMode says "浅色用纸白，深色用夜墨"
-// in the language of msgs.
-//
-// Interface text for Paper for light mode, Ink for dark mode.
-func (msgs Messages) FPaperForLightModeInkForDarkMode() string {
-	return Catalog.Format(msgs.locale, "fPaperForLightModeInkForDarkMode", nil)
 }
 
 // FFontSize says "字号"
@@ -3778,6 +3648,20 @@ func BUnknownTheme() string { return In(i18n.Locale()).BUnknownTheme() }
 // Backend interface: Unknown theme
 func (msgs Messages) BUnknownTheme() string {
 	return Catalog.Format(msgs.locale, "bUnknownTheme", nil)
+}
+
+// BUnknownAutoSwitch says "未知的自动切换方式"
+// in the language the app shows.
+//
+// Backend interface: Unknown automatic switch
+func BUnknownAutoSwitch() string { return In(i18n.Locale()).BUnknownAutoSwitch() }
+
+// BUnknownAutoSwitch says "未知的自动切换方式"
+// in the language of msgs.
+//
+// Backend interface: Unknown automatic switch
+func (msgs Messages) BUnknownAutoSwitch() string {
+	return Catalog.Format(msgs.locale, "bUnknownAutoSwitch", nil)
 }
 
 // BInvalidFontSize says "字号应为 15 至 22"
@@ -6668,4 +6552,616 @@ func BWordTooLarge() string { return In(i18n.Locale()).BWordTooLarge() }
 // Error when Word export exceeds the 64 MiB save limit.
 func (msgs Messages) BWordTooLarge() string {
 	return Catalog.Format(msgs.locale, "bWordTooLarge", nil)
+}
+
+// FDawn says "晨光"
+// in the language the app shows.
+//
+// Interface text for Dawn.
+func FDawn() string { return In(i18n.Locale()).FDawn() }
+
+// FDawn says "晨光"
+// in the language of msgs.
+//
+// Interface text for Dawn.
+func (msgs Messages) FDawn() string {
+	return Catalog.Format(msgs.locale, "fDawn", nil)
+}
+
+// FLamplight says "灯下"
+// in the language the app shows.
+//
+// Interface text for Lamplight.
+func FLamplight() string { return In(i18n.Locale()).FLamplight() }
+
+// FLamplight says "灯下"
+// in the language of msgs.
+//
+// Interface text for Lamplight.
+func (msgs Messages) FLamplight() string {
+	return Catalog.Format(msgs.locale, "fLamplight", nil)
+}
+
+// FMoonlight says "月夜"
+// in the language the app shows.
+//
+// Interface text for Moonlight.
+func FMoonlight() string { return In(i18n.Locale()).FMoonlight() }
+
+// FMoonlight says "月夜"
+// in the language of msgs.
+//
+// Interface text for Moonlight.
+func (msgs Messages) FMoonlight() string {
+	return Catalog.Format(msgs.locale, "fMoonlight", nil)
+}
+
+// FLotus says "藕荷"
+// in the language the app shows.
+//
+// Interface text for Lotus.
+func FLotus() string { return In(i18n.Locale()).FLotus() }
+
+// FLotus says "藕荷"
+// in the language of msgs.
+//
+// Interface text for Lotus.
+func (msgs Messages) FLotus() string {
+	return Catalog.Format(msgs.locale, "fLotus", nil)
+}
+
+// FAutumn says "秋香"
+// in the language the app shows.
+//
+// Interface text for Harvest.
+func FAutumn() string { return In(i18n.Locale()).FAutumn() }
+
+// FAutumn says "秋香"
+// in the language of msgs.
+//
+// Interface text for Harvest.
+func (msgs Messages) FAutumn() string {
+	return Catalog.Format(msgs.locale, "fAutumn", nil)
+}
+
+// FMoonWhite says "月白"
+// in the language the app shows.
+//
+// Interface text for Moon White.
+func FMoonWhite() string { return In(i18n.Locale()).FMoonWhite() }
+
+// FMoonWhite says "月白"
+// in the language of msgs.
+//
+// Interface text for Moon White.
+func (msgs Messages) FMoonWhite() string {
+	return Catalog.Format(msgs.locale, "fMoonWhite", nil)
+}
+
+// FIndigo says "黛蓝"
+// in the language the app shows.
+//
+// Interface text for Indigo.
+func FIndigo() string { return In(i18n.Locale()).FIndigo() }
+
+// FIndigo says "黛蓝"
+// in the language of msgs.
+//
+// Interface text for Indigo.
+func (msgs Messages) FIndigo() string {
+	return Catalog.Format(msgs.locale, "fIndigo", nil)
+}
+
+// FDawnCaption says "5–9 点 · 黎明前的珍珠灰，朝霞色的光标"
+// in the language the app shows.
+//
+// Interface text for 5–9 am · Pearl grey before sunrise, a rose caret.
+func FDawnCaption() string { return In(i18n.Locale()).FDawnCaption() }
+
+// FDawnCaption says "5–9 点 · 黎明前的珍珠灰，朝霞色的光标"
+// in the language of msgs.
+//
+// Interface text for 5–9 am · Pearl grey before sunrise, a rose caret.
+func (msgs Messages) FDawnCaption() string {
+	return Catalog.Format(msgs.locale, "fDawnCaption", nil)
+}
+
+// FPaperCaption says "9–15 点 · 正午的白纸，清楚中性"
+// in the language the app shows.
+//
+// Interface text for 9 am–3 pm · Plain white paper at noon.
+func FPaperCaption() string { return In(i18n.Locale()).FPaperCaption() }
+
+// FPaperCaption says "9–15 点 · 正午的白纸，清楚中性"
+// in the language of msgs.
+//
+// Interface text for 9 am–3 pm · Plain white paper at noon.
+func (msgs Messages) FPaperCaption() string {
+	return Catalog.Format(msgs.locale, "fPaperCaption", nil)
+}
+
+// FWarmCaption says "15–19 点 · 午后斜阳里的米色纸"
+// in the language the app shows.
+//
+// Interface text for 3–7 pm · Ivory paper in the afternoon sun.
+func FWarmCaption() string { return In(i18n.Locale()).FWarmCaption() }
+
+// FWarmCaption says "15–19 点 · 午后斜阳里的米色纸"
+// in the language of msgs.
+//
+// Interface text for 3–7 pm · Ivory paper in the afternoon sun.
+func (msgs Messages) FWarmCaption() string {
+	return Catalog.Format(msgs.locale, "fWarmCaption", nil)
+}
+
+// FLamplightCaption says "19–21 点 · 台灯下的暖褐，灯黄点睛"
+// in the language the app shows.
+//
+// Interface text for 7–9 pm · Warm brown under a desk lamp.
+func FLamplightCaption() string { return In(i18n.Locale()).FLamplightCaption() }
+
+// FLamplightCaption says "19–21 点 · 台灯下的暖褐，灯黄点睛"
+// in the language of msgs.
+//
+// Interface text for 7–9 pm · Warm brown under a desk lamp.
+func (msgs Messages) FLamplightCaption() string {
+	return Catalog.Format(msgs.locale, "fLamplightCaption", nil)
+}
+
+// FInkCaption says "21–23 点 · 克制的深炭夜色"
+// in the language the app shows.
+//
+// Interface text for 9–11 pm · A muted charcoal night.
+func FInkCaption() string { return In(i18n.Locale()).FInkCaption() }
+
+// FInkCaption says "21–23 点 · 克制的深炭夜色"
+// in the language of msgs.
+//
+// Interface text for 9–11 pm · A muted charcoal night.
+func (msgs Messages) FInkCaption() string {
+	return Catalog.Format(msgs.locale, "fInkCaption", nil)
+}
+
+// FMoonlightCaption says "23–5 点 · 深夜的蓝灰，月光银蓝"
+// in the language the app shows.
+//
+// Interface text for 11 pm–5 am · Blue-grey midnight, moonlit silver.
+func FMoonlightCaption() string { return In(i18n.Locale()).FMoonlightCaption() }
+
+// FMoonlightCaption says "23–5 点 · 深夜的蓝灰，月光银蓝"
+// in the language of msgs.
+//
+// Interface text for 11 pm–5 am · Blue-grey midnight, moonlit silver.
+func (msgs Messages) FMoonlightCaption() string {
+	return Catalog.Format(msgs.locale, "fMoonlightCaption", nil)
+}
+
+// FMistCaption says "春 · 烟雨江南的灰绿"
+// in the language the app shows.
+//
+// Interface text for Spring · The grey-green of misty rain.
+func FMistCaption() string { return In(i18n.Locale()).FMistCaption() }
+
+// FMistCaption says "春 · 烟雨江南的灰绿"
+// in the language of msgs.
+//
+// Interface text for Spring · The grey-green of misty rain.
+func (msgs Messages) FMistCaption() string {
+	return Catalog.Format(msgs.locale, "fMistCaption", nil)
+}
+
+// FLotusCaption says "夏 · 接天莲叶，莲紫点睛"
+// in the language the app shows.
+//
+// Interface text for Summer · Lotus pink with a plum accent.
+func FLotusCaption() string { return In(i18n.Locale()).FLotusCaption() }
+
+// FLotusCaption says "夏 · 接天莲叶，莲紫点睛"
+// in the language of msgs.
+//
+// Interface text for Summer · Lotus pink with a plum accent.
+func (msgs Messages) FLotusCaption() string {
+	return Catalog.Format(msgs.locale, "fLotusCaption", nil)
+}
+
+// FAutumnCaption says "秋 · 秋香色的纸，秋水石青"
+// in the language the app shows.
+//
+// Interface text for Autumn · Olive-gold paper, river blue.
+func FAutumnCaption() string { return In(i18n.Locale()).FAutumnCaption() }
+
+// FAutumnCaption says "秋 · 秋香色的纸，秋水石青"
+// in the language of msgs.
+//
+// Interface text for Autumn · Olive-gold paper, river blue.
+func (msgs Messages) FAutumnCaption() string {
+	return Catalog.Format(msgs.locale, "fAutumnCaption", nil)
+}
+
+// FMoonWhiteCaption says "冬 · 月白风清，靛青点睛"
+// in the language the app shows.
+//
+// Interface text for Winter · Pale blue-white with an indigo accent.
+func FMoonWhiteCaption() string { return In(i18n.Locale()).FMoonWhiteCaption() }
+
+// FMoonWhiteCaption says "冬 · 月白风清，靛青点睛"
+// in the language of msgs.
+//
+// Interface text for Winter · Pale blue-white with an indigo accent.
+func (msgs Messages) FMoonWhiteCaption() string {
+	return Catalog.Format(msgs.locale, "fMoonWhiteCaption", nil)
+}
+
+// FIndigoCaption says "夜 · 远山如黛，一点烫金"
+// in the language the app shows.
+//
+// Interface text for Night · Midnight blue with a touch of gold.
+func FIndigoCaption() string { return In(i18n.Locale()).FIndigoCaption() }
+
+// FIndigoCaption says "夜 · 远山如黛，一点烫金"
+// in the language of msgs.
+//
+// Interface text for Night · Midnight blue with a touch of gold.
+func (msgs Messages) FIndigoCaption() string {
+	return Catalog.Format(msgs.locale, "fIndigoCaption", nil)
+}
+
+// FHourMao says "卯"
+// in the language the app shows.
+//
+// Interface text for 5 am.
+func FHourMao() string { return In(i18n.Locale()).FHourMao() }
+
+// FHourMao says "卯"
+// in the language of msgs.
+//
+// Interface text for 5 am.
+func (msgs Messages) FHourMao() string {
+	return Catalog.Format(msgs.locale, "fHourMao", nil)
+}
+
+// FHourWu says "午"
+// in the language the app shows.
+//
+// Interface text for 9 am.
+func FHourWu() string { return In(i18n.Locale()).FHourWu() }
+
+// FHourWu says "午"
+// in the language of msgs.
+//
+// Interface text for 9 am.
+func (msgs Messages) FHourWu() string {
+	return Catalog.Format(msgs.locale, "fHourWu", nil)
+}
+
+// FHourShen says "申"
+// in the language the app shows.
+//
+// Interface text for 3 pm.
+func FHourShen() string { return In(i18n.Locale()).FHourShen() }
+
+// FHourShen says "申"
+// in the language of msgs.
+//
+// Interface text for 3 pm.
+func (msgs Messages) FHourShen() string {
+	return Catalog.Format(msgs.locale, "fHourShen", nil)
+}
+
+// FHourXu says "戌"
+// in the language the app shows.
+//
+// Interface text for 7 pm.
+func FHourXu() string { return In(i18n.Locale()).FHourXu() }
+
+// FHourXu says "戌"
+// in the language of msgs.
+//
+// Interface text for 7 pm.
+func (msgs Messages) FHourXu() string {
+	return Catalog.Format(msgs.locale, "fHourXu", nil)
+}
+
+// FHourHai says "亥"
+// in the language the app shows.
+//
+// Interface text for 9 pm.
+func FHourHai() string { return In(i18n.Locale()).FHourHai() }
+
+// FHourHai says "亥"
+// in the language of msgs.
+//
+// Interface text for 9 pm.
+func (msgs Messages) FHourHai() string {
+	return Catalog.Format(msgs.locale, "fHourHai", nil)
+}
+
+// FHourZi says "子"
+// in the language the app shows.
+//
+// Interface text for 11 pm.
+func FHourZi() string { return In(i18n.Locale()).FHourZi() }
+
+// FHourZi says "子"
+// in the language of msgs.
+//
+// Interface text for 11 pm.
+func (msgs Messages) FHourZi() string {
+	return Catalog.Format(msgs.locale, "fHourZi", nil)
+}
+
+// FSpring says "春"
+// in the language the app shows.
+//
+// Interface text for Spring.
+func FSpring() string { return In(i18n.Locale()).FSpring() }
+
+// FSpring says "春"
+// in the language of msgs.
+//
+// Interface text for Spring.
+func (msgs Messages) FSpring() string {
+	return Catalog.Format(msgs.locale, "fSpring", nil)
+}
+
+// FSummer says "夏"
+// in the language the app shows.
+//
+// Interface text for Summer.
+func FSummer() string { return In(i18n.Locale()).FSummer() }
+
+// FSummer says "夏"
+// in the language of msgs.
+//
+// Interface text for Summer.
+func (msgs Messages) FSummer() string {
+	return Catalog.Format(msgs.locale, "fSummer", nil)
+}
+
+// FAutumnSeason says "秋"
+// in the language the app shows.
+//
+// Interface text for Autumn.
+func FAutumnSeason() string { return In(i18n.Locale()).FAutumnSeason() }
+
+// FAutumnSeason says "秋"
+// in the language of msgs.
+//
+// Interface text for Autumn.
+func (msgs Messages) FAutumnSeason() string {
+	return Catalog.Format(msgs.locale, "fAutumnSeason", nil)
+}
+
+// FWinter says "冬"
+// in the language the app shows.
+//
+// Interface text for Winter.
+func FWinter() string { return In(i18n.Locale()).FWinter() }
+
+// FWinter says "冬"
+// in the language of msgs.
+//
+// Interface text for Winter.
+func (msgs Messages) FWinter() string {
+	return Catalog.Format(msgs.locale, "fWinter", nil)
+}
+
+// FNight says "夜"
+// in the language the app shows.
+//
+// Interface text for Night.
+func FNight() string { return In(i18n.Locale()).FNight() }
+
+// FNight says "夜"
+// in the language of msgs.
+//
+// Interface text for Night.
+func (msgs Messages) FNight() string {
+	return Catalog.Format(msgs.locale, "fNight", nil)
+}
+
+// FHours says "天光"
+// in the language the app shows.
+//
+// Interface text for Hours.
+func FHours() string { return In(i18n.Locale()).FHours() }
+
+// FHours says "天光"
+// in the language of msgs.
+//
+// Interface text for Hours.
+func (msgs Messages) FHours() string {
+	return Catalog.Format(msgs.locale, "fHours", nil)
+}
+
+// FOnePageInTheChangingLightOfADay says "一天里的光，同一张纸只换光线"
+// in the language the app shows.
+//
+// Interface text for One page in the changing light of a day.
+func FOnePageInTheChangingLightOfADay() string {
+	return In(i18n.Locale()).FOnePageInTheChangingLightOfADay()
+}
+
+// FOnePageInTheChangingLightOfADay says "一天里的光，同一张纸只换光线"
+// in the language of msgs.
+//
+// Interface text for One page in the changing light of a day.
+func (msgs Messages) FOnePageInTheChangingLightOfADay() string {
+	return Catalog.Format(msgs.locale, "fOnePageInTheChangingLightOfADay", nil)
+}
+
+// FSeasons says "四时"
+// in the language the app shows.
+//
+// Interface text for Seasons.
+func FSeasons() string { return In(i18n.Locale()).FSeasons() }
+
+// FSeasons says "四时"
+// in the language of msgs.
+//
+// Interface text for Seasons.
+func (msgs Messages) FSeasons() string {
+	return Catalog.Format(msgs.locale, "fSeasons", nil)
+}
+
+// FTheColoursOfTheYear says "一年四季的颜色"
+// in the language the app shows.
+//
+// Interface text for The colours of the year.
+func FTheColoursOfTheYear() string { return In(i18n.Locale()).FTheColoursOfTheYear() }
+
+// FTheColoursOfTheYear says "一年四季的颜色"
+// in the language of msgs.
+//
+// Interface text for The colours of the year.
+func (msgs Messages) FTheColoursOfTheYear() string {
+	return Catalog.Format(msgs.locale, "fTheColoursOfTheYear", nil)
+}
+
+// FSwitchAutomatically says "自动切换"
+// in the language the app shows.
+//
+// Interface text for Switch Automatically.
+func FSwitchAutomatically() string { return In(i18n.Locale()).FSwitchAutomatically() }
+
+// FSwitchAutomatically says "自动切换"
+// in the language of msgs.
+//
+// Interface text for Switch Automatically.
+func (msgs Messages) FSwitchAutomatically() string {
+	return Catalog.Format(msgs.locale, "fSwitchAutomatically", nil)
+}
+
+// FOff says "关"
+// in the language the app shows.
+//
+// Interface text for Off.
+func FOff() string { return In(i18n.Locale()).FOff() }
+
+// FOff says "关"
+// in the language of msgs.
+//
+// Interface text for Off.
+func (msgs Messages) FOff() string {
+	return Catalog.Format(msgs.locale, "fOff", nil)
+}
+
+// FFollowTheHours says "跟随天光"
+// in the language the app shows.
+//
+// Interface text for Follow the Hours.
+func FFollowTheHours() string { return In(i18n.Locale()).FFollowTheHours() }
+
+// FFollowTheHours says "跟随天光"
+// in the language of msgs.
+//
+// Interface text for Follow the Hours.
+func (msgs Messages) FFollowTheHours() string {
+	return Catalog.Format(msgs.locale, "fFollowTheHours", nil)
+}
+
+// FFollowTheSeasons says "跟随四季"
+// in the language the app shows.
+//
+// Interface text for Follow the Seasons.
+func FFollowTheSeasons() string { return In(i18n.Locale()).FFollowTheSeasons() }
+
+// FFollowTheSeasons says "跟随四季"
+// in the language of msgs.
+//
+// Interface text for Follow the Seasons.
+func (msgs Messages) FFollowTheSeasons() string {
+	return Catalog.Format(msgs.locale, "fFollowTheSeasons", nil)
+}
+
+// FAlwaysUseTheSelectedTheme says "一直用选中的主题。"
+// in the language the app shows.
+//
+// Interface text for Always use the selected theme..
+func FAlwaysUseTheSelectedTheme() string { return In(i18n.Locale()).FAlwaysUseTheSelectedTheme() }
+
+// FAlwaysUseTheSelectedTheme says "一直用选中的主题。"
+// in the language of msgs.
+//
+// Interface text for Always use the selected theme..
+func (msgs Messages) FAlwaysUseTheSelectedTheme() string {
+	return Catalog.Format(msgs.locale, "fAlwaysUseTheSelectedTheme", nil)
+}
+
+// FChooseAThemeForLightAndDarkMode says "分别挑浅色和深色时用哪套。"
+// in the language the app shows.
+//
+// Interface text for Choose a theme for light mode and one for dark mode..
+func FChooseAThemeForLightAndDarkMode() string {
+	return In(i18n.Locale()).FChooseAThemeForLightAndDarkMode()
+}
+
+// FChooseAThemeForLightAndDarkMode says "分别挑浅色和深色时用哪套。"
+// in the language of msgs.
+//
+// Interface text for Choose a theme for light mode and one for dark mode..
+func (msgs Messages) FChooseAThemeForLightAndDarkMode() string {
+	return Catalog.Format(msgs.locale, "fChooseAThemeForLightAndDarkMode", nil)
+}
+
+// FHoursSchedule says "按当地时间：5 点晨光、9 点纸白、15 点暖纸、19 点灯下、21 点夜墨、23 点月夜。"
+// in the language the app shows.
+//
+// Interface text for By local time: Dawn from 5 am, Paper from 9 am, Warm
+// from 3 pm, Lamplight from 7 pm, Ink from 9 pm, Moonlight from 11 pm..
+func FHoursSchedule() string { return In(i18n.Locale()).FHoursSchedule() }
+
+// FHoursSchedule says "按当地时间：5 点晨光、9 点纸白、15 点暖纸、19 点灯下、21 点夜墨、23 点月夜。"
+// in the language of msgs.
+//
+// Interface text for By local time: Dawn from 5 am, Paper from 9 am, Warm
+// from 3 pm, Lamplight from 7 pm, Ink from 9 pm, Moonlight from 11 pm..
+func (msgs Messages) FHoursSchedule() string {
+	return Catalog.Format(msgs.locale, "fHoursSchedule", nil)
+}
+
+// FSeasonsSchedule says "立春雾绿、立夏藕荷、立秋秋香、立冬月白；系统切到深色时用黛蓝。"
+// in the language the app shows.
+//
+// Interface text for Mist from the start of spring, Lotus from the start of
+// summer, Harvest from the start of autumn, Moon White from the start of
+// winter; Indigo when the system is dark..
+func FSeasonsSchedule() string { return In(i18n.Locale()).FSeasonsSchedule() }
+
+// FSeasonsSchedule says "立春雾绿、立夏藕荷、立秋秋香、立冬月白；系统切到深色时用黛蓝。"
+// in the language of msgs.
+//
+// Interface text for Mist from the start of spring, Lotus from the start of
+// summer, Harvest from the start of autumn, Moon White from the start of
+// winter; Indigo when the system is dark..
+func (msgs Messages) FSeasonsSchedule() string {
+	return Catalog.Format(msgs.locale, "fSeasonsSchedule", nil)
+}
+
+// FLightMode says "浅色用"
+// in the language the app shows.
+//
+// Interface text for Light.
+func FLightMode() string { return In(i18n.Locale()).FLightMode() }
+
+// FLightMode says "浅色用"
+// in the language of msgs.
+//
+// Interface text for Light.
+func (msgs Messages) FLightMode() string {
+	return Catalog.Format(msgs.locale, "fLightMode", nil)
+}
+
+// FDarkMode says "深色用"
+// in the language the app shows.
+//
+// Interface text for Dark.
+func FDarkMode() string { return In(i18n.Locale()).FDarkMode() }
+
+// FDarkMode says "深色用"
+// in the language of msgs.
+//
+// Interface text for Dark.
+func (msgs Messages) FDarkMode() string {
+	return Catalog.Format(msgs.locale, "fDarkMode", nil)
 }

@@ -1,0 +1,13 @@
+[
+ {"id": "dawn", "series": "hours", "dark": false, "hours": [5, 9]},
+ {"id": "paper", "series": "hours", "dark": false, "hours": [9, 15]},
+ {"id": "warm", "series": "hours", "dark": false, "hours": [15, 19]},
+ {"id": "lamp", "series": "hours", "dark": true, "hours": [19, 21]},
+ {"id": "ink", "series": "hours", "dark": true, "hours": [21, 23]},
+ {"id": "moon", "series": "hours", "dark": true, "hours": [23, 5]},
+ {"id": "mist", "series": "seasons", "dark": false, "season": "spring"},
+ {"id": "lotus", "series": "seasons", "dark": false, "season": "summer"},
+ {"id": "autumn", "series": "seasons", "dark": false, "season": "autumn"},
+ {"id": "moonwhite", "series": "seasons", "dark": false, "season": "winter"},
+ {"id": "indigo", "series": "seasons", "dark": true, "season": "night"}
+]

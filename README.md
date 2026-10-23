@@ -19,7 +19,7 @@ Windows 内测版在同一个 Release 里：大多数电脑下载 `amd64` 安装
 - **写**：打开即写，标题、列表、加粗等格式即时呈现；格式工具栏、在空行输入 `/` 打开的插入菜单，以及段落左侧的块手柄（拖动排序、转换类型、复制删除）。
 - **表格和图片**：表格就地编辑，Tab 在单元格间移动；图片可以拖动改大小、设置对齐和说明，写成 GitHub 上也能正常显示的 Markdown。
 - **公式、图表和扩展语法**：KaTeX 公式、Mermaid 图表、GitHub 提示块、`<details>` 折叠块和脚注。
-- **看**：编辑、分栏、阅读三种视图，分栏时右侧跟随光标；侧栏里有最近文稿和大纲；专注模式；四套主题，字号和行宽可调。
+- **看**：编辑、分栏、阅读三种视图，分栏时右侧跟随光标；侧栏里有最近文稿，大纲在正文右侧，也可以从顶栏的大纲按钮打开；专注模式；十一套主题，分「天光」（随一天的时辰）和「四时」（随季节）两个系列，可以自动切换；字号和行宽可调。
 - **导出**：PDF、Word（.docx）、内嵌图片的 HTML、Markdown 加图片的 ZIP，以及富文本复制。PDF 里的中文可以正常复制和搜索；Word 保留标题样式、列表编号、表格、公式和脚注，可以交给用 Word、Pages 或 WPS 的人继续改。
 - **粘贴**：网页、文档和 Word 的内容粘贴后转为 Markdown，图片一并保存；`⇧⌘V` 粘贴为纯文本。
 - **随手记**：在任何应用里按 `⌃⌥⌘N`（Windows 上是 `Ctrl+Alt+N`）记下想法，`⌘↩`（`Ctrl+Enter`）存为一篇新草稿。
@@ -55,9 +55,11 @@ go run . --web 127.0.0.1:4193 --data-dir /tmp/liubai-dev   # 在浏览器里运�
 go test ./... && go vet ./...
 node_modules/.bin/tsc --noEmit
 node scripts/check-i18n.mjs && node scripts/check-editor.mjs
-npx --yes bun@1.4.3 scripts/check-<名称>.ts   # editing、rendering、performance、paste、capture-input、platform、blocks、slash、tables、images、marks、math、mermaid、extras、docx
-scripts/e2e.sh check-<名称>                    # Chrome 中的回归：split-preview、reader、toolbar、capture、english、windows、blocks、tables、images、math、mermaid、extras、docx
+node scripts/check-themes.mjs                  # 各套主题的对比度门槛与清单
+npx --yes bun@1.4.3 scripts/check-<名称>.ts   # editing、rendering、performance、paste、capture-input、platform、blocks、slash、tables、images、marks、math、mermaid、extras、docx、theme
+scripts/e2e.sh check-<名称>                    # Chrome 中的回归：split-preview、reader、toolbar、capture、english、windows、blocks、tables、images、math、mermaid、extras、docx、themes、outline
 scripts/e2e.sh check-blocks-webkit             # 桌面版引擎 WebKit 中的块操作、图片、公式、图表与 Word 转换
+scripts/e2e.sh shoot-themes                    # 每套主题在编辑、分栏、阅读三种视图下的截图，存到 /tmp/liubai-theme-shots/
 python3 scripts/check-preview.py               # 渲染与导出
 python3 scripts/check-pdf.py                   # PDF 的 A4 分页与标题位置
 ```

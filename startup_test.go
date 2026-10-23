@@ -103,7 +103,7 @@ func TestNewerIndexPreservesValidSettingsAndOriginalBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := w2.State()
-	if s.Current.ID != d.ID || s.Appearance != (Appearance{Theme: "paper", FontSize: 20, LineWidth: "wide", Layout: "split", Source: true}) {
+	if s.Current.ID != d.ID || s.Appearance != (Appearance{Theme: "paper", Auto: "off", LightTheme: "paper", DarkTheme: "ink", FontSize: 20, LineWidth: "wide", Layout: "split", Source: true}) {
 		t.Fatalf("valid fields lost: %+v", s)
 	}
 	paths, _ := filepath.Glob(filepath.Join(w.root, "quarantine", "*"))

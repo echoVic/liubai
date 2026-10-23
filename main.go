@@ -112,12 +112,18 @@ func (d *Desktop) Appearance(p Appearance) error {
 	return nil
 }
 
-// themeSourceFor is the appearance the app's theme asks of native UI.
-func themeSourceFor(p Appearance) mygo.ThemeSource {
-	switch {
-	case p.FollowSystem:
+// themeSourceFor is the appearance the app's theme asks of native UI. Modes
+// that read the system's appearance leave it to the system: a forced source
+// also turns the pages' prefers-color-scheme, which could then never go back.
+func themeSourceFor(p Appearance, now time.Time) mygo.ThemeSource {
+	id := p.Theme
+	switch p.Auto {
+	case "system", "seasons":
 		return mygo.ThemeSystem
-	case p.Theme == "ink":
+	case "hours":
+		id = hoursTheme(now.Hour())
+	}
+	if darkTheme(id) {
 		return mygo.ThemeDark
 	}
 	return mygo.ThemeLight
@@ -128,7 +134,7 @@ func themeSourceFor(p Appearance) mygo.ThemeSource {
 // prefers-color-scheme follows it too. macOS draws traffic lights alike in
 // either, and its menus and sheets keep the system's.
 func syncWindowTheme(p Appearance) {
-	if s := themeSourceFor(p); runtime.GOOS == "windows" && mygo.Theme.Source() != s {
+	if s := themeSourceFor(p, time.Now()); runtime.GOOS == "windows" && mygo.Theme.Source() != s {
 		mygo.Theme.SetSource(s)
 	}
 }
@@ -449,9 +455,23 @@ func main() {
 		appearance := w.appearance
 		w.mu.Unlock()
 		syncWindowTheme(appearance)
-		dark := appearance.Theme == "ink"
-		if appearance.FollowSystem {
+		if runtime.GOOS == "windows" {
+			// The hours change the theme on the clock, with no Appearance call.
+			go func() {
+				for range time.Tick(time.Minute) {
+					w.mu.Lock()
+					p := w.appearance
+					w.mu.Unlock()
+					syncWindowTheme(p)
+				}
+			}()
+		}
+		dark := darkTheme(appearance.Theme)
+		switch appearance.Auto {
+		case "system", "seasons":
 			dark = mygo.Theme.IsDark()
+		case "hours":
+			dark = darkTheme(hoursTheme(time.Now().Hour()))
 		}
 		bg := "#e9e9e7"
 		if dark {

@@ -10,23 +10,11 @@ export interface Messages {
    */
   fPaper(): string;
   /**
-   * Interface text for A clear, neutral page.
-   *
-   * `清晰的中性纸面`
-   */
-  fAClearNeutralPage(): string;
-  /**
    * Interface text for Warm.
    *
    * `暖纸`
    */
   fWarm(): string;
-  /**
-   * Interface text for Soft, warm ivory.
-   *
-   * `柔和的米纸暖调`
-   */
-  fSoftWarmIvory(): string;
   /**
    * Interface text for Mist.
    *
@@ -34,23 +22,11 @@ export interface Messages {
    */
   fMist(): string;
   /**
-   * Interface text for A quiet gray-green setting.
-   *
-   * `沉静的灰绿环境`
-   */
-  fAQuietGrayGreenSetting(): string;
-  /**
    * Interface text for Ink.
    *
    * `夜墨`
    */
   fInk(): string;
-  /**
-   * Interface text for A muted charcoal night.
-   *
-   * `克制的深炭夜色`
-   */
-  fAMutedCharcoalNight(): string;
   /**
    * Interface text for Local Development · Separate Drafts.
    *
@@ -93,24 +69,6 @@ export interface Messages {
    * `请先重试保存，当前输入仍保留`
    */
   fTrySavingAgainYourTextIsStillHere(): string;
-  /**
-   * Interface text for A Page to Write On.
-   *
-   * `一页写作桌`
-   */
-  fAPageToWriteOn(): string;
-  /**
-   * Interface text for Give each sentence time to arrive..
-   *
-   * `让一句话，有时间抵达。`
-   */
-  fGiveEachSentenceTimeToArrive(): string;
-  /**
-   * Interface text for Continue Reading.
-   *
-   * `继续阅读`
-   */
-  fContinueReading(): string;
   /**
    * Interface text for Add a # heading to see the outline here..
    *
@@ -808,11 +766,11 @@ export interface Messages {
    */
   fLiubai(): string;
   /**
-   * Interface text for Sidebar: Recent Documents and Outline.
+   * Interface text for Sidebar: Recent Documents.
    *
-   * `侧栏：最近文稿与大纲`
+   * `侧栏：最近文稿`
    */
-  fSidebarRecentDocumentsAndOutline(): string;
+  fSidebarRecentDocuments(): string;
   /**
    * Interface text for Sidebar.
    *
@@ -1018,12 +976,6 @@ export interface Messages {
    */
   fOpenLocalMarkdown(): string;
   /**
-   * Interface text for Colors for This Moment.
-   *
-   * `适合此刻的颜色`
-   */
-  fColorsForThisMoment(): string;
-  /**
    * Interface text for Close Appearance.
    *
    * `关闭外观`
@@ -1041,12 +993,6 @@ export interface Messages {
    * `跟随系统`
    */
   fFollowSystem(): string;
-  /**
-   * Interface text for Paper for light mode, Ink for dark mode.
-   *
-   * `浅色用纸白，深色用夜墨`
-   */
-  fPaperForLightModeInkForDarkMode(): string;
   /**
    * Interface text for Font Size.
    *
@@ -1557,6 +1503,12 @@ export interface Messages {
    * `未知主题`
    */
   bUnknownTheme(): string;
+  /**
+   * Backend interface: Unknown automatic switch
+   *
+   * `未知的自动切换方式`
+   */
+  bUnknownAutoSwitch(): string;
   /**
    * Backend interface: Font size must be between 15 and 22
    *
@@ -2781,6 +2733,264 @@ export interface Messages {
    * `Word 文稿过大，请改用 ZIP 导出`
    */
   bWordTooLarge(): string;
+  /**
+   * Interface text for Dawn.
+   *
+   * `晨光`
+   */
+  fDawn(): string;
+  /**
+   * Interface text for Lamplight.
+   *
+   * `灯下`
+   */
+  fLamplight(): string;
+  /**
+   * Interface text for Moonlight.
+   *
+   * `月夜`
+   */
+  fMoonlight(): string;
+  /**
+   * Interface text for Lotus.
+   *
+   * `藕荷`
+   */
+  fLotus(): string;
+  /**
+   * Interface text for Harvest.
+   *
+   * `秋香`
+   */
+  fAutumn(): string;
+  /**
+   * Interface text for Moon White.
+   *
+   * `月白`
+   */
+  fMoonWhite(): string;
+  /**
+   * Interface text for Indigo.
+   *
+   * `黛蓝`
+   */
+  fIndigo(): string;
+  /**
+   * Interface text for 5–9 am · Pearl grey before sunrise, a rose caret.
+   *
+   * `5–9 点 · 黎明前的珍珠灰，朝霞色的光标`
+   */
+  fDawnCaption(): string;
+  /**
+   * Interface text for 9 am–3 pm · Plain white paper at noon.
+   *
+   * `9–15 点 · 正午的白纸，清楚中性`
+   */
+  fPaperCaption(): string;
+  /**
+   * Interface text for 3–7 pm · Ivory paper in the afternoon sun.
+   *
+   * `15–19 点 · 午后斜阳里的米色纸`
+   */
+  fWarmCaption(): string;
+  /**
+   * Interface text for 7–9 pm · Warm brown under a desk lamp.
+   *
+   * `19–21 点 · 台灯下的暖褐，灯黄点睛`
+   */
+  fLamplightCaption(): string;
+  /**
+   * Interface text for 9–11 pm · A muted charcoal night.
+   *
+   * `21–23 点 · 克制的深炭夜色`
+   */
+  fInkCaption(): string;
+  /**
+   * Interface text for 11 pm–5 am · Blue-grey midnight, moonlit silver.
+   *
+   * `23–5 点 · 深夜的蓝灰，月光银蓝`
+   */
+  fMoonlightCaption(): string;
+  /**
+   * Interface text for Spring · The grey-green of misty rain.
+   *
+   * `春 · 烟雨江南的灰绿`
+   */
+  fMistCaption(): string;
+  /**
+   * Interface text for Summer · Lotus pink with a plum accent.
+   *
+   * `夏 · 接天莲叶，莲紫点睛`
+   */
+  fLotusCaption(): string;
+  /**
+   * Interface text for Autumn · Olive-gold paper, river blue.
+   *
+   * `秋 · 秋香色的纸，秋水石青`
+   */
+  fAutumnCaption(): string;
+  /**
+   * Interface text for Winter · Pale blue-white with an indigo accent.
+   *
+   * `冬 · 月白风清，靛青点睛`
+   */
+  fMoonWhiteCaption(): string;
+  /**
+   * Interface text for Night · Midnight blue with a touch of gold.
+   *
+   * `夜 · 远山如黛，一点烫金`
+   */
+  fIndigoCaption(): string;
+  /**
+   * Interface text for 5 am.
+   *
+   * `卯`
+   */
+  fHourMao(): string;
+  /**
+   * Interface text for 9 am.
+   *
+   * `午`
+   */
+  fHourWu(): string;
+  /**
+   * Interface text for 3 pm.
+   *
+   * `申`
+   */
+  fHourShen(): string;
+  /**
+   * Interface text for 7 pm.
+   *
+   * `戌`
+   */
+  fHourXu(): string;
+  /**
+   * Interface text for 9 pm.
+   *
+   * `亥`
+   */
+  fHourHai(): string;
+  /**
+   * Interface text for 11 pm.
+   *
+   * `子`
+   */
+  fHourZi(): string;
+  /**
+   * Interface text for Spring.
+   *
+   * `春`
+   */
+  fSpring(): string;
+  /**
+   * Interface text for Summer.
+   *
+   * `夏`
+   */
+  fSummer(): string;
+  /**
+   * Interface text for Autumn.
+   *
+   * `秋`
+   */
+  fAutumnSeason(): string;
+  /**
+   * Interface text for Winter.
+   *
+   * `冬`
+   */
+  fWinter(): string;
+  /**
+   * Interface text for Night.
+   *
+   * `夜`
+   */
+  fNight(): string;
+  /**
+   * Interface text for Hours.
+   *
+   * `天光`
+   */
+  fHours(): string;
+  /**
+   * Interface text for One page in the changing light of a day.
+   *
+   * `一天里的光，同一张纸只换光线`
+   */
+  fOnePageInTheChangingLightOfADay(): string;
+  /**
+   * Interface text for Seasons.
+   *
+   * `四时`
+   */
+  fSeasons(): string;
+  /**
+   * Interface text for The colours of the year.
+   *
+   * `一年四季的颜色`
+   */
+  fTheColoursOfTheYear(): string;
+  /**
+   * Interface text for Switch Automatically.
+   *
+   * `自动切换`
+   */
+  fSwitchAutomatically(): string;
+  /**
+   * Interface text for Off.
+   *
+   * `关`
+   */
+  fOff(): string;
+  /**
+   * Interface text for Follow the Hours.
+   *
+   * `跟随天光`
+   */
+  fFollowTheHours(): string;
+  /**
+   * Interface text for Follow the Seasons.
+   *
+   * `跟随四季`
+   */
+  fFollowTheSeasons(): string;
+  /**
+   * Interface text for Always use the selected theme..
+   *
+   * `一直用选中的主题。`
+   */
+  fAlwaysUseTheSelectedTheme(): string;
+  /**
+   * Interface text for Choose a theme for light mode and one for dark mode..
+   *
+   * `分别挑浅色和深色时用哪套。`
+   */
+  fChooseAThemeForLightAndDarkMode(): string;
+  /**
+   * Interface text for By local time: Dawn from 5 am, Paper from 9 am, Warm from 3 pm, Lamplight from 7 pm, Ink from 9 pm, Moonlight from 11 pm..
+   *
+   * `按当地时间：5 点晨光、9 点纸白、15 点暖纸、19 点灯下、21 点夜墨、23 点月夜。`
+   */
+  fHoursSchedule(): string;
+  /**
+   * Interface text for Mist from the start of spring, Lotus from the start of summer, Harvest from the start of autumn, Moon White from the start of winter; Indigo when the system is dark..
+   *
+   * `立春雾绿、立夏藕荷、立秋秋香、立冬月白；系统切到深色时用黛蓝。`
+   */
+  fSeasonsSchedule(): string;
+  /**
+   * Interface text for Light.
+   *
+   * `浅色用`
+   */
+  fLightMode(): string;
+  /**
+   * Interface text for Dark.
+   *
+   * `深色用`
+   */
+  fDarkMode(): string;
 }
 
 const catalog = createCatalog<Messages>({
@@ -2792,13 +3002,9 @@ const catalog = createCatalog<Messages>({
   },
   params: {
     "fPaper": [],
-    "fAClearNeutralPage": [],
     "fWarm": [],
-    "fSoftWarmIvory": [],
     "fMist": [],
-    "fAQuietGrayGreenSetting": [],
     "fInk": [],
-    "fAMutedCharcoalNight": [],
     "fLocalDevelopmentSeparateDrafts": [],
     "fTyping": [],
     "fUnsaved": [],
@@ -2806,9 +3012,6 @@ const catalog = createCatalog<Messages>({
     "fSaving": [],
     "fSaveFailedYourTextIsStillHere": [],
     "fTrySavingAgainYourTextIsStillHere": [],
-    "fAPageToWriteOn": [],
-    "fGiveEachSentenceTimeToArrive": [],
-    "fContinueReading": [],
     "fAddAHeadingToSeeTheOutlineHere": [],
     "fADocumentWaitingToBegin": [],
     "fConfirmRemoval": [],
@@ -2925,7 +3128,7 @@ const catalog = createCatalog<Messages>({
     "fDocumentProperties": [],
     "fTheLocalServiceIsUnavailableKeepThisWindowOpen": [],
     "fLiubai": [],
-    "fSidebarRecentDocumentsAndOutline": [],
+    "fSidebarRecentDocuments": [],
     "fSidebar": [],
     "fRename2": [],
     "fOpening": [],
@@ -2960,11 +3163,9 @@ const catalog = createCatalog<Messages>({
     "fFindADocument": [],
     "fSearchRecentDocuments": [],
     "fOpenLocalMarkdown": [],
-    "fColorsForThisMoment": [],
     "fCloseAppearance": [],
     "fTheme": [],
     "fFollowSystem": [],
-    "fPaperForLightModeInkForDarkMode": [],
     "fFontSize": [],
     "fBodyFontSize": [],
     "fLineWidth": [],
@@ -3050,6 +3251,7 @@ const catalog = createCatalog<Messages>({
     "bMarkdownLinksOnly": [],
     "bLinkedDocumentMissing": [],
     "bUnknownTheme": [],
+    "bUnknownAutoSwitch": [],
     "bInvalidFontSize": [],
     "bUnknownLineWidth": [],
     "bUnknownLayout": [],
@@ -3254,17 +3456,56 @@ const catalog = createCatalog<Messages>({
     "fWordSaved": ["path"],
     "bSaveWordDocument": [],
     "bWordTooLarge": [],
+    "fDawn": [],
+    "fLamplight": [],
+    "fMoonlight": [],
+    "fLotus": [],
+    "fAutumn": [],
+    "fMoonWhite": [],
+    "fIndigo": [],
+    "fDawnCaption": [],
+    "fPaperCaption": [],
+    "fWarmCaption": [],
+    "fLamplightCaption": [],
+    "fInkCaption": [],
+    "fMoonlightCaption": [],
+    "fMistCaption": [],
+    "fLotusCaption": [],
+    "fAutumnCaption": [],
+    "fMoonWhiteCaption": [],
+    "fIndigoCaption": [],
+    "fHourMao": [],
+    "fHourWu": [],
+    "fHourShen": [],
+    "fHourXu": [],
+    "fHourHai": [],
+    "fHourZi": [],
+    "fSpring": [],
+    "fSummer": [],
+    "fAutumnSeason": [],
+    "fWinter": [],
+    "fNight": [],
+    "fHours": [],
+    "fOnePageInTheChangingLightOfADay": [],
+    "fSeasons": [],
+    "fTheColoursOfTheYear": [],
+    "fSwitchAutomatically": [],
+    "fOff": [],
+    "fFollowTheHours": [],
+    "fFollowTheSeasons": [],
+    "fAlwaysUseTheSelectedTheme": [],
+    "fChooseAThemeForLightAndDarkMode": [],
+    "fHoursSchedule": [],
+    "fSeasonsSchedule": [],
+    "fLightMode": [],
+    "fDarkMode": [],
   },
   messages: {
     "zh-Hans": {
       "fPaper": "纸白",
-      "fAClearNeutralPage": "清晰的中性纸面",
       "fWarm": "暖纸",
-      "fSoftWarmIvory": "柔和的米纸暖调",
       "fMist": "雾绿",
-      "fAQuietGrayGreenSetting": "沉静的灰绿环境",
       "fInk": "夜墨",
-      "fAMutedCharcoalNight": "克制的深炭夜色",
       "fLocalDevelopmentSeparateDrafts": "本地开发版 · 独立草稿存档",
       "fTyping": "正在输入",
       "fUnsaved": "待保存",
@@ -3272,9 +3513,6 @@ const catalog = createCatalog<Messages>({
       "fSaving": "正在保存",
       "fSaveFailedYourTextIsStillHere": "保存失败 · 当前输入仍在",
       "fTrySavingAgainYourTextIsStillHere": "请先重试保存，当前输入仍保留",
-      "fAPageToWriteOn": "一页写作桌",
-      "fGiveEachSentenceTimeToArrive": "让一句话，有时间抵达。",
-      "fContinueReading": "继续阅读",
       "fAddAHeadingToSeeTheOutlineHere": "输入 # 标题后，大纲会出现在这里。",
       "fADocumentWaitingToBegin": "一篇等待开始的文稿",
       "fConfirmRemoval": "确认移除",
@@ -3391,7 +3629,7 @@ const catalog = createCatalog<Messages>({
       "fDocumentProperties": "文稿属性",
       "fTheLocalServiceIsUnavailableKeepThisWindowOpen": "本地服务暂时不可用，请保留当前窗口",
       "fLiubai": "留白",
-      "fSidebarRecentDocumentsAndOutline": "侧栏：最近文稿与大纲",
+      "fSidebarRecentDocuments": "侧栏：最近文稿",
       "fSidebar": "侧栏",
       "fRename2": "重命名",
       "fOpening": "正在打开",
@@ -3426,11 +3664,9 @@ const catalog = createCatalog<Messages>({
       "fFindADocument": "找一篇文稿…",
       "fSearchRecentDocuments": "搜索最近文稿",
       "fOpenLocalMarkdown": "打开本地 Markdown",
-      "fColorsForThisMoment": "适合此刻的颜色",
       "fCloseAppearance": "关闭外观",
       "fTheme": "主题",
       "fFollowSystem": "跟随系统",
-      "fPaperForLightModeInkForDarkMode": "浅色用纸白，深色用夜墨",
       "fFontSize": "字号",
       "fBodyFontSize": "正文字号",
       "fLineWidth": "行宽",
@@ -3516,6 +3752,7 @@ const catalog = createCatalog<Messages>({
       "bMarkdownLinksOnly": "只能打开 Markdown 文稿链接",
       "bLinkedDocumentMissing": "链接的文稿不存在",
       "bUnknownTheme": "未知主题",
+      "bUnknownAutoSwitch": "未知的自动切换方式",
       "bInvalidFontSize": "字号应为 15 至 22",
       "bUnknownLineWidth": "未知行宽",
       "bUnknownLayout": "未知布局",
@@ -3720,16 +3957,55 @@ const catalog = createCatalog<Messages>({
       "fWordSaved": "Word 文稿已保存：{path}",
       "bSaveWordDocument": "保存 Word 文稿",
       "bWordTooLarge": "Word 文稿过大，请改用 ZIP 导出",
+      "fDawn": "晨光",
+      "fLamplight": "灯下",
+      "fMoonlight": "月夜",
+      "fLotus": "藕荷",
+      "fAutumn": "秋香",
+      "fMoonWhite": "月白",
+      "fIndigo": "黛蓝",
+      "fDawnCaption": "5–9 点 · 黎明前的珍珠灰，朝霞色的光标",
+      "fPaperCaption": "9–15 点 · 正午的白纸，清楚中性",
+      "fWarmCaption": "15–19 点 · 午后斜阳里的米色纸",
+      "fLamplightCaption": "19–21 点 · 台灯下的暖褐，灯黄点睛",
+      "fInkCaption": "21–23 点 · 克制的深炭夜色",
+      "fMoonlightCaption": "23–5 点 · 深夜的蓝灰，月光银蓝",
+      "fMistCaption": "春 · 烟雨江南的灰绿",
+      "fLotusCaption": "夏 · 接天莲叶，莲紫点睛",
+      "fAutumnCaption": "秋 · 秋香色的纸，秋水石青",
+      "fMoonWhiteCaption": "冬 · 月白风清，靛青点睛",
+      "fIndigoCaption": "夜 · 远山如黛，一点烫金",
+      "fHourMao": "卯",
+      "fHourWu": "午",
+      "fHourShen": "申",
+      "fHourXu": "戌",
+      "fHourHai": "亥",
+      "fHourZi": "子",
+      "fSpring": "春",
+      "fSummer": "夏",
+      "fAutumnSeason": "秋",
+      "fWinter": "冬",
+      "fNight": "夜",
+      "fHours": "天光",
+      "fOnePageInTheChangingLightOfADay": "一天里的光，同一张纸只换光线",
+      "fSeasons": "四时",
+      "fTheColoursOfTheYear": "一年四季的颜色",
+      "fSwitchAutomatically": "自动切换",
+      "fOff": "关",
+      "fFollowTheHours": "跟随天光",
+      "fFollowTheSeasons": "跟随四季",
+      "fAlwaysUseTheSelectedTheme": "一直用选中的主题。",
+      "fChooseAThemeForLightAndDarkMode": "分别挑浅色和深色时用哪套。",
+      "fHoursSchedule": "按当地时间：5 点晨光、9 点纸白、15 点暖纸、19 点灯下、21 点夜墨、23 点月夜。",
+      "fSeasonsSchedule": "立春雾绿、立夏藕荷、立秋秋香、立冬月白；系统切到深色时用黛蓝。",
+      "fLightMode": "浅色用",
+      "fDarkMode": "深色用",
     },
     "en": {
       "fPaper": "Paper",
-      "fAClearNeutralPage": "A clear, neutral page",
       "fWarm": "Warm",
-      "fSoftWarmIvory": "Soft, warm ivory",
       "fMist": "Mist",
-      "fAQuietGrayGreenSetting": "A quiet gray-green setting",
       "fInk": "Ink",
-      "fAMutedCharcoalNight": "A muted charcoal night",
       "fLocalDevelopmentSeparateDrafts": "Local Development · Separate Drafts",
       "fTyping": "Typing",
       "fUnsaved": "Unsaved",
@@ -3737,9 +4013,6 @@ const catalog = createCatalog<Messages>({
       "fSaving": "Saving",
       "fSaveFailedYourTextIsStillHere": "Save Failed · Your Text Is Still Here",
       "fTrySavingAgainYourTextIsStillHere": "Try saving again. Your text is still here.",
-      "fAPageToWriteOn": "A Page to Write On",
-      "fGiveEachSentenceTimeToArrive": "Give each sentence time to arrive.",
-      "fContinueReading": "Continue Reading",
       "fAddAHeadingToSeeTheOutlineHere": "Add a # heading to see the outline here.",
       "fADocumentWaitingToBegin": "A document waiting to begin",
       "fConfirmRemoval": "Confirm Removal",
@@ -3856,7 +4129,7 @@ const catalog = createCatalog<Messages>({
       "fDocumentProperties": "Document Properties",
       "fTheLocalServiceIsUnavailableKeepThisWindowOpen": "The local service is unavailable. Keep this window open.",
       "fLiubai": "Liubai",
-      "fSidebarRecentDocumentsAndOutline": "Sidebar: Recent Documents and Outline",
+      "fSidebarRecentDocuments": "Sidebar: Recent Documents",
       "fSidebar": "Sidebar",
       "fRename2": "Rename",
       "fOpening": "Opening",
@@ -3891,11 +4164,9 @@ const catalog = createCatalog<Messages>({
       "fFindADocument": "Find a document…",
       "fSearchRecentDocuments": "Search Recent Documents",
       "fOpenLocalMarkdown": "Open Local Markdown",
-      "fColorsForThisMoment": "Colors for This Moment",
       "fCloseAppearance": "Close Appearance",
       "fTheme": "Theme",
       "fFollowSystem": "Follow System",
-      "fPaperForLightModeInkForDarkMode": "Paper for light mode, Ink for dark mode",
       "fFontSize": "Font Size",
       "fBodyFontSize": "Body Font Size",
       "fLineWidth": "Line Width",
@@ -3981,6 +4252,7 @@ const catalog = createCatalog<Messages>({
       "bMarkdownLinksOnly": "Only Markdown document links can be opened",
       "bLinkedDocumentMissing": "Linked document does not exist",
       "bUnknownTheme": "Unknown theme",
+      "bUnknownAutoSwitch": "Unknown automatic switch",
       "bInvalidFontSize": "Font size must be between 15 and 22",
       "bUnknownLineWidth": "Unknown line width",
       "bUnknownLayout": "Unknown layout",
@@ -4185,6 +4457,49 @@ const catalog = createCatalog<Messages>({
       "fWordSaved": "Word document saved: {path}",
       "bSaveWordDocument": "Save Word Document",
       "bWordTooLarge": "Word document is too large. Export as ZIP",
+      "fDawn": "Dawn",
+      "fLamplight": "Lamplight",
+      "fMoonlight": "Moonlight",
+      "fLotus": "Lotus",
+      "fAutumn": "Harvest",
+      "fMoonWhite": "Moon White",
+      "fIndigo": "Indigo",
+      "fDawnCaption": "5–9 am · Pearl grey before sunrise, a rose caret",
+      "fPaperCaption": "9 am–3 pm · Plain white paper at noon",
+      "fWarmCaption": "3–7 pm · Ivory paper in the afternoon sun",
+      "fLamplightCaption": "7–9 pm · Warm brown under a desk lamp",
+      "fInkCaption": "9–11 pm · A muted charcoal night",
+      "fMoonlightCaption": "11 pm–5 am · Blue-grey midnight, moonlit silver",
+      "fMistCaption": "Spring · The grey-green of misty rain",
+      "fLotusCaption": "Summer · Lotus pink with a plum accent",
+      "fAutumnCaption": "Autumn · Olive-gold paper, river blue",
+      "fMoonWhiteCaption": "Winter · Pale blue-white with an indigo accent",
+      "fIndigoCaption": "Night · Midnight blue with a touch of gold",
+      "fHourMao": "5 am",
+      "fHourWu": "9 am",
+      "fHourShen": "3 pm",
+      "fHourXu": "7 pm",
+      "fHourHai": "9 pm",
+      "fHourZi": "11 pm",
+      "fSpring": "Spring",
+      "fSummer": "Summer",
+      "fAutumnSeason": "Autumn",
+      "fWinter": "Winter",
+      "fNight": "Night",
+      "fHours": "Hours",
+      "fOnePageInTheChangingLightOfADay": "One page in the changing light of a day",
+      "fSeasons": "Seasons",
+      "fTheColoursOfTheYear": "The colours of the year",
+      "fSwitchAutomatically": "Switch Automatically",
+      "fOff": "Off",
+      "fFollowTheHours": "Follow the Hours",
+      "fFollowTheSeasons": "Follow the Seasons",
+      "fAlwaysUseTheSelectedTheme": "Always use the selected theme.",
+      "fChooseAThemeForLightAndDarkMode": "Choose a theme for light mode and one for dark mode.",
+      "fHoursSchedule": "By local time: Dawn from 5 am, Paper from 9 am, Warm from 3 pm, Lamplight from 7 pm, Ink from 9 pm, Moonlight from 11 pm.",
+      "fSeasonsSchedule": "Mist from the start of spring, Lotus from the start of summer, Harvest from the start of autumn, Moon White from the start of winter; Indigo when the system is dark.",
+      "fLightMode": "Light",
+      "fDarkMode": "Dark",
     },
   },
 });

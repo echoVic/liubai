@@ -8,6 +8,7 @@ from playwright.sync_api import expect, sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:4196'
 ARTIFACTS = Path(tempfile.mkdtemp(prefix='liubai-math-qa-'))
+THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
 TEXT = '前文\n\n中文$x^2$中文\n\n$$\n\\int_0^1 x\\,dx\n$$\n\n```math\ny^2\n```\n\n$\\frac{$\n\n$5 和 $10\n\n尾文'
 
 
@@ -17,6 +18,12 @@ def api(page, method, *args):
     data = response.json()
     assert not data.get('error'), data
     return data['value']
+
+
+def set_theme(page, theme):
+    """Paint a theme the way the app does, both root attributes. Assert right after: the app repaints the stored theme on its next minute tick or window focus."""
+    scheme = 'dark' if next(t['dark'] for t in THEMES if t['id'] == theme) else 'light'
+    page.evaluate("([theme, scheme]) => { const root = document.documentElement; root.dataset.liubaiTheme = theme; root.dataset.liubaiScheme = scheme }", [theme, scheme])
 
 
 def saved(page, expected):
@@ -83,14 +90,14 @@ def run(page):
     page.locator('[data-view="read"]').click()
     expect(page.locator('#preview-content .katex')).to_have_count(3)
     expect(page.locator('#preview-content .math-error')).to_have_text('\\frac{')
-    for theme in ('paper', 'warm', 'mist', 'ink'):
-        page.evaluate('(theme)=>document.documentElement.dataset.liubaiTheme=theme', theme)
+    for theme in [t["id"] for t in THEMES]:
+        set_theme(page, theme)
         colors = page.locator('#preview-content .math-inline').first.evaluate('''el => {
           const c=getComputedStyle(el),math=getComputedStyle(el.querySelector('.katex'));return {foreground:c.color,formula:math.color};
         }''')
         assert colors['foreground'] == colors['formula'], colors
         page.screenshot(path=str(ARTIFACTS / f'math-reader-{theme}.png'))
-    page.evaluate('delete document.documentElement.dataset.liubaiTheme')
+    page.evaluate('delete document.documentElement.dataset.liubaiTheme; delete document.documentElement.dataset.liubaiScheme')
     page.locator('[data-view="single"]').click()
     button = page.locator('#format-bar [data-action="math"]')
     expect(button).to_have_accessible_name('公式')

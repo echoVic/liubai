@@ -14,6 +14,7 @@ from playwright.sync_api import expect, sync_playwright
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:4196'
 ARTIFACTS = Path(tempfile.mkdtemp(prefix='liubai-images-qa-'))
+THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
 PREFIX, SUFFIX = '前文  \n\n', '\n\n尾文\t '
 
 
@@ -23,6 +24,12 @@ def api(page, method, *args):
     data = response.json()
     assert not data.get('error'), data
     return data['value']
+
+
+def set_theme(page, theme):
+    """Paint a theme the way the app does, both root attributes. Assert right after: the app repaints the stored theme on its next minute tick or window focus."""
+    scheme = 'dark' if next(t['dark'] for t in THEMES if t['id'] == theme) else 'light'
+    page.evaluate("([theme, scheme]) => { const root = document.documentElement; root.dataset.liubaiTheme = theme; root.dataset.liubaiScheme = scheme }", [theme, scheme])
 
 
 def saved(page, expected=None):
@@ -288,10 +295,11 @@ def run(page):
     page.locator('#block-menu [data-menu-action="delete"]').click()
     saved(page, '前文  \n\n尾文\t ')
     undo(page, text, deleted=True)
-    for theme in ('paper', 'warm', 'mist', 'ink'):
-        page.evaluate('(theme)=>document.documentElement.dataset.liubaiTheme=theme', theme)
+    for theme in [t["id"] for t in THEMES]:
+        set_theme(page, theme)
         select(page)
         page.screenshot(path=str(ARTIFACTS / f'image-{theme}.png'))
+    set_theme(page, 'paper')  # back to the default for the steps below
     page.locator('[data-view="split"]').click()
     page.locator('#format-bar [data-action="source"]').click()
     expect(page.locator('.inline-image')).to_have_count(0)

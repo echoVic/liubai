@@ -12,33 +12,17 @@
   "@fPaper": {
     "description": "Interface text for Paper."
   },
-  "fAClearNeutralPage": "清晰的中性纸面",
-  "@fAClearNeutralPage": {
-    "description": "Interface text for A clear, neutral page."
-  },
   "fWarm": "暖纸",
   "@fWarm": {
     "description": "Interface text for Warm."
-  },
-  "fSoftWarmIvory": "柔和的米纸暖调",
-  "@fSoftWarmIvory": {
-    "description": "Interface text for Soft, warm ivory."
   },
   "fMist": "雾绿",
   "@fMist": {
     "description": "Interface text for Mist."
   },
-  "fAQuietGrayGreenSetting": "沉静的灰绿环境",
-  "@fAQuietGrayGreenSetting": {
-    "description": "Interface text for A quiet gray-green setting."
-  },
   "fInk": "夜墨",
   "@fInk": {
     "description": "Interface text for Ink."
-  },
-  "fAMutedCharcoalNight": "克制的深炭夜色",
-  "@fAMutedCharcoalNight": {
-    "description": "Interface text for A muted charcoal night."
   },
   "fLocalDevelopmentSeparateDrafts": "本地开发版 · 独立草稿存档",
   "@fLocalDevelopmentSeparateDrafts": {
@@ -67,18 +51,6 @@
   "fTrySavingAgainYourTextIsStillHere": "请先重试保存，当前输入仍保留",
   "@fTrySavingAgainYourTextIsStillHere": {
     "description": "Interface text for Try saving again. Your text is still here.."
-  },
-  "fAPageToWriteOn": "一页写作桌",
-  "@fAPageToWriteOn": {
-    "description": "Interface text for A Page to Write On."
-  },
-  "fGiveEachSentenceTimeToArrive": "让一句话，有时间抵达。",
-  "@fGiveEachSentenceTimeToArrive": {
-    "description": "Interface text for Give each sentence time to arrive.."
-  },
-  "fContinueReading": "继续阅读",
-  "@fContinueReading": {
-    "description": "Interface text for Continue Reading."
   },
   "fAddAHeadingToSeeTheOutlineHere": "输入 # 标题后，大纲会出现在这里。",
   "@fAddAHeadingToSeeTheOutlineHere": {
@@ -564,9 +536,9 @@
   "@fLiubai": {
     "description": "Interface text for Liubai."
   },
-  "fSidebarRecentDocumentsAndOutline": "侧栏：最近文稿与大纲",
-  "@fSidebarRecentDocumentsAndOutline": {
-    "description": "Interface text for Sidebar: Recent Documents and Outline."
+  "fSidebarRecentDocuments": "侧栏：最近文稿",
+  "@fSidebarRecentDocuments": {
+    "description": "Interface text for Sidebar: Recent Documents."
   },
   "fSidebar": "侧栏",
   "@fSidebar": {
@@ -719,10 +691,6 @@
   "@fOpenLocalMarkdown": {
     "description": "Interface text for Open Local Markdown."
   },
-  "fColorsForThisMoment": "适合此刻的颜色",
-  "@fColorsForThisMoment": {
-    "description": "Interface text for Colors for This Moment."
-  },
   "fCloseAppearance": "关闭外观",
   "@fCloseAppearance": {
     "description": "Interface text for Close Appearance."
@@ -734,10 +702,6 @@
   "fFollowSystem": "跟随系统",
   "@fFollowSystem": {
     "description": "Interface text for Follow System."
-  },
-  "fPaperForLightModeInkForDarkMode": "浅色用纸白，深色用夜墨",
-  "@fPaperForLightModeInkForDarkMode": {
-    "description": "Interface text for Paper for light mode, Ink for dark mode."
   },
   "fFontSize": "字号",
   "@fFontSize": {
@@ -1083,6 +1047,10 @@
   "bUnknownTheme": "未知主题",
   "@bUnknownTheme": {
     "description": "Backend interface: Unknown theme"
+  },
+  "bUnknownAutoSwitch": "未知的自动切换方式",
+  "@bUnknownAutoSwitch": {
+    "description": "Backend interface: Unknown automatic switch"
   },
   "bInvalidFontSize": "字号应为 15 至 22",
   "@bInvalidFontSize": {
@@ -2037,5 +2005,177 @@
   "bWordTooLarge": "Word 文稿过大，请改用 ZIP 导出",
   "@bWordTooLarge": {
     "description": "Error when Word export exceeds the 64 MiB save limit."
+  },
+  "fDawn": "晨光",
+  "@fDawn": {
+    "description": "Interface text for Dawn."
+  },
+  "fLamplight": "灯下",
+  "@fLamplight": {
+    "description": "Interface text for Lamplight."
+  },
+  "fMoonlight": "月夜",
+  "@fMoonlight": {
+    "description": "Interface text for Moonlight."
+  },
+  "fLotus": "藕荷",
+  "@fLotus": {
+    "description": "Interface text for Lotus."
+  },
+  "fAutumn": "秋香",
+  "@fAutumn": {
+    "description": "Interface text for Harvest."
+  },
+  "fMoonWhite": "月白",
+  "@fMoonWhite": {
+    "description": "Interface text for Moon White."
+  },
+  "fIndigo": "黛蓝",
+  "@fIndigo": {
+    "description": "Interface text for Indigo."
+  },
+  "fDawnCaption": "5–9 点 · 黎明前的珍珠灰，朝霞色的光标",
+  "@fDawnCaption": {
+    "description": "Interface text for 5–9 am · Pearl grey before sunrise, a rose caret."
+  },
+  "fPaperCaption": "9–15 点 · 正午的白纸，清楚中性",
+  "@fPaperCaption": {
+    "description": "Interface text for 9 am–3 pm · Plain white paper at noon."
+  },
+  "fWarmCaption": "15–19 点 · 午后斜阳里的米色纸",
+  "@fWarmCaption": {
+    "description": "Interface text for 3–7 pm · Ivory paper in the afternoon sun."
+  },
+  "fLamplightCaption": "19–21 点 · 台灯下的暖褐，灯黄点睛",
+  "@fLamplightCaption": {
+    "description": "Interface text for 7–9 pm · Warm brown under a desk lamp."
+  },
+  "fInkCaption": "21–23 点 · 克制的深炭夜色",
+  "@fInkCaption": {
+    "description": "Interface text for 9–11 pm · A muted charcoal night."
+  },
+  "fMoonlightCaption": "23–5 点 · 深夜的蓝灰，月光银蓝",
+  "@fMoonlightCaption": {
+    "description": "Interface text for 11 pm–5 am · Blue-grey midnight, moonlit silver."
+  },
+  "fMistCaption": "春 · 烟雨江南的灰绿",
+  "@fMistCaption": {
+    "description": "Interface text for Spring · The grey-green of misty rain."
+  },
+  "fLotusCaption": "夏 · 接天莲叶，莲紫点睛",
+  "@fLotusCaption": {
+    "description": "Interface text for Summer · Lotus pink with a plum accent."
+  },
+  "fAutumnCaption": "秋 · 秋香色的纸，秋水石青",
+  "@fAutumnCaption": {
+    "description": "Interface text for Autumn · Olive-gold paper, river blue."
+  },
+  "fMoonWhiteCaption": "冬 · 月白风清，靛青点睛",
+  "@fMoonWhiteCaption": {
+    "description": "Interface text for Winter · Pale blue-white with an indigo accent."
+  },
+  "fIndigoCaption": "夜 · 远山如黛，一点烫金",
+  "@fIndigoCaption": {
+    "description": "Interface text for Night · Midnight blue with a touch of gold."
+  },
+  "fHourMao": "卯",
+  "@fHourMao": {
+    "description": "Interface text for 5 am."
+  },
+  "fHourWu": "午",
+  "@fHourWu": {
+    "description": "Interface text for 9 am."
+  },
+  "fHourShen": "申",
+  "@fHourShen": {
+    "description": "Interface text for 3 pm."
+  },
+  "fHourXu": "戌",
+  "@fHourXu": {
+    "description": "Interface text for 7 pm."
+  },
+  "fHourHai": "亥",
+  "@fHourHai": {
+    "description": "Interface text for 9 pm."
+  },
+  "fHourZi": "子",
+  "@fHourZi": {
+    "description": "Interface text for 11 pm."
+  },
+  "fSpring": "春",
+  "@fSpring": {
+    "description": "Interface text for Spring."
+  },
+  "fSummer": "夏",
+  "@fSummer": {
+    "description": "Interface text for Summer."
+  },
+  "fAutumnSeason": "秋",
+  "@fAutumnSeason": {
+    "description": "Interface text for Autumn."
+  },
+  "fWinter": "冬",
+  "@fWinter": {
+    "description": "Interface text for Winter."
+  },
+  "fNight": "夜",
+  "@fNight": {
+    "description": "Interface text for Night."
+  },
+  "fHours": "天光",
+  "@fHours": {
+    "description": "Interface text for Hours."
+  },
+  "fOnePageInTheChangingLightOfADay": "一天里的光，同一张纸只换光线",
+  "@fOnePageInTheChangingLightOfADay": {
+    "description": "Interface text for One page in the changing light of a day."
+  },
+  "fSeasons": "四时",
+  "@fSeasons": {
+    "description": "Interface text for Seasons."
+  },
+  "fTheColoursOfTheYear": "一年四季的颜色",
+  "@fTheColoursOfTheYear": {
+    "description": "Interface text for The colours of the year."
+  },
+  "fSwitchAutomatically": "自动切换",
+  "@fSwitchAutomatically": {
+    "description": "Interface text for Switch Automatically."
+  },
+  "fOff": "关",
+  "@fOff": {
+    "description": "Interface text for Off."
+  },
+  "fFollowTheHours": "跟随天光",
+  "@fFollowTheHours": {
+    "description": "Interface text for Follow the Hours."
+  },
+  "fFollowTheSeasons": "跟随四季",
+  "@fFollowTheSeasons": {
+    "description": "Interface text for Follow the Seasons."
+  },
+  "fAlwaysUseTheSelectedTheme": "一直用选中的主题。",
+  "@fAlwaysUseTheSelectedTheme": {
+    "description": "Interface text for Always use the selected theme.."
+  },
+  "fChooseAThemeForLightAndDarkMode": "分别挑浅色和深色时用哪套。",
+  "@fChooseAThemeForLightAndDarkMode": {
+    "description": "Interface text for Choose a theme for light mode and one for dark mode.."
+  },
+  "fHoursSchedule": "按当地时间：5 点晨光、9 点纸白、15 点暖纸、19 点灯下、21 点夜墨、23 点月夜。",
+  "@fHoursSchedule": {
+    "description": "Interface text for By local time: Dawn from 5 am, Paper from 9 am, Warm from 3 pm, Lamplight from 7 pm, Ink from 9 pm, Moonlight from 11 pm.."
+  },
+  "fSeasonsSchedule": "立春雾绿、立夏藕荷、立秋秋香、立冬月白；系统切到深色时用黛蓝。",
+  "@fSeasonsSchedule": {
+    "description": "Interface text for Mist from the start of spring, Lotus from the start of summer, Harvest from the start of autumn, Moon White from the start of winter; Indigo when the system is dark.."
+  },
+  "fLightMode": "浅色用",
+  "@fLightMode": {
+    "description": "Interface text for Light."
+  },
+  "fDarkMode": "深色用",
+  "@fDarkMode": {
+    "description": "Interface text for Dark."
   }
 }

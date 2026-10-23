@@ -485,3 +485,83 @@ func TestAtomicWriteKeepsTheTemporaryFileWhenCommitLostTheDocument(t *testing.T)
 		}
 	}
 }
+func TestThemeAppearanceMigratesAndValidates(t *testing.T) {
+	w := workspace(t)
+	for index, auto := range map[string]string{
+		`{"version":1,"appearance":{"theme":"warm","followSystem":true}}`:  "system",
+		`{"version":1,"appearance":{"theme":"warm","followSystem":false}}`: "off",
+	} {
+		if err := os.WriteFile(filepath.Join(w.root, "workspace.json"), []byte(index), 0600); err != nil {
+			t.Fatal(err)
+		}
+		reopened, err := openWorkspace(w.root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := reopened.State().Appearance; got.Theme != "warm" || got.Auto != auto || got.LightTheme != "paper" || got.DarkTheme != "ink" || got.FollowSystem != (auto == "system") {
+			t.Fatalf("%s opened as %+v", index, got)
+		}
+	}
+	w, err := openWorkspace(w.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := w.State().Appearance
+	p.Theme, p.Auto, p.LightTheme, p.DarkTheme, p.OutlineHidden, p.FollowSystem = "lotus", "hours", "moonwhite", "indigo", true, false
+	if err := w.Appearance(p); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := openWorkspace(w.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reopened.State().Appearance; got != p {
+		t.Fatalf("appearance = %+v, want %+v", got, p)
+	}
+	for _, c := range []struct {
+		change func(*Appearance)
+		key    string
+	}{
+		{func(a *Appearance) { a.Theme = "unknown" }, "bUnknownTheme"},
+		{func(a *Appearance) { a.LightTheme = "ink" }, "bUnknownTheme"},
+		{func(a *Appearance) { a.DarkTheme = "paper" }, "bUnknownTheme"},
+		{func(a *Appearance) { a.Auto = "weekly" }, "bUnknownAutoSwitch"},
+	} {
+		invalid := p
+		c.change(&invalid)
+		if e, ok := reopened.Appearance(invalid).(*catalogError); !ok || e.Key != c.key {
+			t.Fatalf("%+v: error %v, want %s", invalid, e, c.key)
+		}
+		if got := reopened.State().Appearance; got != p {
+			t.Fatalf("invalid request changed appearance: %+v", got)
+		}
+	}
+}
+func TestThemeAppearanceRestoresFromNewerIndex(t *testing.T) {
+	w := workspace(t)
+	for _, c := range []struct {
+		appearance string
+		want       Appearance
+	}{
+		{`{"theme":"lotus","auto":"seasons","lightTheme":"moonwhite","darkTheme":"indigo","followSystem":false,"outlineHidden":true}`,
+			Appearance{Theme: "lotus", Auto: "seasons", LightTheme: "moonwhite", DarkTheme: "indigo", Layout: "single", OutlineHidden: true}},
+		{`{"theme":"warm","followSystem":true}`,
+			Appearance{Theme: "warm", Auto: "system", LightTheme: "paper", DarkTheme: "ink", FollowSystem: true, Layout: "single"}},
+		{`{"theme":"warm","auto":"hours","followSystem":true}`,
+			Appearance{Theme: "warm", Auto: "hours", LightTheme: "paper", DarkTheme: "ink", Layout: "single"}},
+		{`{"theme":"warm","auto":"weekly","lightTheme":"ink","darkTheme":"paper","followSystem":true}`,
+			Appearance{Theme: "warm", Auto: "system", LightTheme: "paper", DarkTheme: "ink", FollowSystem: true, Layout: "single"}},
+	} {
+		index := `{"version":2,"appearance":` + c.appearance + `}`
+		if err := os.WriteFile(filepath.Join(w.root, "workspace.json"), []byte(index), 0600); err != nil {
+			t.Fatal(err)
+		}
+		reopened, err := openWorkspace(w.root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := reopened.State().Appearance; got != c.want {
+			t.Errorf("%s restored as %+v, want %+v", index, got, c.want)
+		}
+	}
+}

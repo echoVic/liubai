@@ -2,14 +2,14 @@ import {messages,localizePage,onPageLocaleChange} from './i18n';
 import {call,type Appearance,type WorkspaceState} from './types';
 import {captureKeyAction} from './capture-input';
 import {mac,windows,keyLabel} from './platform';
+import {resolveTheme,paintTheme,watchTheme} from './theme';
 const field=document.querySelector<HTMLTextAreaElement>('#capture-text')!;
 const button=document.querySelector<HTMLButtonElement>('#capture-save')!;
 const status=document.querySelector<HTMLElement>('#capture-status')!;
 const hint=()=>messages.fSaveAsDraftEscClose(keyLabel('Mod+Enter'));
 let composing=false,saving=false,hideTimer:ReturnType<typeof setTimeout>|undefined;
-let appearance:Appearance;
-const mq=matchMedia('(prefers-color-scheme:dark)');
-function theme(p:Appearance){appearance=p;const id=p.followSystem?(mq.matches?'ink':'paper'):p.theme;document.documentElement.dataset.liubaiTheme=id;document.documentElement.style.colorScheme=id==='ink'?'dark':'light'}
+let appearance:Appearance|undefined;
+function theme(p?:Appearance){if(p)appearance=p;if(appearance)paintTheme(document.documentElement,resolveTheme(appearance,new Date(),matchMedia('(prefers-color-scheme:dark)').matches))}
 function message(text:string,error=false){status.textContent=text;status.dataset.error=String(error)}
 function focus(){clearTimeout(hideTimer);message(hint());field.focus()}
 async function hide(){clearTimeout(hideTimer);try{await call('HideCapture')}catch(e){message(e instanceof Error?e.message:String(e),true)}}
@@ -34,7 +34,7 @@ document.addEventListener('keydown',e=>{
 button.onclick=()=>void save();
 window.addEventListener('liubai:capture-show',focus);
 window.addEventListener('focus',()=>field.focus());
-mq.addEventListener('change',()=>{if(appearance)theme(appearance)});
+watchTheme(()=>theme());
 window.addEventListener('storage',e=>{if(e.key==='liubai-appearance'&&e.newValue){try{theme(JSON.parse(e.newValue))}catch{}}});
 window.mygo?.on<Appearance>('liubai:capture-appearance',theme);
 document.documentElement.classList.toggle('windows',windows);

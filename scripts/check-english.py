@@ -64,8 +64,8 @@ def english(context):
     page.keyboard.press("Escape")
 
     page.locator("#sidebar-button").click()
-    expect(page.locator("#recent-tab")).to_have_text("Recent Documents")
-    expect(page.locator("#outline-tab")).to_have_text("Outline")
+    expect(page.locator("#recent-label")).to_have_text("Recent Documents")
+    expect(page.locator("#outline-button")).to_have_attribute("aria-label", "Outline")
     chrome_is_english(page)
     page.keyboard.press("Escape")
 
@@ -77,6 +77,13 @@ def english(context):
     page.locator('[data-action="theme"]').click()
     expect(page.locator("#appearance h2")).to_have_text("Appearance and Typography")
     expect(page.locator("#themes")).to_contain_text("Paper")
+    # The hour cards name the clock hour each theme starts at, in 12-hour time; the close button is the icon.
+    assert page.locator('#themes [data-series="hours"] b').all_text_contents() == ["5 am", "9 am", "3 pm", "7 pm", "9 pm", "11 pm"]
+    expect(page.locator('#appearance [data-close="appearance"] svg')).to_have_count(1)
+    # A caption names the theme and its season without echoing the name.
+    for theme, caption in [("autumn", "Harvest · Autumn · Olive-gold paper, river blue"), ("moonwhite", "Moon White · Winter · Pale blue-white with an indigo accent"), ("indigo", "Indigo · Night · Midnight blue with a touch of gold")]:
+        page.locator(f'#themes [data-theme="{theme}"]').hover()
+        expect(page.locator('[data-caption="seasons"]')).to_have_text(caption)
     expect(page.locator('#line-width option[value="full"]')).to_have_text("Full Width")
     chrome_is_english(page)
     page.keyboard.press("Escape")
@@ -86,6 +93,9 @@ def english(context):
     # The dialog opens after its settings load; wait for it before pressing Escape.
     expect(page.locator("#capture-settings")).to_be_visible()
     expect(page.locator("#capture-settings h2")).to_have_text("Quick Note")
+    expect(page.locator('#capture-settings [data-close="capture-settings"] svg')).to_have_count(1)
+    # Each switch is a bordered row: its label on the left, the switch on the right.
+    assert page.locator("#capture-settings label.follow").evaluate_all("els => els.map(el => getComputedStyle(el).display)") == ["flex", "flex"]
     expect(page.locator("#capture-web-note")).to_have_text("Quick Note is available in the desktop app.")
     chrome_is_english(page)
     page.keyboard.press("Escape")
@@ -220,8 +230,8 @@ def chinese(context):
     expect(page.locator(".export-label")).to_have_text("导出")
     expect(page.locator('#format-bar [data-action="bold"]')).to_have_attribute("aria-label", "加粗")
     page.locator("#sidebar-button").click()
-    expect(page.locator("#recent-tab")).to_have_text("最近文稿")
-    expect(page.locator("#outline-tab")).to_have_text("大纲")
+    expect(page.locator("#recent-label")).to_have_text("最近文稿")
+    expect(page.locator("#outline-button")).to_have_attribute("aria-label", "大纲")
     page.screenshot(path=str(ARTIFACTS / "chinese.png"))
 
 

@@ -1,1 +1,0 @@
-try{const p=JSON.parse(localStorage.getItem('liubai-appearance')||'null');const dark=matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.dataset.liubaiTheme=p&&!p.followSystem?p.theme:dark?'ink':'paper'}catch{document.documentElement.dataset.liubaiTheme=matchMedia('(prefers-color-scheme:dark)').matches?'ink':'paper'}

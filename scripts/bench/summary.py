@@ -62,6 +62,27 @@ lines = ["# Benchmark summary", "", "ms per operation; per-round results as best
 lines += table("## Editor (Bun / JavaScriptCore; each round is the best of 5 batches)", jsonl("base-editor.jsonl"), jsonl("head-editor.jsonl"), "scenario · chars")
 lines += table("## Preview render (Chrome; each round is the best of 5 batches)", jsonl("base-preview.jsonl"), jsonl("head-preview.jsonl"), "scenario · chars")
 lines += table("## Storage (Go; 3 runs × 20 iterations per round)", go("base-go.txt"), go("head-go.txt"), "benchmark")
+lines += table("## Editing in WebKit (off-screen WKWebView; per round: median of 3 opens, of 60 keystrokes (inside a line, and at the end of a paragraph) or arrow keys, of 40 scroll steps; memory in MB)",
+               jsonl("base-webkit.jsonl"), jsonl("head-webkit.jsonl"), "scenario · chars")
+
+
+def bundle(name):
+    path = out / name
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def kb(entry):
+    if not entry:
+        return "—"
+    raw = f"{entry['bytes'] / 1024:,.0f} KB"
+    return raw if entry.get("gzip") is None else f"{raw} ({entry['gzip'] / 1024:,.0f} KB gzip)"
+
+
+base_bundle, head_bundle = bundle("base-bundle.json"), bundle("head-bundle.json")
+if base_bundle or head_bundle:
+    lines += ["", "## Web bundle (committed web/)", "", "| file | base | head |", "|---|---:|---:|"]
+    for key in dict.fromkeys([*base_bundle, *head_bundle]):
+        lines.append(f"| {key} | {kb(base_bundle.get(key))} | {kb(head_bundle.get(key))} |")
 text = "\n".join(lines) + "\n"
 (out / "summary.md").write_text(text, encoding="utf-8")
 print(text)

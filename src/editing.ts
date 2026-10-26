@@ -172,10 +172,11 @@ export function frontMatterRange(state:EditorState):{from:number;to:number}|null
  }
  return null;
 }
-export function headings(state:EditorState){
+// Pass a fuller tree than the state's (see ensureSyntaxTree) to also find headings past what has been parsed for the screen.
+export function headings(state:EditorState,tree=syntaxTree(state)){
  const out:{from:number;text:string;level:number;slug:string}[]=[];const used=new Map<string,number>();
  const meta=frontMatterRange(state);
- syntaxTree(state).iterate({enter(n){if(meta&&n.from<meta.to&&n.name!=='Document')return false;if(/^(ATX|Setext)Heading/.test(n.name)){
+ tree.iterate({enter(n){if(meta&&n.from<meta.to&&n.name!=='Document')return false;if(/^(ATX|Setext)Heading/.test(n.name)){
   const raw=state.sliceDoc(n.from,n.to);const text=raw.replace(/^#{1,6}\s+/,'').replace(/\n[=-]+\s*$/,'').replace(/\s+#+\s*$/,'');
   const base=text.toLowerCase().replace(/[\p{P}\p{S}]/gu,'').trim().replace(/\s+/g,'-');const count=used.get(base)||0;used.set(base,count+1);
   out.push({from:n.from,text,level:Number(n.name.slice(-1))||1,slug:base+(count?'-'+count:'')});return false;

@@ -107,5 +107,24 @@ with sync_playwright() as p:
     expect(outline).to_be_hidden()
     button.click(); expect(outline).to_have_class(popover); expect(outline.locator(".dialog-note")).to_be_visible()
     page.keyboard.press("Escape"); expect(outline).to_be_hidden(); expect(button).to_be_focused()
+
+    # A long document lists every heading as soon as it opens, also those far beyond what the editor parses for the screen.
+    long_text = "".join(f"## 第 {i} 节\n\n" + "正文。" * 300 + "\n\n" for i in range(1, 301))
+    page.goto("about:blank")
+    current = api(page, "State")["current"]
+    api(page, "Update", {"id": current["id"], "revision": current["revision"], "content": long_text, "position": {"anchor": 0, "head": 0, "scroll": 0, "source": False}})
+    page.goto(BASE); expect(page.locator(".cm-content")).to_be_visible()
+    items = outline.locator(".outline-item")
+    expect(items).to_have_count(300, timeout=15000); expect(items.last).to_have_text("第 300 节")
+    # Its last entry jumps to the last section.
+    items.last.click()
+    saved_position(page, lambda current: current["position"]["anchor"] == long_text.index("## 第 300 节"))
+    # Typing that leaves the headings alone keeps the list as it is; a new heading updates it.
+    first = items.first.element_handle()
+    page.keyboard.press("ArrowDown"); page.keyboard.press("ArrowDown"); page.keyboard.press("End"); page.keyboard.type("字")
+    page.wait_for_timeout(800)
+    assert first.evaluate("e => e.isConnected"), "typing in a paragraph rebuilt the outline"
+    page.keyboard.press("Meta+ArrowUp"); page.keyboard.insert_text("## 新的一节\n\n")
+    expect(items).to_have_count(301); expect(items.first).to_have_text("新的一节")
     browser.close()
-print("PASS: 大纲只在一处")
+print("PASS: 大纲只在一处，长文稿打开即列出全部标题")

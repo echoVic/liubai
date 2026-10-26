@@ -11,6 +11,7 @@ import {filterSlashItems,insertToolbarItem,type SlashItemID,openSlashMenu} from 
 import {Transaction,Compartment,StateEffect} from '@codemirror/state';
 import {blockFormat,setHeading,headingLevel,inlineMarkers,clearFormatting,inList,indentList,wrapSelection,insertMath,codeBlock,linkAt,makeLink,safeLink,localDocumentLink,insertTable,headings,type BlockKind} from './editing';
 import {isolateHistory} from '@codemirror/commands';
+import {ensureSyntaxTree,syntaxTree} from '@codemirror/language';
 import {applyIcons,icon} from './icons';
 import {mac,windows,keyLabel,focusKeys,redoKeys} from './platform';
 import {attachMenu} from './menu';
@@ -353,15 +354,22 @@ async function action(id:string){
 }
 function scheduleOutline(immediate=false){
  clearTimeout(outlineTimer);if(compositionActive||!view)return;
- const update=()=>{
-  outlineHeadings=headings(view.state).filter(h=>h.level<=3);
-  const list=$('#right-outline .outline-list');list.replaceChildren();
+ const update=(budget:number)=>{
+  // The editor parses little beyond the screen; finish the tree in slices short enough not to hold up a frame,
+  // listing what is parsed meanwhile. While a document opens, the rest waits until it shows.
+  const tree=fullTree(budget);if(!tree)outlineTimer=setTimeout(update,budget?30:200,5);
+  const next=headings(view.state,tree??syntaxTree(view.state)).filter(h=>h.level<=3),list=$('#right-outline .outline-list');
+  // Typing that leaves the headings alone keeps the buttons.
+  if(next.length&&list.childElementCount&&next.length===outlineHeadings.length&&next.every((h,i)=>h.slug===outlineHeadings[i].slug&&h.text===outlineHeadings[i].text&&h.level===outlineHeadings[i].level)){outlineHeadings=next;scheduleOutlineLayout();return}
+  outlineHeadings=next;list.replaceChildren();
   for(const h of outlineHeadings){const b=node('button','outline-item',h.text);b.dataset.slug=h.slug;b.style.paddingLeft=(10+(h.level-1)*12)+'px';b.onclick=()=>{closeOutlinePopover();jumpToHeading(h.slug)};list.append(b)}
   if(!outlineHeadings.length)list.append(node('p','dialog-note',messages.fAddAHeadingToSeeTheOutlineHere()));
   scheduleOutlineLayout();
  };
- if(immediate)update();else outlineTimer=setTimeout(update,200);
+ if(immediate)update(0);else outlineTimer=setTimeout(update,200,5);
 }
+// The whole document's tree, parsing for at most `budget` ms; null while unfinished. Progress carries over to the next call.
+function fullTree(budget:number){return ensureSyntaxTree(view.state,view.state.doc.length,budget)}
 function scheduleOutlineLayout(){if(!outlineFrame)outlineFrame=requestAnimationFrame(()=>{outlineFrame=0;layoutOutline()})}
 let outlinePopover=false;
 // Beside the text when there is room; otherwise the outline only shows as a popover under its button.
@@ -404,7 +412,8 @@ $('.preview-scroll').addEventListener('scroll',scheduleOutlineLayout,{passive:tr
 $('.editor-scroll').addEventListener('scroll',scheduleOutlineLayout,{passive:true});
 window.addEventListener('resize',scheduleOutlineLayout);
 function jumpToHeading(slug:string){
- const h=headings(view.state).find(h=>h.slug===slug||h.text===slug);if(h){if(reading()){const target=Array.from($('#preview-content').querySelectorAll<HTMLElement>('h1,h2,h3,h4,h5,h6')).find(el=>el.id===h.slug);if(target){const scroll=$('.preview-scroll');scroll.scrollTop+=target.getBoundingClientRect().top-scroll.getBoundingClientRect().top}scheduleOutlineLayout();focusContent()}else{view.dispatch({selection:{anchor:h.from},scrollIntoView:true});view.focus()}}else toast(messages.fHeadingNotFound());
+ // The outline may list headings from a tree the editor has not caught up with yet.
+ const h=headings(view.state,fullTree(500)??syntaxTree(view.state)).find(h=>h.slug===slug||h.text===slug);if(h){if(reading()){const target=Array.from($('#preview-content').querySelectorAll<HTMLElement>('h1,h2,h3,h4,h5,h6')).find(el=>el.id===h.slug);if(target){const scroll=$('.preview-scroll');scroll.scrollTop+=target.getBoundingClientRect().top-scroll.getBoundingClientRect().top}scheduleOutlineLayout();focusContent()}else{view.dispatch({selection:{anchor:h.from},scrollIntoView:true});view.focus()}}else toast(messages.fHeadingNotFound());
 }
 function openLink(url:string){
  const local=localDocumentLink(url);

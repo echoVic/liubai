@@ -1,0 +1,14 @@
+date: 2026-10-24 15:34:33 +0800
+base: v0.1.0 (b317b9d)
+head: c6f26f9 (dirty)
+rounds: 3
+macOS: 26.6.2 (25G83)
+cpu: Apple M2 Pro, 12 cores, 32 GB
+go: go version go1.27.1 darwin/arm64
+bun: 1.4.3
+chrome: Google Chrome 156.0.8078.47 
+webkit: 21624.5.1.11.3
+load before: 9.97 17.10 20.40
+load after round 1: 16.90 18.74 20.21
+load after round 2: 16.22 17.68 19.16
+load after round 3: 15.77 17.70 19.00

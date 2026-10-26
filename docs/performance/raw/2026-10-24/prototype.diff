@@ -1,0 +1,110 @@
+--- a/src/images.ts
++++ b/src/images.ts
+@@ -1,7 +1,7 @@
+ import MarkdownIt from 'markdown-it';
+ import {mermaidSource} from './mermaid';
+ import type Token from 'markdown-it/lib/token.mjs';
+-import {EditorState,type ChangeDesc,type TransactionSpec} from '@codemirror/state';
++import {EditorState,type ChangeDesc,type Text,type TransactionSpec} from '@codemirror/state';
+ import {isolateHistory} from '@codemirror/commands';
+ import {syntaxTree} from '@codemirror/language';
+ import type {Tree} from '@lezer/common';
+@@ -57,9 +57,10 @@
+  const img='<img src="'+escapeHTML(src)+'" alt="'+escapeHTML(alt)+'"'+(title!==undefined?' title="'+escapeHTML(title)+'"':'')+(width!==undefined?' width="'+Math.round(width)+'"':'')+(height!==undefined?' height="'+height+'"':'')+'>';
+  return align==='left'?img:'<p align="'+align+'">'+img+'</p>';
+ }
+-const ranges=new WeakMap<EditorState,{tree:Tree;images:ImageRange[];tables:{from:number;to:number}[];math:MathRange[];mermaid:MathRange[]}>();
++// Keyed by the document text: a selection-only transaction keeps both the text and the tree.
++const ranges=new WeakMap<Text,{tree:Tree;images:ImageRange[];tables:{from:number;to:number}[];math:MathRange[];mermaid:MathRange[]}>();
+ export function imageRanges(state:EditorState):ImageRange[]{
+- const tree=syntaxTree(state),cached=ranges.get(state);if(cached?.tree===tree)return cached.images;
++ const tree=syntaxTree(state),cached=ranges.get(state.doc);if(cached?.tree===tree)return cached.images;
+  const out:ImageRange[]=[],tables:{from:number;to:number}[]=[],math:MathRange[]=[],mermaid:MathRange[]=[];
+  // Images, tables, display math and diagrams share one tree walk; ordinary prose never goes through the image parser.
+  tree.iterate({enter:n=>{
+@@ -83,18 +84,18 @@
+    out.push({from:start+prefix.length,to:line.to-(text.length-prefix.length-raw.length),raw,image,quotes,listEms});
+   }
+   return false;
+- }});ranges.set(state,{tree,images:out,tables,math,mermaid});return out;
++ }});ranges.set(state.doc,{tree,images:out,tables,math,mermaid});return out;
+ }
+ // Called only when an edit is confined to unchanged prose syntax; all widget source remains byte-identical.
+ export function mapImageRanges(before:EditorState,after:EditorState,changes:ChangeDesc){
+- const cached=ranges.get(before);if(!cached||cached.tree!==syntaxTree(before))return false;
++ const cached=ranges.get(before.doc);if(!cached||cached.tree!==syntaxTree(before))return false;
+  const map=(range:{from:number;to:number})=>({from:changes.mapPos(range.from,1),to:changes.mapPos(range.to,-1)});
+- ranges.set(after,{tree:syntaxTree(after),images:cached.images.map(image=>({...image,...map(image)})),tables:cached.tables.map(map),math:cached.math.map(formula=>({...formula,...map(formula)})),mermaid:cached.mermaid.map(diagram=>({...diagram,...map(diagram)}))});return true;
++ ranges.set(after.doc,{tree:syntaxTree(after),images:cached.images.map(image=>({...image,...map(image)})),tables:cached.tables.map(map),math:cached.math.map(formula=>({...formula,...map(formula)})),mermaid:cached.mermaid.map(diagram=>({...diagram,...map(diagram)}))});return true;
+ }
+ export function clampImageWidth(width:number,column:number){const max=Math.max(1,Math.floor(column));return Math.min(max,Math.max(Math.min(48,max),Math.round(width)))}
+-export function mermaidRanges(state:EditorState){imageRanges(state);return ranges.get(state)!.mermaid}
+-export function mathRanges(state:EditorState){imageRanges(state);return ranges.get(state)!.math}
+-export function tableRanges(state:EditorState){imageRanges(state);return ranges.get(state)!.tables}
++export function mermaidRanges(state:EditorState){imageRanges(state);return ranges.get(state.doc)!.mermaid}
++export function mathRanges(state:EditorState){imageRanges(state);return ranges.get(state.doc)!.math}
++export function tableRanges(state:EditorState){imageRanges(state);return ranges.get(state.doc)!.tables}
+ function deleteImage(state:EditorState,range:{from:number;to:number}):TransactionSpec{
+  const doc=state.doc,line=doc.lineAt(range.from),block=blockAt(state,range.from);
+  if(!block||block.from===line.from&&block.to===line.to)return deleteBlocks(state,range);
+--- a/src/extras.ts
++++ b/src/extras.ts
+@@ -1,4 +1,4 @@
+-import {EditorState,StateField,type TransactionSpec} from '@codemirror/state';
++import {EditorState,StateField,type Text,type TransactionSpec} from '@codemirror/state';
+ import {Decoration,EditorView,type DecorationSet} from '@codemirror/view';
+ import {isolateHistory} from '@codemirror/commands';
+ import {syntaxTree,codeFolding,foldedRanges,unfoldEffect,foldService} from '@codemirror/language';
+@@ -11,7 +11,8 @@
+ export interface FootnoteRange {from:number;to:number;label:string}
+ export interface FootnoteDefinition extends FootnoteRange {textFrom:number;text:string}
+ interface Extras {callouts:CalloutRange[];details:DetailsRange[];references:FootnoteRange[];definitions:Map<string,FootnoteDefinition>;labels:Set<string>}
+-const cache=new WeakMap<EditorState,{tree:Tree;ranges:Extras}>();
++// Keyed by the document text: a selection-only transaction keeps both the text and the tree.
++const cache=new WeakMap<Text,{tree:Tree;ranges:Extras}>();
+ const markers=/\[!|\[\^|<details/i;
+ // Whether the document may contain a callout, footnote or details marker, kept per change instead of rescanning every keystroke.
+ // Markers are at most 8 characters, so a margin around each change sees any marker it created; deleting one triggers a rescan.
+@@ -31,7 +32,7 @@
+ const literal=/^(FencedCode|CodeBlock|InlineCode|MathBlock|MathFence|InlineMath|MermaidFence|Escape|Image|Autolink|URL|HTMLBlock|CommentBlock|ProcessingInstructionBlock)$/;
+ const containers=/^(Document|BulletList|OrderedList|ListItem|Blockquote)$/;
+ export function extraRanges(state:EditorState):Extras{
+- const tree=syntaxTree(state),cached=cache.get(state);if(cached?.tree===tree)return cached.ranges;
++ const tree=syntaxTree(state),cached=cache.get(state.doc);if(cached?.tree===tree)return cached.ranges;
+  const result:Extras={callouts:[],details:[],references:[],definitions:new Map(),labels:new Set()};
+  const present=state.field(extraMarkers,false);
+  if(present===undefined?markers.test(state.doc.toString()):present){
+@@ -82,7 +83,7 @@
+    }else result.references.push({from,to,label});
+   }
+  }
+- result.details.sort((a,b)=>a.from-b.from);cache.set(state,{tree,ranges:result});return result;
++ result.details.sort((a,b)=>a.from-b.from);cache.set(state.doc,{tree,ranges:result});return result;
+ }
+ export function insertFootnote(state:EditorState,reference?:(ref:string)=>TransactionSpec):TransactionSpec{
+  let n=1;const labels=extraRanges(state).labels;while(labels.has(String(n)))n++;
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -354,8 +354,9 @@
+ function scheduleOutline(immediate=false){
+  clearTimeout(outlineTimer);if(compositionActive||!view)return;
+  const update=()=>{
+-  outlineHeadings=headings(view.state).filter(h=>h.level<=3);
+-  const list=$('#right-outline .outline-list');list.replaceChildren();
++  const next=headings(view.state).filter(h=>h.level<=3),same=next.length===outlineHeadings.length&&next.every((h,i)=>h.slug===outlineHeadings[i].slug&&h.text===outlineHeadings[i].text&&h.level===outlineHeadings[i].level);
++  outlineHeadings=next;
++  const list=$('#right-outline .outline-list');if(same&&list.childElementCount){scheduleOutlineLayout();return}list.replaceChildren();
+   for(const h of outlineHeadings){const b=node('button','outline-item',h.text);b.dataset.slug=h.slug;b.style.paddingLeft=(10+(h.level-1)*12)+'px';b.onclick=()=>{closeOutlinePopover();jumpToHeading(h.slug)};list.append(b)}
+   if(!outlineHeadings.length)list.append(node('p','dialog-note',messages.fAddAHeadingToSeeTheOutlineHere()));
+   scheduleOutlineLayout();
+--- a/src/math.ts
++++ b/src/math.ts
+@@ -95,7 +95,7 @@
+   const error=/class="katex-error"[^>]*title="([^"]*)"/.exec(html);
+   result=error?{html:escapeHTML(source),error:error[1].replace(/&quot;/g,'"').replace(/&#x27;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')}:html.includes('color:'+errorColor)||html.includes('mathcolor="'+errorColor+'"')?{html:escapeHTML(source),error:'unsupported'}:{html};
+  }catch(error){result={html:escapeHTML(source),error:error instanceof Error?error.message:String(error)}}
+- cache.set(key,result);if(cache.size>128)cache.delete(cache.keys().next().value!);return result;
++ cache.set(key,result);if(cache.size>1024)cache.delete(cache.keys().next().value!);return result;
+ }
+ export function fillMath(element:HTMLElement,source:string,display:boolean,output?:MathOutput){
+  const result=renderMath(source,display,output);element.innerHTML=result.html;element.classList.add(display?'math-display':'math-inline');

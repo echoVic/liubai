@@ -1,0 +1,72 @@
+goos: darwin
+goarch: arm64
+pkg: liubai
+cpu: Apple M2 Pro
+BenchmarkIdlePoll-12            	      20	      1390 ns/op
+BenchmarkIdlePoll-12            	      20	      1475 ns/op
+BenchmarkIdlePoll-12            	      20	      1854 ns/op
+BenchmarkRecentList-12          	      20	    687415 ns/op
+BenchmarkRecentList-12          	      20	   1312365 ns/op
+BenchmarkRecentList-12          	      20	   1185302 ns/op
+BenchmarkStartup300Drafts-12    	      20	 422705967 ns/op
+BenchmarkStartup300Drafts-12    	      20	 406894119 ns/op
+BenchmarkStartup300Drafts-12    	      20	 569342596 ns/op
+BenchmarkSaveSmallDraft-12      	      20	  10866283 ns/op
+BenchmarkSaveSmallDraft-12      	      20	  11375058 ns/op
+BenchmarkSaveSmallDraft-12      	      20	  12448621 ns/op
+BenchmarkSaveFile2MB-12         	      20	  67635431 ns/op
+BenchmarkSaveFile2MB-12         	      20	  68648242 ns/op
+BenchmarkSaveFile2MB-12         	      20	  66263698 ns/op
+BenchmarkCursorMove2MB-12       	      20	   2926733 ns/op
+BenchmarkCursorMove2MB-12       	      20	   3011110 ns/op
+BenchmarkCursorMove2MB-12       	      20	   2806692 ns/op
+PASS
+ok  	liubai	50.162s
+goos: darwin
+goarch: arm64
+pkg: liubai
+cpu: Apple M2 Pro
+BenchmarkIdlePoll-12            	      20	      6988 ns/op
+BenchmarkIdlePoll-12            	      20	      4512 ns/op
+BenchmarkIdlePoll-12            	      20	      1579 ns/op
+BenchmarkRecentList-12          	      20	    534342 ns/op
+BenchmarkRecentList-12          	      20	    511898 ns/op
+BenchmarkRecentList-12          	      20	    535473 ns/op
+BenchmarkStartup300Drafts-12    	      20	 403012092 ns/op
+BenchmarkStartup300Drafts-12    	      20	 418174556 ns/op
+BenchmarkStartup300Drafts-12    	      20	 380556744 ns/op
+BenchmarkSaveSmallDraft-12      	      20	  10074869 ns/op
+BenchmarkSaveSmallDraft-12      	      20	  10196033 ns/op
+BenchmarkSaveSmallDraft-12      	      20	   6943244 ns/op
+BenchmarkSaveFile2MB-12         	      20	  66049783 ns/op
+BenchmarkSaveFile2MB-12         	      20	  67147838 ns/op
+BenchmarkSaveFile2MB-12         	      20	  66680262 ns/op
+BenchmarkCursorMove2MB-12       	      20	   3621835 ns/op
+BenchmarkCursorMove2MB-12       	      20	   2954479 ns/op
+BenchmarkCursorMove2MB-12       	      20	   3711844 ns/op
+PASS
+ok  	liubai	46.076s
+goos: darwin
+goarch: arm64
+pkg: liubai
+cpu: Apple M2 Pro
+BenchmarkIdlePoll-12            	      20	      3927 ns/op
+BenchmarkIdlePoll-12            	      20	      2138 ns/op
+BenchmarkIdlePoll-12            	      20	      5429 ns/op
+BenchmarkRecentList-12          	      20	    498029 ns/op
+BenchmarkRecentList-12          	      20	    984477 ns/op
+BenchmarkRecentList-12          	      20	    546412 ns/op
+BenchmarkStartup300Drafts-12    	      20	 331301248 ns/op
+BenchmarkStartup300Drafts-12    	      20	 358797521 ns/op
+BenchmarkStartup300Drafts-12    	      20	 404328792 ns/op
+BenchmarkSaveSmallDraft-12      	      20	   8380625 ns/op
+BenchmarkSaveSmallDraft-12      	      20	   9307971 ns/op
+BenchmarkSaveSmallDraft-12      	      20	   8415108 ns/op
+BenchmarkSaveFile2MB-12         	      20	  64925348 ns/op
+BenchmarkSaveFile2MB-12         	      20	  73101669 ns/op
+BenchmarkSaveFile2MB-12         	      20	  66294854 ns/op
+BenchmarkCursorMove2MB-12       	      20	   4599785 ns/op
+BenchmarkCursorMove2MB-12       	      20	   4562723 ns/op
+BenchmarkCursorMove2MB-12       	      20	   3192971 ns/op
+PASS
+ok  	liubai	46.030s

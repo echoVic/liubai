@@ -168,8 +168,27 @@ def run(page):
     print('PASS: lazy Mermaid, editor/reader SVG, caret/error/theme, stable prose layout, toolbar/slash/insert/undo, inline exports/unique ids, sanitizer/CSP and English')
 
 
+def first_frame(browser):
+    """A diagram on the first screen loads Mermaid only after the text around it has rendered."""
+    page = browser.new_page(locale='zh-CN', viewport={'width': 1120, 'height': 820})
+    page.add_init_script("(()=>{const look=()=>{if(document.querySelector('.cm-content .cm-line')){window.__textFrame=performance.now();return}requestAnimationFrame(look)};requestAnimationFrame(look)})()")
+    api = lambda method, *args: page.request.post(BASE + '/api', data={'method': method, 'args': list(args)}, headers={'Origin': BASE}).json()
+    current, text = api('State')['value']['current'], TEMPLATE + '\n\n正文。\n\n尾文'
+    assert not api('Update', {'id': current['id'], 'revision': current['revision'], 'content': text, 'position': {'anchor': len(text), 'head': len(text), 'scroll': 0, 'source': False}}).get('error')
+    page.goto(BASE)
+    expect(page.locator('.cm-content .rendered-mermaid svg')).to_be_visible()
+    frame, runtime = page.evaluate("[window.__textFrame, performance.getEntriesByType('resource').find(e => /mermaid-runtime-/.test(e.name))?.startTime]")
+    assert frame is not None and runtime is not None and runtime > frame, ('Mermaid loaded before the text rendered', frame, runtime)
+    # The checks below start from an empty document, as on a fresh server.
+    page.goto('about:blank')
+    current = api('State')['value']['current']
+    assert not api('Update', {'id': current['id'], 'revision': current['revision'], 'content': '', 'position': {'anchor': 0, 'head': 0, 'scroll': 0, 'source': False}}).get('error')
+    page.close()
+
+
 with sync_playwright() as playwright:
     browser = playwright.chromium.launch(headless=True, channel=os.environ.get('PLAYWRIGHT_CHANNEL', 'chrome'))
+    first_frame(browser)
     page = browser.new_page(locale='zh-CN', viewport={'width': 1120, 'height': 820})
     page.set_default_timeout(15000)
     errors = []

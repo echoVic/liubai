@@ -53,8 +53,11 @@ export function createMermaidRenderer(load:()=>Promise<MermaidAPI>):MermaidRende
   queue=result.then(()=>{});cache.set(key,result);if(cache.size>128)cache.delete(cache.keys().next().value!);return result;
  };
 }
+// Loading and evaluating Mermaid holds up the page for a moment, so it waits until the text around the first diagram
+// has rendered. A hidden page renders no frames and waits at most 200 ms.
+const painted=()=>new Promise<void>(resolve=>{if(typeof requestAnimationFrame!=='function')return resolve();requestAnimationFrame(()=>setTimeout(resolve,0));setTimeout(resolve,200)});
 // This is the only runtime import of Mermaid. A plain document never evaluates it.
-export const renderMermaid=createMermaidRenderer(async()=>(await import('./mermaid-runtime')).default);
+export const renderMermaid=createMermaidRenderer(async()=>{await painted();return (await import('./mermaid-runtime')).default});
 export function mermaidTheme():MermaidTheme{
  const value=typeof document==='undefined'?'paper':document.documentElement.dataset.liubaiTheme;
  return themes.find(t=>t.id===value)?.id||'paper';

@@ -29,6 +29,8 @@ await build({entryPoints:['src/capture.css'],bundle:true,outfile:'web/capture.cs
 await copyFile('src/capture.html','web/capture.html');
 await copyFile('src/index.html','web/index.html');
 await build({entryPoints:['src/boot.ts'],bundle:true,format:'iife',target:['safari16','chrome110'],outfile:'web/boot.js',minify:true});
+// A classic worker script, which every WebView here can start.
+await build({entryPoints:['src/stats-worker.ts'],bundle:true,format:'iife',target:['safari16','chrome110'],outfile:'web/stats-worker.js',minify:true});
 await writeFile('web/app.js',(await readFile('web/app.js','utf8')).replace(/[ \t]+$/gm,''));
 // Keep the prior chunk available until the new app bundle has been written.
 for(const name of await readdir('web'))if(/^(mermaid-runtime|docx-export)-[a-f0-9]+\.js$/.test(name)&&name!==chunk&&name!==docxChunk)await rm('web/'+name);

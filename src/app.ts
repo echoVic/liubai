@@ -8,7 +8,7 @@ import {focusedImageRange} from './image-ui';
 import {imageRanges} from './images';
 import {leaveBlock} from './block-navigation';
 import {filterSlashItems,insertToolbarItem,type SlashItemID,openSlashMenu} from './slash';
-import {Transaction,Compartment,StateEffect} from '@codemirror/state';
+import {Transaction,Compartment,StateEffect,type Text} from '@codemirror/state';
 import {blockFormat,setHeading,headingLevel,inlineMarkers,clearFormatting,inList,indentList,wrapSelection,insertMath,codeBlock,linkAt,makeLink,safeLink,localDocumentLink,insertTable,headings,type BlockKind} from './editing';
 import {isolateHistory} from '@codemirror/commands';
 import {ensureSyntaxTree,syntaxTree} from '@codemirror/language';
@@ -75,7 +75,27 @@ function updateHeading(){
  const level=headingLevel(view.state);$('#heading-label').textContent=level?messages.fHeading(level):messages.fBody();
  $$('#heading-menu [data-menu-action]').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.menuAction===(level?'h'+level:'paragraph'))));
 }
-function scheduleWordCount(immediate=false){clearTimeout(wordCountTimer);const update=()=>{$('#word-count').textContent=messages.fWordCount(countWords(view.state.doc.toString()))};if(immediate)update();else wordCountTimer=setTimeout(update,400)}
+// A worker counts; the page counts itself only where no worker runs. The last count is kept with its text, so a language change relabels it at once.
+let wordJob=0,wordWorker:Worker|null|undefined,counted:{doc:Text;count:number}|null=null;const wordAsked=new Map<number,Text>();
+function showWords(count:number){$('#word-count').textContent=messages.fWordCount(count)}
+function wordCounter(){
+ if(wordWorker===undefined)try{
+  wordWorker=new Worker('stats-worker.js');
+  wordWorker.onmessage=(event:MessageEvent<{job:number;count:number}>)=>{const doc=wordAsked.get(event.data.job);wordAsked.delete(event.data.job);if(doc&&event.data.job===wordJob){counted={doc,count:event.data.count};showWords(event.data.count)}};
+  wordWorker.onerror=()=>{wordWorker?.terminate();wordWorker=null;wordAsked.clear();scheduleWordCount(true)};
+ }catch{wordWorker=null}
+ return wordWorker;
+}
+function scheduleWordCount(immediate=false){
+ clearTimeout(wordCountTimer);
+ const update=()=>{
+  const doc=view.state.doc,job=++wordJob,worker=wordCounter();
+  if(counted?.doc===doc)showWords(counted.count);
+  else if(worker){wordAsked.set(job,doc);worker.postMessage({job,text:doc.toString()})}
+  else{counted={doc,count:countWords(doc.toString())};showWords(counted.count)}
+ };
+ if(immediate)update();else wordCountTimer=setTimeout(update,400);
+}
 let pendingSent=false;function syncPending(){const pending=dirty||compositionActive||busy||!!saveFlight;if(pending===pendingSent||!desktop)return;pendingSent=pending;void call('SetPending',pending).catch(()=>{pendingSent=!pending})}
 function changed(content=true){if(loading||!doc)return;updateHeading();if(content){dirty=true;generation++;header();scheduleWordCount()}preview.changed(content,view.state.doc.lineAt(view.state.selection.main.head).number-1);if(content)scheduleOutline();else scheduleOutlineLayout();clearTimeout(timer);if(!compositionActive)timer=setTimeout(()=>void save(),content?450:800);syncPending()}
 function composition(active:boolean){compositionActive=active;if(!active&&localePending){localePending=false;refreshLanguage()}preview.composition(active);if(active)clearTimeout(outlineTimer);else scheduleOutline();clearTimeout(timer);if(!active){timer=setTimeout(()=>void save(),800);if(pendingClose){pendingClose=false;void closeApp()}else void processOpened()}syncPending()}

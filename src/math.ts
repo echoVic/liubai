@@ -84,6 +84,7 @@ export const mathPlugin:PluginSimple=md=>{
 export type MathOutput='htmlAndMathml'|'mathml';
 export interface MathResult {html:string;error?:string}
 const errorColor='liubai-math-error-'+Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-');
+// Least recently used, sized for every formula of a long document: split preview renders all of them again after each pause.
 const cache=new Map<string,MathResult>(),escapeHTML=(s:string)=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 export const mathRenderStats={calls:0,hits:0};
 export function renderMath(source:string,display:boolean,output:MathOutput='htmlAndMathml'):MathResult{
@@ -95,7 +96,7 @@ export function renderMath(source:string,display:boolean,output:MathOutput='html
   const error=/class="katex-error"[^>]*title="([^"]*)"/.exec(html);
   result=error?{html:escapeHTML(source),error:error[1].replace(/&quot;/g,'"').replace(/&#x27;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')}:html.includes('color:'+errorColor)||html.includes('mathcolor="'+errorColor+'"')?{html:escapeHTML(source),error:'unsupported'}:{html};
  }catch(error){result={html:escapeHTML(source),error:error instanceof Error?error.message:String(error)}}
- cache.set(key,result);if(cache.size>128)cache.delete(cache.keys().next().value!);return result;
+ cache.set(key,result);if(cache.size>1024)cache.delete(cache.keys().next().value!);return result;
 }
 export function fillMath(element:HTMLElement,source:string,display:boolean,output?:MathOutput){
  const result=renderMath(source,display,output);element.innerHTML=result.html;element.classList.add(display?'math-display':'math-inline');

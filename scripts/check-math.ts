@@ -70,7 +70,7 @@ const native=renderMath('x^2',false,'mathml');assert.match(native.html,/<math /)
 const bad=renderMath('\\notARealCommand',false);assert.ok(bad.error);assert.equal(bad.html,'\\notARealCommand');
 const untrusted=renderMath('\\href{javascript:alert(1)}{x}',false);assert.ok(!untrusted.html.includes('href='),'untrusted commands cannot make links');assert.ok(untrusted.error,'untrusted commands show source and a diagnostic');assert.equal(untrusted.html,'\\href{javascript:alert(1)}{x}');
 assert.ok(!renderMath('\\htmlStyle{color:red}{x}',false).html.includes('style="color:red'),'trust stays off');
-for(let i=0;i<140;i++)renderMath('x+'+i,false);
+for(let i=0;i<1100;i++)renderMath('x+'+i,false);
 assert.notEqual(renderMath('x^2',false),first,'bounded LRU evicts old results');
 const hot=renderMath('hot',false);for(let i=0;i<140;i++){renderMath('y+'+i,false);renderMath('hot',false)}assert.equal(renderMath('hot',false),hot,'cache hits refresh recency');
 
@@ -110,5 +110,14 @@ for(const change of [{from:1,insert:'续'},{from:0,to:1,insert:'$new$'},{from:0,
  const freshField=createBlockField(async()=>''),fresh=create(s.doc.toString(),s.selection.main.head,s.selection.main.head,freshField);
  const simple=(s:EditorState,f:typeof field)=>widgets(s,f).map(w=>({from:w.from,to:w.to,source:w.widget.source,widgetFrom:w.widget.from}));
  assert.deepEqual(simple(s,field),simple(fresh,freshField),'prose mapping agrees with rebuild');
+}
+// Split preview renders the whole document again after every pause. Each of a few hundred different formulas
+// must come from the cache the second time instead of being typeset again.
+{
+ const sources=Array.from({length:300},(_,i)=>`\\int_0^{${i}} x^{2}\\,dx`);
+ for(const source of sources)renderMath(source,true);
+ const calls=mathRenderStats.calls;
+ for(const source of sources)renderMath(source,true);
+ assert.equal(mathRenderStats.calls,calls,'a second render of 300 different formulas typesets none of them again');
 }
 console.log(`PASS: ${cases.length} shared math cases, safe cached KaTeX/MathML/errors, commands/undo/slash and caret/IME/viewport/mapped decorations`);

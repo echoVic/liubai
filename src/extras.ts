@@ -1,4 +1,4 @@
-import {EditorState,StateField,type TransactionSpec} from '@codemirror/state';
+import {EditorState,StateField,type ChangeDesc,type Text,type TransactionSpec} from '@codemirror/state';
 import {Decoration,EditorView,type DecorationSet} from '@codemirror/view';
 import {isolateHistory} from '@codemirror/commands';
 import {syntaxTree,codeFolding,foldedRanges,unfoldEffect,foldService} from '@codemirror/language';
@@ -11,7 +11,8 @@ export interface DetailsRange {from:number;to:number;summary:number;start:number
 export interface FootnoteRange {from:number;to:number;label:string}
 export interface FootnoteDefinition extends FootnoteRange {textFrom:number;text:string}
 interface Extras {callouts:CalloutRange[];details:DetailsRange[];references:FootnoteRange[];definitions:Map<string,FootnoteDefinition>;labels:Set<string>}
-const cache=new WeakMap<EditorState,{tree:Tree;ranges:Extras}>();
+// Keyed by the text, which a caret move keeps along with the tree.
+const cache=new WeakMap<Text,{tree:Tree;ranges:Extras}>();
 const markers=/\[!|\[\^|<details/i;
 // Whether the document may contain a callout, footnote or details marker, kept per change instead of rescanning every keystroke.
 // Markers are at most 8 characters, so a margin around each change sees any marker it created; deleting one triggers a rescan.
@@ -31,7 +32,7 @@ export const extraMarkers=StateField.define<boolean>({
 const literal=/^(FencedCode|CodeBlock|InlineCode|MathBlock|MathFence|InlineMath|MermaidFence|Escape|Image|Autolink|URL|HTMLBlock|CommentBlock|ProcessingInstructionBlock)$/;
 const containers=/^(Document|BulletList|OrderedList|ListItem|Blockquote)$/;
 export function extraRanges(state:EditorState):Extras{
- const tree=syntaxTree(state),cached=cache.get(state);if(cached?.tree===tree)return cached.ranges;
+ const tree=syntaxTree(state),cached=cache.get(state.doc);if(cached?.tree===tree)return cached.ranges;
  const result:Extras={callouts:[],details:[],references:[],definitions:new Map(),labels:new Set()};
  const present=state.field(extraMarkers,false);
  if(present===undefined?markers.test(state.doc.toString()):present){
@@ -82,7 +83,32 @@ export function extraRanges(state:EditorState):Extras{
    }else result.references.push({from,to,label});
   }
  }
- result.details.sort((a,b)=>a.from-b.from);cache.set(state,{tree,ranges:result});return result;
+ result.details.sort((a,b)=>a.from-b.from);cache.set(state.doc,{tree,ranges:result});return result;
+}
+// A line with any of these can hold, open or close a callout, details block, footnote, code or math; indentation can
+// continue a footnote or make code.
+const unsafeLine=/[\[\]<>`$~\\]|^[ \t]/;
+// For an edit inside one paragraph (see proseEdit in editor.ts) on lines without such characters, outside front matter:
+// it cannot add, remove or change a callout, details block or footnote, only shift them. (Footnote definitions only span
+// lines with "[" or indentation, and blank lines.) Map the ranges collected for the previous text instead of scanning
+// the whole document again.
+export function mapExtraRanges(before:EditorState,after:EditorState,changes:ChangeDesc){
+ const cached=cache.get(before.doc);if(!cached||cached.tree!==syntaxTree(before))return false;
+ const {ranges}=cached,metaBefore=frontMatterRange(before),metaAfter=frontMatterRange(after);let safe=true;
+ changes.iterChangedRanges((fromA,toA,fromB,toB)=>{
+  const a=before.doc.lineAt(fromA),b=after.doc.lineAt(fromB);
+  if(a.to<toA||b.to<toB||unsafeLine.test(a.text)||unsafeLine.test(b.text)||metaBefore&&fromA<=metaBefore.to||metaAfter&&fromB<=metaAfter.to)safe=false;
+ });
+ if(!safe)return false;
+ const map=(pos:number,assoc:-1|1)=>changes.mapPos(pos,assoc),definitions=new Map<string,FootnoteDefinition>();
+ for(const [label,d] of ranges.definitions)definitions.set(label,{...d,from:map(d.from,-1),to:map(d.to,1),textFrom:map(d.textFrom,-1)});
+ cache.set(after.doc,{tree:syntaxTree(after),ranges:{
+  callouts:ranges.callouts.map(c=>({...c,from:map(c.from,-1),to:map(c.to,1),markerFrom:map(c.markerFrom,-1),markerTo:map(c.markerTo,1)})),
+  details:ranges.details.map(d=>({...d,from:map(d.from,-1),to:map(d.to,1),summary:map(d.summary,-1),start:map(d.start,-1)})),
+  references:ranges.references.map(r=>({...r,from:map(r.from,-1),to:map(r.to,1)})),
+  definitions,labels:ranges.labels,
+ }});
+ return true;
 }
 export function insertFootnote(state:EditorState,reference?:(ref:string)=>TransactionSpec):TransactionSpec{
  let n=1;const labels=extraRanges(state).labels;while(labels.has(String(n)))n++;

@@ -6,7 +6,7 @@ import {GFM} from '@lezer/markdown';
 import {Highlight} from '../src/marks';
 import {MathSyntax} from '../src/math';
 import {MermaidSyntax} from '../src/mermaid';
-import {createBlockField,inlineDecorations,composing} from '../src/editor';
+import {createBlockField,inlineDecorations,composing,richExtensions} from '../src/editor';
 
 const block='这是一段普通的中文正文，用来模拟长篇写作。偶尔会有**加粗**、一个[链接](https://example.com/a)和`代码`。\n\n'
  +'另一段没有任何格式的正文内容，写作者在这里连续地输入文字，句子很长很长。\n\n'.repeat(3)
@@ -31,5 +31,26 @@ for(const [size,budget] of [[100_000,5],[300_000,15]] as const){
  const inline=best(5,()=>{const t=performance.now();for(let i=0;i<N;i++)inlineDecorations(state,[{from,to}]);return (performance.now()-t)/N});
  console.log(`${size/10000} 万字：每键块级更新 ${keystroke.toFixed(2)} ms，可视区行内装饰 ${inline.toFixed(2)} ms`);
  assert.ok(keystroke+inline<budget,`${size/10000} 万字超过 ${budget} ms 预算`);
+}
+// Notes that use math, diagrams, callouts, footnotes and details: a caret move in a long one stays cheap,
+// since nothing it changes needs the whole document collected again.
+{
+ const {rich}=await import('./bench/documents.mjs');
+ let state=EditorState.create({doc:rich(300_000),extensions:[markdown({base:markdownLanguage,extensions:[GFM,Highlight,MathSyntax,MermaidSyntax]}),composing,richExtensions(async()=>'data:,')]});
+ ensureSyntaxTree(state,state.doc.length,60_000);state=state.update({}).state;
+ const middle=Math.floor(state.doc.length/2),from=middle-3000,to=middle+3000,N=20;
+ // As above: a batch whose parse ran out of budget is parsed in full and measured again.
+ const measure=(step:(i:number)=>void)=>best(5,()=>{for(let tries=1;;tries++){const t=performance.now();for(let i=0;i<N;i++){step(i);inlineDecorations(state,[{from,to}])}const ms=(performance.now()-t)/N;if(syntaxTree(state).length===state.doc.length)return ms;assert.ok(tries<10,'parsing keeps running out of budget');ensureSyntaxTree(state,state.doc.length,60_000);state=state.update({}).state}});
+ const cursor=measure(i=>{state=state.update({selection:{anchor:middle+(i%2?40:-40)}}).state});
+ // Typing in its prose only shifts its callouts, details and footnotes, which are mapped rather than collected again.
+ let line=state.doc.lineAt(middle);while(!line.text.startsWith('另一段'))line=state.doc.line(line.number+1);let at=line.from+10;
+ const keystroke=measure(()=>{state=state.update({changes:{from:at,insert:'字'},selection:{anchor:at+1}}).state;at++});
+ // Most writing happens at the end of a paragraph, which takes the same path.
+ let end=state.doc.lineAt(at).to;
+ const atEnd=measure(()=>{state=state.update({changes:{from:end,insert:'字'},selection:{anchor:end+1}}).state;end++});
+ console.log(`30 万字富文稿：移动光标 ${cursor.toFixed(2)} ms，输入一个字 ${keystroke.toFixed(2)} ms，段落末尾输入 ${atEnd.toFixed(2)} ms`);
+ assert.ok(cursor<8,'30 万字富文稿移动光标超过 8 ms 预算');
+ assert.ok(keystroke<10,'30 万字富文稿输入一个字超过 10 ms 预算');
+ assert.ok(atEnd<10,'30 万字富文稿在段落末尾输入超过 10 ms 预算');
 }
 console.log('即时排版性能预算检查通过');

@@ -1,7 +1,7 @@
 import MarkdownIt from 'markdown-it';
 import {mermaidSource} from './mermaid';
 import type Token from 'markdown-it/lib/token.mjs';
-import {EditorState,type ChangeDesc,type TransactionSpec} from '@codemirror/state';
+import {EditorState,type ChangeDesc,type Text,type TransactionSpec} from '@codemirror/state';
 import {isolateHistory} from '@codemirror/commands';
 import {syntaxTree} from '@codemirror/language';
 import type {Tree} from '@lezer/common';
@@ -57,9 +57,10 @@ export function serializeImage(image:ImageModel):string{
  const img='<img src="'+escapeHTML(src)+'" alt="'+escapeHTML(alt)+'"'+(title!==undefined?' title="'+escapeHTML(title)+'"':'')+(width!==undefined?' width="'+Math.round(width)+'"':'')+(height!==undefined?' height="'+height+'"':'')+'>';
  return align==='left'?img:'<p align="'+align+'">'+img+'</p>';
 }
-const ranges=new WeakMap<EditorState,{tree:Tree;images:ImageRange[];tables:{from:number;to:number}[];math:MathRange[];mermaid:MathRange[]}>();
+// Keyed by the text, which a caret move keeps along with the tree.
+const ranges=new WeakMap<Text,{tree:Tree;images:ImageRange[];tables:{from:number;to:number}[];math:MathRange[];mermaid:MathRange[]}>();
 export function imageRanges(state:EditorState):ImageRange[]{
- const tree=syntaxTree(state),cached=ranges.get(state);if(cached?.tree===tree)return cached.images;
+ const tree=syntaxTree(state),cached=ranges.get(state.doc);if(cached?.tree===tree)return cached.images;
  const out:ImageRange[]=[],tables:{from:number;to:number}[]=[],math:MathRange[]=[],mermaid:MathRange[]=[];
  // Images, tables, display math and diagrams share one tree walk; ordinary prose never goes through the image parser.
  tree.iterate({enter:n=>{
@@ -83,18 +84,18 @@ export function imageRanges(state:EditorState):ImageRange[]{
    out.push({from:start+prefix.length,to:line.to-(text.length-prefix.length-raw.length),raw,image,quotes,listEms});
   }
   return false;
- }});ranges.set(state,{tree,images:out,tables,math,mermaid});return out;
+ }});ranges.set(state.doc,{tree,images:out,tables,math,mermaid});return out;
 }
 // Called only when an edit is confined to unchanged prose syntax; all widget source remains byte-identical.
 export function mapImageRanges(before:EditorState,after:EditorState,changes:ChangeDesc){
- const cached=ranges.get(before);if(!cached||cached.tree!==syntaxTree(before))return false;
+ const cached=ranges.get(before.doc);if(!cached||cached.tree!==syntaxTree(before))return false;
  const map=(range:{from:number;to:number})=>({from:changes.mapPos(range.from,1),to:changes.mapPos(range.to,-1)});
- ranges.set(after,{tree:syntaxTree(after),images:cached.images.map(image=>({...image,...map(image)})),tables:cached.tables.map(map),math:cached.math.map(formula=>({...formula,...map(formula)})),mermaid:cached.mermaid.map(diagram=>({...diagram,...map(diagram)}))});return true;
+ ranges.set(after.doc,{tree:syntaxTree(after),images:cached.images.map(image=>({...image,...map(image)})),tables:cached.tables.map(map),math:cached.math.map(formula=>({...formula,...map(formula)})),mermaid:cached.mermaid.map(diagram=>({...diagram,...map(diagram)}))});return true;
 }
 export function clampImageWidth(width:number,column:number){const max=Math.max(1,Math.floor(column));return Math.min(max,Math.max(Math.min(48,max),Math.round(width)))}
-export function mermaidRanges(state:EditorState){imageRanges(state);return ranges.get(state)!.mermaid}
-export function mathRanges(state:EditorState){imageRanges(state);return ranges.get(state)!.math}
-export function tableRanges(state:EditorState){imageRanges(state);return ranges.get(state)!.tables}
+export function mermaidRanges(state:EditorState){imageRanges(state);return ranges.get(state.doc)!.mermaid}
+export function mathRanges(state:EditorState){imageRanges(state);return ranges.get(state.doc)!.math}
+export function tableRanges(state:EditorState){imageRanges(state);return ranges.get(state.doc)!.tables}
 function deleteImage(state:EditorState,range:{from:number;to:number}):TransactionSpec{
  const doc=state.doc,line=doc.lineAt(range.from),block=blockAt(state,range.from);
  if(!block||block.from===line.from&&block.to===line.to)return deleteBlocks(state,range);

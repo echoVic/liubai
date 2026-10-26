@@ -84,6 +84,8 @@ for(const [container,quotes,listEms] of [['> ',1,0],['- ',0,1.7],['> - ',1,1.7],
 // Prose edits map cached widgets, including their action ranges; structural edits must rebuild the index.
 for(const change of [
  {from:1,insert:'续'},
+ // At a paragraph's end, where most typing happens: the first and the last paragraph, and a deletion.
+ {from:2,insert:'续'},{from:35,insert:'续'},{from:1,to:2,insert:''},
  {from:0,to:2,insert:'![新](new.png)'},
  {from:0,to:2,insert:'<img src="new.png" alt="新">'},
  {from:0,to:2,insert:'```'},
@@ -97,4 +99,12 @@ for(const change of [
  const expected:{from:number;to:number;raw:string;widgetFrom:number}[]=[];reference.field(fresh).between(0,reference.doc.length,(from,to,value)=>{const widget=value.spec.widget;if(widget?.constructor.name==='ImageWidget')expected.push({from,to,raw:widget.raw,widgetFrom:widget.from})});
  assert.deepEqual(actual,expected,'cached and fresh widgets agree after prose/structural edits');
 }
-console.log('image selection/history, dimensions, container-scoped deletion/insets and incremental widget ranges passed');
+// Moving the caret keeps the text and the tree: the collected widget ranges are reused, not recollected by walking the whole document.
+{
+ const state=create('前文\n\n'+forms[0]+'\n\n| 甲 | 乙 |\n| --- | --- |\n| 1 | 2 |\n\n后文'),found=images.imageRanges(state),tables=images.tableRanges(state);
+ const moved=state.update({selection:{anchor:1}}).state;
+ assert.equal(images.imageRanges(moved),found,'a caret move reuses the image ranges');assert.equal(images.tableRanges(moved),tables,'a caret move reuses the table ranges');
+ const edited=moved.update({changes:{from:0,insert:'新'}}).state;
+ assert.notEqual(images.imageRanges(edited),found,'an edit collects again');assert.equal(images.imageRanges(edited)[0].from,found[0].from+1);
+}
+console.log('image selection/history, dimensions, container-scoped deletion/insets, incremental widget ranges and caret-move reuse passed');

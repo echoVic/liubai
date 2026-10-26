@@ -20,7 +20,7 @@ import {MathSyntax} from './math';
 import {MathWidget} from './math-ui';
 import {MermaidWidget} from './mermaid-ui';
 import {MermaidSyntax} from './mermaid';
-import {extraRanges,extraMarkers,createDetailsFolding} from './extras';
+import {extraRanges,extraMarkers,createDetailsFolding,mapExtraRanges} from './extras';
 import {CalloutWidget,DetailsWidget,FootnoteWidget,detailsExpanded,footnoteInteractions} from './extras-ui';
 import {indentList,safeLink,localDocumentLink,frontMatterRange} from './editing';
 import {htmlToMarkdown,pasteText,replacePasteImage,type PasteImage} from './paste';
@@ -102,7 +102,8 @@ export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promis
 // Ordinary single-line prose edits cannot change image, table, math or Mermaid widgets. Map their ranges rather than rebuilding every widget in a long document.
 function proseEdit(tr:Transaction){
  if(!tr.docChanged||tr.reconfigured||tr.startState.field(composing)||tr.startState.readOnly!==tr.state.readOnly||tr.startState.field(imageSelection,false)!==tr.state.field(imageSelection,false)||syntaxTree(tr.startState).length!==tr.startState.doc.length||syntaxTree(tr.state).length!==tr.state.doc.length)return false;
- const paragraph=(state:EditorState,pos:number)=>{let node:SyntaxNode|null=syntaxTree(state).resolveInner(pos,1);while(node&&node.name!=='Paragraph')node=node.parent;return node};
+ // A position at a paragraph's end only belongs to it looking left, and that is where most typing happens.
+ const paragraph=(state:EditorState,pos:number)=>{for(const side of [1,-1] as const){let node:SyntaxNode|null=syntaxTree(state).resolveInner(pos,side);while(node&&node.name!=='Paragraph')node=node.parent;if(node)return node}return null};
  let safe=true;const paragraphs:SyntaxNode[]=[];
  tr.changes.iterChanges((from,to,nextFrom,nextTo,inserted)=>{
   if(!safe)return;const before=paragraph(tr.startState,from),after=paragraph(tr.state,nextFrom);
@@ -116,7 +117,8 @@ export function createBlockField(resolve:(dest:string)=>Promise<string>):StateFi
   create:state=>blockDecorations(state,resolve),
   update(value,tr){
    if(tr.state.field(composing))return value.map(tr.changes);
-   if(proseEdit(tr)&&mapImageRanges(tr.startState,tr.state,tr.changes))return blockDecorations(tr.state,resolve);
+   const prose=proseEdit(tr);if(prose)mapExtraRanges(tr.startState,tr.state,tr.changes);
+   if(prose&&mapImageRanges(tr.startState,tr.state,tr.changes))return blockDecorations(tr.state,resolve);
    if(!tr.docChanged&&!tr.selection&&tr.startState.field(imageSelection,false)===tr.state.field(imageSelection,false)&&tr.startState.readOnly===tr.state.readOnly&&!tr.startState.field(composing)&&syntaxTree(tr.startState)===syntaxTree(tr.state))return value;
    return blockDecorations(tr.state,resolve);
   },

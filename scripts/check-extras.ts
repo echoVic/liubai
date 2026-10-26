@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {EditorState,Compartment} from '@codemirror/state';
 import {history,undo} from '@codemirror/commands';
 import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
-import {foldEffect,foldedRanges} from '@codemirror/language';
+import {foldEffect,foldedRanges,ensureSyntaxTree} from '@codemirror/language';
 import {GFM} from '@lezer/markdown';
 import {composing,setComposing,inlineDecorations,createBlockField,EditorView} from '../src/editor';
 import {applySlashItem,insertToolbarItem,filterSlashItems} from '../src/slash';
@@ -15,6 +15,13 @@ for(const [doc,types] of [
  ['> [!WARNING]\n> text',['warning']],['> > [!CAUTION]\n> > text',['caution']],
  ['> ordinary\n> [!NOTE]',[]],['> [!OTHER]',[]],['> [!NOTE]oops',[]],['```\n> [!NOTE]\n```',[]],
 ] as [string,string[]][])assert.deepEqual(extraRanges(create(doc)).callouts.map(c=>c.kind),types,doc);
+// Moving the caret keeps the text and the tree: callouts, details and footnotes are reused, not rescanned over the whole document.
+{
+ const state=create('正文[^1]\n\n> [!NOTE]\n> 提示\n\n[^1]: 脚注',0),found=extraRanges(state);
+ assert.equal(found.references.length,1);assert.equal(found.callouts.length,1);
+ assert.equal(extraRanges(state.update({selection:{anchor:2}}).state),found,'a caret move reuses the collected ranges');
+ assert.notEqual(extraRanges(state.update({changes:{from:0,insert:'新'}}).state),found,'an edit collects again');
+}
 const decorations=(state:EditorState)=>{const out:any[]=[];inlineDecorations(state,[{from:0,to:state.doc.length}]).between(0,state.doc.length,(from,to,d)=>out.push({from,to,...d.spec}));return out};
 let doc='> [!NOTE]\n> body\n\ntail',state=create(doc,doc.length);
 assert.equal(decorations(state).filter(d=>d.class==='md-callout markdown-alert-note').length,2);
@@ -96,8 +103,48 @@ assert.ok(visible.every(d=>d.from>=viewport.from&&d.to<=viewport.to),'callout de
 // Definitions can contain multiple paragraphs, as markdown-it-footnote exports do.
 doc='body[^1]\n\n[^1]: first\n\n    second paragraph\n\ntail';state=create(doc,doc.length);
 assert.equal(extraRanges(state).definitions.get('1')?.text,'first\n\nsecond paragraph');
+// A keystroke in plain prose only shifts callouts, details and footnotes, so their ranges are mapped instead of
+// scanning the whole document again. Whatever an edit does, the result must equal a fresh scan of the new text.
+{
+ const {richExtensions}=await import('../src/editor');const {Highlight}=await import('../src/marks');const {MathSyntax}=await import('../src/math');const {MermaidSyntax}=await import('../src/mermaid');
+ const {rich}=await import('./bench/documents.mjs');
+ const extensions=[markdown({base:markdownLanguage,extensions:[GFM,Highlight,MathSyntax,MermaidSyntax]}),composing,richExtensions(async()=>'')];
+ const parsed=(s:EditorState)=>{ensureSyntaxTree(s,s.doc.length,60_000);return s.update({}).state};
+ const scan=(doc:string)=>extraRanges(parsed(EditorState.create({doc,extensions})));
+ // Prose next to every kind of marker, plus front matter, indented continuations and footnote-like text in code.
+ const text='---\ntitle: 笔记\n---\n\n'+rich(5000)+'\n\n[^9]: 第一行\n\n    缩进的续行\n\n普通的一段正文，后面还有 `[^code]` 和 [^x y] 这样的文字。\n\n> [!TIP]\n> 提示\n\n收尾的一段。\n';
+ let state=parsed(EditorState.create({doc:text,extensions}));
+ // A plain keystroke reuses what the previous scan found.
+ const before=extraRanges(state),at=text.indexOf('收尾的一段')+2,typed=state.update({changes:{from:at,insert:'字'},selection:{anchor:at+1}}).state;
+ assert.equal(extraRanges(typed).labels,before.labels,'a plain keystroke maps the ranges');
+ assert.deepEqual(extraRanges(typed),scan(typed.doc.toString()),'mapped ranges equal a fresh scan');
+ // Typing after the given text: in a callout's lazy line, a details body or a line after a footnote definition only
+ // shifts them. A "..." line closing front matter hides the footnote above it, and an indented line continues the
+ // footnote definition above it, so those edits are scanned again.
+ for(const [doc,after,insert,mapped] of [
+  ['> [!NOTE]\n> 提示\n懒惰的续行\n\n正文',"懒惰的续",'字',true],
+  ['<details>\n<summary>标题</summary>\n\n折叠的正文\n\n</details>\n',"折叠的正",'字',true],
+  ['写到段落末尾\n\n> [!NOTE]\n> 提示',"写到段落末尾",'字',true],
+  ['[^1]: 注\n续写的一行\n\n正文 [^1]\n',"续写的一",'字',true],
+  ['---\n正文 [^1]\n..\n\n[^1]: 注\n',".",'.',false],
+  ['正文\n[^1]: 注\n    缩进的续行\n\n正文 [^1]\n',"缩进的",'字',false],
+ ] as [string,string,string,boolean][]){
+  const start=parsed(EditorState.create({doc,extensions})),found=extraRanges(start),at=doc.indexOf(after)+after.length;
+  const next=parsed(start.update({changes:{from:at,insert},selection:{anchor:at+insert.length}}).state);
+  assert.deepEqual(extraRanges(next),scan(next.doc.toString()),doc);
+  assert.equal(extraRanges(next).labels===found.labels,mapped,(mapped?'maps ':'scans again: ')+doc);
+ }
+ let seed=1;const random=(n:number)=>{seed=(seed*1103515245+12345)%2147483648;return seed%n};
+ const inserts=['字','a',' ','[','[^','^',']','!','<','>','`','$','~','\\','|','    ','\n','x]','[^3]','-','#','*','：'];
+ for(let i=0;i<400;i++){
+  extraRanges(state);
+  const from=random(state.doc.length+1),remove=random(4)===0?Math.min(state.doc.length-from,1+random(3)):0,insert=remove?'':inserts[random(inserts.length)];
+  const next=parsed(state.update({changes:{from,to:from+remove,insert},selection:{anchor:from+insert.length}}).state);
+  assert.deepEqual(extraRanges(next),scan(next.doc.toString()),`edit ${i}: ${JSON.stringify(insert)} at ${from}, removing ${remove}`);
+  state=next;
+ }
+}
 // Bound the actual visible-decoration work on a long document containing thousands of references.
-const {ensureSyntaxTree}=await import('@codemirror/language');
 const long=('word [^named] **bold** text text text text text text text text text text text\n\n').repeat(4000)+'[^named]: note';
 state=create(long,0);ensureSyntaxTree(state,state.doc.length,60_000);state=state.update({}).state;
 let best=Infinity;
@@ -108,4 +155,4 @@ for(let i=0;i<3;i++){
 console.log('Long footnote document visible decorations: '+best.toFixed(2)+' ms');
 assert.ok(best<15,'footnote-heavy visible decorations stay within the unchanged 300k budget');
 
-console.log('PASS: callouts/viewport, details ranges/fold lifecycle, footnote labels/insertion/caret/undo/cells/images/multiline/performance, templates and prose mapping');
+console.log('PASS: callouts/viewport, details ranges/fold lifecycle, footnote labels/insertion/caret/undo/cells/images/multiline/performance, templates, prose mapping and mapped extras');

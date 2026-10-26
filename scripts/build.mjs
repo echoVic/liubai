@@ -19,7 +19,8 @@ const docx=await build({entryPoints:['src/docx-export.ts'],bundle:true,format:'e
 if(/\bnew Function\s*\(|\beval\s*\(/.test(docx.outputFiles[0].text))throw Error('Word chunk contains runtime code generation');
 const docxChunk='docx-export-'+createHash('sha256').update(docx.outputFiles[0].contents).digest('hex').slice(0,12)+'.js';
 await writeFile('web/'+docxChunk,docx.outputFiles[0].contents);
-await build({entryPoints:['src/app.ts','src/capture.ts'],bundle:true,format:'esm',target:['safari16','chrome110'],outdir:'web',minify:true,legalComments:'eof',plugins:[{
+// Code that only some documents need, such as each code block language's grammar, loads on demand from chunks/.
+const app=await build({entryPoints:['src/app.ts','src/capture.ts'],bundle:true,format:'esm',splitting:true,chunkNames:'chunks/[name]-[hash]',target:['safari16','chrome110'],outdir:'web',minify:true,legalComments:'eof',metafile:true,plugins:[{
  name:'lazy-mermaid',setup(builder){builder.onResolve({filter:/^\.\/mermaid-runtime$/},()=>({path:'./'+chunk,external:true}));builder.onResolve({filter:/^\.\/docx-export$/},()=>({path:'./'+docxChunk,external:true}))},
 }]});
 await writeMermaidNotices([...Object.keys(mermaid.metafile.inputs),...Object.keys(docx.metafile.inputs)]);
@@ -31,7 +32,9 @@ await copyFile('src/index.html','web/index.html');
 await build({entryPoints:['src/boot.ts'],bundle:true,format:'iife',target:['safari16','chrome110'],outfile:'web/boot.js',minify:true});
 // A classic worker script, which every WebView here can start.
 await build({entryPoints:['src/stats-worker.ts'],bundle:true,format:'iife',target:['safari16','chrome110'],outfile:'web/stats-worker.js',minify:true});
-await writeFile('web/app.js',(await readFile('web/app.js','utf8')).replace(/[ \t]+$/gm,''));
+const scripts=Object.keys(app.metafile.outputs).filter(name=>name.endsWith('.js'));
+for(const name of scripts)await writeFile(name,(await readFile(name,'utf8')).replace(/[ \t]+$/gm,''));
 // Keep the prior chunk available until the new app bundle has been written.
 for(const name of await readdir('web'))if(/^(mermaid-runtime|docx-export)-[a-f0-9]+\.js$/.test(name)&&name!==chunk&&name!==docxChunk)await rm('web/'+name);
+for(const name of await readdir('web/chunks'))if(!scripts.includes('web/chunks/'+name))await rm('web/chunks/'+name);
 console.log('留白前端已构建；Word chunk '+docxChunk+' ('+docx.outputFiles[0].contents.byteLength+' bytes)');

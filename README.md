@@ -28,6 +28,15 @@ Windows 内测版在同一个 Release 里：大多数电脑下载 `amd64` 安装
 
 常用快捷键：`⌘N` 新建、`⌘O` 打开、`⌘S` 保存、`⌘⇧S` 另存、`⌘K` 所有操作、`⌘F` 查找、`⌘\` 切换分栏、`⌘⇧R` 阅读模式、`⌘⇧M` 显示 Markdown 源码、`⌘/` 块菜单、`⌘L` 编辑链接、`⌘⇧F` 专注模式、`⌘P` 导出 PDF。Windows 上 ⌘ 换成 Ctrl、⇧ 即 Shift；专注模式是 F8，重做是 Ctrl+Y。
 
+## 性能
+
+- **长文也跟手**：结构像小说的文稿（段落几十到几百字），100 万字时输入一个字约 8 毫秒，200 万字约 10–12 毫秒，都在一帧（约 16.7 毫秒）以内。100 万字的文稿打开约 0.1 秒就能看到正文。
+- **格式越密，开销越大**：每两三百字就有一处表格和图片的文稿，20 万字以内输入一个字在一帧以内，30 万字约 20 毫秒。公式、图表和脚注同样密集的笔记，10 万字约 10 毫秒。
+- **不打断写作**：字数统计在后台线程里进行，只排版屏幕上看得见的部分；代码块各语言的语法、Mermaid 图表和 Word 导出，用到时才加载。
+- 单篇文稿最大 8 MB，约 280 万个汉字。
+
+这些数字测自 M2 Pro 上的 WebKit，也就是桌面版的引擎。测法和完整数据见[性能报告](docs/performance/2026-10-24-0.6.3.md)。
+
 ## 文件和数据
 
 - 打开的 `.md` 保存时写回原文件，保留 Finder 标签和创建时间（Windows 上保留文件属性和创建时间）；粘贴的图片放进同目录的 `文稿名.assets/`，用相对路径引用。
@@ -58,14 +67,17 @@ node_modules/.bin/tsc --noEmit
 node scripts/check-i18n.mjs && node scripts/check-editor.mjs
 node scripts/check-themes.mjs                  # 各套主题的对比度门槛与清单
 npx --yes bun@1.4.3 scripts/check-<名称>.ts   # editing、rendering、performance、paste、capture-input、platform、blocks、slash、tables、images、marks、math、mermaid、extras、docx、theme
-scripts/e2e.sh check-<名称>                    # Chrome 中的回归：split-preview、reader、toolbar、capture、english、windows、blocks、tables、images、math、mermaid、extras、docx、themes、outline
+scripts/e2e.sh check-<名称>                    # Chrome 中的回归：split-preview、reader、toolbar、capture、english、windows、blocks、tables、images、math、mermaid、extras、docx、themes、outline、word-count
 scripts/e2e.sh check-blocks-webkit             # 桌面版引擎 WebKit 中的块操作、图片、公式、图表与 Word 转换
 scripts/e2e.sh shoot-themes                    # 每套主题在编辑、分栏、阅读三种视图下的截图，存到 /tmp/liubai-theme-shots/
 python3 scripts/check-preview.py               # 渲染与导出
 python3 scripts/check-pdf.py                   # PDF 的 A4 分页与标题位置
+ROUNDS=3 scripts/bench/run.sh <基准版本>       # 与某个版本对比性能：编辑器、预览、存储和 WebKit 端到端，结果写入 docs/performance/raw/<日期>/
 ```
 
 `scripts/e2e.sh` 每次编译程序，用新的数据目录启动网页服务，跑完关闭；Python 检查使用已安装的 Chrome。WebKit 检查在屏幕外的窗口里运行，不抢焦点；锁屏或显示器休眠时 WebKit 不绘制，检查会说明原因后停止。
+
+推送到 `main` 时，GitHub Actions 在 Windows 上运行 `go vet` 和 `go test`，在 macOS 上检查即时排版的性能预算（`check-performance`）和启动时加载的代码大小（`TestStartupBundleStaysSmall`）。共享的 CI 机器比开发用的 Mac 慢，所以 CI 中预算放宽一倍（`PERF_BUDGET_SCALE=2`），仍然能抓住成倍的退化。
 
 构建通用安装包：`go tool mygo build -platform darwin/universal .`，产物在 `build/darwin-universal/`。Windows 版（内测）在 macOS 上交叉构建：`go tool mygo build -platform windows/amd64,windows/arm64 .`，产物在 `build/windows-amd64/`、`build/windows-arm64/`，装了 NSIS（`brew install makensis`）才会生成安装包；`check-windows` 在 Chrome 里模拟 Windows 检查快捷键、字体和标题栏，Windows 上的 `go test` 由 GitHub Actions 运行。正式发版（签名、公证、更新包）见 [docs/RELEASING.md](docs/RELEASING.md)。
 
@@ -74,7 +86,7 @@ python3 scripts/check-pdf.py                   # PDF 的 A4 分页与标题位�
 - [CHANGELOG](CHANGELOG.md)：各版本的变化
 - [验证记录](docs/superpowers/validation/2026-10-15-reader-foundation.md)：每个版本的实现取舍、测试、原生应用实测和发布核对
 - 设计：[阅读器与可靠性](docs/superpowers/specs/2026-10-15-reader-foundation-design.md)、[分栏预览](docs/superpowers/specs/2026-10-15-split-preview-design.md)、[块编辑](docs/superpowers/specs/2026-10-17-block-editing-design.md)；实施计划在 `docs/superpowers/plans/`
-- [性能报告](docs/performance/2026-10-15-reader-foundation.md)
+- 性能报告：[阅读器基础（2026-10-15）](docs/performance/2026-10-15-reader-foundation.md)、[0.6.3 对比 0.1.0 及随后的修复（2026-10-24）](docs/performance/2026-10-24-0.6.3.md)
 
 ## 许可
 

@@ -28,6 +28,15 @@ Liubai checks for updates in the background every 4 hours, and you can check you
 
 Shortcuts: `⌘N` new, `⌘O` open, `⌘S` save, `⌘⇧S` save as, `⌘K` all commands, `⌘F` find, `⌘\` toggle split view, `⌘⇧R` reading mode, `⌘⇧M` show Markdown source, `⌘/` block menu, `⌘L` edit link, `⌘⇧F` focus mode, `⌘P` export PDF. On Windows ⌘ is Ctrl and ⇧ is Shift; focus mode is F8 and redo is Ctrl+Y.
 
+## Performance
+
+- **Long documents keep up**: in a document shaped like a novel (paragraphs of tens to hundreds of characters), a keystroke takes about 8 ms at a million characters and 10–12 ms at two million, within one frame (about 16.7 ms). A million-character document shows its text about 0.1 s after it opens.
+- **Denser formatting costs more**: with a table and an image every two or three hundred characters, a keystroke stays within a frame up to about 200,000 characters and takes about 20 ms at 300,000. Notes as dense with math, diagrams and footnotes take about 10 ms at 100,000 characters.
+- **Writing is never held up**: the word count runs in a background thread, and only the visible part is laid out. Code block grammars, Mermaid diagrams and Word export load when first needed.
+- A document can be up to 8 MB, about 2.8 million Chinese characters.
+
+These numbers were measured in WebKit, the desktop app's engine, on an M2 Pro. The [performance report](docs/performance/2026-10-24-0.6.3.md) (in Chinese) has the methods and the full data.
+
 ## Files and data
 
 - Saving an opened `.md` writes it back to the original file, keeping its Finder tags and creation date (its attributes and creation date on Windows). Pasted images go into `<document name>.assets/` beside it, referenced by relative paths.
@@ -58,14 +67,17 @@ node_modules/.bin/tsc --noEmit
 node scripts/check-i18n.mjs && node scripts/check-editor.mjs
 node scripts/check-themes.mjs                  # contrast floors and the theme list
 npx --yes bun@1.4.3 scripts/check-<name>.ts   # editing, rendering, performance, paste, capture-input, platform, blocks, slash, tables, images, marks, math, mermaid, extras, docx, theme
-scripts/e2e.sh check-<name>                    # regressions in Chrome: split-preview, reader, toolbar, capture, english, windows, blocks, tables, images, math, mermaid, extras, docx, themes, outline
+scripts/e2e.sh check-<name>                    # regressions in Chrome: split-preview, reader, toolbar, capture, english, windows, blocks, tables, images, math, mermaid, extras, docx, themes, outline, word-count
 scripts/e2e.sh check-blocks-webkit             # blocks, images, math, diagrams and Word conversion in WebKit, the desktop app's engine
 scripts/e2e.sh shoot-themes                    # screenshots of every theme in the edit, split and read views, in /tmp/liubai-theme-shots/
 python3 scripts/check-preview.py               # rendering and export
 python3 scripts/check-pdf.py                   # PDF pagination, Chinese text layer and rendering
+ROUNDS=3 scripts/bench/run.sh <base>          # compare performance with another version: editor, preview, storage and WebKit end to end, into docs/performance/raw/<date>/
 ```
 
 `scripts/e2e.sh` builds the app each time, starts a web server with a fresh data directory, and stops it afterwards. The Python checks use the installed Chrome. The WebKit check runs in an off-screen window and never takes focus; WebKit stops drawing while the screen is locked or the display is asleep, and the check then stops and says why.
+
+On pushes to `main`, GitHub Actions runs `go vet` and `go test` on Windows. On macOS it checks the editor's performance budgets (`check-performance`) and the size of the code loaded at start-up (`TestStartupBundleStaysSmall`). Shared CI machines are slower than a developer's Mac, so CI doubles the budgets (`PERF_BUDGET_SCALE=2`), which still catches regressions that multiply the cost.
 
 To build the universal app, run `go tool mygo build -platform darwin/universal .`; the output is in `build/darwin-universal/`. The Windows version (a beta) cross-builds on macOS with `go tool mygo build -platform windows/amd64,windows/arm64 .` into `build/windows-amd64/` and `build/windows-arm64/`; the installers need NSIS (`brew install makensis`). `check-windows` checks shortcuts, fonts and the title bar in Chrome with a Windows platform, and GitHub Actions runs `go test` on Windows. Release steps (signing, notarization and update packages) are in [docs/RELEASING.md](docs/RELEASING.md), in Chinese.
 
@@ -76,7 +88,7 @@ The documents below are in Chinese.
 - [Changelog](CHANGELOG.md): the changes in each version
 - [Validation record](docs/superpowers/validation/2026-10-15-reader-foundation.md): trade-offs, tests, native app checks and release checks for each version
 - Designs: [reader and reliability](docs/superpowers/specs/2026-10-15-reader-foundation-design.md), [split preview](docs/superpowers/specs/2026-10-15-split-preview-design.md) and [block editing](docs/superpowers/specs/2026-10-17-block-editing-design.md); implementation plans are in `docs/superpowers/plans/`
-- [Performance report](docs/performance/2026-10-15-reader-foundation.md)
+- Performance reports: [reader foundation (2026-10-15)](docs/performance/2026-10-15-reader-foundation.md), [0.6.3 against 0.1.0 and the fixes that followed (2026-10-24)](docs/performance/2026-10-24-0.6.3.md)
 
 ## License
 

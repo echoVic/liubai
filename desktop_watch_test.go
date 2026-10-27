@@ -12,8 +12,8 @@ import (
 	"github.com/egoist/mygo"
 )
 
-// WatchFiles needs a running native app. Substitute only that boundary;
-// the manager's Next loop, cancellation, and callback delivery are real.
+// Drive batches and stream lifetimes deterministically for manager tests;
+// the filesystem test below uses watchDocument without substitution.
 type testFileWatch struct {
 	events chan []mygo.FileEvent
 	done   chan struct{}
@@ -114,5 +114,59 @@ func TestFileWatchManagerRetargetsAndStopsForDrafts(t *testing.T) {
 	case id := <-changes:
 		t.Fatalf("duplicate or stale disk change: %q", id)
 	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func TestFileWatchManagerAtomicSaveNotifiesOnceAndKeepsWatching(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "document.md")
+	if err := os.WriteFile(path, []byte("before"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	changes := make(chan string, 10)
+	m := fileWatchManager{
+		start: watchDocument,
+		changed: func(id string) {
+			if id != "document" {
+				t.Errorf("changed document = %q, want document", id)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Error(err)
+			}
+			changes <- string(data)
+		},
+	}
+	defer m.stop()
+	quiet := func() {
+		t.Helper()
+		select {
+		case data := <-changes:
+			t.Fatalf("duplicate disk change: %q", data)
+		case <-time.After(300 * time.Millisecond):
+		}
+	}
+	if err := m.retarget(t.Context(), "document", path); err != nil {
+		t.Fatal(err)
+	}
+	tmp := filepath.Join(dir, ".document.md.tmp")
+	if err := os.WriteFile(tmp, []byte("atomic save"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		t.Fatal(err)
+	}
+	receiveChange(t, changes, "atomic save")
+	quiet()
+	if err := os.WriteFile(path, []byte("ordinary write after atomic save"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	receiveChange(t, changes, "ordinary write after atomic save")
+	quiet()
+	m.stop()
+	select {
+	case data := <-changes:
+		t.Fatalf("duplicate disk change: %q", data)
+	default:
 	}
 }

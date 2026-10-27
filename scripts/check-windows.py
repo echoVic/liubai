@@ -47,17 +47,20 @@ def style(page, selector, prop):
     return page.evaluate("([s, p]) => getComputedStyle(document.querySelector(s))[p]", [selector, prop])
 
 
-def topbar_padding(page):
-    # The web version has no window buttons; give the page what MyGo gives it on Windows.
-    return page.evaluate("""() => {
+def topbar_padding(page, left=None):
+    # The web version has no window buttons; give the page MyGo's title bar insets.
+    return page.evaluate("""left => {
         document.body.classList.add('desktop');
+        if (left === null) document.documentElement.style.removeProperty('--mygo-titlebar-inset-left');
+        else document.documentElement.style.setProperty('--mygo-titlebar-inset-left', left);
         document.documentElement.style.setProperty('--mygo-titlebar-inset-right', '138px');
         const s = getComputedStyle(document.querySelector('.topbar'));
         const padding = [s.paddingLeft, s.paddingRight];
         document.body.classList.remove('desktop');
+        document.documentElement.style.removeProperty('--mygo-titlebar-inset-left');
         document.documentElement.style.removeProperty('--mygo-titlebar-inset-right');
         return padding;
-    }""")
+    }""", left)
 
 
 def palette_keys(page, modifier):
@@ -203,7 +206,9 @@ def mac(context):
     keys = palette_keys(page, "Meta")
     assert "⌘ N" in keys and "⌘ ⇧ F" in keys and "⌘ 1" in keys and "⌘ ⇧ 7" in keys, keys
     assert style(page, ".cm-scroller", "scrollbarWidth") == "auto"
-    assert topbar_padding(page)[0] == "88px", topbar_padding(page)
+    for inset, padding in [("76px", "88px"), ("0px", "24px"), (None, "88px")]:
+        actual = topbar_padding(page, inset)
+        assert actual[0] == padding, (inset, actual)
     page.screenshot(path=str(ARTIFACTS / "mac.png"))
     assert not errors, errors
     capture_saves_with(context, "Meta+Enter", "Control+Enter", "⌘↩ 存为草稿 · Esc 关闭")

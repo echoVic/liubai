@@ -1,11 +1,11 @@
 module liubai
 
-go 1.27.1
+go 1.27.3
 
 tool github.com/egoist/mygo/cmd/mygo
 
 require (
-	github.com/egoist/mygo v0.6.0
+	github.com/egoist/mygo v0.7.1
 	github.com/yuin/goldmark v1.7.13
 	golang.org/x/image v0.46.0
 	golang.org/x/sys v0.49.0
@@ -13,5 +13,6 @@ require (
 
 require (
 	github.com/ebitengine/purego v0.11.1 // indirect
+	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 )

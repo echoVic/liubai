@@ -17,7 +17,7 @@
    MYGO_UPDATER_PRIVATE_KEY="$(cat <私钥文件>)" go tool mygo build -platform darwin/universal -o build/release-<版本> -upload .
    ```
 
-   它会签名、公证，生成 DMG、完整更新包、从最近几个版本升级的增量包和 `update-darwin-universal.json`，建立 GitHub Release 草稿 `v<版本>` 并上传这些文件。
+   它会签名、公证，生成安装包 `liubai-<版本>.dmg`、完整更新包、从最近几个版本升级的增量包和 `update-darwin-universal.json`，建立 GitHub Release 草稿 `v<版本>` 并上传这些文件。有更新的应用还会生成相应平台的安装脚本：macOS 的 `install.sh` 和 Windows 的 `install.ps1`，随发布一起上传。
 
    网络不稳时（例如 `lookup github.com: no such host`），macOS 也会出现 `No delta update from <版本>` 的警告，上传也可能失败。这时分两种情况：
 
@@ -29,13 +29,13 @@
    ```sh
    cd build/release-<版本>/darwin-universal
    codesign --verify --deep --strict Liubai.app && spctl -a -t exec -vv Liubai.app && xcrun stapler validate Liubai.app
-   codesign --verify --strict "Liubai <版本>.dmg" && spctl -a -t open --context context:primary-signature -vv "Liubai <版本>.dmg"
-   xcrun stapler validate "Liubai <版本>.dmg" && hdiutil verify "Liubai <版本>.dmg"
+   codesign --verify --strict "liubai-<版本>.dmg" && spctl -a -t open --context context:primary-signature -vv "liubai-<版本>.dmg"
+   xcrun stapler validate "liubai-<版本>.dmg" && hdiutil verify "liubai-<版本>.dmg"
    ```
 
    用 `lipo -thin arm64` 取出一个架构后，`go version -m` 读到的 `vcs.revision` 应是标签所在的提交，`vcs.modified` 为 `false`。
 
-5. 发布：`gh release edit v<版本> --title "留白 <版本>" --notes-file <说明文件> --draft=false --latest`。GitHub 会把 `Liubai <版本>.dmg` 改名为 `Liubai.<版本>.dmg`，说明里用这个名字。
+5. 发布：`gh release edit v<版本> --title "留白 <版本>" --notes-file <说明文件> --draft=false --latest`。
 6. 验证更新源：匿名下载 `https://github.com/echoVic/liubai/releases/latest/download/update-darwin-universal.json`，确认是新版本，并且与本地构建的文件一致。
 
 网站 [liubai.echovic.com](https://liubai.echovic.com/) 在浏览器里读取最新发布的下载链接、版本号和安装包大小，但页面里写好的备用值只在网站重新部署时更新。所以发版后要在网站仓库里把这些备用值改成新版本并推送，推送后会自动部署。新功能的介绍和截图也要手动更新。
@@ -63,10 +63,10 @@ Windows 版与 macOS 版用同一个版本号、同一个 Release，在 macOS �
    MYGO_UPDATER_PRIVATE_KEY="$(cat <私钥文件>)" go tool mygo build -platform darwin/universal,windows/amd64,windows/arm64 -o build/release-<版本> -upload .
    ```
 
-   `windows-amd64/` 和 `windows-arm64/` 里有安装包 `Liubai Setup <版本> amd64.exe`、`Liubai Setup <版本> arm64.exe`，以及完整更新包和 `update-windows-amd64.json`、`update-windows-arm64.json`（第一个 Windows 版没有增量包）。它们会和 macOS 的文件上传到同一个 Release 草稿。安装包按用户安装到 `%LOCALAPPDATA%\Programs\Liubai`，不需要管理员权限；已安装的 Windows 版从这两个更新源自动更新。
+   `windows-amd64/` 和 `windows-arm64/` 里有安装包 `liubai-setup-<版本>-amd64.exe`、`liubai-setup-<版本>-arm64.exe`，以及完整更新包和 `update-windows-amd64.json`、`update-windows-arm64.json`（第一个 Windows 版没有增量包）。它们会和 macOS 的文件上传到同一个 Release 草稿。安装包按用户安装到 `%LOCALAPPDATA%\Programs\Liubai`，不需要管理员权限；已安装的 Windows 版从这两个更新源自动更新。
 3. 签名：目前没有 Windows 代码签名证书，安装包未签名。下载后 SmartScreen 会提示「Windows 已保护你的电脑」，要点「更多信息」→「仍要运行」。发布说明里要写明这一点，并把 Windows 版标为内测版。拿到证书后，在 `mygo.json` 加 `windows.signCommand`（硬件令牌或云签名服务）或 `windows.certificate`（密码放在 `MYGO_WINDOWS_CERTIFICATE_PASSWORD`），构建时会给程序、安装包和卸载程序签名。
 4. 检查：`file windows-*/Liubai.exe` 应分别是 x86-64 和 Aarch64 的 PE32+ GUI 程序，安装包是 Nullsoft Installer。`go version -m windows-*/Liubai.exe` 的 `vcs.revision` 应是标签所在的提交。构建时 MyGo 会在包目录临时写入 `mygo_windows_<架构>.syso`（图标、版本信息和清单），`.gitignore` 已忽略这个文件；在此之前构建的 0.6.0 因此记成了 `vcs.modified=true`。然后在 Windows 上按 [验证记录](superpowers/validation/2026-10-20-windows-support.md) 里的清单把安装、打开、保存和更新走一遍。
 5. 构建时如果出现 `No delta updates for windows-…` 的警告，说明读取上一版更新清单失败了，多半是网络问题。这时只重建这些平台，加上 `-upload`，并输出到另一个目录，例如 `-platform windows/amd64,windows/arm64 -o build/release-<版本>-windows`。上传会替换 Release 里的同名文件，其他平台的文件不受影响。
-6. 发布后，GitHub 会把文件名里的空格换成点，例如 `Liubai.Setup.<版本>.amd64.exe`，说明里用这个名字。验证更新源时，也要匿名下载 `update-windows-amd64.json` 和 `update-windows-arm64.json` 核对。
+6. 发布后，也要匿名下载 `update-windows-amd64.json` 和 `update-windows-arm64.json` 核对更新源。
 
 `scripts/package-macos.sh` 只生成未公证的临时预览 ZIP，会重新签名，不能用于正式发布。

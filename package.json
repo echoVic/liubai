@@ -25,7 +25,7 @@
     "markdown-it": "^14.1.0",
     "markdown-it-footnote": "4.0.0",
     "mermaid": "12.1.0",
-    "mygo-runtime": "0.6.0",
+    "mygo-runtime": "0.7.1",
     "turndown": "7.2.0",
     "turndown-plugin-gfm": "1.0.2"
   },

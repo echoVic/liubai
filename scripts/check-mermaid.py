@@ -110,7 +110,7 @@ def run(page):
     page.locator('[data-view="single"]').click()
     button = page.locator('#format-bar [data-action="mermaid"]')
     expect(button).to_have_accessible_name('图表')
-    expect(button).to_have_attribute('title', '图表')
+    expect(button).to_have_attribute('data-tip', '图表')
     for command in ('toolbar', 'slash', 'insert'):
         replace(page, '')
         if command == 'toolbar':
@@ -157,7 +157,7 @@ def run(page):
     page.evaluate("localStorage.setItem('mygo:locale','en')")
     page.reload()
     expect(page.locator('#format-bar [data-action="mermaid"]')).to_have_accessible_name('Diagram')
-    expect(page.locator('#format-bar [data-action="mermaid"]')).to_have_attribute('title', 'Diagram')
+    expect(page.locator('#format-bar [data-action="mermaid"]')).to_have_attribute('data-tip', 'Diagram')
     page.locator('#insert-button').click()
     expect(page.locator('#insert-menu [data-menu-action="mermaid"]')).to_have_text('Diagram')
     page.keyboard.press('Escape')

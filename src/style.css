@@ -117,3 +117,4 @@ html.theme-fade,html.theme-fade :where(body,.topbar,#format-bar,.drawer,.desk,.e
 .windows .desktop .topbar{padding-left:24px;padding-right:max(24px,calc(var(--mygo-titlebar-inset-right,0px) + 12px))}
 /* Chromium's Windows scrollbars are 17px of light gray, glaring in the ink theme. :where keeps the scrollbar colours rules give. */
 :where(.windows),:where(.windows) *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--muted-foreground) 45%,transparent) transparent}
+#tooltip{position:fixed;z-index:50;display:flex;align-items:baseline;gap:12px;max-width:min(320px,calc(100vw - 16px));padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--popover);color:var(--foreground);box-shadow:0 3px 12px #0002;font-size:12px;line-height:1.45;pointer-events:none}#tooltip kbd{flex:none;margin:0;padding:0;border:0;color:var(--muted-foreground);white-space:nowrap}#tooltip kbd:empty{display:none}

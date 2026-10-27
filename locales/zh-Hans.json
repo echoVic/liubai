@@ -405,15 +405,6 @@
   "@fSource": {
     "description": "Interface text for Source."
   },
-  "fShowMarkdownSourceM": "显示 Markdown 源码 {shortcut}",
-  "@fShowMarkdownSourceM": {
-    "description": "Tooltip of the Markdown source button, followed by its shortcut.",
-    "placeholders": {
-      "shortcut": {
-        "type": "String"
-      }
-    }
-  },
   "fOpen": "打开",
   "@fOpen": {
     "description": "Interface text for Open."
@@ -564,27 +555,17 @@
   "@fEdit": {
     "description": "Interface text for Edit."
   },
-  "fShowTheEditorAndReadingViewSideBySide": "编辑区和阅读视图并排 {shortcut}",
+  "fShowTheEditorAndReadingViewSideBySide": "编辑区和阅读视图并排",
   "@fShowTheEditorAndReadingViewSideBySide": {
-    "description": "Tooltip of the Split view button, followed by its shortcut.",
-    "placeholders": {
-      "shortcut": {
-        "type": "String"
-      }
-    }
+    "description": "Tooltip of the Split view button. The tooltip shows the shortcut beside it."
   },
   "fSplit": "分栏",
   "@fSplit": {
     "description": "Interface text for Split."
   },
-  "fShowTheFormattedDocumentR": "只显示排好版的文稿 {shortcut}",
+  "fShowTheFormattedDocumentR": "只显示排好版的文稿",
   "@fShowTheFormattedDocumentR": {
-    "description": "Tooltip of the Read view button, followed by its shortcut.",
-    "placeholders": {
-      "shortcut": {
-        "type": "String"
-      }
-    }
+    "description": "Tooltip of the Read view button. The tooltip shows the shortcut beside it."
   },
   "fRead": "阅读",
   "@fRead": {
@@ -665,15 +646,6 @@
   "fL": "白",
   "@fL": {
     "description": "Interface text for L."
-  },
-  "fNewDocumentN": "新建文稿 {shortcut}",
-  "@fNewDocumentN": {
-    "description": "Tooltip of the New Document button, followed by its shortcut.",
-    "placeholders": {
-      "shortcut": {
-        "type": "String"
-      }
-    }
   },
   "fCloseSidebar": "关闭侧栏",
   "@fCloseSidebar": {

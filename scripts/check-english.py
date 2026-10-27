@@ -26,7 +26,7 @@ def chrome_is_english(page):
             if (el.closest(skip) || !el.getClientRects().length || getComputedStyle(el).visibility === 'hidden') continue;
             if (el.closest('[data-language-autonym]')) continue;
             for (const text of el.childNodes) if (text.nodeType === Node.TEXT_NODE && cjk.test(text.textContent)) found.push(text.textContent);
-            for (const attr of ['title', 'aria-label', 'placeholder']) if (cjk.test(el.getAttribute(attr) || '')) found.push(el.getAttribute(attr));
+            for (const attr of ['title', 'aria-label', 'placeholder', 'data-tip']) if (cjk.test(el.getAttribute(attr) || '')) found.push(el.getAttribute(attr));
         }
         return found;
     }""")

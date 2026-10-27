@@ -1466,22 +1466,6 @@ func (msgs Messages) FSource() string {
 	return Catalog.Format(msgs.locale, "fSource", nil)
 }
 
-// FShowMarkdownSourceM says "显示 Markdown 源码 {shortcut}"
-// in the language the app shows.
-//
-// Tooltip of the Markdown source button, followed by its shortcut.
-func FShowMarkdownSourceM(shortcut string) string {
-	return In(i18n.Locale()).FShowMarkdownSourceM(shortcut)
-}
-
-// FShowMarkdownSourceM says "显示 Markdown 源码 {shortcut}"
-// in the language of msgs.
-//
-// Tooltip of the Markdown source button, followed by its shortcut.
-func (msgs Messages) FShowMarkdownSourceM(shortcut string) string {
-	return Catalog.Format(msgs.locale, "fShowMarkdownSourceM", map[string]any{"shortcut": shortcut})
-}
-
 // FOpen says "打开"
 // in the language the app shows.
 //
@@ -1992,20 +1976,22 @@ func (msgs Messages) FEdit() string {
 	return Catalog.Format(msgs.locale, "fEdit", nil)
 }
 
-// FShowTheEditorAndReadingViewSideBySide says "编辑区和阅读视图并排 {shortcut}"
+// FShowTheEditorAndReadingViewSideBySide says "编辑区和阅读视图并排"
 // in the language the app shows.
 //
-// Tooltip of the Split view button, followed by its shortcut.
-func FShowTheEditorAndReadingViewSideBySide(shortcut string) string {
-	return In(i18n.Locale()).FShowTheEditorAndReadingViewSideBySide(shortcut)
+// Tooltip of the Split view button. The tooltip shows the shortcut beside
+// it.
+func FShowTheEditorAndReadingViewSideBySide() string {
+	return In(i18n.Locale()).FShowTheEditorAndReadingViewSideBySide()
 }
 
-// FShowTheEditorAndReadingViewSideBySide says "编辑区和阅读视图并排 {shortcut}"
+// FShowTheEditorAndReadingViewSideBySide says "编辑区和阅读视图并排"
 // in the language of msgs.
 //
-// Tooltip of the Split view button, followed by its shortcut.
-func (msgs Messages) FShowTheEditorAndReadingViewSideBySide(shortcut string) string {
-	return Catalog.Format(msgs.locale, "fShowTheEditorAndReadingViewSideBySide", map[string]any{"shortcut": shortcut})
+// Tooltip of the Split view button. The tooltip shows the shortcut beside
+// it.
+func (msgs Messages) FShowTheEditorAndReadingViewSideBySide() string {
+	return Catalog.Format(msgs.locale, "fShowTheEditorAndReadingViewSideBySide", nil)
 }
 
 // FSplit says "分栏"
@@ -2022,20 +2008,20 @@ func (msgs Messages) FSplit() string {
 	return Catalog.Format(msgs.locale, "fSplit", nil)
 }
 
-// FShowTheFormattedDocumentR says "只显示排好版的文稿 {shortcut}"
+// FShowTheFormattedDocumentR says "只显示排好版的文稿"
 // in the language the app shows.
 //
-// Tooltip of the Read view button, followed by its shortcut.
-func FShowTheFormattedDocumentR(shortcut string) string {
-	return In(i18n.Locale()).FShowTheFormattedDocumentR(shortcut)
-}
+// Tooltip of the Read view button. The tooltip shows the shortcut beside
+// it.
+func FShowTheFormattedDocumentR() string { return In(i18n.Locale()).FShowTheFormattedDocumentR() }
 
-// FShowTheFormattedDocumentR says "只显示排好版的文稿 {shortcut}"
+// FShowTheFormattedDocumentR says "只显示排好版的文稿"
 // in the language of msgs.
 //
-// Tooltip of the Read view button, followed by its shortcut.
-func (msgs Messages) FShowTheFormattedDocumentR(shortcut string) string {
-	return Catalog.Format(msgs.locale, "fShowTheFormattedDocumentR", map[string]any{"shortcut": shortcut})
+// Tooltip of the Read view button. The tooltip shows the shortcut beside
+// it.
+func (msgs Messages) FShowTheFormattedDocumentR() string {
+	return Catalog.Format(msgs.locale, "fShowTheFormattedDocumentR", nil)
 }
 
 // FRead says "阅读"
@@ -2320,20 +2306,6 @@ func FL() string { return In(i18n.Locale()).FL() }
 // Interface text for L.
 func (msgs Messages) FL() string {
 	return Catalog.Format(msgs.locale, "fL", nil)
-}
-
-// FNewDocumentN says "新建文稿 {shortcut}"
-// in the language the app shows.
-//
-// Tooltip of the New Document button, followed by its shortcut.
-func FNewDocumentN(shortcut string) string { return In(i18n.Locale()).FNewDocumentN(shortcut) }
-
-// FNewDocumentN says "新建文稿 {shortcut}"
-// in the language of msgs.
-//
-// Tooltip of the New Document button, followed by its shortcut.
-func (msgs Messages) FNewDocumentN(shortcut string) string {
-	return Catalog.Format(msgs.locale, "fNewDocumentN", map[string]any{"shortcut": shortcut})
 }
 
 // FCloseSidebar says "关闭侧栏"

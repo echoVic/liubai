@@ -204,6 +204,12 @@ components:
     padding: "0 9px"
   menu-item-hover:
     backgroundColor: "{colors.accent}"
+  tooltip:
+    backgroundColor: "{colors.popover}"
+    textColor: "{colors.foreground}"
+    typography: "{typography.label}"
+    rounded: "{rounded.lg}"
+    padding: "5px 8px"
   dialog:
     backgroundColor: "{colors.popover}"
     textColor: "{colors.foreground}"
@@ -357,20 +363,20 @@ A hybrid that leans flat. Surfaces that sit beside or on top of each other (top 
 - **Menu and Outline Popover** (`0 8px 30px #0002`): menus and the outline popover.
 - **Toast** (`0 4px 25px #0002`).
 - **Exit Focus pill** (`0 4px 24px #0001`).
-- **Image Tools** (`0 3px 12px #0002`): the image toolbar and the alt-text popover.
+- **Image Tools** (`0 3px 12px #0002`): the image toolbar, the alt-text popover and the tooltip.
 - **Floating Sidebar** (`12px 0 40px #20282013`): the sidebar as a drawer over the page; docked, it has none.
 - **Selected Tile Lift** (`0 1px 3px #0002`): the selected tile of a segmented control, the view switch and the source toggle, in light themes only.
 
 ### Named Rules
 **The Hairline Rule.** Stacked surfaces are separated by a 1px `border` line and at most one tonal step, never by a shadow. In dark themes the selected tile drops its lift for a 1px hairline too.
 
-**The Float Rule.** A shadow means "this layer floats above the page": menus, dialogs, toasts, popovers and the floating sidebar. It is soft, near-black, 7 to 20% opaque, and never a hard offset. The one small exception is the selected tile of a segmented control, which lifts by a hair in light themes only.
+**The Float Rule.** A shadow means "this layer floats above the page": menus, dialogs, toasts, popovers, the tooltip and the floating sidebar. It is soft, near-black, 7 to 20% opaque, and never a hard offset. The one small exception is the selected tile of a segmented control, which lifts by a hair in light themes only.
 
 ## Shapes
 
 Small, quiet corners and thin lines. Controls and swatches sit between 4px and 8px, floating layers at 9px, dialogs at 13px, and there is one pill (the Exit Focus button, 30px). Every container edge is a 1px hairline; fields use the stronger field line. Nothing is clipped into a special shape, masked or textured. Icons are Lucide (1.59.0), drawn at a 1.6 stroke with round caps and joins, 14 to 19px, in the colour of their text.
 
-- **Radii:** 2px for ==highlight==; 4px for inline code, keyboard hints and block handles; 5px for controls nested in a group (segmented items, menu items) and for images; 6px for standalone buttons, fields and code blocks; 7px for the segmented track and the sidebar search; 8px for swatches, the view switch and option cards; 9px for menus, the toast and the outline popover; 13px for dialogs.
+- **Radii:** 2px for ==highlight==; 4px for inline code, keyboard hints and block handles; 5px for controls nested in a group (segmented items, menu items) and for images; 6px for standalone buttons, fields, code blocks and the tooltip; 7px for the segmented track and the sidebar search; 8px for swatches, the view switch and option cards; 9px for menus, the toast and the outline popover; 13px for dialogs.
 - **Focus:** a 2px ring in the `ring` colour, 2 to 3px outside the control (inside, at -2px, for menu items).
 
 ### Named Rules
@@ -412,6 +418,7 @@ A recessed track with a paper tile for the active choice. The Switch Automatical
 - **Top bar:** see Layout. Tool buttons are 34px with 4px gaps; the document title is a 13px button that truncates at 280px; the save status is 12px pencil.
 - **Sidebar:** floating paper, a 1px hairline at its right edge, a 12px pencil "Recent Documents" label, a search field, and a list of documents (7px radius; hover and current take the hover fill and a hairline border). A document's remove control appears on hover or focus.
 - **Menus:** floating paper, 1px hairline, 9px radius, 5px padding and the menu shadow; items are 34px high with 12px text and 5px radius; hover and focus take the hover fill; keyboard hints sit right-aligned in pencil.
+- **Tooltip:** one floating-paper layer for the chrome, with a 1px hairline, 6px radius, the Image Tools shadow and 5px 8px padding. The name is 12px ink and the keys sit right-aligned in pencil, as in the menus; at most 320px wide. It sits 6px under its control, centred, or above it where the window ends first, and stays 8px inside the window. It appears once the pointer has rested 500ms, moves from control to control at once for 800ms after the last one closed, shows at once on keyboard focus, and never fades. A press, Escape, scrolling or the control's menu opening hides it. Controls declare it with `data-tip` and `data-shortcut`, never `title`.
 - **Outline:** items in pencil 12px with 8px vertical padding, indented 12px per heading level; the current item is the hover fill with mark-coloured text. Inline, it sits unboxed on the paper under an 11px "Outline" label; as a popover it takes the menu treatment.
 
 ### Appearance Dialog (signature surface)

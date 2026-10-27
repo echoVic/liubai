@@ -120,6 +120,9 @@ def run(page):
         expect(page.locator('#heading-button')).to_be_disabled()
         page.keyboard.insert_text('不得输入')
         saved(page, text)
+        for keys in ('Meta+i', 'Meta+e', 'Meta+Shift+X', 'Meta+Shift+H', 'Meta+1', 'Meta+Shift+7'):
+            page.keyboard.press(keys)
+        saved(page, text)
         # Real pointer drag, live badge, rounded width and one-step undo.
         box = page.locator('.image-resize-handle').bounding_box()
         old_width = page.locator('.inline-image img').bounding_box()['width']

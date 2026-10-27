@@ -275,6 +275,37 @@ def run(page):
         page.locator(f'#format-bar [data-action="{action}"]').click()
         expect(target).to_be_focused()
         saved(page, TEXT.replace('[链接](x)', expected))
+    # The new format keys work in a cell as its buttons do; heading and list keys leave the table alone.
+    for keys, expected in [('Meta+i', '_文字_'), ('Meta+e', '`文字`'), ('Meta+Shift+X', '~~文字~~'), ('Meta+Shift+H', '==文字==')]:
+        source(page, TEXT.replace('[链接](x)', '文字'))
+        target = cell(page, 1, 1)
+        target.click()
+        page.keyboard.press('Meta+a')
+        page.keyboard.press(keys)
+        expect(target).to_be_focused()
+        saved(page, TEXT.replace('[链接](x)', expected))
+    original = TEXT.replace('[链接](x)', '文字')
+    source(page, original)
+    target = cell(page, 1, 1)
+    target.click()
+    for keys in ('Meta+1', 'Meta+0', 'Meta+Shift+7', 'Meta+Shift+8', 'Meta+Shift+9'):
+        page.keyboard.press(keys)
+    page.wait_for_timeout(300)
+    expect(target).to_be_focused()
+    saved(page, original)
+    # In the table's menu, and on its ⋯ button, the format keys do nothing: the Markdown behind the table is not theirs.
+    source(page, TEXT)
+    cell(page, 1, 1).click()
+    page.keyboard.press('Meta+/')
+    expect(page.locator('.table-menu:not([hidden])')).to_be_visible()
+    for keys in ('Meta+1', 'Meta+b', 'Meta+i', 'Meta+Shift+7'):
+        page.keyboard.press(keys)
+    page.keyboard.press('Escape')
+    expect(page.locator('.table-menu-button')).to_be_focused()
+    for keys in ('Meta+1', 'Meta+b', 'Meta+Shift+8'):
+        page.keyboard.press(keys)
+    page.wait_for_timeout(300)
+    saved(page, TEXT)
     source(page, TEXT)
     cell(page, 1, 1).click()
     page.locator('#insert-button').click()

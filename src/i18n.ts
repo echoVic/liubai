@@ -29,6 +29,8 @@ export function localizePage(root:ParentNode=document){
  const shortcut=(el:HTMLElement)=>el.dataset.shortcut?keyLabel(el.dataset.shortcut):undefined;
  for(const el of root.querySelectorAll<HTMLElement>('[data-i18n]')){const say=lookup[el.dataset.i18n!];if(say)el.textContent=say(shortcut(el))}
  for(const attr of ['title','aria-label','placeholder'])for(const el of root.querySelectorAll<HTMLElement>('[data-i18n-'+attr+']')){const say=lookup[el.getAttribute('data-i18n-'+attr)!];if(say)el.setAttribute(attr,say(shortcut(el)))}
+ // Tooltip text never carries keys: the tooltip shows data-shortcut beside it.
+ for(const el of root.querySelectorAll<HTMLElement>('[data-i18n-tip]')){const say=lookup[el.dataset.i18nTip!];if(say)el.dataset.tip=say()}
 }
 const statusMessages={
  draftSaved:'bStatusDraftSaved',fileSaved:'bStatusFileSaved',fileReadOnly:'bStatusFileReadOnly',fileUnavailable:'bStatusFileUnavailable',diskUnreadable:'bStatusDiskUnreadable',diskReloaded:'bStatusDiskReloaded',reloadRecoveryFailed:'bStatusReloadRecoveryFailed',diskConflict:'bStatusDiskConflict',imageSaveFailed:'bStatusImageSaveFailed',fileSaveFailed:'bStatusFileSaveFailed',saveFailed:'bStatusSaveFailed',recoveryUpdateFailed:'bStatusRecoveryUpdateFailed',

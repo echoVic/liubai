@@ -592,12 +592,6 @@ export interface Messages {
    */
   fSource(): string;
   /**
-   * Tooltip of the Markdown source button, followed by its shortcut.
-   *
-   * `显示 Markdown 源码 {shortcut}`
-   */
-  fShowMarkdownSourceM(shortcut: string): string;
-  /**
    * Interface text for Open.
    *
    * `打开`
@@ -808,11 +802,11 @@ export interface Messages {
    */
   fEdit(): string;
   /**
-   * Tooltip of the Split view button, followed by its shortcut.
+   * Tooltip of the Split view button. The tooltip shows the shortcut beside it.
    *
-   * `编辑区和阅读视图并排 {shortcut}`
+   * `编辑区和阅读视图并排`
    */
-  fShowTheEditorAndReadingViewSideBySide(shortcut: string): string;
+  fShowTheEditorAndReadingViewSideBySide(): string;
   /**
    * Interface text for Split.
    *
@@ -820,11 +814,11 @@ export interface Messages {
    */
   fSplit(): string;
   /**
-   * Tooltip of the Read view button, followed by its shortcut.
+   * Tooltip of the Read view button. The tooltip shows the shortcut beside it.
    *
-   * `只显示排好版的文稿 {shortcut}`
+   * `只显示排好版的文稿`
    */
-  fShowTheFormattedDocumentR(shortcut: string): string;
+  fShowTheFormattedDocumentR(): string;
   /**
    * Interface text for Read.
    *
@@ -945,12 +939,6 @@ export interface Messages {
    * `白`
    */
   fL(): string;
-  /**
-   * Tooltip of the New Document button, followed by its shortcut.
-   *
-   * `新建文稿 {shortcut}`
-   */
-  fNewDocumentN(shortcut: string): string;
   /**
    * Interface text for Close Sidebar.
    *
@@ -3099,7 +3087,6 @@ const catalog = createCatalog<Messages>({
     "fTable": [],
     "fCodeBlock": [],
     "fSource": [],
-    "fShowMarkdownSourceM": ["shortcut"],
     "fOpen": [],
     "fLoadedTheLatestVersionFromDisk": [],
     "fPressAShortcut": [],
@@ -3135,9 +3122,9 @@ const catalog = createCatalog<Messages>({
     "fView": [],
     "fShowTheEditor": [],
     "fEdit": [],
-    "fShowTheEditorAndReadingViewSideBySide": ["shortcut"],
+    "fShowTheEditorAndReadingViewSideBySide": [],
     "fSplit": [],
-    "fShowTheFormattedDocumentR": ["shortcut"],
+    "fShowTheFormattedDocumentR": [],
     "fRead": [],
     "fAppearanceAndTypography2": [],
     "fExportPDFHTMLZIPOrCopyRichText": [],
@@ -3158,7 +3145,6 @@ const catalog = createCatalog<Messages>({
     "fReadingView": [],
     "fReadOnly": [],
     "fL": [],
-    "fNewDocumentN": ["shortcut"],
     "fCloseSidebar": [],
     "fFindADocument": [],
     "fSearchRecentDocuments": [],
@@ -3600,7 +3586,6 @@ const catalog = createCatalog<Messages>({
       "fTable": "表格",
       "fCodeBlock": "代码块",
       "fSource": "源码",
-      "fShowMarkdownSourceM": "显示 Markdown 源码 {shortcut}",
       "fOpen": "打开",
       "fLoadedTheLatestVersionFromDisk": "已载入磁盘上的新版本",
       "fPressAShortcut": "按下快捷键…",
@@ -3636,9 +3621,9 @@ const catalog = createCatalog<Messages>({
       "fView": "视图",
       "fShowTheEditor": "只显示编辑区",
       "fEdit": "编辑",
-      "fShowTheEditorAndReadingViewSideBySide": "编辑区和阅读视图并排 {shortcut}",
+      "fShowTheEditorAndReadingViewSideBySide": "编辑区和阅读视图并排",
       "fSplit": "分栏",
-      "fShowTheFormattedDocumentR": "只显示排好版的文稿 {shortcut}",
+      "fShowTheFormattedDocumentR": "只显示排好版的文稿",
       "fRead": "阅读",
       "fAppearanceAndTypography2": "外观与排版",
       "fExportPDFHTMLZIPOrCopyRichText": "导出 PDF、HTML、ZIP 或复制富文本",
@@ -3659,7 +3644,6 @@ const catalog = createCatalog<Messages>({
       "fReadingView": "阅读视图",
       "fReadOnly": "只读",
       "fL": "白",
-      "fNewDocumentN": "新建文稿 {shortcut}",
       "fCloseSidebar": "关闭侧栏",
       "fFindADocument": "找一篇文稿…",
       "fSearchRecentDocuments": "搜索最近文稿",
@@ -4100,7 +4084,6 @@ const catalog = createCatalog<Messages>({
       "fTable": "Table",
       "fCodeBlock": "Code Block",
       "fSource": "Source",
-      "fShowMarkdownSourceM": "Show Markdown Source {shortcut}",
       "fOpen": "Open",
       "fLoadedTheLatestVersionFromDisk": "Loaded the Latest Version from Disk",
       "fPressAShortcut": "Press a shortcut…",
@@ -4136,9 +4119,9 @@ const catalog = createCatalog<Messages>({
       "fView": "View",
       "fShowTheEditor": "Show the editor",
       "fEdit": "Edit",
-      "fShowTheEditorAndReadingViewSideBySide": "Show the editor and reading view side by side {shortcut}",
+      "fShowTheEditorAndReadingViewSideBySide": "Show the editor and reading view side by side",
       "fSplit": "Split",
-      "fShowTheFormattedDocumentR": "Show the formatted document {shortcut}",
+      "fShowTheFormattedDocumentR": "Show the formatted document",
       "fRead": "Read",
       "fAppearanceAndTypography2": "Appearance and Typography",
       "fExportPDFHTMLZIPOrCopyRichText": "Export PDF, HTML, ZIP, or copy rich text",
@@ -4159,7 +4142,6 @@ const catalog = createCatalog<Messages>({
       "fReadingView": "Reading View",
       "fReadOnly": "Read Only",
       "fL": "L",
-      "fNewDocumentN": "New Document {shortcut}",
       "fCloseSidebar": "Close Sidebar",
       "fFindADocument": "Find a document…",
       "fSearchRecentDocuments": "Search Recent Documents",

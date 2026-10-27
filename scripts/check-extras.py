@@ -211,7 +211,8 @@ def run(page):
     page.evaluate("localStorage.setItem('mygo:locale','en')")
     page.reload()
     expect(page.locator('#format-bar [data-action="footnote"]')).to_have_accessible_name('Footnote')
-    expect(page.locator('#format-bar [data-action="footnote"]')).to_have_attribute('title', 'Footnote')
+    expect(page.locator('#format-bar [data-action="footnote"]')).to_have_attribute('data-tip', 'Footnote')
+    assert page.locator('#format-bar [data-action="footnote"]').get_attribute('title') is None
     page.locator('#insert-button').click()
     expect(page.locator('#insert-menu [data-menu-action="details"]')).to_have_text('Details')
     expect(page.locator('#insert-menu [data-menu-action="footnote"]')).to_have_text('Footnote')

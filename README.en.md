@@ -26,7 +26,7 @@ Liubai checks for updates in the background every 4 hours, and you can check you
 - **Quick notes**: press `⌃⌥⌘N` (`Ctrl+Alt+N` on Windows) in any app to write something down, and `⌘↩` (`Ctrl+Enter`) saves it as a new draft.
 - Simplified Chinese and English interfaces, following the system language by default.
 
-Shortcuts: `⌘N` new, `⌘O` open, `⌘S` save, `⌘⇧S` save as, `⌘K` all commands, `⌘F` find, `⌘\` toggle split view, `⌘⇧R` reading mode, `⌘⇧M` show Markdown source, `⌘/` block menu, `⌘L` edit link, `⌘⇧F` focus mode, `⌘P` export PDF. On Windows ⌘ is Ctrl and ⇧ is Shift; focus mode is F8 and redo is Ctrl+Y.
+Shortcuts: `⌘N` new, `⌘O` open, `⌘S` save, `⌘⇧S` save as, `⌘K` all commands, `⌘F` find, `⌘\` toggle split view, `⌘⇧R` reading mode, `⌘⇧M` show Markdown source, `⌘/` block menu, `⌘L` edit link, `⌘⇧F` focus mode, `⌘P` export PDF. Formatting: `⌘1`–`⌘6` headings 1–6, `⌘0` body text, `⌘B` bold, `⌘I` italic, `⌘U` underline, `⌘⇧X` strikethrough, `⌘⇧H` highlight, `⌘E` inline code, `⌘⇧7` numbered list, `⌘⇧8` bulleted list, `⌘⇧9` task list; rest the pointer on a toolbar button to see its name and shortcut. On Windows ⌘ is Ctrl and ⇧ is Shift; focus mode is F8 and redo is Ctrl+Y.
 
 ## Performance
 

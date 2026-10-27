@@ -76,7 +76,7 @@ def mac_symbols_outside_documents(page):
         for (const el of document.querySelectorAll('body *')) {
             if (el.closest('.cm-content, #preview-content, #print-document')) continue;
             for (const node of el.childNodes) if (node.nodeType === Node.TEXT_NODE && has(node.textContent)) found.push(node.textContent);
-            for (const attr of ['title', 'aria-label', 'placeholder']) if (has(el.getAttribute(attr))) found.push(attr + ': ' + el.getAttribute(attr));
+            for (const attr of ['title', 'aria-label', 'placeholder', 'data-tip', 'aria-keyshortcuts']) if (has(el.getAttribute(attr))) found.push(attr + ': ' + el.getAttribute(attr));
         }
         return found;
     }""", MAC_SYMBOLS)
@@ -104,11 +104,16 @@ def capture_saves_with(context, saves, ignored, hint):
 def windows(context):
     page, errors = open_editor(context)
     expect(page.locator("html")).to_have_class(re.compile(r"\bwindows\b"))
-    expect(page.locator('button.tool[data-action="new"]')).to_have_attribute("title", "新建文稿 Ctrl+N")
-    expect(page.locator('[data-view="split"]')).to_have_attribute("title", "编辑区和阅读视图并排 Ctrl+\\")
-    expect(page.locator('[data-view="read"]')).to_have_attribute("title", "只显示排好版的文稿 Ctrl+Shift+R")
-    expect(page.locator('#format-bar [data-action="bold"]')).to_have_attribute("title", "加粗 Ctrl+B")
-    expect(page.locator('#format-bar [data-action="redo"]')).to_have_attribute("title", "重做 Ctrl+Y")
+    expect(page.locator('button.tool[data-action="new"]')).to_have_attribute("aria-keyshortcuts", "Control+N")
+    expect(page.locator('#format-bar [data-action="bold"]')).to_have_attribute("aria-keyshortcuts", "Control+B")
+    # The tooltip writes the keys for this platform as it shows.
+    for selector, label, keys in [('[data-view="split"]', "编辑区和阅读视图并排", "Ctrl+\\"), ('[data-view="read"]', "只显示排好版的文稿", "Ctrl+Shift+R"), ('#format-bar [data-action="bold"]', "加粗", "Ctrl+B"), ('#format-bar [data-action="redo"]', "重做", "Ctrl+Y"), ('#format-bar [data-action="strike"]', "删除线", "Ctrl+Shift+X"), ("#heading-button", "标题级别", "Ctrl+1–6")]:
+        page.locator(selector).hover()
+        expect(page.locator("#tooltip")).to_be_visible()
+        expect(page.locator(selector)).to_have_attribute("aria-describedby", "tooltip")
+        expect(page.locator("#tooltip span")).to_have_text(label)
+        expect(page.locator("#tooltip kbd")).to_have_text(keys)
+    page.mouse.move(5, 500)
     expect(page.locator('#more-menu [data-menu-action="new"] kbd')).to_have_text("Ctrl+N")
     expect(page.locator('#more-menu [data-menu-action="focus"] kbd')).to_have_text("F8")
     expect(page.locator('#block-menu [data-menu-action="up"] kbd')).to_have_text("Alt+Shift+↑")
@@ -116,7 +121,7 @@ def windows(context):
     found = mac_symbols_outside_documents(page)
     assert not found, found
     keys = palette_keys(page, "Control")
-    assert "Ctrl+N" in keys and "F8" in keys and "Ctrl+Y" in keys, keys
+    assert "Ctrl+N" in keys and "F8" in keys and "Ctrl+Y" in keys and "Ctrl+1" in keys and "Ctrl+Shift+7" in keys and "Ctrl+I" in keys, keys
     assert not [k for k in keys if any(s in k for s in MAC_SYMBOLS)], keys
 
     # F8 is focus mode on Windows; Escape leaves it.
@@ -141,6 +146,31 @@ def windows(context):
         page.keyboard.press(redo)
         expect(last).to_have_text("续写")
 
+    # Headings, lists and inline formats on Ctrl. Ctrl+Alt is AltGr, and the Windows key is not Ctrl.
+    def saved(text):
+        expect(page.locator("#save-status")).to_have_text("草稿已保存")
+        assert api(page, "State")["current"]["content"] == text, api(page, "State")["current"]["content"]
+    page.keyboard.press("Control+a")
+    page.keyboard.insert_text("平台标题")
+    page.keyboard.press("Control+1")
+    saved("# 平台标题")
+    for keys in ("Control+Alt+2", "Meta+2"):
+        page.keyboard.press(keys)
+    page.wait_for_timeout(300)
+    saved("# 平台标题")
+    page.keyboard.press("Control+0")
+    saved("平台标题")
+    page.keyboard.press("Control+Shift+7")
+    saved("1. 平台标题")
+    page.keyboard.press("Control+Shift+7")
+    saved("平台标题")
+    page.keyboard.press("Control+a")
+    page.keyboard.press("Control+i")
+    saved("_平台标题_")
+    expect(page.locator('#heading-menu [data-menu-action="paragraph"] kbd')).to_have_text("Ctrl+0")
+    expect(page.locator('#heading-menu [data-menu-action="h6"] kbd')).to_have_text("Ctrl+6")
+    expect(page.locator('#heading-menu [data-menu-action="h1"]')).to_have_attribute("aria-keyshortcuts", "Control+1")
+
     assert "Microsoft YaHei" in style(page, ".cm-content", "fontFamily"), style(page, ".cm-content", "fontFamily")
     assert "Segoe UI" in style(page, "body", "fontFamily"), style(page, "body", "fontFamily")
     assert style(page, ".cm-scroller", "scrollbarWidth") == "thin"
@@ -163,12 +193,15 @@ def windows(context):
 def mac(context):
     page, errors = open_editor(context)
     expect(page.locator("html")).not_to_have_class(re.compile(r"\bwindows\b"))
-    expect(page.locator('button.tool[data-action="new"]')).to_have_attribute("title", "新建文稿 ⌘N")
-    expect(page.locator('#format-bar [data-action="redo"]')).to_have_attribute("title", "重做 ⌘⇧Z")
+    expect(page.locator('button.tool[data-action="new"]')).to_have_attribute("aria-keyshortcuts", "Meta+N")
+    page.locator('#format-bar [data-action="redo"]').hover()
+    expect(page.locator("#tooltip")).to_be_visible()
+    expect(page.locator("#tooltip kbd")).to_have_text("⌘⇧Z")
+    page.mouse.move(5, 500)
     expect(page.locator('#more-menu [data-menu-action="focus"] kbd')).to_have_text("⌘⇧F")
     expect(page.locator(".cm-content .md-link").first).to_have_attribute("title", "⌘ 点击打开链接")
     keys = palette_keys(page, "Meta")
-    assert "⌘ N" in keys and "⌘ ⇧ F" in keys, keys
+    assert "⌘ N" in keys and "⌘ ⇧ F" in keys and "⌘ 1" in keys and "⌘ ⇧ 7" in keys, keys
     assert style(page, ".cm-scroller", "scrollbarWidth") == "auto"
     assert topbar_padding(page)[0] == "88px", topbar_padding(page)
     page.screenshot(path=str(ARTIFACTS / "mac.png"))

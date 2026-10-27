@@ -72,7 +72,8 @@ def accessible_buttons(page):
         expect(button).to_have_accessible_name(re.compile(r"\S"))
         # SVG-only controls and the × recent-removal control need tooltips.
         if button.locator("svg").count() and not button.inner_text().strip() or button.inner_text().strip() == "×":
-            assert button.get_attribute("title"), button.evaluate("el => el.outerHTML")
+            assert button.get_attribute("data-tip"), button.evaluate("el => el.outerHTML")
+            assert button.get_attribute("title") is None, button.evaluate("el => el.outerHTML")
 
 
 def check_format_bar(page):
@@ -87,18 +88,22 @@ def check_format_bar(page):
     assert order == ["insert-button", "undo", "redo", "|", "heading-button", "|", "bold", "italic", "underline", "strike", "highlight", "inlineCode", "superscript", "subscript", "clearFormatting", "|", "quote", "bullet", "ordered", "task", "outdent", "indent", "|", "link", "image", "table", "code", "math", "mermaid", "footnote", "|", "find", "|", "source"], order
     for separator in bar.locator(".format-sep").all():
         expect(separator).to_have_attribute("aria-hidden", "true")
-    expect(heading).to_have_attribute("title", "标题级别")
+    expect(heading).to_have_attribute("data-tip", "标题级别")
+    expect(heading).to_have_attribute("data-shortcut", "Mod+1–6")
     expect(heading).to_have_attribute("aria-haspopup", "menu")
-    expect(bar.locator('[data-action="bold"]')).to_have_attribute("title", "加粗 ⌘B")
-    expect(bar.locator('[data-action="link"]')).to_have_attribute("title", "链接 ⌘L")
+    expect(bar.locator('[data-action="bold"]')).to_have_attribute("data-tip", "加粗")
+    expect(bar.locator('[data-action="bold"]')).to_have_attribute("data-shortcut", "Mod+B")
+    expect(bar.locator('[data-action="link"]')).to_have_attribute("data-tip", "链接")
+    expect(bar.locator('[data-action="link"]')).to_have_attribute("data-shortcut", "Mod+L")
     expect(bar.locator('[data-action="footnote"]')).to_have_accessible_name("脚注")
-    expect(bar.locator('[data-action="footnote"]')).to_have_attribute("title", "脚注")
+    expect(bar.locator('[data-action="footnote"]')).to_have_attribute("data-tip", "脚注")
     expect(bar.locator('[data-action="mermaid"]')).to_have_accessible_name("图表")
-    expect(bar.locator('[data-action="mermaid"]')).to_have_attribute("title", "图表")
+    expect(bar.locator('[data-action="mermaid"]')).to_have_attribute("data-tip", "图表")
     expect(bar.locator('[data-action="math"]')).to_have_accessible_name("公式")
-    expect(bar.locator('[data-action="math"]')).to_have_attribute("title", "公式")
+    expect(bar.locator('[data-action="math"]')).to_have_attribute("data-tip", "公式")
     expect(source).to_have_text("源码")
-    expect(source).to_have_attribute("title", "显示 Markdown 源码 ⌘⇧M")
+    expect(source).to_have_attribute("data-tip", "显示 Markdown 源码")
+    expect(source).to_have_attribute("data-shortcut", "Mod+Shift+M")
     expect(source).to_be_hidden()
     expect(page.locator("#source-button, .source-toggle, .paper-top button")).to_have_count(0)
     expect(bar.locator('[data-action="image"]')).to_have_count(1)
@@ -108,7 +113,7 @@ def check_format_bar(page):
     assert bar.locator("button.tool").evaluate_all("els => els.every(el => el.getAttribute('aria-label') && getComputedStyle(el).width === '30px' && getComputedStyle(el).height === '32px')")
     accessible_buttons(page)
     for button in bar.locator("button:visible").all():
-        assert button.get_attribute("title"), button.evaluate("el => el.outerHTML")
+        assert button.get_attribute("data-tip") and button.get_attribute("title") is None, button.evaluate("el => el.outerHTML")
 
     with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
         more_action(page, "new")
@@ -120,7 +125,7 @@ def check_format_bar(page):
     for action, text, label in [("h1", "# 格式测试", "标题 1"), ("h3", "### 格式测试", "标题 3"), ("h4", "#### 格式测试", "标题 4"), ("h5", "##### 格式测试", "标题 5"), ("h6", "###### 格式测试", "标题 6"), ("paragraph", "格式测试", "正文")]:
         heading.click()
         expect(menu).to_be_visible()
-        expect(menu.get_by_role("menuitemradio")).to_have_text(["正文"] + [f"标题 {i}" for i in range(1, 7)])
+        expect(menu.locator("[role=menuitemradio] > span")).to_have_text(["正文"] + [f"标题 {i}" for i in range(1, 7)])
         # The heading menu stays under its button after moving the row.
         button_box, menu_box = heading.bounding_box(), menu.bounding_box()
         assert abs(menu_box["x"] - button_box["x"]) <= 1 and menu_box["y"] >= button_box["y"] + button_box["height"], (button_box, menu_box)
@@ -253,6 +258,285 @@ def check_format_bar(page):
     expect(bar).to_be_hidden()
     select_view(page, "single")
     expect(source).to_be_hidden()
+
+
+def check_tooltip_timing(browser):
+    """The tooltip's timing on a controlled clock: 500ms to appear, at once along the bar, 800ms of warmth after it closes."""
+    context = browser.new_context(locale="zh-CN", viewport={"width": 1120, "height": 820})
+    page = context.new_page()
+    page.clock.install()
+    page.goto(BASE)
+    expect(page.locator(".cm-content")).to_be_visible()
+    tip, name = page.locator("#tooltip"), page.locator("#tooltip span")
+
+    def centre(action):
+        box = page.locator(f'#format-bar [data-action="{action}"]').bounding_box()
+        return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+
+    bold, italic, footnote = centre("bold"), centre("italic"), centre("footnote")
+    page.mouse.move(5, 500)
+    page.clock.pause_at(page.evaluate("Date.now()") + 1000)
+    page.mouse.move(*bold)
+    page.clock.run_for(499)
+    expect(tip).to_be_hidden()
+    page.clock.run_for(1)
+    expect(tip).to_be_visible()
+    expect(name).to_have_text("加粗")
+    # Along the bar it follows at once: no time passes.
+    page.mouse.move(*italic)
+    expect(tip).to_be_visible()
+    expect(name).to_have_text("斜体")
+    page.mouse.move(5, 500)
+    expect(tip).to_be_hidden()
+    page.clock.run_for(799)
+    page.mouse.move(*footnote)
+    expect(tip).to_be_visible()
+    expect(name).to_have_text("脚注")
+    page.mouse.move(5, 500)
+    page.clock.run_for(800)
+    page.mouse.move(*bold)
+    page.clock.run_for(499)
+    expect(tip).to_be_hidden()
+    page.clock.run_for(1)
+    expect(tip).to_be_visible()
+    context.close()
+
+
+def check_tooltips(page):
+    """The drawn tooltip: name and keys, the delay, moving along the bar, dismissal, keyboard focus, placement and theme."""
+    tip, bar = page.locator("#tooltip"), page.locator("#format-bar")
+    name, keys = tip.locator("span"), tip.locator("kbd")
+    expect(tip).to_have_attribute("role", "tooltip")
+    expect(tip).to_be_hidden()
+    assert page.locator(".topbar [title], #format-bar [title], #drawer [title]").count() == 0
+    for selector, label, shortcut, aria in [
+        ('#format-bar [data-action="bold"]', "加粗", "Mod+B", "Meta+B"), ('#format-bar [data-action="italic"]', "斜体", "Mod+I", "Meta+I"),
+        ('#format-bar [data-action="footnote"]', "脚注", None, None), ("#heading-button", "标题级别", "Mod+1–6", None),
+        ('[data-view="single"]', "只显示编辑区", None, None), ('[data-view="split"]', "编辑区和阅读视图并排", "Mod+\\", "Meta+\\"),
+        ('[data-view="read"]', "只显示排好版的文稿", "Mod+Shift+R", "Meta+Shift+R"), ('.drawer-head [data-action="new"]', "新建文稿", "Mod+N", "Meta+N"),
+        ('#format-bar [data-action="source"]', "显示 Markdown 源码", "Mod+Shift+M", "Meta+Shift+M"), ("#sidebar-button", "侧栏：最近文稿", None, None),
+    ]:
+        control = page.locator(selector)
+        expect(control).to_have_attribute("data-tip", label)
+        assert control.get_attribute("data-shortcut") == shortcut, (selector, control.get_attribute("data-shortcut"))
+        assert control.get_attribute("aria-keyshortcuts") == aria, (selector, control.get_attribute("aria-keyshortcuts"))
+
+    # The timing itself is checked on a controlled clock in check_tooltip_timing.
+    page.mouse.move(5, 500)
+    bold = bar.locator('[data-action="bold"]')
+    bold.hover()
+    expect(tip).to_be_visible()
+    expect(name).to_have_text("加粗")
+    expect(keys).to_have_text("⌘B")
+    expect(bold).to_have_attribute("aria-describedby", "tooltip")
+    b, t = bold.bounding_box(), tip.bounding_box()
+    assert abs(t["x"] + t["width"] / 2 - (b["x"] + b["width"] / 2)) <= 1.5 and 4 <= t["y"] - (b["y"] + b["height"]) <= 8, (b, t)
+    for action, label, shortcut in [("italic", "斜体", "⌘I"), ("strike", "删除线", "⌘⇧X"), ("ordered", "有序列表", "⌘⇧7"), ("footnote", "脚注", "")]:
+        bar.locator(f'[data-action="{action}"]').hover()
+        expect(name).to_have_text(label)
+        expect(keys).to_have_text(shortcut)
+    expect(keys).to_be_hidden()
+    assert bold.get_attribute("aria-describedby") is None
+    page.locator("#heading-button").hover()
+    expect(name).to_have_text("标题级别")
+    expect(keys).to_have_text("⌘1–6")
+
+    # Leaving and Escape hide it. A press hides it until the pointer leaves that control.
+    page.mouse.move(5, 500)
+    expect(tip).to_be_hidden()
+    bold.hover()
+    expect(tip).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(tip).to_be_hidden()
+    page.mouse.move(5, 500)
+    page.wait_for_timeout(900)
+    find = bar.locator('[data-action="find"]')
+    find.hover()
+    expect(name).to_have_text("查找替换")
+    box = find.bounding_box()
+    page.mouse.down()
+    expect(tip).to_be_hidden()
+    page.mouse.up()
+    expect(page.locator(".cm-search")).to_be_visible()
+    page.mouse.move(box["x"] + box["width"] / 2 + 3, box["y"] + box["height"] / 2 + 2)
+    page.wait_for_timeout(900)
+    expect(tip).to_be_hidden()
+    page.mouse.move(5, 500)
+    find.hover()
+    expect(tip).to_be_visible()
+    page.locator(".cm-search input").first.focus()
+    page.keyboard.press("Escape")
+    expect(tip).to_be_hidden()
+    expect(page.locator(".cm-search")).to_be_hidden()
+
+    # No tooltip for a control whose menu is open.
+    page.locator("#heading-button").click()
+    expect(page.locator("#heading-menu")).to_be_visible()
+    page.mouse.move(5, 500)
+    page.locator("#heading-button").hover()
+    page.wait_for_timeout(900)
+    expect(tip).to_be_hidden()
+    page.keyboard.press("Escape")
+    expect(page.locator("#heading-menu")).to_be_hidden()
+
+    # Keyboard focus shows it at once; leaving the control hides it.
+    page.mouse.move(5, 500)
+    bold.focus()
+    page.keyboard.press("Tab")
+    expect(bar.locator('[data-action="italic"]')).to_be_focused()
+    expect(name).to_have_text("斜体")
+    expect(tip).to_be_visible()
+    page.keyboard.press("Shift+Tab")
+    expect(name).to_have_text("加粗")
+    page.locator(".cm-content").focus()
+    expect(tip).to_be_hidden()
+
+    # Enter and Escape hide it, and the focus they hand back does not bring it back.
+    page.locator("#doc-title").focus()
+    page.keyboard.press("Shift+Tab")
+    expect(page.locator("#sidebar-button")).to_be_focused()
+    expect(tip).to_be_visible()
+    expect(name).to_have_text("侧栏：最近文稿")
+    page.keyboard.press("Enter")
+    expect(page.locator("#drawer")).to_be_visible()
+    expect(tip).to_be_hidden()
+    page.keyboard.press("Escape")
+    expect(page.locator("#drawer")).to_be_hidden()
+    expect(page.locator("#sidebar-button")).to_be_focused()
+    page.wait_for_timeout(300)
+    expect(tip).to_be_hidden()
+    heading = page.locator("#heading-button")
+    heading.focus()
+    page.keyboard.press("Shift+Tab")
+    page.keyboard.press("Tab")
+    expect(heading).to_be_focused()
+    expect(tip).to_be_visible()
+    expect(name).to_have_text("标题级别")
+    page.keyboard.press("Enter")
+    expect(page.locator("#heading-menu")).to_be_visible()
+    expect(tip).to_be_hidden()
+    page.keyboard.press("Escape")
+    expect(heading).to_be_focused()
+    page.wait_for_timeout(300)
+    expect(tip).to_be_hidden()
+    assert heading.get_attribute("aria-describedby") is None
+    # A control removed under the tooltip takes the tooltip with it.
+    page.evaluate("""() => { const b = document.createElement('button'); b.id = 'tip-gone'; b.dataset.tip = '临时'; b.textContent = '临'; b.style.cssText = 'position:fixed;left:300px;top:300px'; document.body.append(b) }""")
+    page.mouse.move(5, 500)
+    page.locator("#tip-gone").hover()
+    expect(tip).to_be_visible()
+    page.evaluate("document.querySelector('#tip-gone').remove()")
+    page.mouse.move(310, 330)
+    page.mouse.move(320, 340)
+    expect(tip).to_be_hidden()
+
+    # Near the window's edges it stays 8px inside; with no room below it sits above the control.
+    page.set_viewport_size({"width": 680, "height": 820})
+    for selector in ("#sidebar-button", ".export-button"):
+        page.mouse.move(5, 700)
+        page.locator(selector).hover()
+        expect(tip).to_be_visible()
+        t = tip.bounding_box()
+        assert t["x"] >= 7.5 and t["x"] + t["width"] <= 680 - 7.5, (selector, t)
+    page.set_viewport_size({"width": 1120, "height": 820})
+    page.evaluate("""() => { const b = document.createElement('button'); b.id = 'tip-probe'; b.dataset.tip = '底部'; b.textContent = '底'; b.style.cssText = 'position:fixed;left:2px;bottom:2px'; document.body.append(b) }""")
+    page.mouse.move(5, 400)
+    page.locator("#tip-probe").hover()
+    expect(tip).to_be_visible()
+    p, t = page.locator("#tip-probe").bounding_box(), tip.bounding_box()
+    assert t["y"] + t["height"] <= p["y"] - 4 and t["x"] >= 7.5, (p, t)
+    page.mouse.move(5, 400)
+    page.evaluate("document.querySelector('#tip-probe').remove()")
+
+    # Floating paper in every theme: in Ink it takes Ink's popover colour.
+    set_theme(page, "ink")
+    bold.hover()
+    expect(tip).to_be_visible()
+    colours = page.evaluate("""() => { const probe = document.createElement('div'); probe.style.background = 'var(--popover)'; document.body.append(probe);
+      const pair = [getComputedStyle(document.querySelector('#tooltip')).backgroundColor, getComputedStyle(probe).backgroundColor]; probe.remove(); return pair }""")
+    assert colours[0] == colours[1], colours
+    page.evaluate("delete document.documentElement.dataset.liubaiTheme; delete document.documentElement.dataset.liubaiScheme")
+    page.mouse.move(5, 500)
+    expect(tip).to_be_hidden()
+
+
+def check_format_shortcuts(page):
+    """The format keys do what their toolbar buttons do, and nothing where the buttons do nothing."""
+    with page.expect_response(lambda r: r.url.endswith("/api") and '"New"' in (r.request.post_data or "")):
+        more_action(page, "new")
+    content = page.locator('.cm-content[contenteditable="true"]')
+
+    def replace(text):
+        content.focus()
+        page.keyboard.press("Meta+a")
+        page.keyboard.insert_text(text)
+
+    def saved_text(text):
+        expect(page.locator("#save-status")).to_have_text("草稿已保存")
+        assert api(page, "State")["current"]["content"] == text, api(page, "State")["current"]["content"]
+
+    # ⌘1–⌘6 set every selected line's level, as the heading menu does; ⌘0 returns to body text.
+    replace("第一行\n第二行")
+    page.keyboard.press("Meta+a")
+    for level in (1, 2, 3, 4, 5, 6, 6):
+        page.keyboard.press(f"Meta+{level}")
+        saved_text("#" * level + " 第一行\n" + "#" * level + " 第二行")
+    expect(page.locator("#heading-label")).to_have_text("标题 6")
+    page.keyboard.press("Meta+0")
+    saved_text("第一行\n第二行")
+    # Inline formats wrap the selection, and the same key unwraps it.
+    for keys, opening, closing in [("Meta+i", "_", "_"), ("Meta+Shift+X", "~~", "~~"), ("Meta+Shift+H", "==", "=="), ("Meta+e", "`", "`"), ("Meta+b", "**", "**"), ("Meta+u", "<u>", "</u>")]:
+        replace("选中文字")
+        page.keyboard.press("Meta+a")
+        page.keyboard.press(keys)
+        saved_text(opening + "选中文字" + closing)
+        page.keyboard.press(keys)
+        saved_text("选中文字")
+    # Lists toggle on every selected line.
+    for keys, first, second in [("Meta+Shift+7", "1. ", "2. "), ("Meta+Shift+8", "- ", "- "), ("Meta+Shift+9", "- [ ] ", "- [ ] ")]:
+        replace("第一项\n第二项")
+        page.keyboard.press("Meta+a")
+        page.keyboard.press(keys)
+        saved_text(first + "第一项\n" + second + "第二项")
+        page.keyboard.press(keys)
+        saved_text("第一项\n第二项")
+    # Other modifiers do nothing: ⌘⇧E, ⌥⌘1 and, on macOS, ⌃1.
+    replace("不变")
+    page.keyboard.press("Meta+a")
+    for keys in ("Meta+Shift+E", "Meta+Alt+1", "Control+1"):
+        page.keyboard.press(keys)
+    page.wait_for_timeout(300)
+    saved_text("不变")
+    # In a text field the keys belong to the field: ⌘B there no longer bolds the document.
+    page.locator("#sidebar-button").click()
+    search = page.locator("#recent-search")
+    search.fill("搜索")
+    for keys in ("Meta+1", "Meta+b", "Meta+Shift+7"):
+        search.press(keys)
+    expect(search).to_be_focused()
+    expect(search).to_have_value("搜索")
+    page.wait_for_timeout(300)
+    saved_text("不变")
+    search.fill("")
+    page.keyboard.press("Escape")
+    # Reading mode keeps the text and says how to get back.
+    select_view(page, "read")
+    page.keyboard.press("Meta+1")
+    expect(page.locator("#toast")).to_contain_text("阅读模式下不能编辑")
+    select_view(page, "single")
+    saved_text("不变")
+    # The heading menu and All Commands show the same keys.
+    page.locator("#heading-button").click()
+    expect(page.locator("#heading-menu [role=menuitemradio] kbd")).to_have_text(["⌘0"] + [f"⌘{i}" for i in range(1, 7)])
+    expect(page.locator('#heading-menu [data-menu-action="h2"]')).to_have_attribute("aria-keyshortcuts", "Meta+2")
+    expect(page.locator('#heading-menu [data-menu-action="h2"]')).to_have_accessible_name("标题 2")
+    page.keyboard.press("Escape")
+    content.focus()
+    page.keyboard.press("Meta+k")
+    for label, keys in [("斜体选中文字", "⌘ I"), ("删除线", "⌘ ⇧ X"), ("高亮", "⌘ ⇧ H"), ("行内代码", "⌘ E"), ("正文", "⌘ 0"), ("标题 1", "⌘ 1"), ("标题 6", "⌘ 6"), ("有序列表", "⌘ ⇧ 7"), ("无序列表", "⌘ ⇧ 8"), ("插入任务列表", "⌘ ⇧ 9")]:
+        row = page.locator("#command-list .command").filter(has=page.locator("span", has_text=re.compile("^" + re.escape(label) + "$")))
+        expect(row.locator("kbd")).to_have_text(keys)
+    page.keyboard.press("Escape")
 
 
 def settled(page):
@@ -561,6 +845,9 @@ def run(page):
             assert first["action"] == second["action"] or first["svg"] != second["svg"], (first, second)
 
     check_format_bar(page)
+    check_tooltips(page)
+    check_tooltip_timing(page.context.browser)
+    check_format_shortcuts(page)
     check_writing_sheet(page)
     check_split_columns(page)
     check_docked_sidebar_and_outline(page)
@@ -739,8 +1026,18 @@ def run(page):
     for action, label in [("footnote", "Footnote"), ("mermaid", "Diagram"), ("math", "Formula"), ("underline", "Underline"), ("highlight", "Highlight"), ("superscript", "Superscript"), ("subscript", "Subscript"), ("clearFormatting", "Clear Formatting"), ("indent", "Increase Indent"), ("outdent", "Decrease Indent"), ("find", "Find and Replace")]:
         expect(page.locator(f'#format-bar [data-action="{action}"]')).to_have_accessible_name(label)
     expect(page.locator("#insert-button")).to_have_accessible_name("Insert")
+    page.locator('#format-bar [data-action="bold"]').hover()
+    expect(page.locator("#tooltip")).to_be_visible()
+    expect(page.locator('#format-bar [data-action="bold"]')).to_have_attribute("aria-describedby", "tooltip")
+    expect(page.locator("#tooltip span")).to_have_text("Bold")
+    expect(page.locator("#tooltip kbd")).to_have_text("⌘B")
+    page.locator('[data-view="split"]').hover()
+    expect(page.locator("#tooltip")).to_be_visible()
+    expect(page.locator('[data-view="split"]')).to_have_attribute("aria-describedby", "tooltip")
+    expect(page.locator("#tooltip span")).to_have_text("Show the editor and reading view side by side")
+    page.mouse.move(5, 500)
     page.locator("#heading-button").click()
-    expect(page.locator("#heading-menu [role=menuitemradio]")).to_have_text(["Body"] + [f"Heading {i}" for i in range(1, 7)])
+    expect(page.locator("#heading-menu [role=menuitemradio] > span")).to_have_text(["Body"] + [f"Heading {i}" for i in range(1, 7)])
     page.keyboard.press("Escape")
     print("PASS: whole-page bounds/flat panes/centred normal-wide-full columns, format row/word count/long-document/click-to-write, equal split/stacked divider/full reader, format groups/names/icons/headings/cursor/wrapping/source, toolbar order/names/icons, view radios/shortcuts/reload, docked/overlay sidebar persistence/resizing, right outline geometry/jumps/active heading/visibility, sidebar recent documents only, menu keyboard/dismissal/disabled/source/focus/commands, export, responsive toolbar")
 

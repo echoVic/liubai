@@ -9,7 +9,7 @@
 
 ## 步骤
 
-1. 改版本号：`mygo.json`、`package.json`，以及 `main.go` 里 `ShowAboutPanel` 的 `ApplicationVersion` 和 `mygo.App.SetVersion`。在 `CHANGELOG.md` 顶部写好 `## <版本>` 一节，它会成为应用内的更新说明，缺少时构建失败。
+1. 改版本号：`mygo.json` 和 `package.json`。在 `CHANGELOG.md` 顶部写好 `## <版本>` 一节，它会成为应用内的更新说明，缺少时构建失败。
 2. 提交 `chore(release): <版本>`，打附注标签 `v<版本>`，推送 `main` 和标签。
 3. 在这个提交上、工作区干净时构建并上传：
 

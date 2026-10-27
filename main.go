@@ -324,7 +324,7 @@ func menuTemplate(action func(string) func(*mygo.MenuItem, *mygo.Window)) []*myg
 }
 
 func showAbout(msgs locales.Messages) {
-	mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: msgs.BMenuAppName(), ApplicationVersion: "0.6.5"})
+	mygo.App.ShowAboutPanel(mygo.AboutPanelOptions{ApplicationName: msgs.BMenuAppName(), ApplicationVersion: mygo.App.Version()})
 }
 
 // appNameFor is the name MyGo knows the app by: it keys the single-instance
@@ -380,7 +380,6 @@ func main() {
 	flag.Parse()
 	if *webAddr == "" {
 		mygo.App.SetName(appNameFor(runtime.GOOS, locales.In(i18n.Locale())))
-		mygo.App.SetVersion("0.6.5")
 	}
 	web := frontendFiles()
 	if *webAddr == "" && os.Getenv("MYGO_GENERATE") != "" {
@@ -391,9 +390,6 @@ func main() {
 		return
 	}
 	if *webAddr == "" {
-		// A second launch hands its files to the first instance, whose window
-		// then comes to the front, as only the process the user started allows.
-		allowForegroundHandoff()
 		if !mygo.App.RequestSingleInstanceLock() {
 			return
 		}

@@ -3,6 +3,8 @@ package main
 import (
 	_ "embed"
 	"encoding/json"
+	"math"
+	"time"
 )
 
 // src/themes.json lists the themes for both sides; their colours live in src/themes.css.
@@ -53,6 +55,56 @@ func hoursTheme(hour int) string {
 		if from < to && hour >= from && hour < to || from > to && (hour >= from || hour < to) {
 			return t.ID
 		}
+	}
+	return "paper"
+}
+
+// Match src/theme.ts so the native picker shows the theme on the page,
+// including keeping that theme when automatic switching is turned off.
+func resolveAppearanceTheme(p Appearance, now time.Time, systemDark bool) string {
+	switch p.Auto {
+	case "system":
+		if systemDark {
+			if darkTheme(p.DarkTheme) {
+				return p.DarkTheme
+			}
+			return "ink"
+		}
+		if validTheme(p.LightTheme) && !darkTheme(p.LightTheme) {
+			return p.LightTheme
+		}
+		return "paper"
+	case "hours":
+		return hoursTheme(now.Hour())
+	case "seasons":
+		season := "winter"
+		if systemDark {
+			season = "night"
+		} else {
+			// The same 21st-century solar-term dates used by the page.
+			for i, term := range []struct {
+				month    time.Month
+				constant float64
+				season   string
+			}{{time.February, 3.87, "spring"}, {time.May, 5.52, "summer"}, {time.August, 7.5, "autumn"}, {time.November, 7.438, "winter"}} {
+				y, leap := now.Year()%100, now.Year()%100
+				if i == 0 {
+					leap--
+				}
+				day := int(math.Floor(float64(y)*0.2422+term.constant) - math.Floor(float64(leap)/4))
+				if !now.Before(time.Date(now.Year(), term.month, day, 0, 0, 0, 0, now.Location())) {
+					season = term.season
+				}
+			}
+		}
+		for _, theme := range themes {
+			if theme.Season == season {
+				return theme.ID
+			}
+		}
+	}
+	if validTheme(p.Theme) {
+		return p.Theme
 	}
 	return "paper"
 }

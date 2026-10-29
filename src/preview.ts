@@ -13,6 +13,7 @@ export interface PreviewController {
  setVisible: (visible:boolean)=>void;
  setDocument: (documentID:string)=>boolean;
  changed: (content:boolean,line:number)=>void;
+ jumpToLine: (line:number)=>void;
  composition: (active:boolean)=>void;
  refresh: ()=>void;
  saved: ()=>void;
@@ -35,6 +36,7 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
  let renderTimer:ReturnType<typeof setTimeout>|undefined;
  let followTimer:ReturnType<typeof setTimeout>|undefined;
  let pendingLine:number|undefined;
+ let pendingJump:{id:string;line:number}|undefined;
  let current:MarkdownRender|undefined;
  let followedRange='';
 
@@ -42,6 +44,7 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
  const elementForLine=(line:number)=>{
   let containing:HTMLElement|undefined;
   let preceding:HTMLElement|undefined;
+  let following:HTMLElement|undefined;
   for(const element of mappedElements()){
    const range=rangeOf(element);
    if(!range)continue;
@@ -50,11 +53,14 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
     if(!current||range.end-range.start<=current.end-current.start)containing=element;
     continue;
    }
+   if(range.start>line){
+    if(!following||range.start<(rangeOf(following)?.start??Infinity))following=element;
+   }
    if(range.end>line)continue;
    const current=preceding&&rangeOf(preceding);
    if(!current||range.end>current.end||(range.end===current.end&&range.start>=current.start))preceding=element;
   }
-  return containing||preceding;
+  return containing||preceding||following;
  };
  const anchor=():ViewAnchor=>{
   const top=options.scroll.getBoundingClientRect().top;
@@ -86,6 +92,16 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
   if(visible&&!composing)render();
   else dirty=true;
  };
+ const applyJump=()=>{
+  if(!pendingJump||pendingJump.id!==documentID||!visible||composing||dirty)return;
+  const target=elementForLine(pendingJump.line);if(!target)return;
+  for(let parent:HTMLElement|null=target;parent&&parent!==options.scroll;parent=parent.parentElement){
+   if(parent instanceof HTMLDetailsElement)parent.open=true;
+  }
+  followedRange=rangeKey(rangeOf(target));
+  const viewport=options.scroll.getBoundingClientRect();
+  options.scroll.scrollTo({top:Math.max(0,options.scroll.scrollTop+target.getBoundingClientRect().top-viewport.top-12),behavior:'auto'});
+ };
  const render=()=>{
   clearTimeout(renderTimer);
   renderTimer=undefined;
@@ -98,6 +114,7 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
   missingImages=false;
   const next=renderMarkdown(options.getContent(),{
    external:'load',
+   wikiLinks:'interactive',
    resolve:destination=>options.resolveImage(id,destination).catch(error=>{
     if(id===documentID&&generation===renderGeneration)renderMissingImages=true;
     throw error;
@@ -110,7 +127,8 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
   installHeadingAnchors();
   restore(saved);
   dirty=false;
-  if(pendingLine!==undefined){
+  applyJump();
+  if(!pendingJump&&pendingLine!==undefined){
    const line=pendingLine;
    pendingLine=undefined;
    scheduleFollow(line);
@@ -118,7 +136,9 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
   void next.ready.then(()=>{
    if(id!==documentID||generation!==renderGeneration)return;
    missingImages=renderMissingImages;
-   if(renderMissingImages&&saveEpoch>startedAtSaveEpoch)retryAfterSave(saveEpoch);
+   if(renderMissingImages&&saveEpoch>startedAtSaveEpoch){retryAfterSave(saveEpoch);return}
+   applyJump();
+   pendingJump=undefined;
   });
  };
  const scheduleRender=()=>{
@@ -149,6 +169,7 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
   clearTimeout(followTimer);
   followTimer=undefined;
   pendingLine=undefined;
+  pendingJump=undefined;
  };
  const click=(event:MouseEvent)=>{
   const link=(event.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
@@ -187,6 +208,7 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
    retriedSaveEpoch=-1;
    missingImages=false;
    followedRange='';
+   pendingJump=undefined;
    pendingLine=undefined;
    options.scroll.scrollTop=0;
    dirty=true;
@@ -194,8 +216,17 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
    return true;
   },
   changed(content,line){
-   if(content)scheduleRender();
+   if(content){pendingJump=undefined;scheduleRender()}
    else scheduleFollow(line);
+  },
+  jumpToLine(line){
+   if(!Number.isInteger(line)||line<0)return;
+   cancelFollow();
+   pendingJump={id:documentID,line};
+   if(visible&&!composing){
+    if(dirty||!current)render();
+    else{applyJump();const target=pendingJump,generation=renderGeneration;void current.ready.then(()=>{if(pendingJump!==target||generation!==renderGeneration)return;applyJump();pendingJump=undefined})}
+   }
   },
   composition(active){
    composing=active;

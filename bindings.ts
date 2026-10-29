@@ -19,6 +19,52 @@ export interface Appearance {
   outlineHidden: boolean;
 }
 
+/**
+ * AppearanceChange edits only the supplied preferences. Settings and editor
+ * windows must not replace one another's unrelated, possibly pending values.
+ */
+export interface AppearanceChange {
+  theme?: string;
+  auto?: string;
+  lightTheme?: string;
+  darkTheme?: string;
+  fontSize?: number;
+  lineWidth?: string;
+  layout?: string;
+  source?: boolean;
+  sidebarDocked?: boolean;
+  outlineHidden?: boolean;
+}
+
+export interface BacklinkResponse {
+  documentID: string;
+  revision: number;
+  status: BacklinkStatus;
+  items: SearchItem[];
+  total: number;
+  truncated: boolean;
+}
+
+export type BacklinkStatus = "ready" | "unnamed" | "ambiguous";
+
+export interface CaptureAppendResult {
+  document: Document;
+  changes: TextChange[];
+  summary: Summary;
+}
+
+export interface CaptureContext {
+  appearance: Appearance;
+  recent: Summary[];
+}
+
+export interface CaptureRequest {
+  text: string;
+  tags: string[];
+  targetID: string;
+  revision: number;
+}
+
 export interface CaptureSettings {
   enabled: boolean;
   shortcut: string;
@@ -70,6 +116,25 @@ export interface Document {
   imageAliases?: Record<string, string>;
 }
 
+export interface DocumentFilterItem {
+  document: SearchItem;
+  tags: string[];
+  excerpt: string;
+}
+
+export interface DocumentFilterRequest {
+  query: string;
+  tag: string;
+}
+
+export interface DocumentFilterResponse {
+  items: DocumentFilterItem[];
+  total: number;
+  truncated: boolean;
+  tags: TagSummary[];
+  recent: Summary[];
+}
+
 export interface Edit {
   id: string;
   revision: number;
@@ -115,18 +180,62 @@ export interface Position {
   source: boolean;
 }
 
+export interface SearchHit {
+  from: number;
+  to: number;
+  line: number;
+  text: string;
+  before: string;
+  after: string;
+}
+
+export interface SearchItem {
+  id: string;
+  title: string;
+  path: string;
+  updated: number;
+  revision: number;
+  titleMatch: SearchRange | null;
+  hits: SearchHit[];
+  moreHits: boolean;
+}
+
+export interface SearchRange {
+  from: number;
+  to: number;
+}
+
+export interface SearchResponse {
+  items: SearchItem[];
+  total: number;
+  truncated: boolean;
+}
+
 export interface Summary {
   id: string;
   title: string;
   path: string;
   updated: number;
   excerpt: string;
+  tags?: string[];
+  warning?: string;
+}
+
+export interface TagSummary {
+  name: string;
+  count: number;
 }
 
 export interface TextChange {
   from: number;
   to: number;
   insert: string;
+}
+
+export interface WikiResolveRequest {
+  sourceID: string;
+  revision: number;
+  target: string;
 }
 
 export interface WorkspaceState {
@@ -148,8 +257,17 @@ export const Desktop = {
   activate(id: string): Promise<WorkspaceState> {
     return call("Desktop.Activate", id);
   },
+  activateSearch(id: string): Promise<WorkspaceState> {
+    return call("Desktop.ActivateSearch", id);
+  },
   appearance(p: Appearance): Promise<void> {
     return call("Desktop.Appearance", p);
+  },
+  appendCapture(req: CaptureRequest): Promise<CaptureAppendResult> {
+    return call("Desktop.AppendCapture", req);
+  },
+  backlinks(id: string): Promise<BacklinkResponse> {
+    return call("Desktop.Backlinks", id);
   },
   capture(text: string): Promise<Summary> {
     return call("Desktop.Capture", text);
@@ -174,6 +292,12 @@ export const Desktop = {
   },
   export(id: string, allowMissing: boolean): Promise<ExportResult> {
     return call("Desktop.Export", id, allowMissing);
+  },
+  filterDocuments(request: DocumentFilterRequest): Promise<DocumentFilterResponse> {
+    return call("Desktop.FilterDocuments", request);
+  },
+  getCaptureContext(): Promise<CaptureContext> {
+    return call("Desktop.GetCaptureContext");
   },
   getCaptureSettings(): Promise<CaptureStatus> {
     return call("Desktop.GetCaptureSettings");
@@ -214,11 +338,17 @@ export const Desktop = {
   rescue(id: string, content: string): Promise<ExportResult> {
     return call("Desktop.Rescue", id, content);
   },
+  resolveWikiLink(request: WikiResolveRequest): Promise<SearchResponse> {
+    return call("Desktop.ResolveWikiLink", request);
+  },
   reveal(path: string): Promise<void> {
     return call("Desktop.Reveal", path);
   },
   saveAs(id: string): Promise<ExportResult> {
     return call("Desktop.SaveAs", id);
+  },
+  saveCapture(req: CaptureRequest): Promise<Summary> {
+    return call("Desktop.SaveCapture", req);
   },
   saveDOCX(title: string, data: string): Promise<ExportResult> {
     return call("Desktop.SaveDOCX", title, data);
@@ -228,6 +358,9 @@ export const Desktop = {
   },
   savePosition(id: string, p: Position): Promise<void> {
     return call("Desktop.SavePosition", id, p);
+  },
+  search(query: string): Promise<SearchResponse> {
+    return call("Desktop.Search", query);
   },
   setCaptureSettings(p: CaptureSettings): Promise<void> {
     return call("Desktop.SetCaptureSettings", p);
@@ -245,6 +378,13 @@ export const Desktop = {
   showCapture(): Promise<void> {
     return call("Desktop.ShowCapture");
   },
+  /**
+   * ShowSettings is also called from the WebView bridge; window state belongs
+   * to the main thread, including creating, reusing and closing the window.
+   */
+  showSettings(tab: string): Promise<void> {
+    return call("Desktop.ShowSettings", tab);
+  },
   state(): Promise<WorkspaceState> {
     return call("Desktop.State");
   },
@@ -254,6 +394,9 @@ export const Desktop = {
   update(e: Edit): Promise<Document> {
     return call("Desktop.Update", e);
   },
+  updateAppearance(change: AppearanceChange): Promise<Appearance> {
+    return call("Desktop.UpdateAppearance", change);
+  },
 } as const;
 
 // ---- Events ----
@@ -262,6 +405,7 @@ export const Desktop = {
 export const events = {
   liubaiCaptured: event<Summary>("liubai:captured"),
   liubaiCaptureAppearance: event<Appearance>("liubai:capture-appearance"),
+  liubaiAppearanceChanged: event<AppearanceChange>("liubai:appearance-changed"),
   liubaiDiskChanged: event<string>("liubai:disk-changed"),
   liubaiAction: event<string>("liubai:action"),
   liubaiOpened: event<WorkspaceState>("liubai:opened"),

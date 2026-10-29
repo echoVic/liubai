@@ -55,10 +55,40 @@ func TestAppMenuOffersCheckForUpdatesAfterAbout(t *testing.T) {
 			if app[1].Label != tt.label || app[1].Click == nil {
 				t.Errorf("item after About = %+v, want %q with Click", app[1], tt.label)
 			}
-			if app[2].Type != mygo.MenuItemSeparator || app[3].Role != mygo.RoleHide {
-				t.Error("Check for Updates must be followed by a separator and Hide")
+			if app[2].Type != mygo.MenuItemSeparator || app[3].Label != locales.In(tt.locale).FSettings() || app[4].Type != mygo.MenuItemSeparator || app[5].Role != mygo.RoleHide {
+				t.Error("Check for Updates must be followed by Settings, then the standard app actions")
 			}
 		})
+	}
+}
+
+func TestMenusOpenSettingsWithStandardShortcut(t *testing.T) {
+	for _, platform := range []string{"darwin", "windows"} {
+		var selected string
+		items := menuTemplateFor(platform, locales.In("en"), func(action string) func(*mygo.MenuItem, *mygo.Window) {
+			return func(*mygo.MenuItem, *mygo.Window) { selected = action }
+		})
+		menu := items[0].Submenu
+		if platform == "windows" {
+			menu = items[1].Submenu
+		}
+		found := false
+		for _, item := range menu {
+			if item.Label != "Settings…" {
+				continue
+			}
+			found = true
+			if item.Accelerator != "CmdOrCtrl+," || item.Click == nil {
+				t.Fatal("settings must have the standard shortcut and open action")
+			}
+			item.Click(nil, nil)
+			if selected != "settings" {
+				t.Fatalf("settings action = %q", selected)
+			}
+		}
+		if !found {
+			t.Fatalf("%s has no Settings menu", platform)
+		}
 	}
 }
 
@@ -84,7 +114,7 @@ func TestMenuUsesToolbarNamesAndShortcuts(t *testing.T) {
 	}
 	walk(menuTemplateFor("darwin", locales.In("zh-Hans"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }))
 	for label, key := range map[string]string{
-		"导出…": "", "专注模式": "CmdOrCtrl+Shift+F", "外观与排版…": "",
+		"导出…": "", "专注模式": "CmdOrCtrl+Shift+F", "设置…": "CmdOrCtrl+,",
 		"切换分栏": "CmdOrCtrl+\\", "阅读模式": "CmdOrCtrl+Shift+R",
 		"显示 Markdown 源码": "CmdOrCtrl+Shift+M", "所有操作…": "CmdOrCtrl+K",
 	} {
@@ -145,7 +175,7 @@ func TestFileMenuOffersCaptureAfterOpenRecent(t *testing.T) {
 	t.Fatal("文件菜单的打开最近使用之后应为随手记，无快捷键")
 }
 
-func TestMenuTemplateEnglishLabelsAndLanguageChoices(t *testing.T) {
+func TestMenuTemplateEnglishLabels(t *testing.T) {
 	items := menuTemplateFor("darwin", locales.In("en"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
 	labels := map[string]*mygo.MenuItem{}
 	var walk func([]*mygo.MenuItem)
@@ -156,34 +186,33 @@ func TestMenuTemplateEnglishLabelsAndLanguageChoices(t *testing.T) {
 		}
 	}
 	walk(items)
-	for _, label := range []string{"File", "Edit", "View", "Window", "New Document", "Open Recent", "Paste as Plain Text", "Quick Note", "Follow System", "简体中文", "English"} {
+	for _, label := range []string{"File", "Edit", "View", "Window", "New Document", "Open Recent", "Paste as Plain Text", "Quick Note", "Settings…"} {
 		if labels[label] == nil {
 			t.Errorf("missing English menu label %q", label)
 		}
 	}
-	for _, label := range []string{"Follow System", "简体中文", "English"} {
-		if item := labels[label]; item != nil && item.Type != mygo.MenuItemRadio {
-			t.Errorf("language %q is not a radio item", label)
-		}
-	}
 }
 
-func TestLanguageChoicesAreInsideViewMenu(t *testing.T) {
-	items := menuTemplateFor("darwin", locales.In("en"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
-	for _, item := range items {
-		if item.Label == "Language" {
-			t.Fatal("Language must be inside View")
-		}
-		if item.Label != "View" {
-			continue
-		}
-		for _, child := range item.Submenu {
-			if child.Label == "Language" && len(child.Submenu) == 3 {
-				return
+func TestSettingsMenuIsTheOnlyPreferenceEntry(t *testing.T) {
+	for _, platform := range []string{"darwin", "windows"} {
+		count := 0
+		var walk func([]*mygo.MenuItem)
+		walk = func(items []*mygo.MenuItem) {
+			for _, item := range items {
+				if item.Label == "Settings…" {
+					count++
+				}
+				if item.Label == "Language" || item.Label == "Appearance and Typography…" {
+					t.Errorf("%s has duplicate preference entry %q", platform, item.Label)
+				}
+				walk(item.Submenu)
 			}
 		}
+		walk(menuTemplateFor(platform, locales.In("en"), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil }))
+		if count != 1 {
+			t.Errorf("%s has %d Settings entries", platform, count)
+		}
 	}
-	t.Fatal("View > Language must contain three choices")
 }
 
 func TestWindowsMenusFollowWindowsHabits(t *testing.T) {

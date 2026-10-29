@@ -10,7 +10,6 @@ import (
 
 	"liubai/locales"
 
-	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/i18n"
 )
 
@@ -177,29 +176,6 @@ func TestLocalizedStatePreservesContentAndUserTitles(t *testing.T) {
 	custom.CustomTitle = true
 	if got := documentIn(custom, "en"); got.Title != custom.Title {
 		t.Fatal("localized explicitly chosen title")
-	}
-}
-
-func TestLanguageMenuHasExactlyOneCheckedPreference(t *testing.T) {
-	old := localePreference()
-	defer nativeLocaleChoice.Store(old)
-	for _, preference := range []string{"", "zh-Hans", "en"} {
-		nativeLocaleChoice.Store(preference)
-		for _, tag := range []string{"en", "zh-Hans"} {
-			menus := languageMenu(locales.In(tag), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
-			checked := 0
-			for _, item := range menus {
-				if item.Type != mygo.MenuItemRadio {
-					t.Fatal("language choice is not radio")
-				}
-				if item.Checked {
-					checked++
-				}
-			}
-			if checked != 1 {
-				t.Fatalf("preference %q: checked %d items", preference, checked)
-			}
-		}
 	}
 }
 

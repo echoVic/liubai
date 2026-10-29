@@ -19,7 +19,7 @@ def chrome_is_english(page):
     # Document titles, excerpts, editor and rendered content belong to the user.
     # Language autonyms intentionally name each language in its own script.
     offending = page.evaluate("""() => {
-        const skip = '#doc-title, .cm-content, #preview-content, #print-document, .recent-item b, .recent-item p, .outline-item, #missing-list, #rename-input, #link-text, #link-url';
+        const skip = '#doc-title, .cm-content, #preview-content, #print-document, .recent-item b, .recent-item p, .search-title, .search-snippet, .search-path, .outline-item, #missing-list, #rename-input, #link-text, #link-url';
         const cjk = /[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{Script=Hangul}]/u;
         const found = [];
         for (const el of document.querySelectorAll('body *')) {
@@ -74,7 +74,7 @@ def english(context):
     expect(page.locator('[data-deliver="pdf"] b')).to_have_text("Export PDF")
     chrome_is_english(page)
     page.keyboard.press("Escape")
-    page.locator('[data-action="theme"]').click()
+    page.locator('[data-action="settings"]').click()
     expect(page.locator("#appearance h2")).to_have_text("Appearance and Typography")
     expect(page.locator("#themes")).to_contain_text("Paper")
     # The hour cards name the clock hour each theme starts at, in 12-hour time; the close button is the icon.

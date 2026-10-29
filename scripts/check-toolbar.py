@@ -45,7 +45,7 @@ def saved_position(page, check, timeout=7000):
 
 
 def appearance_change(page, operation):
-    with page.expect_response(lambda r: r.url.endswith("/api") and '"Appearance"' in (r.request.post_data or "")) as pending:
+    with page.expect_response(lambda r: r.url.endswith("/api") and '"UpdateAppearance"' in (r.request.post_data or "")) as pending:
         operation()
     assert not pending.value.json().get("error"), pending.value.text()
 
@@ -85,7 +85,7 @@ def check_format_bar(page):
     expect(bar).to_have_attribute("role", "toolbar")
     expect(bar).to_have_attribute("aria-label", "格式")
     order = bar.locator(".format-group").evaluate("el => [...el.children].flatMap(el => el.classList.contains('format-cluster') ? [...el.children] : [el]).map(el => el.classList.contains('format-sep') ? '|' : el.dataset.action || el.id)")
-    assert order == ["insert-button", "undo", "redo", "|", "heading-button", "|", "bold", "italic", "underline", "strike", "highlight", "inlineCode", "superscript", "subscript", "clearFormatting", "|", "quote", "bullet", "ordered", "task", "outdent", "indent", "|", "link", "image", "table", "code", "math", "mermaid", "footnote", "|", "find", "|", "source"], order
+    assert order == ["insert-button", "undo", "redo", "|", "heading-button", "|", "bold", "italic", "underline", "strike", "highlight", "inlineCode", "superscript", "subscript", "clearFormatting", "|", "quote", "bullet", "ordered", "task", "outdent", "indent", "|", "link", "image", "table", "code", "math", "mermaid", "footnote", "|", "source"], order
     for separator in bar.locator(".format-sep").all():
         expect(separator).to_have_attribute("aria-hidden", "true")
     expect(heading).to_have_attribute("data-tip", "标题级别")
@@ -108,7 +108,7 @@ def check_format_bar(page):
     expect(page.locator("#source-button, .source-toggle, .paper-top button")).to_have_count(0)
     expect(bar.locator('[data-action="image"]')).to_have_count(1)
     icons = bar.locator("button.tool").evaluate_all("els => els.map(el => ({action:el.dataset.action, svg:el.querySelector('svg').outerHTML}))")
-    assert len(icons) == 25
+    assert len(icons) == 24
     assert len({item["svg"] for item in icons}) == len(icons), icons
     assert bar.locator("button.tool").evaluate_all("els => els.every(el => el.getAttribute('aria-label') && getComputedStyle(el).width === '30px' && getComputedStyle(el).height === '32px')")
     accessible_buttons(page)
@@ -220,8 +220,8 @@ def check_format_bar(page):
     replace("正文")
     for action in ("indent", "outdent"):
         expect(bar.locator(f'[data-action="{action}"]')).to_be_disabled()
-    bar.locator('[data-action="find"]').click()
-    expect(page.locator(".cm-search")).to_be_visible()
+    page.locator('#document-find-button').click()
+    expect(page.locator("#document-find")).to_be_visible()
     page.keyboard.press("Escape")
     replace("==亮== <u>线</u> <sup>上</sup> <sub>下</sub> ~~删~~\n\n光标")
     for selector, prop, expected in [(".md-underline", "textDecorationLine", "underline"), (".md-sup", "verticalAlign", "super"), (".md-sub", "verticalAlign", "sub")]:
@@ -350,24 +350,24 @@ def check_tooltips(page):
     expect(tip).to_be_hidden()
     page.mouse.move(5, 500)
     page.wait_for_timeout(900)
-    find = bar.locator('[data-action="find"]')
+    find = page.locator('#document-find-button')
     find.hover()
-    expect(name).to_have_text("查找替换")
+    expect(name).to_have_text("查找正文")
     box = find.bounding_box()
     page.mouse.down()
     expect(tip).to_be_hidden()
     page.mouse.up()
-    expect(page.locator(".cm-search")).to_be_visible()
+    expect(page.locator("#document-find")).to_be_visible()
     page.mouse.move(box["x"] + box["width"] / 2 + 3, box["y"] + box["height"] / 2 + 2)
     page.wait_for_timeout(900)
     expect(tip).to_be_hidden()
     page.mouse.move(5, 500)
     find.hover()
-    expect(tip).to_be_visible()
-    page.locator(".cm-search input").first.focus()
+    expect(tip).to_be_hidden()  # An expanded topbar control suppresses its tooltip.
+    page.locator("#find-query").focus()
     page.keyboard.press("Escape")
     expect(tip).to_be_hidden()
-    expect(page.locator(".cm-search")).to_be_hidden()
+    expect(page.locator("#document-find")).to_be_hidden()
 
     # No tooltip for a control whose menu is open.
     page.locator("#heading-button").click()
@@ -562,7 +562,7 @@ def assert_count_position(page, g):
 
 
 def set_width(page, value):
-    page.locator('[data-action="theme"]').click()
+    page.locator('[data-action="settings"]').click()
     appearance_change(page, lambda: page.locator("#line-width").select_option(value=value))
     page.keyboard.press("Escape")
     settled(page)
@@ -616,7 +616,7 @@ def check_writing_sheet(page):
     page.keyboard.insert_text("第一行\n第二行\n第三行")
     expect(page.locator("#word-count")).to_have_text("9 字")
     page.keyboard.press("Meta+Home")
-    page.locator('[data-action="theme"]').focus()
+    page.locator('[data-action="settings"]').focus()
     g = page_geometry(page)
     # The page outside the centred text column also appends at the end.
     page.mouse.click(g["pane"]["x"] + 10, g["scroll"]["bottom"] - 24)
@@ -817,7 +817,7 @@ def check_docked_sidebar_and_outline(page):
     page.set_viewport_size({"width": 680, "height": 820})
     for layout in ("single", "split"):
         select_view(page, layout)
-        expect(page.locator("#format-bar button:visible")).to_have_count(28 if layout == "split" else 27)
+        expect(page.locator("#format-bar button:visible")).to_have_count(27 if layout == "split" else 26)
         boxes = page.locator("#format-bar button:visible").evaluate_all("els => els.map(el => {const r=el.getBoundingClientRect();return {x:r.x,right:r.right,y:r.y,bottom:r.bottom}})")
         assert len({b["y"] for b in boxes}) >= 2, boxes
         bar = page.locator("#format-bar").bounding_box()
@@ -831,7 +831,7 @@ def run(page):
     page.goto(BASE)
     expect(page.locator(".cm-content")).to_be_visible()
     order = page.locator(".topbar button").evaluate_all("els => els.map(el => el.id || el.dataset.view || el.dataset.action)")
-    assert order == ["sidebar-button", "doc-title", "single", "split", "read", "theme", "deliver", "more-button", "outline-button"], order
+    assert order == ["sidebar-button", "doc-title", "single", "split", "read", "settings", "document-find-button", "deliver", "more-button", "outline-button"], order
     assert page.locator(".view-switch button").all_text_contents() == ["编辑", "分栏", "阅读"]
     expect(page.locator('.view-switch')).to_have_attribute("role", "radiogroup")
     expect(page.locator('.view-switch')).to_have_attribute("aria-label", "视图")
@@ -986,6 +986,7 @@ def run(page):
 
     # Include desktop traffic-light space even though this test uses the web backend.
     page.evaluate("document.body.classList.add('desktop')")
+    expect(page.locator('.topbar [data-action="settings"]')).to_be_hidden()
     expect(page.locator("#workspace-label")).to_be_hidden()
     for width in (1440, 1120, 800, 680):
         page.set_viewport_size({"width": width, "height": 820})
@@ -1023,8 +1024,9 @@ def run(page):
         page.locator(".topbar").screenshot(path=str(ARTIFACTS / f"toolbar-{width}.png"))
     page.evaluate("localStorage.setItem('mygo:locale','en')")
     page.reload()
-    for action, label in [("footnote", "Footnote"), ("mermaid", "Diagram"), ("math", "Formula"), ("underline", "Underline"), ("highlight", "Highlight"), ("superscript", "Superscript"), ("subscript", "Subscript"), ("clearFormatting", "Clear Formatting"), ("indent", "Increase Indent"), ("outdent", "Decrease Indent"), ("find", "Find and Replace")]:
+    for action, label in [("footnote", "Footnote"), ("mermaid", "Diagram"), ("math", "Formula"), ("underline", "Underline"), ("highlight", "Highlight"), ("superscript", "Superscript"), ("subscript", "Subscript"), ("clearFormatting", "Clear Formatting"), ("indent", "Increase Indent"), ("outdent", "Decrease Indent")]:
         expect(page.locator(f'#format-bar [data-action="{action}"]')).to_have_accessible_name(label)
+    expect(page.locator("#document-find-button")).to_have_accessible_name("Find in Document")
     expect(page.locator("#insert-button")).to_have_accessible_name("Insert")
     page.locator('#format-bar [data-action="bold"]').hover()
     expect(page.locator("#tooltip")).to_be_visible()

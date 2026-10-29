@@ -832,6 +832,22 @@ export interface Messages {
    */
   fAppearanceAndTypography2(): string;
   /**
+   * `设置…`
+   */
+  fSettings(): string;
+  /**
+   * `设置`
+   */
+  fSettingsTitle(): string;
+  /**
+   * `外观`
+   */
+  fAppearance(): string;
+  /**
+   * `登录时启动`
+   */
+  fLaunchAtLogin(): string;
+  /**
    * Interface text for Export PDF, HTML, ZIP, or copy rich text.
    *
    * `导出 PDF、HTML、ZIP 或复制富文本`
@@ -2194,6 +2210,14 @@ export interface Messages {
    */
   fFind(): string;
   /**
+   * `未找到`
+   */
+  fFindNoMatches(): string;
+  /**
+   * `正则表达式无效`
+   */
+  fFindInvalidRegexp(): string;
+  /**
    * Interface message: Replace.
    *
    * `替换`
@@ -2979,6 +3003,242 @@ export interface Messages {
    * `深色用`
    */
   fDarkMode(): string;
+  /**
+   * `最多 32 个标签，每个不超过 80 个字，且不能包含换行。`
+   */
+  bCaptureInvalidTags(): string;
+  /**
+   * `无法安全合并文稿的标签。请检查 Markdown 属性，或不加标签保存。`
+   */
+  bCaptureTagsMetadata(): string;
+  /**
+   * `保存到`
+   */
+  fCaptureDestination(): string;
+  /**
+   * `新建草稿`
+   */
+  fCaptureNewDraft(): string;
+  /**
+   * `模板`
+   */
+  fCaptureTemplate(): string;
+  /**
+   * `普通笔记`
+   */
+  fCapturePlain(): string;
+  /**
+   * `待办`
+   */
+  fCaptureTask(): string;
+  /**
+   * `会议`
+   */
+  fCaptureMeeting(): string;
+  /**
+   * `灵感`
+   */
+  fCaptureIdea(): string;
+  /**
+   * `## 会议记录  ### 讨论   ### 待办事项  - [ ] `
+   */
+  fCaptureMeetingBody(): string;
+  /**
+   * `## 灵感   ### 下一步  `
+   */
+  fCaptureIdeaBody(): string;
+  /**
+   * `标签`
+   */
+  fCaptureTags(): string;
+  /**
+   * `用逗号分隔标签`
+   */
+  fCaptureTagsHint(): string;
+  /**
+   * `追加`
+   */
+  fCaptureAppend(): string;
+  /**
+   * `已追加到文稿`
+   */
+  fCaptureAppended(): string;
+  /**
+   * `{shortcut} 保存 · Esc 关闭`
+   */
+  fCaptureSaveHint(shortcut: string): string;
+  /**
+   * `编辑器正在处理其他操作，请完成后重试。`
+   */
+  fCaptureBusy(): string;
+  /**
+   * `请输入有效的搜索文字。`
+   */
+  bSearchInvalidQuery(): string;
+  /**
+   * `搜索文字最多 128 个字符。`
+   */
+  bSearchQueryTooLong(): string;
+  /**
+   * `请搜索单行内连续的文字。`
+   */
+  bSearchQueryLineBreak(): string;
+  /**
+   * `搜索文稿标题与内容…`
+   */
+  fSearchDocuments(): string;
+  /**
+   * `正在搜索…`
+   */
+  fSearching(): string;
+  /**
+   * `找到 {count} 篇文稿`
+   */
+  fSearchCount(count: number): string;
+  /**
+   * `没有找到包含「{query}」的文稿。`
+   */
+  fSearchEmpty(query: string): string;
+  /**
+   * `显示前 100 篇，请缩小搜索范围。`
+   */
+  fSearchTruncated(): string;
+  /**
+   * `还有更多匹配，可在文内继续查找。`
+   */
+  fSearchMoreHits(): string;
+  /**
+   * `草稿`
+   */
+  fSearchDraft(): string;
+  /**
+   * `第 {line} 行`
+   */
+  fSearchLine(line: number): string;
+  /**
+   * `在源码中查看`
+   */
+  fSearchSource(): string;
+  /**
+   * `重试搜索`
+   */
+  fSearchRetry(): string;
+  /**
+   * `当前修改自动保存后会更新结果。`
+   */
+  fSearchPending(): string;
+  /**
+   * `结果暂不包含当前未保存的修改。`
+   */
+  fSearchSaveFailed(): string;
+  /**
+   * `文稿内容已更新，请重新选择搜索结果。`
+   */
+  fSearchStale(): string;
+  /**
+   * `文稿已移除。`
+   */
+  fSearchRemoved(): string;
+  /**
+   * `请输入有效标签，最多 80 个字，且不能包含控制字符。`
+   */
+  bFilterInvalidTag(): string;
+  /**
+   * `标签筛选`
+   */
+  fTagFilter(): string;
+  /**
+   * `全部标签`
+   */
+  fAllTags(): string;
+  /**
+   * `文稿`
+   */
+  fDocuments(): string;
+  /**
+   * `{tag} · {count}`
+   */
+  fTagCount(tag: string, count: number): string;
+  /**
+   * `筛选标签「{tag}」`
+   */
+  fFilterTag(tag: string): string;
+  /**
+   * `清除标签筛选「{tag}」`
+   */
+  fClearTag(tag: string): string;
+  /**
+   * `+{count} 个标签`
+   */
+  fMoreTags(count: number): string;
+  /**
+   * `没有带「{tag}」标签的文稿。`
+   */
+  fTagEmpty(tag: string): string;
+  /**
+   * `引用名称无效，请使用单行标题，最多 256 个字，且不能包含控制字符、方括号或竖线。`
+   */
+  bWikiInvalidName(): string;
+  /**
+   * `来源文稿已更新，请重新点击引用。`
+   */
+  bWikiSourceChanged(): string;
+  /**
+   * `来源文稿已移除。`
+   */
+  bWikiSourceMissing(): string;
+  /**
+   * `反向链接`
+   */
+  fBacklinks(): string;
+  /**
+   * `正在查找引用…`
+   */
+  fBacklinkLoading(): string;
+  /**
+   * `还没有其他文稿引用这一篇。`
+   */
+  fBacklinkEmpty(): string;
+  /**
+   * `请先为文稿设置可引用的标题。`
+   */
+  fBacklinkUnnamed(): string;
+  /**
+   * `有多篇同名文稿，引用无法唯一归属。`
+   */
+  fBacklinkAmbiguous(): string;
+  /**
+   * `{count} 篇文稿引用`
+   */
+  fBacklinkCount(count: number): string;
+  /**
+   * `当前修改保存后会更新引用；请稍后再打开结果。`
+   */
+  fBacklinkPending(): string;
+  /**
+   * `重试查找引用`
+   */
+  fBacklinkRetry(): string;
+  /**
+   * `显示前 100 篇引用文稿。`
+   */
+  fBacklinkTruncated(): string;
+  /**
+   * `这篇文稿还有更多引用。`
+   */
+  fBacklinkMoreHits(): string;
+  /**
+   * `选择引用的文稿`
+   */
+  fWikiChoose(): string;
+  /**
+   * `有多篇文稿使用相同标题，请选择要打开的一篇。`
+   */
+  fWikiChooseNote(): string;
+  /**
+   * `没有找到标题为「{title}」的已登记文稿。`
+   */
+  fWikiMissing(title: string): string;
 }
 
 const catalog = createCatalog<Messages>({
@@ -3127,6 +3387,10 @@ const catalog = createCatalog<Messages>({
     "fShowTheFormattedDocumentR": [],
     "fRead": [],
     "fAppearanceAndTypography2": [],
+    "fSettings": [],
+    "fSettingsTitle": [],
+    "fAppearance": [],
+    "fLaunchAtLogin": [],
     "fExportPDFHTMLZIPOrCopyRichText": [],
     "fExport2": [],
     "fMore": [],
@@ -3354,6 +3618,8 @@ const catalog = createCatalog<Messages>({
     "fLanguageChinese": [],
     "fLanguageEnglish": [],
     "fFind": [],
+    "fFindNoMatches": [],
+    "fFindInvalidRegexp": [],
     "fReplace": [],
     "fNext": [],
     "fPrevious": [],
@@ -3485,6 +3751,65 @@ const catalog = createCatalog<Messages>({
     "fSeasonsSchedule": [],
     "fLightMode": [],
     "fDarkMode": [],
+    "bCaptureInvalidTags": [],
+    "bCaptureTagsMetadata": [],
+    "fCaptureDestination": [],
+    "fCaptureNewDraft": [],
+    "fCaptureTemplate": [],
+    "fCapturePlain": [],
+    "fCaptureTask": [],
+    "fCaptureMeeting": [],
+    "fCaptureIdea": [],
+    "fCaptureMeetingBody": [],
+    "fCaptureIdeaBody": [],
+    "fCaptureTags": [],
+    "fCaptureTagsHint": [],
+    "fCaptureAppend": [],
+    "fCaptureAppended": [],
+    "fCaptureSaveHint": ["shortcut"],
+    "fCaptureBusy": [],
+    "bSearchInvalidQuery": [],
+    "bSearchQueryTooLong": [],
+    "bSearchQueryLineBreak": [],
+    "fSearchDocuments": [],
+    "fSearching": [],
+    "fSearchCount": ["count"],
+    "fSearchEmpty": ["query"],
+    "fSearchTruncated": [],
+    "fSearchMoreHits": [],
+    "fSearchDraft": [],
+    "fSearchLine": ["line"],
+    "fSearchSource": [],
+    "fSearchRetry": [],
+    "fSearchPending": [],
+    "fSearchSaveFailed": [],
+    "fSearchStale": [],
+    "fSearchRemoved": [],
+    "bFilterInvalidTag": [],
+    "fTagFilter": [],
+    "fAllTags": [],
+    "fDocuments": [],
+    "fTagCount": ["tag", "count"],
+    "fFilterTag": ["tag"],
+    "fClearTag": ["tag"],
+    "fMoreTags": ["count"],
+    "fTagEmpty": ["tag"],
+    "bWikiInvalidName": [],
+    "bWikiSourceChanged": [],
+    "bWikiSourceMissing": [],
+    "fBacklinks": [],
+    "fBacklinkLoading": [],
+    "fBacklinkEmpty": [],
+    "fBacklinkUnnamed": [],
+    "fBacklinkAmbiguous": [],
+    "fBacklinkCount": ["count"],
+    "fBacklinkPending": [],
+    "fBacklinkRetry": [],
+    "fBacklinkTruncated": [],
+    "fBacklinkMoreHits": [],
+    "fWikiChoose": [],
+    "fWikiChooseNote": [],
+    "fWikiMissing": ["title"],
   },
   messages: {
     "zh-Hans": {
@@ -3626,6 +3951,10 @@ const catalog = createCatalog<Messages>({
       "fShowTheFormattedDocumentR": "只显示排好版的文稿",
       "fRead": "阅读",
       "fAppearanceAndTypography2": "外观与排版",
+      "fSettings": "设置…",
+      "fSettingsTitle": "设置",
+      "fAppearance": "外观",
+      "fLaunchAtLogin": "登录时启动",
       "fExportPDFHTMLZIPOrCopyRichText": "导出 PDF、HTML、ZIP 或复制富文本",
       "fExport2": "导出",
       "fMore": "更多",
@@ -3853,6 +4182,8 @@ const catalog = createCatalog<Messages>({
       "fLanguageChinese": "简体中文",
       "fLanguageEnglish": "English",
       "fFind": "查找",
+      "fFindNoMatches": "未找到",
+      "fFindInvalidRegexp": "正则表达式无效",
       "fReplace": "替换",
       "fNext": "下一个",
       "fPrevious": "上一个",
@@ -3984,6 +4315,65 @@ const catalog = createCatalog<Messages>({
       "fSeasonsSchedule": "立春雾绿、立夏藕荷、立秋秋香、立冬月白；系统切到深色时用黛蓝。",
       "fLightMode": "浅色用",
       "fDarkMode": "深色用",
+      "bCaptureInvalidTags": "最多 32 个标签，每个不超过 80 个字，且不能包含换行。",
+      "bCaptureTagsMetadata": "无法安全合并文稿的标签。请检查 Markdown 属性，或不加标签保存。",
+      "fCaptureDestination": "保存到",
+      "fCaptureNewDraft": "新建草稿",
+      "fCaptureTemplate": "模板",
+      "fCapturePlain": "普通笔记",
+      "fCaptureTask": "待办",
+      "fCaptureMeeting": "会议",
+      "fCaptureIdea": "灵感",
+      "fCaptureMeetingBody": "## 会议记录\n\n### 讨论\n\n\n### 待办事项\n\n- [ ] ",
+      "fCaptureIdeaBody": "## 灵感\n\n\n### 下一步\n\n",
+      "fCaptureTags": "标签",
+      "fCaptureTagsHint": "用逗号分隔标签",
+      "fCaptureAppend": "追加",
+      "fCaptureAppended": "已追加到文稿",
+      "fCaptureSaveHint": "{shortcut} 保存 · Esc 关闭",
+      "fCaptureBusy": "编辑器正在处理其他操作，请完成后重试。",
+      "bSearchInvalidQuery": "请输入有效的搜索文字。",
+      "bSearchQueryTooLong": "搜索文字最多 128 个字符。",
+      "bSearchQueryLineBreak": "请搜索单行内连续的文字。",
+      "fSearchDocuments": "搜索文稿标题与内容…",
+      "fSearching": "正在搜索…",
+      "fSearchCount": "找到 {count} 篇文稿",
+      "fSearchEmpty": "没有找到包含「{query}」的文稿。",
+      "fSearchTruncated": "显示前 100 篇，请缩小搜索范围。",
+      "fSearchMoreHits": "还有更多匹配，可在文内继续查找。",
+      "fSearchDraft": "草稿",
+      "fSearchLine": "第 {line} 行",
+      "fSearchSource": "在源码中查看",
+      "fSearchRetry": "重试搜索",
+      "fSearchPending": "当前修改自动保存后会更新结果。",
+      "fSearchSaveFailed": "结果暂不包含当前未保存的修改。",
+      "fSearchStale": "文稿内容已更新，请重新选择搜索结果。",
+      "fSearchRemoved": "文稿已移除。",
+      "bFilterInvalidTag": "请输入有效标签，最多 80 个字，且不能包含控制字符。",
+      "fTagFilter": "标签筛选",
+      "fAllTags": "全部标签",
+      "fDocuments": "文稿",
+      "fTagCount": "{tag} · {count}",
+      "fFilterTag": "筛选标签「{tag}」",
+      "fClearTag": "清除标签筛选「{tag}」",
+      "fMoreTags": "+{count} 个标签",
+      "fTagEmpty": "没有带「{tag}」标签的文稿。",
+      "bWikiInvalidName": "引用名称无效，请使用单行标题，最多 256 个字，且不能包含控制字符、方括号或竖线。",
+      "bWikiSourceChanged": "来源文稿已更新，请重新点击引用。",
+      "bWikiSourceMissing": "来源文稿已移除。",
+      "fBacklinks": "反向链接",
+      "fBacklinkLoading": "正在查找引用…",
+      "fBacklinkEmpty": "还没有其他文稿引用这一篇。",
+      "fBacklinkUnnamed": "请先为文稿设置可引用的标题。",
+      "fBacklinkAmbiguous": "有多篇同名文稿，引用无法唯一归属。",
+      "fBacklinkCount": "{count} 篇文稿引用",
+      "fBacklinkPending": "当前修改保存后会更新引用；请稍后再打开结果。",
+      "fBacklinkRetry": "重试查找引用",
+      "fBacklinkTruncated": "显示前 100 篇引用文稿。",
+      "fBacklinkMoreHits": "这篇文稿还有更多引用。",
+      "fWikiChoose": "选择引用的文稿",
+      "fWikiChooseNote": "有多篇文稿使用相同标题，请选择要打开的一篇。",
+      "fWikiMissing": "没有找到标题为「{title}」的已登记文稿。",
     },
     "en": {
       "fPaper": "Paper",
@@ -4124,6 +4514,10 @@ const catalog = createCatalog<Messages>({
       "fShowTheFormattedDocumentR": "Show the formatted document",
       "fRead": "Read",
       "fAppearanceAndTypography2": "Appearance and Typography",
+      "fSettings": "Settings…",
+      "fSettingsTitle": "Settings",
+      "fAppearance": "Appearance",
+      "fLaunchAtLogin": "Launch at Login",
       "fExportPDFHTMLZIPOrCopyRichText": "Export PDF, HTML, ZIP, or copy rich text",
       "fExport2": "Export",
       "fMore": "More",
@@ -4351,6 +4745,8 @@ const catalog = createCatalog<Messages>({
       "fLanguageChinese": "简体中文",
       "fLanguageEnglish": "English",
       "fFind": "Find",
+      "fFindNoMatches": "No matches",
+      "fFindInvalidRegexp": "Invalid regular expression",
       "fReplace": "Replace",
       "fNext": "Next",
       "fPrevious": "Previous",
@@ -4482,6 +4878,65 @@ const catalog = createCatalog<Messages>({
       "fSeasonsSchedule": "Mist from the start of spring, Lotus from the start of summer, Harvest from the start of autumn, Moon White from the start of winter; Indigo when the system is dark.",
       "fLightMode": "Light",
       "fDarkMode": "Dark",
+      "bCaptureInvalidTags": "Use up to 32 tags, each no longer than 80 characters and without line breaks.",
+      "bCaptureTagsMetadata": "The document's tags cannot be merged safely. Check its Markdown properties, or save without tags.",
+      "fCaptureDestination": "Save to",
+      "fCaptureNewDraft": "New Draft",
+      "fCaptureTemplate": "Template",
+      "fCapturePlain": "Plain Note",
+      "fCaptureTask": "To-do",
+      "fCaptureMeeting": "Meeting",
+      "fCaptureIdea": "Idea",
+      "fCaptureMeetingBody": "## Meeting notes\n\n### Discussion\n\n\n### Action items\n\n- [ ] ",
+      "fCaptureIdeaBody": "## Idea\n\n\n### Next step\n\n",
+      "fCaptureTags": "Tags",
+      "fCaptureTagsHint": "Separate tags with commas",
+      "fCaptureAppend": "Append",
+      "fCaptureAppended": "Appended to document",
+      "fCaptureSaveHint": "{shortcut} Save · Esc Close",
+      "fCaptureBusy": "The editor is busy. Finish the current operation and try again.",
+      "bSearchInvalidQuery": "Enter a valid search query.",
+      "bSearchQueryTooLong": "Search queries can contain up to 128 characters.",
+      "bSearchQueryLineBreak": "Search for text on a single line.",
+      "fSearchDocuments": "Search document titles and content…",
+      "fSearching": "Searching…",
+      "fSearchCount": "Found {count} documents",
+      "fSearchEmpty": "No documents contain “{query}”.",
+      "fSearchTruncated": "Showing the first 100 documents. Narrow your search.",
+      "fSearchMoreHits": "More matches; continue with Find in Document.",
+      "fSearchDraft": "Draft",
+      "fSearchLine": "Line {line}",
+      "fSearchSource": "View in source",
+      "fSearchRetry": "Retry Search",
+      "fSearchPending": "Results will update after your changes are autosaved.",
+      "fSearchSaveFailed": "Results do not yet include your unsaved changes.",
+      "fSearchStale": "This document has changed. Choose a search result again.",
+      "fSearchRemoved": "This document has been removed.",
+      "bFilterInvalidTag": "Use a valid tag of up to 80 characters without control characters.",
+      "fTagFilter": "Filter by tag",
+      "fAllTags": "All Tags",
+      "fDocuments": "Documents",
+      "fTagCount": "{tag} · {count}",
+      "fFilterTag": "Filter by tag “{tag}”",
+      "fClearTag": "Clear tag filter “{tag}”",
+      "fMoreTags": "+{count} tags",
+      "fTagEmpty": "No documents have the tag “{tag}”.",
+      "bWikiInvalidName": "Use a single-line title of up to 256 characters without control characters, square brackets or a vertical bar.",
+      "bWikiSourceChanged": "The source document has changed. Click the reference again.",
+      "bWikiSourceMissing": "The source document has been removed.",
+      "fBacklinks": "Backlinks",
+      "fBacklinkLoading": "Finding references…",
+      "fBacklinkEmpty": "No other documents reference this one yet.",
+      "fBacklinkUnnamed": "Give this document a title that can be referenced first.",
+      "fBacklinkAmbiguous": "Multiple documents have this title; references cannot be assigned uniquely.",
+      "fBacklinkCount": "Referenced by {count} documents",
+      "fBacklinkPending": "References will update after your changes are saved. Open results after saving.",
+      "fBacklinkRetry": "Retry Finding References",
+      "fBacklinkTruncated": "Showing the first 100 referencing documents.",
+      "fBacklinkMoreHits": "This document has more references.",
+      "fWikiChoose": "Choose Referenced Document",
+      "fWikiChooseNote": "Several documents have this title. Choose the one to open.",
+      "fWikiMissing": "No registered document has the title “{title}”.",
     },
   },
 });

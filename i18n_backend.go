@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"strings"
-	"sync/atomic"
 
 	"liubai/locales"
 
@@ -135,37 +134,25 @@ func (d *Desktop) SetLocale(tag string) error {
 				return err
 			}
 		}
-		nativeLocaleChoice.Store(tag)
 		mygo.App.SetLocale(tag)
 		d.refreshLocale()
 	}
 	return nil
 }
-func languageMenu(msgs locales.Messages, action func(string) func(*mygo.MenuItem, *mygo.Window)) []*mygo.MenuItem {
-	choices := []struct{ tag, label string }{{"", msgs.BMenuFollowSystem()}, {"zh-Hans", msgs.BMenuChinese()}, {"en", msgs.BMenuEnglish()}}
-	items := []*mygo.MenuItem{}
-	for _, choice := range choices {
-		tag := choice.tag
-		items = append(items, &mygo.MenuItem{Label: choice.label, Type: mygo.MenuItemRadio, Checked: tag == localePreference(), Click: action("locale:" + tag)})
-	}
-	return items
-}
 
-// knownLocale reports whether tag is a choice of the Language menu: the
+// knownLocale reports whether tag is a choice of the language setting: the
 // system's languages (""), Chinese or English.
 func knownLocale(tag string) bool { return tag == "" || tag == "zh-Hans" || tag == "en" }
 
-var nativeLocaleChoice atomic.Value
-
-func localePreference() string {
-	if v := nativeLocaleChoice.Load(); v != nil {
-		return v.(string)
-	}
-	return ""
-}
 func (d *Desktop) refreshLocale() {
 	if d.win != nil {
 		d.win.SetTitle(locales.BMenuAppName())
+		d.win.Update(func() {
+			if d.settings != nil && d.settings.win != nil {
+				d.settings.win.SetTitle(d.settings.text("fSettingsTitle"))
+				d.settings.win.Invalidate()
+			}
+		})
 	}
 	if d.capturePanel != nil {
 		d.capturePanel.SetTitle(locales.BCaptureWindowTitle())
@@ -180,7 +167,7 @@ func (d *Desktop) refreshLocale() {
 	}
 }
 func (d Document) generatedTitle() bool {
-	return d.Path == "" && !d.CustomTitle && inferredContentTitle(d.Content) == ""
+	return d.Path == "" && !d.CustomTitle && !hasInferredContentTitle(d.Content)
 }
 
 func generatedSuffixTitle(title, suffix, locale string) string {
@@ -246,8 +233,19 @@ func valueIn(value any, locale string) any {
 	case ExportResult:
 		v.Document = documentIn(v.Document, locale)
 		return v
+	case CaptureAppendResult:
+		v.Document = documentIn(v.Document, locale)
+		v.Summary.Title = v.Document.Title
+		if v.Summary.Warning != "" {
+			v.Summary.Warning = v.Document.Status
+		}
+		return v
 	case CaptureStatus:
 		v.Error = errorIn(v.errorCause, locale)
+		return v
+	case CaptureContext:
+		v.titles.Recent = v.Recent
+		v.Recent = valueIn(v.titles, locale).(WorkspaceState).Recent
 		return v
 	}
 	return value

@@ -6,10 +6,11 @@ import { markdown,markdownLanguage,markdownKeymap } from '@codemirror/lang-markd
 import { languages } from '@codemirror/language-data';
 import { syntaxTree,syntaxHighlighting,HighlightStyle,bracketMatching,indentOnInput } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
-import { searchKeymap,highlightSelectionMatches,openSearchPanel,closeSearchPanel } from '@codemirror/search';
+import { searchKeymap,highlightSelectionMatches } from '@codemirror/search';
+import {documentSearch} from './document-find';
 import { GFM } from '@lezer/markdown';
 import type { SyntaxNode } from '@lezer/common';
-import {TableWidget,tableComposition} from './table-ui';
+import {TableWidget,tableComposition,tableLink} from './table-ui';
 import {ImageWidget,imageSelection,imageSelected} from './image-ui';
 import {imageRanges,tableRanges,mathRanges,mermaidRanges,mapImageRanges} from './images';
 import type { Doc } from './types';
@@ -23,6 +24,7 @@ import {MermaidSyntax} from './mermaid';
 import {extraRanges,extraMarkers,createDetailsFolding,mapExtraRanges} from './extras';
 import {CalloutWidget,DetailsWidget,FootnoteWidget,detailsExpanded,footnoteInteractions} from './extras-ui';
 import {indentList,safeLink,localDocumentLink,frontMatterRange} from './editing';
+import {WikiSyntax,wikiAt,wikiURL,wikiTarget,wikiNodeAllowed} from './wiki-links';
 import {htmlToMarkdown,pasteText,replacePasteImage,type PasteImage} from './paste';
 import {keyLabel} from './platform';
 // Links open on a click with ⌘ on macOS, Ctrl elsewhere.
@@ -160,7 +162,7 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
    const owner=hidden[lo-1];return owner&&from>=owner.from&&to<=owner.to;
   };
   syntaxTree(state).iterate({from:range.from,to:range.to,enter:n=>{
-   if(meta&&n.from<meta.to&&n.name!=='Document')return false;
+   if(meta&&n.to<=meta.to&&n.name!=='Document')return false;
    if(n.to<=range.from||n.from>=range.to)return false;
    const name=n.name;
    if(hiddenNode(n.from,n.to))return false;
@@ -184,6 +186,15 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
    if(name==='Blockquote')lineClass(n.from,n.to,'md-quote');
    if(name==='FencedCode'||name==='MermaidFence')lineClass(n.from,n.to,'md-code-line');
    const add=(dec:Decoration)=>{const key=n.from+':'+n.to+':'+name;if(!marked.has(key)){marked.add(key);decorations.push({from:n.from,to:n.to,dec})}};
+   if(name==='WikiLink'){
+    if(!wikiNodeAllowed(n.node))return false;
+    const match=wikiAt(state.sliceDoc(n.from,n.to),0);
+    if(match){
+     add(Decoration.mark({class:'md-link md-wiki-link',attributes:{'data-href':wikiURL(match.target),title:messages.fCtrlClickToOpenTheLink(linkModifier)}}));
+     if(!active(n.from,n.to))for(const mark of n.node.getChildren('WikiMark'))decorations.push({from:mark.from,to:mark.to,dec:Decoration.replace({})});
+    }
+    return false;
+   }
    if(name==='Link')add(Decoration.mark({class:'md-link',attributes:{'data-href':destination(state,n.node),title:messages.fCtrlClickToOpenTheLink(linkModifier)}}));
    if(name==='InlineCode')add(Decoration.mark({class:'md-inline-code'}));
    if(!touched(n.from,n.to)){
@@ -209,16 +220,17 @@ export function richExtensions(resolve:(dest:string)=>Promise<string>):Extension
 export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions){
  const state=EditorState.create({doc:doc.content,selection:{anchor:Math.min(doc.position.anchor||0,doc.content.length),head:Math.min(doc.position.head||0,doc.content.length)},extensions:[
   tableComposition.of((view,active,commit)=>{view.dispatch({effects:setComposing.of(active)});commit?.();onCompose(active)}),
-  history(),composing,focusField,focusDecorations,createSlashMenu(composing,focusField,()=>blocks?.action('image')),blocks?createBlockUI(composing,focusField,blocks):[],markdown({base:markdownLanguage,codeLanguages:languages,extensions:[GFM,Highlight,MathSyntax,MermaidSyntax]}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),
+  tableLink.of(onLink),
+  history(),composing,focusField,focusDecorations,createSlashMenu(composing,focusField,()=>blocks?.action('image')),blocks?createBlockUI(composing,focusField,blocks):[],markdown({base:markdownLanguage,codeLanguages:languages,extensions:[GFM,Highlight,MathSyntax,MermaidSyntax,WikiSyntax]}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),documentSearch,
   EditorView.editorAttributes.of(view=>({class:view.state.field(focusField)?'cm-focus-on':''})),
   // ⌘U underlines and ⌘I italicizes like the toolbar, so CodeMirror's undo-selection and select-parent bindings are dropped.
-  keymap.of([...(blocks?[{key:'Alt-Shift-ArrowUp',run:()=>{blocks.action('up');return true}},{key:'Alt-Shift-ArrowDown',run:()=>{blocks.action('down');return true}},{key:'Mod-/',run:()=>{blocks.action('menu');return true}}]:[]),...([1,-1] as const).map(direction=>({key:direction>0?'Tab':'Shift-Tab',run:(view:EditorView)=>{if(view.composing||view.state.field(composing)||view.state.readOnly)return false;const spec=indentList(view.state,direction);if(!spec)return false;view.dispatch(spec);return true}})),...markdownKeymap,...historyKeymap.filter(binding=>binding.key!=='Mod-u'),...searchKeymap,...defaultKeymap.filter(binding=>binding.key!=='Mod-i'),indentWithTab]),
+  keymap.of([...(blocks?[{key:'Alt-Shift-ArrowUp',run:()=>{blocks.action('up');return true}},{key:'Alt-Shift-ArrowDown',run:()=>{blocks.action('down');return true}},{key:'Mod-/',run:()=>{blocks.action('menu');return true}}]:[]),...([1,-1] as const).map(direction=>({key:direction>0?'Tab':'Shift-Tab',run:(view:EditorView)=>{if(view.composing||view.state.field(composing)||view.state.readOnly)return false;const spec=indentList(view.state,direction);if(!spec)return false;view.dispatch(spec);return true}})),...markdownKeymap,...historyKeymap.filter(binding=>binding.key!=='Mod-u'),...searchKeymap.filter(binding=>binding.key==='Mod-Alt-g'),...defaultKeymap.filter(binding=>binding.key!=='Mod-i'),indentWithTab]),
   mode.of(doc.position.source?[]:richExtensions(resolve)),EditorView.lineWrapping,editorLocale.of(localizedEditor()),
   EditorView.updateListener.of(u=>{if(u.docChanged||u.selectionSet)onChange(u.docChanged)}),
   EditorView.domEventHandlers({
    compositionstart:(_e,v)=>{v.dispatch({effects:setComposing.of(true)});onCompose(true);return false},
    compositionend:(_e,v)=>{setTimeout(()=>{if(v.dom.isConnected){v.dispatch({effects:setComposing.of(false)});onCompose(false)}},0);return false},
-   click:(event)=>{const a=(event.target as HTMLElement).closest<HTMLElement>('[data-href]');if(a&&(event.metaKey||event.ctrlKey)&&(safeLink(a.dataset.href||'')||localDocumentLink(a.dataset.href||''))){event.preventDefault();onLink(a.dataset.href!);return true}return false},
+   click:(event,v)=>{if(v.composing||v.state.field(composing))return false;const a=(event.target as HTMLElement).closest<HTMLElement>('[data-href]');if(a&&(event.metaKey||event.ctrlKey)&&(wikiTarget(a.dataset.href||'')||safeLink(a.dataset.href||'')||localDocumentLink(a.dataset.href||''))){event.preventDefault();onLink(a.dataset.href!);return true}return false},
    paste:(event,view)=>{
     if(view.state.readOnly)return false;
     const clipboard=event.clipboardData,files=Array.from(clipboard?.files||[]).filter(f=>f.type.startsWith('image/'));
@@ -242,4 +254,4 @@ export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>P
    }})
  ]});return new EditorView({state,parent});
 }
-export {undo,redo,openSearchPanel,closeSearchPanel,EditorState,EditorView};
+export {undo,redo,EditorState,EditorView};

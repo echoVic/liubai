@@ -190,7 +190,7 @@ def windows(context):
     page.screenshot(path=str(ARTIFACTS / "windows.png"))
     page.keyboard.press("Escape")
     assert not errors, errors
-    capture_saves_with(context, "Control+Enter", "Meta+Enter", "Ctrl+Enter 存为草稿 · Esc 关闭")
+    capture_saves_with(context, "Control+Enter", "Meta+Enter", "Ctrl+Enter 保存 · Esc 关闭")
 
 
 def mac(context):
@@ -211,7 +211,7 @@ def mac(context):
         assert actual[0] == padding, (inset, actual)
     page.screenshot(path=str(ARTIFACTS / "mac.png"))
     assert not errors, errors
-    capture_saves_with(context, "Meta+Enter", "Control+Enter", "⌘↩ 存为草稿 · Esc 关闭")
+    capture_saves_with(context, "Meta+Enter", "Control+Enter", "⌘↩ 保存 · Esc 关闭")
 
 
 with sync_playwright() as playwright:

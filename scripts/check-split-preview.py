@@ -41,7 +41,7 @@ def workspace(page):
 def appearance_change(page, operation):
     with page.expect_response(
         lambda response: response.url.endswith("/api")
-        and '"Appearance"' in (response.request.post_data or "")
+        and '"UpdateAppearance"' in (response.request.post_data or "")
     ) as pending:
         operation()
     assert not pending.value.json().get("error"), pending.value.text()
@@ -433,7 +433,7 @@ def run(page):
     page.unroute(BASE + "/api", defer_stale_read)
 
     # Theme/font controls must not reset the new global fields.
-    page.locator('[data-action="theme"]').click()
+    page.locator('[data-action="settings"]').click()
     names = {"dawn": "晨光", "paper": "纸白", "warm": "暖纸", "lamp": "灯下", "ink": "夜墨", "moon": "月夜", "mist": "雾绿", "lotus": "藕荷", "autumn": "秋香", "moonwhite": "月白", "indigo": "黛蓝"}
     for theme in [t["id"] for t in THEMES]:
         appearance_change(page, lambda: page.get_by_role("radio", name=names[theme], exact=True).click())

@@ -6,6 +6,7 @@ import {GFM} from '@lezer/markdown';
 import {Highlight} from '../src/marks';
 import {MathSyntax} from '../src/math';
 import {MermaidSyntax} from '../src/mermaid';
+import {WikiSyntax} from '../src/wiki-links';
 import {createBlockField,inlineDecorations,composing,richExtensions} from '../src/editor';
 
 const scale=Number(process.env.PERF_BUDGET_SCALE??1);
@@ -21,7 +22,7 @@ const best=(batches:number,run:()=>number)=>{let min=Infinity;for(let i=0;i<batc
 for(const [size,budget] of [[100_000,5*scale],[300_000,15*scale]] as const){
  const doc=block.repeat(Math.ceil(size/block.length));
  const field=createBlockField(async()=>'data:,');
- let state=EditorState.create({doc,extensions:[markdown({base:markdownLanguage,extensions:[GFM,Highlight,MathSyntax,MermaidSyntax]}),composing,field]});
+ let state=EditorState.create({doc,extensions:[markdown({base:markdownLanguage,extensions:[GFM,Highlight,MathSyntax,MermaidSyntax,WikiSyntax]}),composing,field]});
  // Under load an edit can run out of its parse budget and leave a partial tree, which makes later
  // edits look cheaper than they are; such a batch is parsed in full and measured again.
  const complete=()=>{if(syntaxTree(state).length===state.doc.length)return true;ensureSyntaxTree(state,state.doc.length,60_000);state=state.update({}).state;return false};
@@ -40,7 +41,7 @@ for(const [size,budget] of [[100_000,5*scale],[300_000,15*scale]] as const){
 // since nothing it changes needs the whole document collected again.
 {
  const {rich}=await import('./bench/documents.mjs');
- let state=EditorState.create({doc:rich(300_000),extensions:[markdown({base:markdownLanguage,extensions:[GFM,Highlight,MathSyntax,MermaidSyntax]}),composing,richExtensions(async()=>'data:,')]});
+ let state=EditorState.create({doc:rich(300_000),extensions:[markdown({base:markdownLanguage,extensions:[GFM,Highlight,MathSyntax,MermaidSyntax,WikiSyntax]}),composing,richExtensions(async()=>'data:,')]});
  ensureSyntaxTree(state,state.doc.length,60_000);state=state.update({}).state;
  const middle=Math.floor(state.doc.length/2),from=middle-3000,to=middle+3000,N=20;
  // As above: a batch whose parse ran out of budget is parsed in full and measured again.

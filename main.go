@@ -38,6 +38,7 @@ type OpenFailure struct {
 type Desktop struct {
 	capture      *captureController
 	capturePanel *mygo.Window
+	settings     *settingsWindow
 	w            *Workspace
 	win          *mygo.Window
 	menuAction   func(string) func(*mygo.MenuItem, *mygo.Window)
@@ -79,12 +80,28 @@ func (d *Desktop) Update(e Edit) (Document, error) {
 	return documentIn(doc, i18n.Locale()), err
 }
 func (d *Desktop) SavePosition(id string, p Position) error { return d.w.SavePosition(id, p) }
+func (d *Desktop) Search(query string) (SearchResponse, error) {
+	return d.w.Search(query, i18n.Locale())
+}
+func (d *Desktop) FilterDocuments(request DocumentFilterRequest) (DocumentFilterResponse, error) {
+	return d.w.FilterDocuments(request, i18n.Locale())
+}
+func (d *Desktop) ResolveWikiLink(request WikiResolveRequest) (SearchResponse, error) {
+	return d.w.ResolveWikiLink(request, i18n.Locale())
+}
+func (d *Desktop) Backlinks(id string) (BacklinkResponse, error) {
+	return d.w.Backlinks(id, i18n.Locale())
+}
 func (d *Desktop) New() (WorkspaceState, error) {
 	s, err := d.w.New()
 	return d.currentResult(s, err, false)
 }
 func (d *Desktop) Activate(id string) (WorkspaceState, error) {
 	s, err := d.w.Activate(id)
+	return d.currentResult(s, err, true)
+}
+func (d *Desktop) ActivateSearch(id string) (WorkspaceState, error) {
+	s, err := d.w.ActivateSearch(id)
 	return d.currentResult(s, err, true)
 }
 func (d *Desktop) Delete(id string) (WorkspaceState, error) {
@@ -357,8 +374,12 @@ func menuTemplateFor(goos string, msgs locales.Messages, action func(string) fun
 	}
 	file := []*mygo.MenuItem{{Label: msgs.BMenuNew(), Accelerator: "CmdOrCtrl+N", Click: action("new")}, {Label: msgs.BMenuOpen(), Accelerator: "CmdOrCtrl+O", Click: action("open")}, {Role: mygo.RoleOpenRecent, Label: msgs.BMenuOpenRecent()}, {Label: msgs.BMenuCapture(), Click: action("capture")}, mygo.Separator(), {Label: msgs.BMenuSave(), Accelerator: "CmdOrCtrl+S", Click: action("save")}, {Label: msgs.BMenuSaveAs(), Accelerator: "CmdOrCtrl+Shift+S", Click: action("saveAs")}, mygo.Separator(), {Label: msgs.BMenuExport(), Click: action("deliver")}, {Label: msgs.BMenuExportPDF(), Accelerator: "CmdOrCtrl+P", Click: action("pdf")}, mygo.Separator()}
 	editItems := []*mygo.MenuItem{{Label: msgs.BMenuUndo(), Accelerator: "CmdOrCtrl+Z", Click: action("undo")}, {Label: msgs.BMenuRedo(), Accelerator: redo, Click: action("redo")}, mygo.Separator(), {Role: mygo.RoleCut, Label: msgs.BMenuCut()}, {Role: mygo.RoleCopy, Label: msgs.BMenuCopy()}, {Role: mygo.RolePaste, Label: msgs.BMenuPaste()}, {Label: msgs.BMenuPastePlain(), Accelerator: "CmdOrCtrl+Shift+V", Click: action("pastePlain")}, {Role: mygo.RoleSelectAll, Label: msgs.BMenuSelectAll()}, mygo.Separator(), {Label: msgs.BMenuFind(), Accelerator: "CmdOrCtrl+F", Click: action("find")}}
+	settings := &mygo.MenuItem{Label: msgs.FSettings(), Accelerator: "CmdOrCtrl+,", Click: action("settings")}
+	if !mac {
+		editItems = append(editItems, mygo.Separator(), settings)
+	}
 	edit := &mygo.MenuItem{Label: msgs.BMenuEdit(), Submenu: editItems}
-	view := &mygo.MenuItem{Label: msgs.BMenuView(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuFocus(), Accelerator: focus, Click: action("focus")}, {Label: msgs.BMenuAppearance(), Click: action("theme")}, {Label: msgs.BMenuLayout(), Accelerator: "CmdOrCtrl+\\", Click: action("layout")}, {Label: msgs.BMenuRead(), Accelerator: "CmdOrCtrl+Shift+R", Click: action("read")}, {Label: msgs.BMenuSource(), Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: msgs.BMenuCommands(), Accelerator: "CmdOrCtrl+K", Click: action("commands")}, mygo.Separator(), {Role: mygo.RoleToggleFullScreen, Label: msgs.BMenuFullscreen()}, mygo.Separator(), {Label: msgs.BMenuLanguage(), Submenu: languageMenu(msgs, action)}}}
+	view := &mygo.MenuItem{Label: msgs.BMenuView(), Submenu: []*mygo.MenuItem{{Label: msgs.BMenuFocus(), Accelerator: focus, Click: action("focus")}, {Label: msgs.BMenuLayout(), Accelerator: "CmdOrCtrl+\\", Click: action("layout")}, {Label: msgs.BMenuRead(), Accelerator: "CmdOrCtrl+Shift+R", Click: action("read")}, {Label: msgs.BMenuSource(), Accelerator: "CmdOrCtrl+Shift+M", Click: action("source")}, {Label: msgs.BMenuCommands(), Accelerator: "CmdOrCtrl+K", Click: action("commands")}, mygo.Separator(), {Role: mygo.RoleToggleFullScreen, Label: msgs.BMenuFullscreen()}}}
 	if !mac {
 		return []*mygo.MenuItem{
 			{Label: msgs.BMenuFile(), Submenu: append(file, &mygo.MenuItem{Role: mygo.RoleQuit, Label: msgs.BMenuExit()})},
@@ -367,7 +388,7 @@ func menuTemplateFor(goos string, msgs locales.Messages, action func(string) fun
 		}
 	}
 	return []*mygo.MenuItem{
-		{Label: msgs.BMenuAppName(), Submenu: []*mygo.MenuItem{about, updates, mygo.Separator(), {Role: mygo.RoleHide, Label: msgs.BMenuHide()}, {Role: mygo.RoleHideOthers, Label: msgs.BMenuHideOthers()}, {Role: mygo.RoleUnhide, Label: msgs.BMenuShowAll()}, mygo.Separator(), {Role: mygo.RoleQuit, Label: msgs.BMenuQuit()}}},
+		{Label: msgs.BMenuAppName(), Submenu: []*mygo.MenuItem{about, updates, mygo.Separator(), settings, mygo.Separator(), {Role: mygo.RoleHide, Label: msgs.BMenuHide()}, {Role: mygo.RoleHideOthers, Label: msgs.BMenuHideOthers()}, {Role: mygo.RoleUnhide, Label: msgs.BMenuShowAll()}, mygo.Separator(), {Role: mygo.RoleQuit, Label: msgs.BMenuQuit()}}},
 		{Label: msgs.BMenuFile(), Submenu: append(file, &mygo.MenuItem{Role: mygo.RoleClose, Label: msgs.BMenuCloseWindow()})},
 		edit, view,
 		{Label: msgs.BMenuWindow(), Submenu: []*mygo.MenuItem{{Role: mygo.RoleMinimize, Label: msgs.BMenuMinimize()}, {Role: mygo.RoleZoom, Label: msgs.BMenuZoom()}, mygo.Separator(), {Role: mygo.RoleFront, Label: msgs.BMenuFront()}}},
@@ -428,11 +449,10 @@ func main() {
 	}
 	// Check every 4 hours instead of the default day, so a new release shows up the same day.
 	mygo.Use(updater.New(updater.Options{Interval: 4 * time.Hour}))
-	nativeLocaleChoice.Store(w.localePreference)
 	if runtime.GOOS != "darwin" {
 		// Off macOS MyGo keeps the chosen language in a file of PathUserData,
 		// which 0.6.0 looked for under the localized app name. The workspace's
-		// choice, the one the Language menu shows, decides.
+		// choice, the one the language setting shows, decides.
 		mygo.App.SetLocale(w.localePreference)
 	}
 	d.native = newDesktopIntegration(w)
@@ -510,13 +530,12 @@ func main() {
 		})
 		action := func(s string) func(*mygo.MenuItem, *mygo.Window) {
 			return func(*mygo.MenuItem, *mygo.Window) {
-				if strings.HasPrefix(s, "locale:") {
-					_ = d.SetLocale(strings.TrimPrefix(s, "locale:"))
-					d.refreshLocale()
-					return
-				}
 				if s == "capture" {
 					d.ShowCapture()
+					return
+				}
+				if s == "settings" {
+					d.ShowSettings("")
 					return
 				}
 				_ = desktopAction.Emit(d.win, s)
@@ -525,7 +544,12 @@ func main() {
 		d.menuAction = action
 		d.refreshLocale()
 		mygo.App.OnLocaleChanged(func(string) { d.refreshLocale() })
-		mygo.App.OnActivate(func(bool) { d.win.Show(); d.win.Focus() })
+		mygo.App.OnActivate(func(visible bool) {
+			if !visible {
+				d.win.Show()
+				d.win.Focus()
+			}
+		})
 		d.win.Page().OnWillNavigate(func(e *mygo.NavigateEvent) { e.PreventDefault() })
 	})
 	mygo.App.OnBeforeQuit(func(e *mygo.QuitEvent) {
@@ -626,6 +650,30 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 		switch req.Method {
 		case "State":
 			value = d.State()
+		case "Search":
+			var query string
+			e = arg(0, &query)
+			if e == nil {
+				value, e = d.w.Search(query, req.Locale)
+			}
+		case "FilterDocuments":
+			var request DocumentFilterRequest
+			e = arg(0, &request)
+			if e == nil {
+				value, e = d.w.FilterDocuments(request, req.Locale)
+			}
+		case "ResolveWikiLink":
+			var request WikiResolveRequest
+			e = arg(0, &request)
+			if e == nil {
+				value, e = d.w.ResolveWikiLink(request, req.Locale)
+			}
+		case "Backlinks":
+			var id string
+			e = arg(0, &id)
+			if e == nil {
+				value, e = d.w.Backlinks(id, req.Locale)
+			}
 		case "SetLocale":
 			var tag string
 			e = arg(0, &tag)
@@ -638,12 +686,24 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			if e == nil {
 				value, e = d.Capture(text)
 			}
+		case "SaveCapture", "AppendCapture":
+			var note CaptureRequest
+			e = arg(0, &note)
+			if e == nil {
+				if req.Method == "SaveCapture" {
+					value, e = d.SaveCapture(note)
+				} else {
+					value, e = d.AppendCapture(note)
+				}
+			}
 		case "HideCapture":
 			d.HideCapture()
 		case "ShowCapture":
 			d.ShowCapture()
 		case "GetCaptureSettings":
 			value = d.GetCaptureSettings()
+		case "GetCaptureContext":
+			value = d.GetCaptureContext()
 		case "SetCaptureSettings":
 			var p CaptureSettings
 			e = arg(0, &p)
@@ -671,13 +731,15 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			if e == nil {
 				e = d.SavePosition(id, p)
 			}
-		case "Activate", "Reload", "Status", "Overwrite", "Delete":
+		case "Activate", "ActivateSearch", "Reload", "Status", "Overwrite", "Delete":
 			var id string
 			e = arg(0, &id)
 			if e == nil {
 				switch req.Method {
 				case "Activate":
 					value, e = d.Activate(id)
+				case "ActivateSearch":
+					value, e = d.ActivateSearch(id)
 				case "Reload":
 					value, e = d.Reload(id)
 				case "Status":
@@ -693,6 +755,12 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			e = arg(0, &x)
 			if e == nil {
 				e = d.Appearance(x)
+			}
+		case "UpdateAppearance":
+			var change AppearanceChange
+			e = arg(0, &change)
+			if e == nil {
+				value, e = d.UpdateAppearance(change)
 			}
 		case "OpenLinked":
 			var id, href string

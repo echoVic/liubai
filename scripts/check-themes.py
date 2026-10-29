@@ -24,7 +24,7 @@ def api(page, method, *args):
 
 
 def appearance_change(page, operation):
-    with page.expect_response(lambda r: r.url.endswith("/api") and '"Appearance"' in (r.request.post_data or "")) as pending:
+    with page.expect_response(lambda r: r.url.endswith("/api") and '"UpdateAppearance"' in (r.request.post_data or "")) as pending:
         operation()
     assert not pending.value.json().get("error"), pending.value.text()
 
@@ -46,7 +46,7 @@ def reload_keeps(page, shown, **stored):
 
 
 def open_panel(page):
-    page.locator('[data-action="theme"]').click()
+    page.locator('[data-action="settings"]').click()
     expect(page.locator('#appearance #themes [aria-checked="true"]')).to_be_focused()  # the panel moves focus there on the next frame
 
 
@@ -82,7 +82,7 @@ with sync_playwright() as p:
     assert (a["auto"], a["lightTheme"], a["darkTheme"]) == ("system", "paper", "ink"), a
     assert painted(page) == ["paper", "light"]
 
-    page.locator('[data-action="theme"]').click()
+    page.locator('[data-action="settings"]').click()
     dialog = page.locator("#appearance")
     radios = dialog.locator('#themes [role="radio"]')
     expect(radios).to_have_count(len(THEMES))
@@ -180,7 +180,7 @@ with sync_playwright() as p:
     assert painted(page) == ["lamp", "dark"]
     # A repaint by the clock rebuilds the cards; the one holding the keyboard focus keeps it.
     dialog.locator('[data-theme="mist"]').focus()
-    page.clock.run_for("02:00:00")
+    page.clock.fast_forward("02:00:00")
     expect(page.locator("html")).to_have_attribute("data-liubai-theme", "ink")
     expect(dialog.locator('[data-theme="ink"]')).to_have_attribute("aria-checked", "true")
     expect(dialog.locator('[data-theme="mist"]')).to_be_focused()

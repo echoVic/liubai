@@ -20,10 +20,14 @@ Liubai checks for updates in the background every 4 hours, and you can check you
 - **Tables and images**: tables are edited in place, with Tab moving between cells. Drag an image to resize it, and set its alignment and caption; the result is Markdown that also displays correctly on GitHub.
 - **Math, diagrams and extended syntax**: KaTeX math, Mermaid diagrams, GitHub alerts, foldable `<details>` blocks and footnotes.
 - **Reading**: edit, split and read views, with the right pane following the cursor in split view. The sidebar has recent documents; the outline sits beside the text on the right, with an outline button in the top bar. There's a focus mode, and the font size and line width are adjustable.
+- **Search**: search the titles and complete Markdown of all registered documents from the sidebar. Results show snippets and line numbers; click to jump in edit, split or read view, or choose “View in source.” `⌘F` still finds text within the current document.
+- **Tag filtering**: select a sidebar tag or click a tag beside a document to filter documents. Combine a tag with a search query to find their intersection. Tags live in the Markdown `tags` properties; clearing the query keeps the selected tag.
+- **Wiki links and backlinks**: reference registered documents with `[[Document title]]`. ⌘/Ctrl-click in the editor, or click in read and split previews. Duplicate titles open a chooser; the sidebar’s Backlinks section lists referencing documents and jumps to their references. Titles match exactly; renaming does not rewrite other documents. Exports keep the original reference text.
 - **Themes**: eleven, in two series. Hours has six that follow the light through a day: Dawn, Paper, Warm, Lamplight, Ink and Moonlight. Seasons has five in the colours of the year: Mist, Lotus, Harvest and Moon White, with Indigo for the night. Pick one yourself, follow the system's light and dark mode, or let the hours or the solar terms switch them. They use only the fonts your system already has.
 - **Export**: PDF, Word (.docx), HTML with embedded images, a ZIP of the Markdown and its images, and rich-text copy. Chinese text in the PDFs copies and searches correctly. Word documents keep heading styles, list numbering, tables, equations and footnotes, ready for anyone working in Word, Pages or WPS.
 - **Paste**: content from web pages, documents and Word becomes Markdown when pasted, images included; `⇧⌘V` pastes plain text.
-- **Quick notes**: press `⌃⌥⌘N` (`Ctrl+Alt+N` on Windows) in any app to write something down, and `⌘↩` (`Ctrl+Enter`) saves it as a new draft.
+- **Quick notes**: press `⌃⌥⌘N` (`Ctrl+Alt+N` on Windows) in any app to write something down. `⌘↩` (`Ctrl+Enter`) saves it as a new draft; you can also append to an existing document and change the shortcut in Settings.
+- **Settings and find**: appearance, typography, quick notes and language share a separate settings window with immediate changes. Find and replace uses a floating panel, and reader mode can search the rendered text.
 - Simplified Chinese and English interfaces, following the system language by default.
 
 Shortcuts: `⌘N` new, `⌘O` open, `⌘S` save, `⌘⇧S` save as, `⌘K` all commands, `⌘F` find, `⌘\` toggle split view, `⌘⇧R` reading mode, `⌘⇧M` show Markdown source, `⌘/` block menu, `⌘L` edit link, `⌘⇧F` focus mode, `⌘P` export PDF. Formatting: `⌘1`–`⌘6` headings 1–6, `⌘0` body text, `⌘B` bold, `⌘I` italic, `⌘U` underline, `⌘⇧X` strikethrough, `⌘⇧H` highlight, `⌘E` inline code, `⌘⇧7` numbered list, `⌘⇧8` bulleted list, `⌘⇧9` task list; rest the pointer on a toolbar button to see its name and shortcut. On Windows ⌘ is Ctrl and ⇧ is Shift; focus mode is F8 and redo is Ctrl+Y.
@@ -41,6 +45,7 @@ These numbers were measured in WebKit, the desktop app's engine, on an M2 Pro. T
 
 - Saving an opened `.md` writes it back to the original file, keeping its Finder tags and creation date (its attributes and creation date on Windows). Pasted images go into `<document name>.assets/` beside it, referenced by relative paths.
 - When another app changes a file, Liubai loads the new version. If both sides changed, it pauses and lets you decide which to keep, saving the other as a recovery copy, so nothing is lost quietly. Read-only files are never overwritten.
+- Full-text search uses accepted working copies, including Markdown properties, code and links. It does not scan unopened directories or reread files on disk. Pending edits enter results after normal autosave; opening a result checks for file changes.
 - Unsaved drafts live in `~/Library/Application Support/Liubai/` (`%AppData%\Liubai\` on Windows). Drafts removed from recent documents go to its `trash/` folder for 30 days, and drafts that can't be read are moved to `quarantine/` while the app starts as usual.
 - Documents can be up to 8 MB, and images up to 20 MB and 16,000 pixels on the longest side.
 
@@ -66,8 +71,8 @@ go test ./... && go vet ./...
 node_modules/.bin/tsc --noEmit
 node scripts/check-i18n.mjs && node scripts/check-editor.mjs
 node scripts/check-themes.mjs                  # contrast floors and the theme list
-npx --yes bun@1.4.3 scripts/check-<name>.ts   # editing, rendering, performance, paste, capture-input, platform, blocks, slash, tables, images, marks, math, mermaid, extras, docx, theme
-scripts/e2e.sh check-<name>                    # regressions in Chrome: split-preview, reader, toolbar, capture, english, windows, blocks, tables, images, math, mermaid, extras, docx, themes, outline, word-count
+npx --yes bun@1.4.3 scripts/check-<name>.ts   # editing, rendering, performance, search, paste, capture-input, platform, blocks, slash, tables, images, marks, math, mermaid, extras, docx, theme
+scripts/e2e.sh check-<name>                    # regressions in Chrome: search, split-preview, reader, toolbar, capture, english, windows, blocks, tables, images, math, mermaid, extras, docx, themes, outline, word-count
 scripts/e2e.sh check-blocks-webkit             # blocks, images, math, diagrams and Word conversion in WebKit, the desktop app's engine
 scripts/e2e.sh shoot-themes                    # screenshots of every theme in the edit, split and read views, in /tmp/liubai-theme-shots/
 python3 scripts/check-preview.py               # rendering and export
@@ -89,6 +94,8 @@ The documents below are in Chinese.
 - [Validation record](docs/superpowers/validation/2026-10-15-reader-foundation.md): trade-offs, tests, native app checks and release checks for each version
 - Designs: [reader and reliability](docs/superpowers/specs/2026-10-15-reader-foundation-design.md), [split preview](docs/superpowers/specs/2026-10-15-split-preview-design.md) and [block editing](docs/superpowers/specs/2026-10-17-block-editing-design.md); implementation plans are in `docs/superpowers/plans/`
 - Performance reports: [reader foundation (2026-10-15)](docs/performance/2026-10-15-reader-foundation.md), [0.6.3 against 0.1.0 and the fixes that followed (2026-10-24)](docs/performance/2026-10-24-0.6.3.md)
+- [Full-text search implementation and validation](docs/superpowers/plans/2026-10-28-full-text-search.md): scope, navigation safeguards and measured performance.
+- [Wiki links and backlinks implementation and validation](docs/superpowers/plans/2026-10-28-wiki-links.md): title resolution, Markdown semantics and safe navigation.
 
 ## License
 

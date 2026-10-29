@@ -20,10 +20,14 @@ Windows 内测版在同一个 Release 里：大多数电脑下载 `amd64` 安装
 - **表格和图片**：表格就地编辑，Tab 在单元格间移动；图片可以拖动改大小、设置对齐和说明，写成 GitHub 上也能正常显示的 Markdown。
 - **公式、图表和扩展语法**：KaTeX 公式、Mermaid 图表、GitHub 提示块、`<details>` 折叠块和脚注。
 - **看**：编辑、分栏、阅读三种视图，分栏时右侧跟随光标；侧栏里有最近文稿，大纲在正文右侧，也可以从顶栏的大纲按钮打开；专注模式；字号和行宽可调。
+- **搜索**：在侧栏搜索所有已登记文稿的标题与完整 Markdown，查看带行号的命中片段，点击跳转到编辑、分栏或阅读视图；也可以选择「在源码中查看」。`⌘F` 保留当前文稿内的查找。
+- **标签筛选**：选择侧栏标签，或点击文稿旁的标签，筛选带有该标签的文稿；和搜索关键词一起使用时取交集。标签来自 Markdown 属性的 `tags`，保存在文稿里；清空关键词仍保留标签筛选。
+- **双链与反向链接**：用 `[[文稿名]]` 引用已登记文稿；编辑时 ⌘/Ctrl 点击，阅读和分栏预览中直接点击。同名文稿会先让你选择，侧栏的「反向链接」可查看来源并跳到引用位置。按完整标题精确匹配，重命名不会自动改写其他文稿；导出保留原始引用文字。
 - **主题**：十一套，分两个系列。「天光」六套随一天的光线：晨光、纸白、暖纸、灯下、夜墨、月夜；「四时」五套取四季的颜色：雾绿、藕荷、秋香、月白，夜里是黛蓝。可以自己挑一套，也可以跟随系统的浅色和深色，或按时辰、节气自动切换。只用系统自带的字体。
 - **导出**：PDF、Word（.docx）、内嵌图片的 HTML、Markdown 加图片的 ZIP，以及富文本复制。PDF 里的中文可以正常复制和搜索；Word 保留标题样式、列表编号、表格、公式和脚注，可以交给用 Word、Pages 或 WPS 的人继续改。
 - **粘贴**：网页、文档和 Word 的内容粘贴后转为 Markdown，图片一并保存；`⇧⌘V` 粘贴为纯文本。
-- **随手记**：在任何应用里按 `⌃⌥⌘N`（Windows 上是 `Ctrl+Alt+N`）记下想法，`⌘↩`（`Ctrl+Enter`）存为一篇新草稿。
+- **随手记**：在任何应用里按 `⌃⌥⌘N`（Windows 上是 `Ctrl+Alt+N`）记下想法，`⌘↩`（`Ctrl+Enter`）存为一篇新草稿，也可以追加到已有文稿；快捷键在设置里修改。
+- **设置**：外观与排版、随手记和语言集中在独立窗口中，修改立即生效；当前文稿查找使用浮动面板，阅读模式也能查找正文。
 - 简体中文和英文界面，默认跟随系统语言。
 
 常用快捷键：`⌘N` 新建、`⌘O` 打开、`⌘S` 保存、`⌘⇧S` 另存、`⌘K` 所有操作、`⌘F` 查找、`⌘\` 切换分栏、`⌘⇧R` 阅读模式、`⌘⇧M` 显示 Markdown 源码、`⌘/` 块菜单、`⌘L` 编辑链接、`⌘⇧F` 专注模式、`⌘P` 导出 PDF。格式：`⌘1`–`⌘6` 标题 1–6、`⌘0` 正文、`⌘B` 加粗、`⌘I` 斜体、`⌘U` 下划线、`⌘⇧X` 删除线、`⌘⇧H` 高亮、`⌘E` 行内代码、`⌘⇧7` 有序列表、`⌘⇧8` 无序列表、`⌘⇧9` 任务列表；鼠标停在工具栏按钮上会显示它的名称和快捷键。Windows 上 ⌘ 换成 Ctrl、⇧ 即 Shift；专注模式是 F8，重做是 Ctrl+Y。
@@ -41,6 +45,7 @@ Windows 内测版在同一个 Release 里：大多数电脑下载 `amd64` 安装
 
 - 打开的 `.md` 保存时写回原文件，保留 Finder 标签和创建时间（Windows 上保留文件属性和创建时间）；粘贴的图片放进同目录的 `文稿名.assets/`，用相对路径引用。
 - 文件被其他应用修改时自动载入；两边都改过时先暂停，由你决定保留哪一边，另一边存成恢复副本，不会悄悄丢稿。只读文件不会被覆盖。
+- 全文搜索使用工作区已接受的文稿副本，包含 Markdown 属性、代码和链接；不会扫描未打开的目录，也不会因查询而重新读取磁盘。待保存输入在正常自动保存后进入结果；点击结果时再检查文件变化。
 - 未保存的草稿在 `~/Library/Application Support/Liubai/`（Windows 上在 `%AppData%\Liubai\`）。从最近文稿里移除的草稿进入其中的 `trash/`，保留 30 天；读不出的草稿移到 `quarantine/`，应用照常启动。
 - 文稿上限 8 MB；单张图片 20 MB、最长边 16000 像素。
 
@@ -66,8 +71,8 @@ go test ./... && go vet ./...
 node_modules/.bin/tsc --noEmit
 node scripts/check-i18n.mjs && node scripts/check-editor.mjs
 node scripts/check-themes.mjs                  # 各套主题的对比度门槛与清单
-npx --yes bun@1.4.3 scripts/check-<名称>.ts   # editing、rendering、performance、paste、capture-input、platform、blocks、slash、tables、images、marks、math、mermaid、extras、docx、theme
-scripts/e2e.sh check-<名称>                    # Chrome 中的回归：split-preview、reader、toolbar、capture、english、windows、blocks、tables、images、math、mermaid、extras、docx、themes、outline、word-count
+npx --yes bun@1.4.3 scripts/check-<名称>.ts   # editing、rendering、performance、search、paste、capture-input、platform、blocks、slash、tables、images、marks、math、mermaid、extras、docx、theme
+scripts/e2e.sh check-<名称>                    # Chrome 中的回归：search、split-preview、reader、toolbar、capture、english、windows、blocks、tables、images、math、mermaid、extras、docx、themes、outline、word-count
 scripts/e2e.sh check-blocks-webkit             # 桌面版引擎 WebKit 中的块操作、图片、公式、图表与 Word 转换
 scripts/e2e.sh shoot-themes                    # 每套主题在编辑、分栏、阅读三种视图下的截图，存到 /tmp/liubai-theme-shots/
 python3 scripts/check-preview.py               # 渲染与导出
@@ -87,6 +92,9 @@ ROUNDS=3 scripts/bench/run.sh <基准版本>       # 与某个版本对比性能
 - [验证记录](docs/superpowers/validation/2026-10-15-reader-foundation.md)：每个版本的实现取舍、测试、原生应用实测和发布核对
 - 设计：[阅读器与可靠性](docs/superpowers/specs/2026-10-15-reader-foundation-design.md)、[分栏预览](docs/superpowers/specs/2026-10-15-split-preview-design.md)、[块编辑](docs/superpowers/specs/2026-10-17-block-editing-design.md)；实施计划在 `docs/superpowers/plans/`
 - 性能报告：[阅读器基础（2026-10-15）](docs/performance/2026-10-15-reader-foundation.md)、[0.6.3 对比 0.1.0 及随后的修复（2026-10-24）](docs/performance/2026-10-24-0.6.3.md)
+- [全文搜索实施与验收](docs/superpowers/plans/2026-10-28-full-text-search.md)：范围、导航保护和实测性能。
+- [标签筛选实施与验收](docs/superpowers/plans/2026-10-28-tag-filter.md)：标签规则、搜索交集和异步刷新。
+- [双链与反向链接实施与验收](docs/superpowers/plans/2026-10-28-wiki-links.md)：标题解析、Markdown 语义范围和安全导航。
 
 ## 许可
 

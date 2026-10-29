@@ -2052,6 +2052,46 @@ func (msgs Messages) FAppearanceAndTypography2() string {
 	return Catalog.Format(msgs.locale, "fAppearanceAndTypography2", nil)
 }
 
+// FSettings says "设置…"
+// in the language the app shows.
+func FSettings() string { return In(i18n.Locale()).FSettings() }
+
+// FSettings says "设置…"
+// in the language of msgs.
+func (msgs Messages) FSettings() string {
+	return Catalog.Format(msgs.locale, "fSettings", nil)
+}
+
+// FSettingsTitle says "设置"
+// in the language the app shows.
+func FSettingsTitle() string { return In(i18n.Locale()).FSettingsTitle() }
+
+// FSettingsTitle says "设置"
+// in the language of msgs.
+func (msgs Messages) FSettingsTitle() string {
+	return Catalog.Format(msgs.locale, "fSettingsTitle", nil)
+}
+
+// FAppearance says "外观"
+// in the language the app shows.
+func FAppearance() string { return In(i18n.Locale()).FAppearance() }
+
+// FAppearance says "外观"
+// in the language of msgs.
+func (msgs Messages) FAppearance() string {
+	return Catalog.Format(msgs.locale, "fAppearance", nil)
+}
+
+// FLaunchAtLogin says "登录时启动"
+// in the language the app shows.
+func FLaunchAtLogin() string { return In(i18n.Locale()).FLaunchAtLogin() }
+
+// FLaunchAtLogin says "登录时启动"
+// in the language of msgs.
+func (msgs Messages) FLaunchAtLogin() string {
+	return Catalog.Format(msgs.locale, "fLaunchAtLogin", nil)
+}
+
 // FExportPDFHTMLZIPOrCopyRichText says "导出 PDF、HTML、ZIP 或复制富文本"
 // in the language the app shows.
 //
@@ -5280,6 +5320,26 @@ func (msgs Messages) FFind() string {
 	return Catalog.Format(msgs.locale, "fFind", nil)
 }
 
+// FFindNoMatches says "未找到"
+// in the language the app shows.
+func FFindNoMatches() string { return In(i18n.Locale()).FFindNoMatches() }
+
+// FFindNoMatches says "未找到"
+// in the language of msgs.
+func (msgs Messages) FFindNoMatches() string {
+	return Catalog.Format(msgs.locale, "fFindNoMatches", nil)
+}
+
+// FFindInvalidRegexp says "正则表达式无效"
+// in the language the app shows.
+func FFindInvalidRegexp() string { return In(i18n.Locale()).FFindInvalidRegexp() }
+
+// FFindInvalidRegexp says "正则表达式无效"
+// in the language of msgs.
+func (msgs Messages) FFindInvalidRegexp() string {
+	return Catalog.Format(msgs.locale, "fFindInvalidRegexp", nil)
+}
+
 // FReplace says "替换"
 // in the language the app shows.
 //
@@ -7136,4 +7196,594 @@ func FDarkMode() string { return In(i18n.Locale()).FDarkMode() }
 // Interface text for Dark.
 func (msgs Messages) FDarkMode() string {
 	return Catalog.Format(msgs.locale, "fDarkMode", nil)
+}
+
+// BCaptureInvalidTags says "最多 32 个标签，每个不超过 80 个字，且不能包含换行。"
+// in the language the app shows.
+func BCaptureInvalidTags() string { return In(i18n.Locale()).BCaptureInvalidTags() }
+
+// BCaptureInvalidTags says "最多 32 个标签，每个不超过 80 个字，且不能包含换行。"
+// in the language of msgs.
+func (msgs Messages) BCaptureInvalidTags() string {
+	return Catalog.Format(msgs.locale, "bCaptureInvalidTags", nil)
+}
+
+// BCaptureTagsMetadata says "无法安全合并文稿的标签。请检查 Markdown 属性，或不加标签保存。"
+// in the language the app shows.
+func BCaptureTagsMetadata() string { return In(i18n.Locale()).BCaptureTagsMetadata() }
+
+// BCaptureTagsMetadata says "无法安全合并文稿的标签。请检查 Markdown 属性，或不加标签保存。"
+// in the language of msgs.
+func (msgs Messages) BCaptureTagsMetadata() string {
+	return Catalog.Format(msgs.locale, "bCaptureTagsMetadata", nil)
+}
+
+// FCaptureDestination says "保存到"
+// in the language the app shows.
+func FCaptureDestination() string { return In(i18n.Locale()).FCaptureDestination() }
+
+// FCaptureDestination says "保存到"
+// in the language of msgs.
+func (msgs Messages) FCaptureDestination() string {
+	return Catalog.Format(msgs.locale, "fCaptureDestination", nil)
+}
+
+// FCaptureNewDraft says "新建草稿"
+// in the language the app shows.
+func FCaptureNewDraft() string { return In(i18n.Locale()).FCaptureNewDraft() }
+
+// FCaptureNewDraft says "新建草稿"
+// in the language of msgs.
+func (msgs Messages) FCaptureNewDraft() string {
+	return Catalog.Format(msgs.locale, "fCaptureNewDraft", nil)
+}
+
+// FCaptureTemplate says "模板"
+// in the language the app shows.
+func FCaptureTemplate() string { return In(i18n.Locale()).FCaptureTemplate() }
+
+// FCaptureTemplate says "模板"
+// in the language of msgs.
+func (msgs Messages) FCaptureTemplate() string {
+	return Catalog.Format(msgs.locale, "fCaptureTemplate", nil)
+}
+
+// FCapturePlain says "普通笔记"
+// in the language the app shows.
+func FCapturePlain() string { return In(i18n.Locale()).FCapturePlain() }
+
+// FCapturePlain says "普通笔记"
+// in the language of msgs.
+func (msgs Messages) FCapturePlain() string {
+	return Catalog.Format(msgs.locale, "fCapturePlain", nil)
+}
+
+// FCaptureTask says "待办"
+// in the language the app shows.
+func FCaptureTask() string { return In(i18n.Locale()).FCaptureTask() }
+
+// FCaptureTask says "待办"
+// in the language of msgs.
+func (msgs Messages) FCaptureTask() string {
+	return Catalog.Format(msgs.locale, "fCaptureTask", nil)
+}
+
+// FCaptureMeeting says "会议"
+// in the language the app shows.
+func FCaptureMeeting() string { return In(i18n.Locale()).FCaptureMeeting() }
+
+// FCaptureMeeting says "会议"
+// in the language of msgs.
+func (msgs Messages) FCaptureMeeting() string {
+	return Catalog.Format(msgs.locale, "fCaptureMeeting", nil)
+}
+
+// FCaptureIdea says "灵感"
+// in the language the app shows.
+func FCaptureIdea() string { return In(i18n.Locale()).FCaptureIdea() }
+
+// FCaptureIdea says "灵感"
+// in the language of msgs.
+func (msgs Messages) FCaptureIdea() string {
+	return Catalog.Format(msgs.locale, "fCaptureIdea", nil)
+}
+
+// FCaptureMeetingBody says "## 会议记录\n\n### 讨论\n\n\n### 待办事项\n\n- [ ] "
+// in the language the app shows.
+func FCaptureMeetingBody() string { return In(i18n.Locale()).FCaptureMeetingBody() }
+
+// FCaptureMeetingBody says "## 会议记录\n\n### 讨论\n\n\n### 待办事项\n\n- [ ] "
+// in the language of msgs.
+func (msgs Messages) FCaptureMeetingBody() string {
+	return Catalog.Format(msgs.locale, "fCaptureMeetingBody", nil)
+}
+
+// FCaptureIdeaBody says "## 灵感\n\n\n### 下一步\n\n"
+// in the language the app shows.
+func FCaptureIdeaBody() string { return In(i18n.Locale()).FCaptureIdeaBody() }
+
+// FCaptureIdeaBody says "## 灵感\n\n\n### 下一步\n\n"
+// in the language of msgs.
+func (msgs Messages) FCaptureIdeaBody() string {
+	return Catalog.Format(msgs.locale, "fCaptureIdeaBody", nil)
+}
+
+// FCaptureTags says "标签"
+// in the language the app shows.
+func FCaptureTags() string { return In(i18n.Locale()).FCaptureTags() }
+
+// FCaptureTags says "标签"
+// in the language of msgs.
+func (msgs Messages) FCaptureTags() string {
+	return Catalog.Format(msgs.locale, "fCaptureTags", nil)
+}
+
+// FCaptureTagsHint says "用逗号分隔标签"
+// in the language the app shows.
+func FCaptureTagsHint() string { return In(i18n.Locale()).FCaptureTagsHint() }
+
+// FCaptureTagsHint says "用逗号分隔标签"
+// in the language of msgs.
+func (msgs Messages) FCaptureTagsHint() string {
+	return Catalog.Format(msgs.locale, "fCaptureTagsHint", nil)
+}
+
+// FCaptureAppend says "追加"
+// in the language the app shows.
+func FCaptureAppend() string { return In(i18n.Locale()).FCaptureAppend() }
+
+// FCaptureAppend says "追加"
+// in the language of msgs.
+func (msgs Messages) FCaptureAppend() string {
+	return Catalog.Format(msgs.locale, "fCaptureAppend", nil)
+}
+
+// FCaptureAppended says "已追加到文稿"
+// in the language the app shows.
+func FCaptureAppended() string { return In(i18n.Locale()).FCaptureAppended() }
+
+// FCaptureAppended says "已追加到文稿"
+// in the language of msgs.
+func (msgs Messages) FCaptureAppended() string {
+	return Catalog.Format(msgs.locale, "fCaptureAppended", nil)
+}
+
+// FCaptureSaveHint says "{shortcut} 保存 · Esc 关闭"
+// in the language the app shows.
+func FCaptureSaveHint(shortcut string) string { return In(i18n.Locale()).FCaptureSaveHint(shortcut) }
+
+// FCaptureSaveHint says "{shortcut} 保存 · Esc 关闭"
+// in the language of msgs.
+func (msgs Messages) FCaptureSaveHint(shortcut string) string {
+	return Catalog.Format(msgs.locale, "fCaptureSaveHint", map[string]any{"shortcut": shortcut})
+}
+
+// FCaptureBusy says "编辑器正在处理其他操作，请完成后重试。"
+// in the language the app shows.
+func FCaptureBusy() string { return In(i18n.Locale()).FCaptureBusy() }
+
+// FCaptureBusy says "编辑器正在处理其他操作，请完成后重试。"
+// in the language of msgs.
+func (msgs Messages) FCaptureBusy() string {
+	return Catalog.Format(msgs.locale, "fCaptureBusy", nil)
+}
+
+// BSearchInvalidQuery says "请输入有效的搜索文字。"
+// in the language the app shows.
+func BSearchInvalidQuery() string { return In(i18n.Locale()).BSearchInvalidQuery() }
+
+// BSearchInvalidQuery says "请输入有效的搜索文字。"
+// in the language of msgs.
+func (msgs Messages) BSearchInvalidQuery() string {
+	return Catalog.Format(msgs.locale, "bSearchInvalidQuery", nil)
+}
+
+// BSearchQueryTooLong says "搜索文字最多 128 个字符。"
+// in the language the app shows.
+func BSearchQueryTooLong() string { return In(i18n.Locale()).BSearchQueryTooLong() }
+
+// BSearchQueryTooLong says "搜索文字最多 128 个字符。"
+// in the language of msgs.
+func (msgs Messages) BSearchQueryTooLong() string {
+	return Catalog.Format(msgs.locale, "bSearchQueryTooLong", nil)
+}
+
+// BSearchQueryLineBreak says "请搜索单行内连续的文字。"
+// in the language the app shows.
+func BSearchQueryLineBreak() string { return In(i18n.Locale()).BSearchQueryLineBreak() }
+
+// BSearchQueryLineBreak says "请搜索单行内连续的文字。"
+// in the language of msgs.
+func (msgs Messages) BSearchQueryLineBreak() string {
+	return Catalog.Format(msgs.locale, "bSearchQueryLineBreak", nil)
+}
+
+// FSearchDocuments says "搜索文稿标题与内容…"
+// in the language the app shows.
+func FSearchDocuments() string { return In(i18n.Locale()).FSearchDocuments() }
+
+// FSearchDocuments says "搜索文稿标题与内容…"
+// in the language of msgs.
+func (msgs Messages) FSearchDocuments() string {
+	return Catalog.Format(msgs.locale, "fSearchDocuments", nil)
+}
+
+// FSearching says "正在搜索…"
+// in the language the app shows.
+func FSearching() string { return In(i18n.Locale()).FSearching() }
+
+// FSearching says "正在搜索…"
+// in the language of msgs.
+func (msgs Messages) FSearching() string {
+	return Catalog.Format(msgs.locale, "fSearching", nil)
+}
+
+// FSearchCount says "找到 {count} 篇文稿"
+// in the language the app shows.
+func FSearchCount(count int) string { return In(i18n.Locale()).FSearchCount(count) }
+
+// FSearchCount says "找到 {count} 篇文稿"
+// in the language of msgs.
+func (msgs Messages) FSearchCount(count int) string {
+	return Catalog.Format(msgs.locale, "fSearchCount", map[string]any{"count": count})
+}
+
+// FSearchEmpty says "没有找到包含「{query}」的文稿。"
+// in the language the app shows.
+func FSearchEmpty(query string) string { return In(i18n.Locale()).FSearchEmpty(query) }
+
+// FSearchEmpty says "没有找到包含「{query}」的文稿。"
+// in the language of msgs.
+func (msgs Messages) FSearchEmpty(query string) string {
+	return Catalog.Format(msgs.locale, "fSearchEmpty", map[string]any{"query": query})
+}
+
+// FSearchTruncated says "显示前 100 篇，请缩小搜索范围。"
+// in the language the app shows.
+func FSearchTruncated() string { return In(i18n.Locale()).FSearchTruncated() }
+
+// FSearchTruncated says "显示前 100 篇，请缩小搜索范围。"
+// in the language of msgs.
+func (msgs Messages) FSearchTruncated() string {
+	return Catalog.Format(msgs.locale, "fSearchTruncated", nil)
+}
+
+// FSearchMoreHits says "还有更多匹配，可在文内继续查找。"
+// in the language the app shows.
+func FSearchMoreHits() string { return In(i18n.Locale()).FSearchMoreHits() }
+
+// FSearchMoreHits says "还有更多匹配，可在文内继续查找。"
+// in the language of msgs.
+func (msgs Messages) FSearchMoreHits() string {
+	return Catalog.Format(msgs.locale, "fSearchMoreHits", nil)
+}
+
+// FSearchDraft says "草稿"
+// in the language the app shows.
+func FSearchDraft() string { return In(i18n.Locale()).FSearchDraft() }
+
+// FSearchDraft says "草稿"
+// in the language of msgs.
+func (msgs Messages) FSearchDraft() string {
+	return Catalog.Format(msgs.locale, "fSearchDraft", nil)
+}
+
+// FSearchLine says "第 {line} 行"
+// in the language the app shows.
+func FSearchLine(line int) string { return In(i18n.Locale()).FSearchLine(line) }
+
+// FSearchLine says "第 {line} 行"
+// in the language of msgs.
+func (msgs Messages) FSearchLine(line int) string {
+	return Catalog.Format(msgs.locale, "fSearchLine", map[string]any{"line": line})
+}
+
+// FSearchSource says "在源码中查看"
+// in the language the app shows.
+func FSearchSource() string { return In(i18n.Locale()).FSearchSource() }
+
+// FSearchSource says "在源码中查看"
+// in the language of msgs.
+func (msgs Messages) FSearchSource() string {
+	return Catalog.Format(msgs.locale, "fSearchSource", nil)
+}
+
+// FSearchRetry says "重试搜索"
+// in the language the app shows.
+func FSearchRetry() string { return In(i18n.Locale()).FSearchRetry() }
+
+// FSearchRetry says "重试搜索"
+// in the language of msgs.
+func (msgs Messages) FSearchRetry() string {
+	return Catalog.Format(msgs.locale, "fSearchRetry", nil)
+}
+
+// FSearchPending says "当前修改自动保存后会更新结果。"
+// in the language the app shows.
+func FSearchPending() string { return In(i18n.Locale()).FSearchPending() }
+
+// FSearchPending says "当前修改自动保存后会更新结果。"
+// in the language of msgs.
+func (msgs Messages) FSearchPending() string {
+	return Catalog.Format(msgs.locale, "fSearchPending", nil)
+}
+
+// FSearchSaveFailed says "结果暂不包含当前未保存的修改。"
+// in the language the app shows.
+func FSearchSaveFailed() string { return In(i18n.Locale()).FSearchSaveFailed() }
+
+// FSearchSaveFailed says "结果暂不包含当前未保存的修改。"
+// in the language of msgs.
+func (msgs Messages) FSearchSaveFailed() string {
+	return Catalog.Format(msgs.locale, "fSearchSaveFailed", nil)
+}
+
+// FSearchStale says "文稿内容已更新，请重新选择搜索结果。"
+// in the language the app shows.
+func FSearchStale() string { return In(i18n.Locale()).FSearchStale() }
+
+// FSearchStale says "文稿内容已更新，请重新选择搜索结果。"
+// in the language of msgs.
+func (msgs Messages) FSearchStale() string {
+	return Catalog.Format(msgs.locale, "fSearchStale", nil)
+}
+
+// FSearchRemoved says "文稿已移除。"
+// in the language the app shows.
+func FSearchRemoved() string { return In(i18n.Locale()).FSearchRemoved() }
+
+// FSearchRemoved says "文稿已移除。"
+// in the language of msgs.
+func (msgs Messages) FSearchRemoved() string {
+	return Catalog.Format(msgs.locale, "fSearchRemoved", nil)
+}
+
+// BFilterInvalidTag says "请输入有效标签，最多 80 个字，且不能包含控制字符。"
+// in the language the app shows.
+func BFilterInvalidTag() string { return In(i18n.Locale()).BFilterInvalidTag() }
+
+// BFilterInvalidTag says "请输入有效标签，最多 80 个字，且不能包含控制字符。"
+// in the language of msgs.
+func (msgs Messages) BFilterInvalidTag() string {
+	return Catalog.Format(msgs.locale, "bFilterInvalidTag", nil)
+}
+
+// FTagFilter says "标签筛选"
+// in the language the app shows.
+func FTagFilter() string { return In(i18n.Locale()).FTagFilter() }
+
+// FTagFilter says "标签筛选"
+// in the language of msgs.
+func (msgs Messages) FTagFilter() string {
+	return Catalog.Format(msgs.locale, "fTagFilter", nil)
+}
+
+// FAllTags says "全部标签"
+// in the language the app shows.
+func FAllTags() string { return In(i18n.Locale()).FAllTags() }
+
+// FAllTags says "全部标签"
+// in the language of msgs.
+func (msgs Messages) FAllTags() string {
+	return Catalog.Format(msgs.locale, "fAllTags", nil)
+}
+
+// FDocuments says "文稿"
+// in the language the app shows.
+func FDocuments() string { return In(i18n.Locale()).FDocuments() }
+
+// FDocuments says "文稿"
+// in the language of msgs.
+func (msgs Messages) FDocuments() string {
+	return Catalog.Format(msgs.locale, "fDocuments", nil)
+}
+
+// FTagCount says "{tag} · {count}"
+// in the language the app shows.
+func FTagCount(tag string, count int) string { return In(i18n.Locale()).FTagCount(tag, count) }
+
+// FTagCount says "{tag} · {count}"
+// in the language of msgs.
+func (msgs Messages) FTagCount(tag string, count int) string {
+	return Catalog.Format(msgs.locale, "fTagCount", map[string]any{"tag": tag, "count": count})
+}
+
+// FFilterTag says "筛选标签「{tag}」"
+// in the language the app shows.
+func FFilterTag(tag string) string { return In(i18n.Locale()).FFilterTag(tag) }
+
+// FFilterTag says "筛选标签「{tag}」"
+// in the language of msgs.
+func (msgs Messages) FFilterTag(tag string) string {
+	return Catalog.Format(msgs.locale, "fFilterTag", map[string]any{"tag": tag})
+}
+
+// FClearTag says "清除标签筛选「{tag}」"
+// in the language the app shows.
+func FClearTag(tag string) string { return In(i18n.Locale()).FClearTag(tag) }
+
+// FClearTag says "清除标签筛选「{tag}」"
+// in the language of msgs.
+func (msgs Messages) FClearTag(tag string) string {
+	return Catalog.Format(msgs.locale, "fClearTag", map[string]any{"tag": tag})
+}
+
+// FMoreTags says "+{count} 个标签"
+// in the language the app shows.
+func FMoreTags(count int) string { return In(i18n.Locale()).FMoreTags(count) }
+
+// FMoreTags says "+{count} 个标签"
+// in the language of msgs.
+func (msgs Messages) FMoreTags(count int) string {
+	return Catalog.Format(msgs.locale, "fMoreTags", map[string]any{"count": count})
+}
+
+// FTagEmpty says "没有带「{tag}」标签的文稿。"
+// in the language the app shows.
+func FTagEmpty(tag string) string { return In(i18n.Locale()).FTagEmpty(tag) }
+
+// FTagEmpty says "没有带「{tag}」标签的文稿。"
+// in the language of msgs.
+func (msgs Messages) FTagEmpty(tag string) string {
+	return Catalog.Format(msgs.locale, "fTagEmpty", map[string]any{"tag": tag})
+}
+
+// BWikiInvalidName says "引用名称无效，请使用单行标题，最多 256 个字，且不能包含控制字符、方括号或竖线。"
+// in the language the app shows.
+func BWikiInvalidName() string { return In(i18n.Locale()).BWikiInvalidName() }
+
+// BWikiInvalidName says "引用名称无效，请使用单行标题，最多 256 个字，且不能包含控制字符、方括号或竖线。"
+// in the language of msgs.
+func (msgs Messages) BWikiInvalidName() string {
+	return Catalog.Format(msgs.locale, "bWikiInvalidName", nil)
+}
+
+// BWikiSourceChanged says "来源文稿已更新，请重新点击引用。"
+// in the language the app shows.
+func BWikiSourceChanged() string { return In(i18n.Locale()).BWikiSourceChanged() }
+
+// BWikiSourceChanged says "来源文稿已更新，请重新点击引用。"
+// in the language of msgs.
+func (msgs Messages) BWikiSourceChanged() string {
+	return Catalog.Format(msgs.locale, "bWikiSourceChanged", nil)
+}
+
+// BWikiSourceMissing says "来源文稿已移除。"
+// in the language the app shows.
+func BWikiSourceMissing() string { return In(i18n.Locale()).BWikiSourceMissing() }
+
+// BWikiSourceMissing says "来源文稿已移除。"
+// in the language of msgs.
+func (msgs Messages) BWikiSourceMissing() string {
+	return Catalog.Format(msgs.locale, "bWikiSourceMissing", nil)
+}
+
+// FBacklinks says "反向链接"
+// in the language the app shows.
+func FBacklinks() string { return In(i18n.Locale()).FBacklinks() }
+
+// FBacklinks says "反向链接"
+// in the language of msgs.
+func (msgs Messages) FBacklinks() string {
+	return Catalog.Format(msgs.locale, "fBacklinks", nil)
+}
+
+// FBacklinkLoading says "正在查找引用…"
+// in the language the app shows.
+func FBacklinkLoading() string { return In(i18n.Locale()).FBacklinkLoading() }
+
+// FBacklinkLoading says "正在查找引用…"
+// in the language of msgs.
+func (msgs Messages) FBacklinkLoading() string {
+	return Catalog.Format(msgs.locale, "fBacklinkLoading", nil)
+}
+
+// FBacklinkEmpty says "还没有其他文稿引用这一篇。"
+// in the language the app shows.
+func FBacklinkEmpty() string { return In(i18n.Locale()).FBacklinkEmpty() }
+
+// FBacklinkEmpty says "还没有其他文稿引用这一篇。"
+// in the language of msgs.
+func (msgs Messages) FBacklinkEmpty() string {
+	return Catalog.Format(msgs.locale, "fBacklinkEmpty", nil)
+}
+
+// FBacklinkUnnamed says "请先为文稿设置可引用的标题。"
+// in the language the app shows.
+func FBacklinkUnnamed() string { return In(i18n.Locale()).FBacklinkUnnamed() }
+
+// FBacklinkUnnamed says "请先为文稿设置可引用的标题。"
+// in the language of msgs.
+func (msgs Messages) FBacklinkUnnamed() string {
+	return Catalog.Format(msgs.locale, "fBacklinkUnnamed", nil)
+}
+
+// FBacklinkAmbiguous says "有多篇同名文稿，引用无法唯一归属。"
+// in the language the app shows.
+func FBacklinkAmbiguous() string { return In(i18n.Locale()).FBacklinkAmbiguous() }
+
+// FBacklinkAmbiguous says "有多篇同名文稿，引用无法唯一归属。"
+// in the language of msgs.
+func (msgs Messages) FBacklinkAmbiguous() string {
+	return Catalog.Format(msgs.locale, "fBacklinkAmbiguous", nil)
+}
+
+// FBacklinkCount says "{count} 篇文稿引用"
+// in the language the app shows.
+func FBacklinkCount(count int) string { return In(i18n.Locale()).FBacklinkCount(count) }
+
+// FBacklinkCount says "{count} 篇文稿引用"
+// in the language of msgs.
+func (msgs Messages) FBacklinkCount(count int) string {
+	return Catalog.Format(msgs.locale, "fBacklinkCount", map[string]any{"count": count})
+}
+
+// FBacklinkPending says "当前修改保存后会更新引用；请稍后再打开结果。"
+// in the language the app shows.
+func FBacklinkPending() string { return In(i18n.Locale()).FBacklinkPending() }
+
+// FBacklinkPending says "当前修改保存后会更新引用；请稍后再打开结果。"
+// in the language of msgs.
+func (msgs Messages) FBacklinkPending() string {
+	return Catalog.Format(msgs.locale, "fBacklinkPending", nil)
+}
+
+// FBacklinkRetry says "重试查找引用"
+// in the language the app shows.
+func FBacklinkRetry() string { return In(i18n.Locale()).FBacklinkRetry() }
+
+// FBacklinkRetry says "重试查找引用"
+// in the language of msgs.
+func (msgs Messages) FBacklinkRetry() string {
+	return Catalog.Format(msgs.locale, "fBacklinkRetry", nil)
+}
+
+// FBacklinkTruncated says "显示前 100 篇引用文稿。"
+// in the language the app shows.
+func FBacklinkTruncated() string { return In(i18n.Locale()).FBacklinkTruncated() }
+
+// FBacklinkTruncated says "显示前 100 篇引用文稿。"
+// in the language of msgs.
+func (msgs Messages) FBacklinkTruncated() string {
+	return Catalog.Format(msgs.locale, "fBacklinkTruncated", nil)
+}
+
+// FBacklinkMoreHits says "这篇文稿还有更多引用。"
+// in the language the app shows.
+func FBacklinkMoreHits() string { return In(i18n.Locale()).FBacklinkMoreHits() }
+
+// FBacklinkMoreHits says "这篇文稿还有更多引用。"
+// in the language of msgs.
+func (msgs Messages) FBacklinkMoreHits() string {
+	return Catalog.Format(msgs.locale, "fBacklinkMoreHits", nil)
+}
+
+// FWikiChoose says "选择引用的文稿"
+// in the language the app shows.
+func FWikiChoose() string { return In(i18n.Locale()).FWikiChoose() }
+
+// FWikiChoose says "选择引用的文稿"
+// in the language of msgs.
+func (msgs Messages) FWikiChoose() string {
+	return Catalog.Format(msgs.locale, "fWikiChoose", nil)
+}
+
+// FWikiChooseNote says "有多篇文稿使用相同标题，请选择要打开的一篇。"
+// in the language the app shows.
+func FWikiChooseNote() string { return In(i18n.Locale()).FWikiChooseNote() }
+
+// FWikiChooseNote says "有多篇文稿使用相同标题，请选择要打开的一篇。"
+// in the language of msgs.
+func (msgs Messages) FWikiChooseNote() string {
+	return Catalog.Format(msgs.locale, "fWikiChooseNote", nil)
+}
+
+// FWikiMissing says "没有找到标题为「{title}」的已登记文稿。"
+// in the language the app shows.
+func FWikiMissing(title string) string { return In(i18n.Locale()).FWikiMissing(title) }
+
+// FWikiMissing says "没有找到标题为「{title}」的已登记文稿。"
+// in the language of msgs.
+func (msgs Messages) FWikiMissing(title string) string {
+	return Catalog.Format(msgs.locale, "fWikiMissing", map[string]any{"title": title})
 }

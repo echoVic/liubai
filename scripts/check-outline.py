@@ -22,7 +22,7 @@ def api(page, method, *args):
 
 
 def appearance_change(page, operation):
-    with page.expect_response(lambda r: r.url.endswith("/api") and '"Appearance"' in (r.request.post_data or "")) as pending:
+    with page.expect_response(lambda r: r.url.endswith("/api") and r.request.post_data_json.get("method") == "UpdateAppearance") as pending:
         operation()
     assert not pending.value.json().get("error"), pending.value.text()
 

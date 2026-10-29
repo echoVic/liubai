@@ -3,6 +3,7 @@ package main
 import (
 	"regexp"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"liubai/locales"
@@ -20,7 +21,7 @@ func frontMatterEnd(s string) int {
 		if newline {
 			offset++
 		}
-		if trim := strings.TrimSpace(line); trim == "---" || trim == "..." {
+		if trim := strings.TrimRight(line, " \t\r"); trim == "---" || trim == "..." {
 			return offset
 		}
 		if !newline {
@@ -45,6 +46,13 @@ func inferredTitle(s string) string {
 		return title
 	}
 	return locales.BUntitled()
+}
+
+func hasInferredContentTitle(s string) bool {
+	// A leading letter survives every title transformation. Other Markdown
+	// starts still use the full parser, including images, fences and callouts.
+	r, _ := utf8.DecodeRuneInString(s)
+	return unicode.IsLetter(r) || inferredContentTitle(s) != ""
 }
 
 func inferredContentTitle(s string) string {

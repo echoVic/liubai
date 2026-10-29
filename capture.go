@@ -124,7 +124,7 @@ func (w *Workspace) Capture(text string) (Summary, error) {
 		return Summary{}, err
 	}
 	w.docs[d.ID] = d
-	return Summary{d.ID, d.Title, d.Path, d.Updated, d.Excerpt}, nil
+	return summaryOf(d), nil
 }
 
 func (w *Workspace) SetCaptureSettings(p CaptureSettings) error {

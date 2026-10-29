@@ -70,11 +70,13 @@ type Document struct {
 	ImageAliases         map[string]string `json:"imageAliases,omitempty"`
 }
 type Summary struct {
-	ID      string `json:"id"`
-	Title   string `json:"title"`
-	Path    string `json:"path"`
-	Updated int64  `json:"updated"`
-	Excerpt string `json:"excerpt"`
+	ID      string   `json:"id"`
+	Title   string   `json:"title"`
+	Path    string   `json:"path"`
+	Updated int64    `json:"updated"`
+	Excerpt string   `json:"excerpt"`
+	Tags    []string `json:"tags,omitempty"`
+	Warning string   `json:"warning,omitempty"`
 }
 type DocStatus struct {
 	ID         string `json:"id"`
@@ -397,6 +399,9 @@ func (w *Workspace) activate(d *Document) (WorkspaceState, error) {
 	if current := w.docs[w.current]; current != nil && current.ID != d.ID && disposable(current) {
 		_ = w.trash(current) // best effort: an empty draft that cannot move stays listed
 	}
+	return w.selectDocument(d)
+}
+func (w *Workspace) selectDocument(d *Document) (WorkspaceState, error) {
 	w.current = d.ID
 	w.check(d, true)
 	err := errors.Join(w.flushPositions(), w.saveIndex())
@@ -586,7 +591,7 @@ func (w *Workspace) snapshot() WorkspaceState {
 		if d.Excerpt == "" {
 			d.Excerpt = excerptOf(d.Content)
 		}
-		list = append(list, Summary{d.ID, d.Title, d.Path, d.Updated, d.Excerpt})
+		list = append(list, summaryOf(d))
 	}
 	sort.Slice(list, func(i, j int) bool { return list[i].Updated > list[j].Updated })
 	return WorkspaceState{GeneratedTitleSuffixes: generatedTitleSuffixes, GeneratedTitles: generatedTitles, Current: *w.docs[w.current], Recent: list, Appearance: w.appearance, Capture: w.capture}
@@ -660,6 +665,18 @@ func (w *Workspace) Activate(id string) (WorkspaceState, error) {
 	}
 	return w.activate(d)
 }
+
+// Search navigation may be cancelled after the response; keep both drafts so
+// restoring the origin never leaves an editor pointing at a trashed document.
+func (w *Workspace) ActivateSearch(id string) (WorkspaceState, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	d := w.docs[id]
+	if d == nil {
+		return WorkspaceState{}, messageError("bDocumentMissing", nil)
+	}
+	return w.selectDocument(d)
+}
 func clampPosition(content string, p Position) Position {
 	length := 0
 	for _, r := range content {
@@ -708,6 +725,9 @@ func (w *Workspace) Flush() error {
 func (w *Workspace) Update(e Edit) (Document, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	return w.updateLocked(e)
+}
+func (w *Workspace) updateLocked(e Edit) (Document, error) {
 	d := w.docs[e.ID]
 	if d == nil {
 		return Document{}, messageError("bDocumentMissing", nil)
@@ -891,6 +911,12 @@ func (w *Workspace) Open(path string) (WorkspaceState, error) {
 func (w *Workspace) Appearance(p Appearance) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	return w.saveAppearance(p)
+}
+
+// saveAppearance validates and commits under w.mu; callers can merge changes
+// with the latest preferences without releasing the lock before saving.
+func (w *Workspace) saveAppearance(p Appearance) error {
 	if !validTheme(p.Theme) || p.LightTheme != "" && (!validTheme(p.LightTheme) || darkTheme(p.LightTheme)) || p.DarkTheme != "" && !darkTheme(p.DarkTheme) {
 		return messageError("bUnknownTheme", nil)
 	}

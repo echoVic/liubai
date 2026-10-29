@@ -17,11 +17,13 @@ func TestInferredTitle(t *testing.T) {
 		"- [ ] [留白](https://example.com) 的待办\n":             "留白 的待办",
 		"<!-- 注释 -->\n\n> 引用开头\n":                           "引用开头",
 		"\n\n   \n":                                         "未命名文稿",
-		"> [!NOTE]\n这是提示块的正文":                       "这是提示块的正文",
-		"> [!note]\n第一行是空标记，标题取这里":                "第一行是空标记，标题取这里",
-		"[!WARNING] 注意事项\n正文":                          "注意事项",
-		"> [!TIP]\n\n提示块之后的标题":                        "提示块之后的标题",
-		"[!NOTE]\n[!TIP]\n连续两个标记后":                       "连续两个标记后",
+		"> [!NOTE]\n这是提示块的正文":                               "这是提示块的正文",
+		"> [!note]\n第一行是空标记，标题取这里":                          "第一行是空标记，标题取这里",
+		"[!WARNING] 注意事项\n正文":                               "注意事项",
+		"> [!TIP]\n\n提示块之后的标题":                              "提示块之后的标题",
+		"[!NOTE]\n[!TIP]\n连续两个标记后":                          "连续两个标记后",
+		"ABCD":                                              "ABCD",
+		"Kſ":                                                "Kſ",
 	} {
 		if got := inferredTitle(in); got != want {
 			t.Errorf("inferredTitle(%q) = %q, want %q", in, got, want)
@@ -34,6 +36,24 @@ func TestExcerptSkipsFrontMatterAndReadsOnlyThePrefix(t *testing.T) {
 	got := excerptOf(content)
 	if !strings.HasPrefix(got, "# 标题 正文 第一段") || len([]rune(got)) > 90 {
 		t.Fatalf("%q", got)
+	}
+}
+
+func TestHasInferredContentTitle(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want bool
+	}{
+		{"plain English text", true}, {"中文正文", true}, {"Kſ", true},
+		{"A![image](url)", true}, {"😀", true}, {"# Untitled Document", true},
+		{"", false}, {"   ", false}, {"![image](url)", false},
+		{"```md\nignored\n```", false}, {"[!NOTE]", false},
+		{"---\ntags: [x]\n---\n```\nignored\n```", false},
+		{"---\ntitle: named\n---\n", true},
+	} {
+		if got := hasInferredContentTitle(tc.text); got != tc.want {
+			t.Errorf("hasInferredContentTitle(%q) = %v, want %v", tc.text, got, tc.want)
+		}
 	}
 }
 

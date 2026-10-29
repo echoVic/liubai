@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"liubai/locales"
 
 	"github.com/egoist/mygo"
@@ -8,6 +10,61 @@ import (
 
 var captured = mygo.NewEvent[Summary]("liubai:captured")
 var captureAppearance = mygo.NewEvent[Appearance]("liubai:capture-appearance")
+
+type CaptureContext struct {
+	Appearance Appearance `json:"appearance"`
+	Recent     []Summary  `json:"recent"`
+	titles     WorkspaceState
+}
+
+func (d *Desktop) GetCaptureContext() CaptureContext {
+	d.w.mu.Lock()
+	defer d.w.mu.Unlock()
+	state := d.w.snapshot()
+	return valueIn(CaptureContext{Appearance: state.Appearance, Recent: state.Recent, titles: state}, "").(CaptureContext)
+}
+
+func (d *Desktop) SaveCapture(req CaptureRequest) (Summary, error) {
+	if req.TargetID == "" {
+		summary, err := d.w.CaptureWithTags(req.Text, req.Tags)
+		if err == nil && d.native != nil && d.win != nil {
+			_ = captured.Emit(d.win, summary)
+		}
+		return summary, err
+	}
+	if d.native != nil && d.win != nil {
+		b, err := json.Marshal(req)
+		if err != nil {
+			return Summary{}, err
+		}
+		// The editor owns its pending text and history. Await its entire append
+		// operation, including flushing edits, before clearing the capture panel.
+		result, err := mygo.EvalAs[struct {
+			Summary Summary `json:"summary"`
+			Error   string  `json:"error"`
+		}](d.win.Page(), "window.liubaiAppendCapture("+string(b)+").then(summary=>({summary}),e=>({error:e.message}))")
+		if err != nil {
+			return Summary{}, err
+		}
+		if result.Error != "" {
+			return Summary{}, errors.New(result.Error)
+		}
+		return result.Summary, nil
+	}
+	result, err := d.AppendCapture(req)
+	return result.Summary, err
+}
+
+func (d *Desktop) AppendCapture(req CaptureRequest) (CaptureAppendResult, error) {
+	result, err := d.w.AppendCapture(req)
+	d.savedNative(req.TargetID, err)
+	result.Document = documentIn(result.Document, "")
+	result.Summary.Title = result.Document.Title
+	if err == nil && result.Document.Path != "" && result.Document.StatusCode != "fileSaved" {
+		result.Summary.Warning = result.Document.Status
+	}
+	return result, err
+}
 
 func (d *Desktop) Capture(text string) (Summary, error) {
 	summary, err := d.w.Capture(text)
@@ -78,7 +135,7 @@ func (d *Desktop) toggleCapture() {
 }
 
 func (d *Desktop) initCapture() {
-	d.capturePanel = mygo.NewWindow(mygo.WindowOptions{Title: locales.BCaptureWindowTitle(), Panel: true, Hidden: true, Frameless: true, Transparent: true, Vibrancy: mygo.VibrancyPopover, Width: 560, Height: 240, DisableResize: true, URL: "/capture.html"})
+	d.capturePanel = mygo.NewWindow(mygo.WindowOptions{Title: locales.BCaptureWindowTitle(), Panel: true, Hidden: true, Frameless: true, Transparent: true, Vibrancy: mygo.VibrancyPopover, Width: 560, Height: 340, DisableResize: true, URL: "/capture.html"})
 	d.capturePanel.OnClose(d.handleCaptureClose)
 	d.capturePanel.OnBlur(d.HideCapture)
 	d.capturePanel.OnShow(func() {

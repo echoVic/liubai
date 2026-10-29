@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import {createSearchQueue,type SearchState} from '../src/search';
+import type {DocumentFilterResponse} from '../src/types';
+
+let nextID=0;
+const timers=new Map<number,()=>void>();
+const clock={set(fn:()=>void){const id=++nextID;timers.set(id,fn);return id},clear(id:number){timers.delete(id)}};
+const advance=()=>{const jobs=[...timers.values()];timers.clear();for(const fn of jobs)fn()};
+const flush=async()=>{for(let i=0;i<8;i++)await Promise.resolve()};
+const flights:{query:string;tag:string;resolve:(r:DocumentFilterResponse)=>void;reject:(e:Error)=>void}[]=[];
+const states:SearchState[]=[];
+const queue=createSearchQueue({
+ request:(query,tag)=>new Promise((resolve,reject)=>flights.push({query,tag,resolve,reject})),
+ show:s=>states.push(s),clock,
+});
+const result:DocumentFilterResponse={items:[],total:0,truncated:false,tags:[{name:'工作',count:2}],recent:[]};
+queue.visible(true);
+queue.filter('工作');queue.input('needle');advance();
+assert.equal(flights[0].tag,'工作');
+queue.filter('生活');advance();
+flights[0].resolve(result);await flush();
+assert.equal(flights.length,2,'one flight with newest tag queued');
+assert.equal(flights[1].tag,'生活');
+assert.equal(states.filter(s=>s.kind==='ready').length,0,'old result and catalog discarded');
+queue.input('');advance();
+flights[1].reject(Error('obsolete'));await flush();
+assert.equal(flights[2].query,'');assert.equal(flights[2].tag,'生活','clearing query keeps tag');
+queue.filter('');
+assert.equal(states.at(-1)?.kind,'recent','empty filters restore recent immediately');
+advance();flights[2].resolve(result);await flush();
+assert.equal(flights[3].tag,'');
+flights[3].resolve(result);await flush();
+assert.equal(states.at(-1)?.kind,'recent');
+const accepted=states.at(-1);
+assert(accepted?.kind==='recent'&&accepted.result===result,'accepted metadata accompanies recent state');
+queue.invalidate(false);advance();assert.equal(flights.length,4,'pending content pauses metadata too');
+queue.invalidate();advance();
+queue.composition(true);flights[4].resolve(result);await flush();
+const composing=states.at(-1);
+assert(!(composing?.kind==='recent'&&composing.result),'composition invalidates metadata');
+advance();assert.equal(flights.length,5);
+queue.composition(false);advance();
+queue.visible(false);flights[5].reject(Error('closed'));await flush();
+assert.notEqual(states.at(-1)?.kind,'error');
+queue.visible(true);advance();queue.invalidate();advance();
+flights[6].resolve(result);await flush();
+assert.equal(flights.length,8,'locale/content invalidation queues fresh metadata');
+flights[7].reject(Error('catalog unavailable'));await flush();
+assert.equal(states.at(-1)?.kind,'error','empty-filter metadata failure is surfaced for retry');
+queue.retry();advance();flights[8].resolve(result);await flush();
+assert.equal(states.at(-1)?.kind,'recent');
+queue.dispose();
+console.log('PASS: tag/query intersection scheduling, old catalog/error invalidation, recent metadata, composition/save/close/locale, retry');

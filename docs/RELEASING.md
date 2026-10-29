@@ -9,7 +9,7 @@
 
 ## 步骤
 
-1. 改版本号：`mygo.json` 和 `package.json`。在 `CHANGELOG.md` 顶部写好 `## <版本>` 一节，它会成为应用内的更新说明，缺少时构建失败。
+1. 改版本号：`mygo.json` 和 `package.json`。在 `CHANGELOG.md` 顶部写好 `## <版本>` 一节，它会成为应用内的更新说明，缺少时构建失败。执行 `npm run check`、`npm run build`，把重建的 `web/` 与源码一起提交。
 2. 提交 `chore(release): <版本>`，打附注标签 `v<版本>`，推送 `main` 和标签。
 3. 在这个提交上、工作区干净时构建并上传：
 
@@ -39,6 +39,10 @@
 6. 验证更新源：匿名下载 `https://github.com/echoVic/liubai/releases/latest/download/update-darwin-universal.json`，确认是新版本，并且与本地构建的文件一致。
 
 网站 [liubai.echovic.com](https://liubai.echovic.com/) 在浏览器里读取最新发布的下载链接、版本号和安装包大小，但页面里写好的备用值只在网站重新部署时更新。所以发版后要在网站仓库里把这些备用值改成新版本并推送，推送后会自动部署。新功能的介绍和截图也要手动更新。
+
+## 仅本地准备
+
+用户要求准备安装包而尚未要求发布时，完成本地提交后执行第 3 步的构建命令，去掉 `-upload`；不推送分支、标签或创建 Release。仍需传入更新签名私钥，才能准备完整更新包和增量包。签名、公证、stapler 和版本来源检查沿用第 4 步，待发布时复用这些产物。
 
 ## 预发布
 

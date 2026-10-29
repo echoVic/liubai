@@ -6,13 +6,43 @@ import {undo,redo,isolateHistory} from '@codemirror/commands';
 import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
 import {GFM} from '@lezer/markdown';
 import {Highlight} from './marks';
-import {wrapSelection,insertMath,clearFormatting,inlineMarkers,editTable,parseTable,type TableAction} from './editing';
+import {wrapSelection,insertMath,clearFormatting,inlineMarkers,editTable,parseTable,frontMatterRange,type TableAction} from './editing';
 import {messages,activeLocale} from './i18n';
 import {insertFootnote} from './extras';
 import {attachMenu} from './menu';
+import {wikiAt,wikiURL,wikiNodeAllowed} from './wiki-links';
+import {keyLabel} from './platform';
 
 // The editor clears its IME guard, commits the cell, then resumes saves and queued actions.
 export const tableComposition=Facet.define<(view:EditorView,active:boolean,commit?:()=>void)=>void>();
+export const tableLink=Facet.define<(url:string)=>void>();
+// Keep the document parser's native contexts and reference definitions, not a cell-only parse.
+export function tableWikiLinkAt(state:EditorState,from:number,row:number,column:number,text:string,offset:number):{from:number;to:number;url:string}|null{
+ if(![from,row,column,offset].every(Number.isInteger)||from<0||from>=state.doc.length||row<0||column<0||offset<0||offset>text.length)return null;
+ const meta=frontMatterRange(state);if(meta&&from<meta.to)return null;
+ let table:SyntaxNode|null=syntaxTree(state).resolveInner(from,1);
+ while(table&&table.name!=='Table')table=table.parent;
+ if(!table||table.from!==from)return null;
+ const line=row===0?table.getChild('TableHeader'):table.getChildren('TableRow')[row-1];if(!line)return null;
+ let index=0;
+ for(let cell=line.firstChild;cell;cell=cell.nextSibling){
+  // Empty cells have no TableCell node. Delimiters still retain their column.
+  if(cell.name==='TableDelimiter'){if(cell.from!==line.from)index++;continue}
+  if(cell.name!=='TableCell'||index!==column)continue;
+  const source=state.sliceDoc(cell.from,cell.to),trimmed=source.trim();
+  if(trimmed!==text)return null;
+  const start=cell.from+source.length-source.trimStart().length,pos=start+offset;
+  for(const side of [-1,1] as const){
+   for(let node:SyntaxNode|null=cell.resolveInner(pos,side);node&&node.from>=cell.from&&node.to<=cell.to;node=node.parent){
+    if(node.name!=='WikiLink'||pos<node.from||pos>node.to||!wikiNodeAllowed(node))continue;
+    const match=wikiAt(state.sliceDoc(node.from,node.to),0);
+    if(match)return {from:node.from-start,to:node.to-start,url:wikiURL(match.target)};
+   }
+  }
+  return null;
+ }
+ return null;
+}
 export {leaveBlock as leaveTable} from './block-navigation';
 import {leaveBlock as leaveTable} from './block-navigation';
 // The table whose source contains pos, if any.
@@ -102,6 +132,15 @@ class TableDOM{
   this.row=Math.min(this.row,rows.length-1);this.column=Math.min(this.column,count-1);
  }
  private bind(cell:HTMLTableCellElement){
+  cell.addEventListener('click',e=>{
+   if(e.button!==0||!(e.metaKey||e.ctrlKey)||e.altKey||e.shiftKey||this.blocked()||this.view.composing||this.disposed)return;
+   const handlers=this.view.state.facet(tableLink);if(!handlers.length)return;
+   const link=this.wikiLink(cell,e);if(!link)return;
+   e.preventDefault();e.stopPropagation();for(const open of handlers)open(link.url);
+  });
+  cell.addEventListener('mousemove',e=>{
+   cell.title=!this.blocked()&&!this.view.composing&&this.view.state.facet(tableLink).length&&this.wikiLink(cell,e)?messages.fCtrlClickToOpenTheLink(keyLabel('Mod')):'';
+  });
   cell.addEventListener('focus',()=>{
    this.row=Number(cell.dataset.row);this.column=Number(cell.dataset.column);this.fresh=true;
    if(!this.blocked())this.view.dispatch({selection:{anchor:this.from+2},userEvent:'select.table'});
@@ -122,6 +161,26 @@ class TableDOM{
   cell.addEventListener('beforeinput',e=>{if(e.inputType==='insertParagraph'||e.inputType==='insertLineBreak')e.preventDefault()});
   cell.addEventListener('paste',e=>{if(this.blocked())return;e.preventDefault();document.execCommand('insertText',false,(e.clipboardData?.getData('text/plain')||'').replace(/\r?\n/g,' '))});
   cell.addEventListener('keydown',e=>this.key(e));
+ }
+ private wikiLink(cell:HTMLTableCellElement,event:MouseEvent){
+  const doc=cell.ownerDocument,caret=doc.caretPositionFromPoint?.(event.clientX,event.clientY),fallback=caret?null:doc.caretRangeFromPoint?.(event.clientX,event.clientY);
+  const node=caret?.offsetNode||fallback?.startContainer,offset=caret?.offset??fallback?.startOffset;
+  if(!node||offset===undefined||!cell.contains(node))return null;
+  const range=doc.createRange();range.selectNodeContents(cell);range.setEnd(node,offset);
+  const link=tableWikiLinkAt(this.view.state,this.from,Number(cell.dataset.row),Number(cell.dataset.column),cell.textContent||'',range.toString().length);
+  if(!link)return null;
+  // Caret APIs return the nearest text position even over padding. Check the actual link boxes.
+  const walker=doc.createTreeWalker(cell,NodeFilter.SHOW_TEXT);let total=0,started=false;
+  for(let text=walker.nextNode();text;text=walker.nextNode()){
+   const end=total+(text.textContent?.length||0);
+   if(!started&&link.from<=end){range.setStart(text,link.from-total);started=true}
+   if(link.to<=end){
+    range.setEnd(text,link.to-total);
+    return Array.from(range.getClientRects()).some(r=>event.clientX>=r.left&&event.clientX<=r.right&&event.clientY>=r.top&&event.clientY<=r.bottom)?link:null;
+   }
+   total=end;
+  }
+  return null;
  }
  private commit(cell:HTMLElement,annotations?:TransactionSpec['annotations']){
   if(this.blocked()||!cell.isConnected)return;

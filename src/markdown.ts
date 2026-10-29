@@ -6,6 +6,7 @@ import type {CalloutKind} from './extras';
 import MarkdownIt from 'markdown-it';
 import {highlightPlugin} from './marks';
 import {mathPlugin,fillMath,type MathOutput} from './math';
+import {wikiPlugin} from './wiki-links';
 import DOMPurify from 'dompurify';
 import {MermaidMount,renderMermaid,type MermaidTheme} from './mermaid';
 import footnote from 'markdown-it-footnote';
@@ -17,6 +18,7 @@ export interface MarkdownOptions {
  frontMatter?: 'show'|'hide';
  mathOutput?:MathOutput;
  diagramTheme?:MermaidTheme;
+ wikiLinks?:'interactive'|'text';
 }
 
 export interface MarkdownRender {
@@ -38,12 +40,12 @@ parser.linkify.add('www.',{
 });
 
 export function splitFrontMatter(content:string):{raw:string|null;body:string;lines:number} {
- if(content.startsWith('---\n')){
+ if(/^---\r?\n/.test(content)){
   const lines=content.split('\n',200);
-  let end=4;
+  let end=lines[0].length+1;
   for(let i=1;i<lines.length;i++){
    end+=lines[i].length;
-   if(lines[i]==='---'||lines[i]==='...')return {raw:content.slice(0,end),body:content.slice(end+(content[end]==='\n'?1:0)),lines:i+1};
+   if(/^(---|\.\.\.)[ \t\r]*$/.test(lines[i]))return {raw:content.slice(0,end),body:content.slice(end+(content[end]==='\n'?1:0)),lines:i+1};
    end++;
   }
  }
@@ -61,7 +63,7 @@ export function headingSlug(text:string,used:Map<string,number>):string {
 const authorPurifier=typeof window==='undefined'?DOMPurify:DOMPurify(window);
 const allowedTags='a abbr b blockquote br caption center code col colgroup dd del details div dl dt em figcaption figure h1 h2 h3 h4 h5 h6 hr i img input ins kbd li mark ol p pre q s samp section small span strike strong sub summary sup table tbody td tfoot th thead tr u ul var'.split(' ');
 // DOMPurify's default URI rule plus the app's own image scheme, so a resized <img src="liubai-asset:…"> keeps its source.
-const allowedURI=/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|liubai-asset):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
+const allowedURI=/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix|liubai-asset|liubai-wiki):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
 const allowedAttributes='href src alt title width height align valign colspan rowspan open id class start reversed type checked disabled aria-label aria-hidden lang dir datetime cite scope data-line data-line-end data-image-source'.split(' ');
 if(authorPurifier.addHook)authorPurifier.addHook('uponSanitizeAttribute',(node,data)=>{
  if(data.attrName==='class')data.attrValue=data.attrValue.split(/\s+/).filter(value=>/^(md-|language-|task-list|contains-task-list|footnote|markdown-alert)/.test(value)).join(' ');
@@ -179,7 +181,7 @@ const githubAlerts:PluginSimple=md=>{
  });
 };
 
-parser.use(highlightPlugin).use(mathPlugin).use(footnote).use(lineMapPlugin).use(taskPlugin).use(semanticClassPlugin).use(githubAlerts);
+parser.use(highlightPlugin).use(mathPlugin).use(wikiPlugin).use(footnote).use(lineMapPlugin).use(taskPlugin).use(semanticClassPlugin).use(githubAlerts);
 const imageRule:NonNullable<(typeof parser.renderer.rules)['image']>=(tokens,index,options,env,self)=>{
  const token=tokens[index];
  const source=token.attrGet('src')||'';
@@ -223,7 +225,7 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
  const root=document.createElement('article');
  root.className='markdown-document';
  const meta=splitFrontMatter(content);
- const env:{lineOffset:number;math?:{source:string;display:boolean}[];mathID?:string;mermaid?:{source:string;fallback:string}[];mermaidID?:string}={lineOffset:meta.lines};
+ const env:{lineOffset:number;wikiLinks?:'interactive'|'text';math?:{source:string;display:boolean}[];mathID?:string;mermaid?:{source:string;fallback:string}[];mermaidID?:string}={lineOffset:meta.lines,wikiLinks:options.wikiLinks};
  const tokens=parser.parse(meta.body,env);
  const authorHTML=tokens.some(t=>(t.type==='html_block'&&!t.meta?.liubai)||(t.children||[]).some(c=>c.type==='html_inline'&&!c.meta?.liubai));
  const rendered=parser.renderer.render(tokens,parser.options,env);
@@ -233,6 +235,9 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
   sanitizeStats.calls++;
   template.innerHTML=authorPurifier.sanitize(properties+rendered,{ALLOWED_TAGS:allowedTags,ALLOWED_ATTR:allowedAttributes,ADD_URI_SAFE_ATTR:['data-image-source','data-line','data-line-end'],ALLOW_DATA_ATTR:false,FORBID_ATTR:['style'],ALLOWED_URI_REGEXP:allowedURI});
  }else template.innerHTML=properties+rendered;
+ if(options.wikiLinks!=='interactive')for(const link of template.content.querySelectorAll('a[href]')){
+  if(/^liubai-wiki:/i.test(link.getAttribute('href')||''))link.removeAttribute('href');
+ }
  for(const input of template.content.querySelectorAll('input')){
   if(input.type!=='checkbox')input.remove();
   else input.disabled=true;

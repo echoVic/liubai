@@ -379,6 +379,17 @@ export async function runPreviewChecks(): Promise<string> {
   if(output==='mathml'){assert(!result.querySelector('.katex-html'),'portable delivery depends on KaTeX CSS');assert(!result.innerHTML.includes('KaTeX_Main'),'portable delivery depends on fonts')}
   else assert(result.querySelector('.katex-html'),'PDF must use the same HTML as the reader');
  }
+ const wikiSource='中😀 [[目标😀]] [[<img src=x onerror=alert(1)>]]\n\n<span title="[[属性]]">[[正文]]</span><script>window.__wikiXSS=1</script>\n\n`[[代码]]` $[[公式]]$';
+ const wiki=renderMarkdown(wikiSource,{resolve:()=>undefined,external:'load',wikiLinks:'interactive'});
+ equal(wiki.root.querySelectorAll('a.md-wiki-link').length,3,'interactive Wiki links survive author HTML sanitizing');
+ assert(!wiki.root.querySelector('script,img,[onerror]'),'Wiki title became executable markup');
+ assert(wiki.root.querySelector('a')?.getAttribute('href')?.startsWith('liubai-wiki:'),'Wiki protocol missing');
+ equal(wiki.root.querySelector('code')?.textContent,'[[代码]]','Wiki in code remains literal');
+ const wikiExport=renderDelivery({title:'wiki',content:wikiSource,images:{},missing:[],external:0});
+ assert(wikiExport.textContent?.includes('[[目标😀]]'),'export changed raw reference');
+ assert(!wikiExport.outerHTML.includes('liubai-wiki:'),'export leaked generated internal Wiki URL');
+ const forged=renderDelivery({title:'wiki',content:'<a href="liubai-wiki:目标">raw link</a>\n\n[Markdown link](liubai-wiki:目标)',images:{},missing:[],external:0});
+ assert(!forged.outerHTML.includes('liubai-wiki:'),'export leaked author-supplied internal Wiki URL');
  return 'shared renderer and delivery DOM checks passed';
 }
 
@@ -389,6 +400,7 @@ export async function runDOCXChecks():Promise<string>{
  const content=[
   '---','title: 隐藏属性','---','',...Array.from({length:6},(_,i)=>'#'.repeat(i+1)+' 标题 '+(i+1)+' Heading'),'',
   '**加粗 bold** *斜体 italic* <u>下划线</u> ~~删除~~ ==高亮== `inline code` <sup>上标</sup> <sub>下标</sub>  ','换行 [远端](https://example.invalid/word) [本地](notes.md#h) [章节](#标题-1-heading)。','',
+  '跨文稿 [[目标😀]] 与 <a href="liubai-wiki:目标">作者内部链接</a>。','',
   '3. 第三项','   - 嵌套 bullet','','     7. 七','     8. 八','4. 第四项','','- [ ] 待办','- [x] 完成','',
   '> 引用第一段','>','> 引用第二段','','> [!WARNING]','> 警告正文','','```ts','  const x = 1;','    next();','```','','    indented code','','---','',
   '<details><summary>更多 Details</summary><p>折叠正文</p></details>','',
@@ -420,6 +432,7 @@ export async function runDOCXChecks():Promise<string>{
  assert(numbering.includes('w:start w:val="3"')&&numbering.includes('w:start w:val="7"'),'ordered starts');assert(numbering.includes('w:ilvl="2"')&&xml.includes('w:ilvl w:val="2"'),'nested list levels');
  assert(all('tblHeader').filter(el=>el.getAttributeNS(ns,'val')!=='off').length===1,'repeated header');assert(all('tr')[0].getElementsByTagNameNS(ns,'b').length===3,'bold table header');for(const value of ['left','center','right'])assert(xml.includes('w:jc w:val="'+value+'"'),'table alignment '+value);
  assert(rels.includes('https://example.invalid/word')&&!rels.includes('notes.md'),'external hyperlink only');assert(xml.includes('本地'),'local link text');assert(all('hyperlink').some(el=>el.hasAttributeNS(ns,'anchor')),'internal heading link');
+ assert(xml.includes('[[目标😀]]')&&!xml.includes('liubai-wiki:')&&!rels.includes('liubai-wiki:'),'Word retains raw Wiki text without an internal relationship');
  for(const tag of ['f','sSup','sSub','sSubSup','rad','acc','m','limLow','limUpp'])assert(documentXML.getElementsByTagNameNS(mathNS,tag).length,'OMML '+tag);
  assert(xml.includes('\\phantom{x}')&&xml.includes('Menlo'),'unsupported math uses TeX');assert(xml.includes('图片缺失'),'missing image note');
  assert(notes.includes('脚注')&&notes.includes('English')&&notes.includes('<w:b/>'),'footnote definition formatting');equal(all('footnoteReference').length,2,'reference positions');assert(!xml.includes('脚注 内容 English'),'definitions omitted from body');

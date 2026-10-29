@@ -168,7 +168,7 @@ export function frontMatterRange(state:EditorState):{from:number;to:number}|null
  if(state.doc.line(1).text!=='---'||state.doc.lines<2)return null;
  for(let i=2;i<=Math.min(200,state.doc.lines);i++){
   const line=state.doc.line(i);
-  if(line.text==='---'||line.text==='...')return {from:0,to:line.to};
+  if(/^(---|\.\.\.)[ \t\r]*$/.test(line.text))return {from:0,to:line.to};
  }
  return null;
 }

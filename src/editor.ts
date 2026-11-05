@@ -29,6 +29,19 @@ import {htmlToMarkdown,pasteText,replacePasteImage,type PasteImage} from './past
 import {keyLabel} from './platform';
 // Links open on a click with ⌘ on macOS, Ctrl elsewhere.
 const linkModifier=keyLabel('Mod');
+// ⌘↖/⌘↑ must rest at the absolute document origin. CodeMirror's implicit scroll effect aligns the first line against the 12px format-bar scroll margin, scrolling the 42px top page padding out of view and stopping ~29px short of scrollTop 0. The .cm-scroller is overflow:visible here, so the real scroller is an ancestor.
+function resetScrollToTop(view:EditorView){
+ let node:HTMLElement|null=view.scrollDOM;
+ while(node){
+  if(node.scrollHeight>node.clientHeight+1&&/(auto|scroll)/.test(getComputedStyle(node).overflowY))node.scrollTop=0;
+  node=node.parentElement
+ }
+}
+function docStart(view:EditorView,extend:boolean){
+ view.dispatch({selection:extend?{anchor:view.state.selection.main.anchor,head:0}:{anchor:0},userEvent:'select'});
+ resetScrollToTop(view);
+ return true
+}
 
 export const mode=new Compartment();
 export const editorLocale=new Compartment();
@@ -83,21 +96,26 @@ function destination(state:EditorState,node:SyntaxNode){
 }
 export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promise<string>):DecorationSet{
  const decorations:{from:number;to:number;dec:Decoration}[]=[],touched=selectedLines(state),meta=frontMatterRange(state);
+ // A block on the document's unterminated last line can never be left by its caret, so an empty cursor parked right after the syntax is not an editing position. Mount it as an inline replacement there: the line's widget buffers keep a text-caret home, so typing still lands in the document. Moving into the syntax or selecting text reveals its source as usual.
+ const restingAtEnd=(from:number,to:number)=>{const sel=state.selection.main;return to===state.doc.length&&from<to&&sel.empty&&sel.head===to&&touched(from,to)};
  for(const image of imageRanges(state)){
-  if(meta&&image.from<meta.to||touched(image.from,image.to)&&!imageSelected(state,image.from))continue;
-  decorations.push({...image,dec:Decoration.replace({widget:new ImageWidget(image.raw,image.from,resolve,composing,imageSelected(state,image.from),state.readOnly,image.quotes,image.listEms),block:true})});
+  const rest=restingAtEnd(image.from,image.to);
+  if(meta&&image.from<meta.to||touched(image.from,image.to)&&!imageSelected(state,image.from)&&!rest)continue;
+  decorations.push({from:image.from,to:image.to,dec:Decoration.replace({widget:new ImageWidget(image.raw,image.from,resolve,composing,imageSelected(state,image.from),state.readOnly,image.quotes,image.listEms),block:!rest})});
  }
  for(const table of tableRanges(state)){
   if(meta&&table.from<meta.to)continue;
   decorations.push({...table,dec:Decoration.replace({widget:new TableWidget(state.sliceDoc(table.from,table.to),table.from,composing,state.readOnly),block:true})});
  }
  for(const formula of mathRanges(state)){
-  if(meta&&formula.from<meta.to||touched(formula.from,formula.to))continue;
-  decorations.push({...formula,dec:Decoration.replace({widget:new MathWidget(formula.source,true,formula.from,composing),block:true})});
+  const rest=restingAtEnd(formula.from,formula.to);
+  if(meta&&formula.from<meta.to||touched(formula.from,formula.to)&&!rest)continue;
+  decorations.push({...formula,dec:Decoration.replace({widget:new MathWidget(formula.source,true,formula.from,composing),block:!rest})});
  }
  for(const diagram of mermaidRanges(state)){
-  if(meta&&diagram.from<meta.to||touched(diagram.from,diagram.to))continue;
-  decorations.push({...diagram,dec:Decoration.replace({widget:new MermaidWidget(diagram.source,diagram.from,composing),block:true})});
+  const rest=restingAtEnd(diagram.from,diagram.to);
+  if(meta&&diagram.from<meta.to||touched(diagram.from,diagram.to)&&!rest)continue;
+  decorations.push({...diagram,dec:Decoration.replace({widget:new MermaidWidget(diagram.source,diagram.from,composing),block:!rest})});
  }
  const builder=new RangeSetBuilder<Decoration>();for(const d of decorations.sort((a,b)=>a.from-b.from))builder.add(d.from,d.to,d.dec);return builder.finish();
 }
@@ -134,6 +152,15 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
  const extras=extraRanges(state),numbers=new Map<string,number>();
  for(const ref of extras.references)if(extras.definitions.has(ref.label)&&!numbers.has(ref.label))numbers.set(ref.label,numbers.size+1);
  const active=(from:number,to:number)=>state.selection.ranges.some(sel=>sel.from<=to&&sel.to>=from);
+ // Footnote syntax that carries no link meaning must stay literal (the preview/Markdown renders it as
+ // source text): an undefined [^label] reference and the [^label]: token of every block definition.
+ // Lezer has no dedicated footnote parse for an undefined ref or a second definition stacked without a
+ // blank line, so both surface as Link nodes and would otherwise gain .md-link, lose their brackets and
+ // read as broken links. Intervals are resolved from the same extraRanges that drives the widgets.
+ const literal:[number,number][]=[];
+ for(const ref of extras.references)if(!extras.definitions.has(ref.label)&&!tables.some(t=>ref.from>=t.from&&ref.to<=t.to))literal.push([ref.from,ref.to]);
+ for(const def of extras.definitions.values())if(!def.inline)literal.push([def.from,def.from+def.label.length+3]);
+ const inLiteral=(from:number,to:number)=>literal.some(([a,b])=>from>=a&&to<=b);
  for(const range of ranges){
   const lineClass=(from:number,to:number,cls:string)=>{
    const first=state.doc.lineAt(Math.max(from,range.from)).number,last=state.doc.lineAt(Math.min(to,range.to)).number;
@@ -148,10 +175,15 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
   for(const detail of extras.details)if(detail.summary>=range.from&&detail.summary<=range.to&&!marked.has(detail.summary+':details')){
    marked.add(detail.summary+':details');decorations.push({from:detail.summary,to:detail.summary,dec:Decoration.widget({widget:new DetailsWidget(detail,detailsExpanded(state,detail),composing),side:-1})});
   }
-  for(const definition of extras.definitions.values())if(definition.from<=range.to&&definition.to>=range.from)lineClass(definition.from,definition.to,'md-footnote-definition');
+  for(const definition of extras.definitions.values())if(!definition.inline&&definition.from<=range.to&&definition.to>=range.from)lineClass(definition.from,definition.to,'md-footnote-definition');
   for(const ref of extras.references){
    const key=ref.from+':footnote';if(ref.from<range.from||ref.to>range.to||!numbers.has(ref.label)||active(ref.from,ref.to)||tables.some(t=>ref.from>=t.from&&ref.to<=t.to)||marked.has(key))continue;
    marked.add(key);decorations.push({from:ref.from,to:ref.to,dec:Decoration.replace({widget:new FootnoteWidget(ref.label,numbers.get(ref.label)!,ref.from)})});
+  }
+  for(const [from,to] of literal){
+   if(from>range.to||to<range.from)continue;
+   const key=from+':fn-literal';if(marked.has(key))continue;marked.add(key);
+   decorations.push({from:Math.max(from,range.from),to:Math.min(to,range.to),dec:Decoration.mark({class:'md-footnote-literal'})});
   }
   if(meta&&range.from<=meta.to)lineClass(meta.from,meta.to,'md-front-matter');
   // Only visible replacements can own syntax nodes. Index their intervals instead of
@@ -195,6 +227,7 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
     }
     return false;
    }
+   if((name==='Link'||name==='LinkReference')&&inLiteral(n.from,n.to))return false;
    if(name==='Link')add(Decoration.mark({class:'md-link',attributes:{'data-href':destination(state,n.node),title:messages.fCtrlClickToOpenTheLink(linkModifier)}}));
    if(name==='InlineCode')add(Decoration.mark({class:'md-inline-code'}));
    if(!touched(n.from,n.to)){
@@ -224,7 +257,7 @@ export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>P
   history(),composing,focusField,focusDecorations,createSlashMenu(composing,focusField,()=>blocks?.action('image')),blocks?createBlockUI(composing,focusField,blocks):[],markdown({base:markdownLanguage,codeLanguages:languages,extensions:[GFM,Highlight,MathSyntax,MermaidSyntax,WikiSyntax]}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),documentSearch,
   EditorView.editorAttributes.of(view=>({class:view.state.field(focusField)?'cm-focus-on':''})),
   // ⌘U underlines and ⌘I italicizes like the toolbar, so CodeMirror's undo-selection and select-parent bindings are dropped.
-  keymap.of([...(blocks?[{key:'Alt-Shift-ArrowUp',run:()=>{blocks.action('up');return true}},{key:'Alt-Shift-ArrowDown',run:()=>{blocks.action('down');return true}},{key:'Mod-/',run:()=>{blocks.action('menu');return true}}]:[]),...([1,-1] as const).map(direction=>({key:direction>0?'Tab':'Shift-Tab',run:(view:EditorView)=>{if(view.composing||view.state.field(composing)||view.state.readOnly)return false;const spec=indentList(view.state,direction);if(!spec)return false;view.dispatch(spec);return true}})),...markdownKeymap,...historyKeymap.filter(binding=>binding.key!=='Mod-u'),...searchKeymap.filter(binding=>binding.key==='Mod-Alt-g'),...defaultKeymap.filter(binding=>binding.key!=='Mod-i'),indentWithTab]),
+  keymap.of([{key:'Mod-Home',run:v=>docStart(v,false),shift:v=>docStart(v,true)},{mac:'Cmd-ArrowUp',run:v=>docStart(v,false),shift:v=>docStart(v,true)},...(blocks?[{key:'Alt-Shift-ArrowUp',run:()=>{blocks.action('up');return true}},{key:'Alt-Shift-ArrowDown',run:()=>{blocks.action('down');return true}},{key:'Mod-/',run:()=>{blocks.action('menu');return true}}]:[]),...([1,-1] as const).map(direction=>({key:direction>0?'Tab':'Shift-Tab',run:(view:EditorView)=>{if(view.composing||view.state.field(composing)||view.state.readOnly)return false;const spec=indentList(view.state,direction);if(!spec)return false;view.dispatch(spec);return true}})),...markdownKeymap,...historyKeymap.filter(binding=>binding.key!=='Mod-u'),...searchKeymap.filter(binding=>binding.key==='Mod-Alt-g'),...defaultKeymap.filter(binding=>binding.key!=='Mod-i'),indentWithTab]),
   mode.of(doc.position.source?[]:richExtensions(resolve)),EditorView.lineWrapping,editorLocale.of(localizedEditor()),
   EditorView.updateListener.of(u=>{if(u.docChanged||u.selectionSet)onChange(u.docChanged)}),
   EditorView.domEventHandlers({

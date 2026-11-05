@@ -8,12 +8,12 @@ import {frontMatterRange} from './editing';
 export type CalloutKind='note'|'tip'|'important'|'warning'|'caution';
 export interface CalloutRange {from:number;to:number;markerFrom:number;markerTo:number;kind:CalloutKind}
 export interface DetailsRange {from:number;to:number;summary:number;start:number}
-export interface FootnoteRange {from:number;to:number;label:string}
+export interface FootnoteRange {from:number;to:number;label:string;inline?:boolean}
 export interface FootnoteDefinition extends FootnoteRange {textFrom:number;text:string}
 interface Extras {callouts:CalloutRange[];details:DetailsRange[];references:FootnoteRange[];definitions:Map<string,FootnoteDefinition>;labels:Set<string>}
 // Keyed by the text, which a caret move keeps along with the tree.
 const cache=new WeakMap<Text,{tree:Tree;ranges:Extras}>();
-const markers=/\[!|\[\^|<details/i;
+const markers=/\[!|\[\^|\^\[|<details/i;
 // Whether the document may contain a callout, footnote or details marker, kept per change instead of rescanning every keystroke.
 // Markers are at most 8 characters, so a margin around each change sees any marker it created; deleting one triggers a rescan.
 export const extraMarkers=StateField.define<boolean>({
@@ -82,6 +82,39 @@ export function extraRanges(state:EditorState):Extras{
     result.definitions.set(label,{from,to:end,label,textFrom,text:body});
    }else result.references.push({from,to,label});
   }
+  // Pandoc-style inline footnotes ^[...], equivalent to markdown-it-footnote's footnote_inline rule.
+  // The body is a link label: brackets balance, backslash escapes and code spans are inert.
+  // Each note receives a synthetic label that never enters `labels`, so [^n] insertion ignores it.
+  let inlineCount=0;const inlineRefs:FootnoteRange[]=[];
+  const inlineClose=(open:number)=>{
+   let level=1,pos=open+1;
+   while(pos<text.length){
+    const ch=text.charCodeAt(pos);
+    if(ch===0x5c){pos+=2;continue}
+    if(ch===0x60){
+     let run=1;while(text.charCodeAt(pos+run)===0x60)run++;
+     let seek=pos+run,next=-1;
+     for(;;){const k=text.indexOf('`',seek);if(k<0)break;let len=1;while(text.charCodeAt(k+len)===0x60)len++;if(len===run){next=k+len;break}seek=k+len}
+     if(next>=0){pos=next;continue}
+    }
+    if(ch===0x5d){level--;if(level===0)return pos}else if(ch===0x5b)level++;
+    pos++;
+   }
+   return -1;
+  };
+  for(let i=0;i<text.length-1;i++){
+   if(text.charCodeAt(i)!==0x5e||text.charCodeAt(i+1)!==0x5b||blocked(i))continue;
+   // The inline parser never leaves its paragraph, so the closing bracket cannot cross a block boundary.
+   let scope:SyntaxNode|null=tree.resolveInner(i+1,1);
+   while(scope&&scope.parent&&!containers.test(scope.parent.name))scope=scope.parent;
+   const end=inlineClose(i+1);
+   if(end<0||!scope||end>=scope.to)continue;
+   const label='__liubai_inline_'+(inlineCount++)+'__',from=i,to=end+1;
+   result.definitions.set(label,{from,to,label,textFrom:from+2,text:text.slice(from+2,end),inline:true});
+   inlineRefs.push({from,to,label,inline:true});
+   i=end;
+  }
+  if(inlineRefs.length){result.references.push(...inlineRefs);result.references.sort((a,b)=>a.from-b.from)}
  }
  result.details.sort((a,b)=>a.from-b.from);cache.set(state.doc,{tree,ranges:result});return result;
 }

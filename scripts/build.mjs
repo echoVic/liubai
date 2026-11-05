@@ -28,6 +28,7 @@ await writeMermaidNotices([...Object.keys(mermaid.metafile.inputs),...Object.key
 await build({entryPoints:['src/style.css'],bundle:true,outfile:'web/style.css',minify:true,loader:{'.woff2':'file'},assetNames:'fonts/[name]',plugins:[{name:'katex-woff2',setup(build){build.onLoad({filter:/katex\.css$/},async args=>({contents:(await readFile(args.path,'utf8')).replace(/, url\([^)]*\.(?:woff|ttf)\) format\([^)]*\)/g,''),loader:'css',resolveDir:args.path.slice(0,args.path.lastIndexOf('/'))}))}}]});
 await build({entryPoints:['src/capture.css'],bundle:true,outfile:'web/capture.css',minify:true});
 await copyFile('src/capture.html','web/capture.html');
+await copyFile('resources/icon.png','web/logo.png');
 await copyFile('src/index.html','web/index.html');
 await build({entryPoints:['src/boot.ts'],bundle:true,format:'iife',target:['safari16','chrome110'],outfile:'web/boot.js',minify:true});
 // A classic worker script, which every WebView here can start.

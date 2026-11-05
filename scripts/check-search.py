@@ -375,13 +375,21 @@ def run(page):
     expect(page.locator("#drawer-list")).to_have_attribute("data-search-state", "error")
     query(page, "自动保存新词")
     page.locator('[data-action="settings"]').click()
-    theme_names = ["晨光", "纸白", "暖纸", "灯下", "夜墨", "月夜", "雾绿", "藕荷", "秋香", "月白", "黛蓝"]
+    # Walk every shipped theme (labels are localized) instead of hardcoding the old eleven names.
+    radios = page.locator('#themes [role="radio"]')
+    theme_names = radios.evaluate_all("els => els.map(el => el.getAttribute('aria-label'))")
+    assert theme_names and len(set(theme_names)) == radios.count(), theme_names
     for name in theme_names:
         page.get_by_role("radio", name=name, exact=True).click()
         assert page.locator(".search-hit mark").first.evaluate("(el)=>getComputedStyle(el).color===getComputedStyle(document.documentElement).getPropertyValue('--foreground').trim()") or page.locator(".search-hit mark").first.evaluate("(el)=>getComputedStyle(el).color!==getComputedStyle(el).backgroundColor")
     page.locator('[data-close="appearance"]').click()
     for width in [1440, 800, 680]:
         page.set_viewport_size({"width": width, "height": 850})
+        if width == 800:
+            # Crossing the 1180px dock breakpoint closes the docked drawer via an
+            # async matchMedia change; wait for it before reopening as an overlay.
+            expect(page.locator(".workspace")).not_to_have_class("workspace sidebar-docked")
+            expect(page.locator("#drawer")).not_to_be_visible()
         if not page.locator("#drawer").is_visible():
             page.locator("#sidebar-button").click()
         expect(page.locator(".search-hit")).to_be_visible()

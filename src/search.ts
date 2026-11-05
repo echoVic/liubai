@@ -129,7 +129,7 @@ export function createSidebarSearch(options:{
      b.onclick=()=>{if(!composing)options.activate(item,hit,source)};
      return b;
     };
-    const title=button('search-title','title',item.hits[0]);marked(title,item.title,item.titleMatch);group.append(title);
+    const title=button('search-title','title',item.hits[0]);marked(title,item.title||messages.fUntitledDocument(),item.titleMatch);group.append(title);
     const path=element('small','search-path',item.path||messages.fSearchDraft());if(item.path)path.title=item.path;group.append(path);
     for(const hit of item.hits){
      const row=element('div','search-hit-row'),b=button('search-hit',String(hit.from),hit);
@@ -169,7 +169,10 @@ export function createSidebarSearch(options:{
   }else if(event.key==='ArrowDown'||event.key==='Enter'){
    if(!current.query&&!current.tag)return;
    event.preventDefault();event.stopPropagation();
-   const first=buttons()[0];if(event.key==='Enter')first?.click();else first?.focus();
+   // Tag chips stay enabled while result rows are disabled during a reload;
+   // field Enter/ArrowDown must target a result row, never silently toggle a chip.
+   const first=options.list.querySelector<HTMLButtonElement>('button[data-search-key]:not(:disabled):not(.document-tag)');
+   if(event.key==='Enter')first?.click();else first?.focus();
   }
  });
  options.list.addEventListener('keydown',event=>{

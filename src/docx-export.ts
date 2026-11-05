@@ -5,8 +5,10 @@ const pageWidth=11906,pageHeight=16838,margin=1440,textWidth=pageWidth-margin*2;
 const bodyFont={ascii:'Times New Roman',hAnsi:'Times New Roman',eastAsia:'宋体'},codeFont={ascii:'Menlo',hAnsi:'Consolas',eastAsia:'宋体'}; // i18n-ignore: fixed OOXML font names
 const codeRun=(text:string,style:IRunOptions={})=>new TextRun({...style,children:text.split('\t').flatMap((part,i)=>i?[new Tab(),part]:[part])});
 const line={style:BorderStyle.SINGLE,size:6,color:'CDD2CC'},shade={fill:'F1F2EF'};
+// Mirror the paper colours that renderDelivery paints on GitHub alerts in PDF/HTML exports.
+const alertPaper:Record<string,{fill:string;color:string}>={note:{fill:'EDF2F9',color:'316DBA'},tip:{fill:'EDF3EF',color:'34794C'},important:{fill:'F4EFF8',color:'8250B5'},warning:{fill:'F6F2E9',color:'8F600F'},caution:{fill:'F9EEEE',color:'BD4343'}};
 type Block=Paragraph|Table;
-interface Context {level:number;indent?:number;box?:boolean;fill?:string;width:number;bold?:boolean;inFootnote?:boolean;bookmark?:string;alignment?:'left'|'center'|'right';first?:{options:IParagraphOptions;used:boolean};space?:{start:boolean;pending:boolean}}
+interface Context {level:number;indent?:number;box?:boolean;fill?:string;borderColor?:string;alertColor?:string;titleColor?:string;width:number;bold?:boolean;inFootnote?:boolean;bookmark?:string;alignment?:'left'|'center'|'right';first?:{options:IParagraphOptions;used:boolean};space?:{start:boolean;pending:boolean}}
 // docx's public Math union omits extensible OMML elements (matrix/accent/limits). Its XML builder
 // supplies those schema elements inside the same native Math tree; no raw XML or HTML is injected.
 const mathElement=(name:string,children:readonly MathComponent[]=[],values:Record<string,string>={}):MathComponent=>new BuilderElement({name,children,attributes:Object.fromEntries(Object.entries(values).map(([key,value])=>[key,{key,value}]))}) as MathComponent;
@@ -124,8 +126,8 @@ export async function exportDOCX(root:HTMLElement,title:string,language='zh-CN')
  };
  const paragraph=async(nodes:Iterable<Node>,context:Context,options:IParagraphOptions={})=>{
   const first=context.first&&!context.first.used?context.first:undefined;if(first)first.used=true;
-  const children=await inline(nodes,{...context,space:{start:true,pending:false}},context.bold?{bold:true}:{});
-  return new Paragraph({children:context.bookmark?[new Bookmark({id:context.bookmark,children})]:children,spacing:{after:160,line:360},...(context.alignment?{alignment:context.alignment}:{}),...(context.indent?{indent:{left:context.indent}}:{}),...(context.box?{border:{left:{...line,color:'809387',size:18,space:8}},...(context.fill?{shading:{fill:context.fill}}:{})}:{}),...first?.options,...options});
+  const children=await inline(nodes,{...context,space:{start:true,pending:false}},{...(context.bold?{bold:true}:{}),...(context.titleColor?{color:context.titleColor}:{})});
+  return new Paragraph({children:context.bookmark?[new Bookmark({id:context.bookmark,children})]:children,spacing:{after:160,line:360},...(context.alignment?{alignment:context.alignment}:{}),...(context.indent?{indent:{left:context.indent}}:{}),...(context.box?{border:{left:{...line,color:context.borderColor||'809387',size:18,space:8}},...(context.fill?{shading:{fill:context.fill}}:{})}:{}),...first?.options,...options});
  };
  const blockChildren=async(parent:Element,context:Context):Promise<Block[]>=>{
   const out:Block[]=[],pending:Node[]=[];
@@ -136,7 +138,7 @@ export async function exportDOCX(root:HTMLElement,title:string,language='zh-CN')
    if(el.classList.contains('footnotes')||el.classList.contains('footnote-backref'))continue;
    if(!/^(p|h[1-6]|ul|ol|blockquote|pre|hr|details|summary|table|div|section|figure|dl|dt|dd)$/.test(tag)){pending.push(node);continue}
    await flush();
-   if(tag==='p'||/^h[1-6]$/.test(tag))out.push(await paragraph(el.childNodes,{...context,bold:context.bold||el.classList.contains('markdown-alert-title'),bookmark:bookmarks.get(el.id)},{...(/^h[1-6]$/.test(tag)?{heading:HeadingLevel[('HEADING_'+tag[1]) as keyof typeof HeadingLevel]}:{}),...(['center','right','left'].includes(el.getAttribute('align')||'')?{alignment:el.getAttribute('align') as 'center'|'right'|'left'}:{})}));
+   if(tag==='p'||/^h[1-6]$/.test(tag)){const alertTitle=el.classList.contains('markdown-alert-title');out.push(await paragraph(el.childNodes,{...context,bold:context.bold||alertTitle,titleColor:alertTitle?context.alertColor:undefined,bookmark:bookmarks.get(el.id)},{...(/^h[1-6]$/.test(tag)?{heading:HeadingLevel[('HEADING_'+tag[1]) as keyof typeof HeadingLevel]}:{}),...(['center','right','left'].includes(el.getAttribute('align')||'')?{alignment:el.getAttribute('align') as 'center'|'right'|'left'}:{})}));}
    else if(tag==='ul'||tag==='ol'){
     const level=Math.min(context.level,8),reference='list-'+ ++listID,ordered=tag==='ol',start=Math.max(1,Math.min(2147483647,Number(el.getAttribute('start'))||1));
     lists.push({reference,levels:Array.from({length:9},(_,i)=>({level:i,format:ordered?LevelFormat.DECIMAL:LevelFormat.BULLET,text:ordered?'%'+(i+1)+'.':['•','◦','▪'][i%3],start:i===level?start:1,style:{paragraph:{indent:{left:720*(i+1),hanging:360}}}}))});
@@ -149,9 +151,10 @@ export async function exportDOCX(root:HTMLElement,title:string,language='zh-CN')
      const blocks=await blockChildren(item,itemContext);if(!first.used)blocks.unshift(await paragraph([],itemContext));out.push(...blocks);
     }
    }else if(tag==='blockquote'){
-    const fill=context.fill||'EDF2EE';
+    const paper=alertPaper[/markdown-alert-(note|tip|important|warning|caution)\b/.exec(el.className)?.[1]||''];
+    const fill=paper?.fill||context.fill||'EDF2EE';
     const colour=/^[A-Fa-f\d]{6}$/.test(fill||'')?fill:'EDF2EE';
-    out.push(...await blockChildren(el,{...context,indent:(context.indent||0)+360,box:true,fill:el.classList.contains('markdown-alert')?colour:context.fill,width:Math.max(720,context.width-360)}));
+    out.push(...await blockChildren(el,{...context,indent:(context.indent||0)+360,box:true,fill:el.classList.contains('markdown-alert')?colour:context.fill,borderColor:paper?.color,alertColor:paper?.color,width:Math.max(720,context.width-360)}));
    }else if(tag==='pre'){
     const lines=(el.textContent||'').replace(/\n$/,'').split('\n');
     for(const text of lines)out.push(await paragraph([],context,{children:[codeRun(text,{font:codeFont,size:20})],shading:shade,spacing:{line:240,after:0}}));

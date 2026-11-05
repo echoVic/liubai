@@ -50,7 +50,7 @@ export function footnoteInteractions(composing:StateField<boolean>){
   if(!(event.metaKey||event.ctrlKey)||view.composing||view.state.field(composing))return false;
   const target=(event.target as HTMLElement).closest<HTMLElement>('[data-footnote]');if(!target)return false;
   const definition=extraRanges(view.state).definitions.get(target.dataset.footnote!);if(!definition)return false;
-  event.preventDefault();view.dispatch({selection:{anchor:definition.textFrom},scrollIntoView:true});view.focus();return true;
+  event.preventDefault();view.dispatch({selection:{anchor:definition.inline?definition.from:definition.textFrom},scrollIntoView:true});view.focus();return true;
  }})];
 }
 export function detailsExpanded(state:EditorView['state'],range:DetailsRange){let expanded=true;foldedRanges(state).between(range.from,range.to,(from,to)=>{if(from===range.from&&to===range.to)expanded=false});return expanded}

@@ -70,7 +70,10 @@ def select(page):
     expect(page.locator('.inline-image')).to_have_class(re.compile('image-selected'))
     expect(page.locator('.image-resize-handle')).to_be_visible()
     expect(page.locator('.image-toolbar')).to_be_visible()
-    assert '![' not in page.locator('.cm-content').inner_text()
+    visible = page.locator('.cm-content').inner_text()
+    assert '![' not in visible
+    # The widget must hide the whole image syntax, including its "标题" title.
+    assert '标题' not in visible
 
 
 def action(page, name):

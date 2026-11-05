@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {themes,themeIDs,isDark,hoursTheme,termDay,seasonOf,resolveTheme} from '../src/theme';
 assert.deepEqual(themes.map(t=>t.id),[...themeIDs],'themes.json 与 themeIDs 一致');
-assert.deepEqual(themes.filter(t=>t.dark).map(t=>t.id),['lamp','ink','moon','indigo']);
+assert.deepEqual(themes.filter(t=>t.dark).map(t=>t.id),['lamp','ink','moon','indigo','solare','monokai','nord','onedark','dracula','catppuccin','gruvbox','rosepine','ghdark']);
 assert.ok(isDark('indigo')&&!isDark('lotus')&&!isDark('unknown'));
 for(const [hour,id] of [[0,'moon'],[4,'moon'],[5,'dawn'],[8,'dawn'],[9,'paper'],[14,'paper'],[15,'warm'],[18,'warm'],[19,'lamp'],[20,'lamp'],[21,'ink'],[22,'ink'],[23,'moon']] as const)assert.equal(hoursTheme(hour),id,'hour '+hour);
 // 立春、立夏、立秋、立冬：太阳视黄经到 315°、45°、135°、225° 的北京时间日期，与公式无关地单独算出。

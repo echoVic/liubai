@@ -19,6 +19,14 @@ var themeTextKeys = map[string][3]string{
 	"mist": {"fMist", "fMistCaption", "fSpring"}, "lotus": {"fLotus", "fLotusCaption", "fSummer"},
 	"autumn": {"fAutumn", "fAutumnCaption", "fAutumnSeason"}, "moonwhite": {"fMoonWhite", "fMoonWhiteCaption", "fWinter"},
 	"indigo": {"fIndigo", "fIndigoCaption", "fNight"},
+	"github": {"fGithub", "fGithubCaption", "fStudioGithubTag"}, "solar": {"fSolar", "fSolarCaption", "fStudioSolarTag"},
+	"solare": {"fSolare", "fSolareCaption", "fStudioSolareTag"}, "monokai": {"fMonokai", "fMonokaiCaption", "fStudioMonokaiTag"},
+	"nord": {"fNord", "fNordCaption", "fStudioNordTag"},
+	"onedark": {"fOnedark", "fOnedarkCaption", "fStudioOnedarkTag"}, "dracula": {"fDracula", "fDraculaCaption", "fStudioDraculaTag"},
+	"catppuccin": {"fCatppuccin", "fCatppuccinCaption", "fStudioCatppuccinTag"}, "gruvbox": {"fGruvbox", "fGruvboxCaption", "fStudioGruvboxTag"},
+	"rosepine": {"fRosepine", "fRosepineCaption", "fStudioRosepineTag"}, "onelight": {"fOnelight", "fOnelightCaption", "fStudioOnelightTag"},
+	"ghdark": {"fGhdark", "fGhdarkCaption", "fStudioGhdarkTag"},
+	"catlight": {"fCatlight", "fCatlightCaption", "fStudioCatlightTag"}, "gruvlite": {"fGruvlite", "fGruvliteCaption", "fStudioGruvliteTag"},
 }
 
 func (s *settingsWindow) themeOptions(dark *bool) []settingsOption[string] {
@@ -38,6 +46,7 @@ func (s *settingsWindow) appearanceView(c *ui.Context, m locales.Messages, p App
 	ui.RadioGroup(c, func() {
 		s.themeCards(c, "hours", m.FHours(), m.FOnePageInTheChangingLightOfADay(), &choice, &activated)
 		s.themeCards(c, "seasons", m.FSeasons(), m.FTheColoursOfTheYear(), &choice, &activated)
+		s.themeCards(c, "studio", m.FStudio(), m.FThemesForCodingAndNotes(), &choice, &activated)
 	}).Label(m.FTheme()).FillWidth().Gap(20)
 	if activated {
 		p.Auto, current = "off", choice
@@ -161,7 +170,7 @@ func (s *settingsWindow) themeCards(c *ui.Context, series, title, subtitle strin
 	width, _ := c.Size()
 	scale := c.Preferences().TextScale
 	columns := 6
-	if series == "seasons" {
+	if series == "seasons" || series == "studio" {
 		columns = 5
 	}
 	if width < 640*scale {

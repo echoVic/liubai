@@ -48,6 +48,9 @@ assert.equal(htmlToMarkdown(list('1.',1,'第一')+list('2)',1,'第二')+list('a.
 const google=htmlToMarkdown('<b id="docs-internal-guid-test" style="font-weight:normal"><p>普通<span style="font-weight:700">粗体</span><span style="font-weight:600">半粗</span><span style="font-style:italic">斜体</span><span style="text-decoration: line-through">删除</span></p></b>','').markdown;
 assert.equal(new MarkdownIt().render(google),'<p>普通<strong>粗体半粗</strong><em>斜体</em><s>删除</s></p>\n');
 assert.equal(htmlToMarkdown('<table><tr><td>名称</td><td>值</td></tr><tr><td>甲</td><td>乙</td></tr></table>','').markdown,'| 名称 | 值 |\n| --- | --- |\n| 甲 | 乙 |');
+// Cocoa HTML Writer appends empty emphasis siblings and wraps each table cell in a paragraph.
+assert.equal(htmlToMarkdown('<p><span><b>中文标题</b><b></b></span></p>','').markdown,'**中文标题**','TextEdit empty bold sibling must not swallow the closing marker');
+assert.equal(htmlToMarkdown('<table><tr><td><p><b>项目</b><b></b></p></td><td><p>预期</p></td></tr><tr><td><p>中文路径</p></td><td><p>文件可以打开</p></td></tr></table>','').markdown,'| **项目** | 预期 |\n| --- | --- |\n| 中文路径 | 文件可以打开 |','TextEdit paragraph wrappers must stay inside one Markdown table row');
 const md=new MarkdownIt();
 for(const text of ['-重点-','[重点]','_重点_']){
  const rendered=md.render(htmlToMarkdown(`<p>前<strong>${text}</strong>后</p>`,'').markdown);

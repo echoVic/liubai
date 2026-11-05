@@ -1,6 +1,8 @@
 import {EditorState,StateEffect,StateField,Prec,type TransactionSpec} from '@codemirror/state';
 import {EditorView,ViewPlugin,keymap,type ViewUpdate} from '@codemirror/view';
 import {isolateHistory} from '@codemirror/commands';
+import {syntaxTree,ensureSyntaxTree} from '@codemirror/language';
+import type {SyntaxNode} from '@lezer/common';
 import {blockRichMode} from './block-ui';
 import {blockFormat,setHeading,insertTable} from './editing';
 import {blockAt,insertParagraphBelow} from './blocks';
@@ -42,10 +44,24 @@ export function filterSlashItems(query:string):SlashItem[]{
 }
 export const slashOpen=StateEffect.define<null>(),slashClose=StateEffect.define<null>(),slashSelect=StateEffect.define<number>();
 interface SlashState {from:number;start:number;query:string;items:SlashItem[];index:number}
+// Slash inserts block markup, so literal scopes stay plain text, matching the
+// exclusions in extras.ts and wiki-links.ts for code, math, diagrams and HTML.
+const literalBlock=/^(FencedCode|CodeBlock|MathBlock|MathFence|MermaidFence|HTMLBlock)$/;
+const inLiteralBlock=(state:EditorState,pos:number)=>{
+ const tree=ensureSyntaxTree(state,pos,200)||syntaxTree(state);
+ // At the first character of an unterminated fence's last line, a forward
+ // resolve lands on the Document boundary; walk both biases so the EOF edge
+ // stays classified inside FencedCode/MathFence/MermaidFence/HTMLBlock.
+ for(const bias of [1,-1] as const){
+  for(let node:SyntaxNode|null=tree.resolveInner(pos,bias);node;node=node.parent)if(literalBlock.test(node.name))return true;
+ }
+ return false;
+};
 export function createSlashState(composing:StateField<boolean>,focus:StateField<boolean>){
  const enabled=(state:EditorState)=>state.facet(blockRichMode)&&!state.readOnly&&!state.field(composing)&&!state.field(focus);
  function read(state:EditorState,from:number,start:number,index=0):SlashState|null{
   const sel=state.selection.main;if(!sel.empty||sel.head<start||start<from)return null;
+  if(inLiteralBlock(state,sel.head))return null;
   const line=state.doc.lineAt(sel.head);if(line.from!==from||state.sliceDoc(sel.head,line.to).trim())return null;
   const query=state.sliceDoc(start,sel.head),matches=filterSlashItems(query);
   return matches.length?{from,start,query,items:matches,index:Math.min(index,matches.length-1)}:null;

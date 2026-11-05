@@ -10,6 +10,7 @@ import {wrapSelection,insertMath,clearFormatting,inlineMarkers,editTable,parseTa
 import {messages,activeLocale} from './i18n';
 import {insertFootnote} from './extras';
 import {attachMenu} from './menu';
+import {icon} from './icons';
 import {wikiAt,wikiURL,wikiNodeAllowed} from './wiki-links';
 import {keyLabel} from './platform';
 
@@ -51,6 +52,14 @@ export function tableAround(state:EditorState,pos:number):{from:number;to:number
  return null;
 }
 const tables=new WeakMap<HTMLElement,TableDOM>();
+// The pop-up groups insert, delete, alignment and the destructive table action.
+// Separators delimit the single-select radio group for screen readers and scanning.
+const TABLE_ALIGN=new Set<TableAction>(['left','center','right']);
+const TABLE_MENU_GROUPS:TableAction[][]=[
+ ['rowAbove','rowBelow','columnLeft','columnRight'],
+ ['deleteRow','deleteColumn'],
+ ['left','center','right'],
+ ['deleteTable']];
 export function focusTableCell(view:EditorView,position=view.state.selection.main.head){
  for(const dom of view.dom.querySelectorAll<HTMLElement>('.rendered-table')){
   const table=tables.get(dom);if(table&&position>=table.from&&position<=table.from+table.raw.length){table.focus(0,0);return true}
@@ -78,6 +87,7 @@ export class TableWidget extends WidgetType{
 }
 class TableDOM{
  readonly dom=document.createElement('div');
+ private scroller=document.createElement('div');
  private table=document.createElement('table');
  private button=document.createElement('button');
  private popup=document.createElement('div');
@@ -94,23 +104,52 @@ class TableDOM{
  from=0;
  constructor(private view:EditorView,private composing:StateField<boolean>){
   this.dom.className='rendered-table';this.dom.contentEditable='false';
-  this.button.type='button';this.button.className='table-menu-button';this.button.textContent='⋯';this.button.setAttribute('aria-haspopup','menu');this.button.setAttribute('aria-expanded','false');
+  this.scroller.className='table-scroll';
+  this.button.type='button';this.button.className='table-menu-button';this.button.append(icon('more'));this.button.setAttribute('aria-haspopup','menu');this.button.setAttribute('aria-expanded','false');
   this.popup.className='menu table-menu';this.popup.hidden=true;this.popup.setAttribute('role','menu');document.body.append(this.popup);
-  this.dom.append(this.button,this.table);
+  this.scroller.append(this.table);
+  this.dom.append(this.button,this.scroller);
+  this.buildMenu();
   this.menu=attachMenu(this.button,this.popup,id=>this.change(id as TableAction));
   this.button.addEventListener('click',()=>{if(this.blocked())this.menu.close()});
  }
  private blocked(){return this.readOnly||this.view.state.readOnly||this.view.state.field(this.composing)||!!this.composingCell}
+ // Static skeleton: items are built once so structure edits never displace the label or check nodes.
+ private buildMenu(){
+  TABLE_MENU_GROUPS.forEach((group,gi)=>{
+   if(gi>0){const sep=document.createElement('div');sep.setAttribute('role','separator');this.popup.append(sep)}
+   for(const id of group){
+    const item=document.createElement('button');item.type='button';item.tabIndex=-1;item.dataset.menuAction=id;
+    item.setAttribute('role',TABLE_ALIGN.has(id)?'menuitemradio':'menuitem');
+    item.append(document.createElement('span'));
+    // The alignment choices are single-select radios: a trailing check marks the column's current alignment.
+    if(TABLE_ALIGN.has(id)){const check=icon('check');check.classList.add('menu-check');check.setAttribute('aria-hidden','true');item.append(check)}
+    this.popup.append(item);
+   }
+  });
+ }
+ private updateAlignState(){
+  const current=parseTable(this.raw).aligns[this.column]||'left';
+  for(const id of ['left','center','right']){
+   const item=this.popup.querySelector<HTMLButtonElement>(`[data-menu-action="${id}"]`);
+   if(item)item.setAttribute('aria-checked',String(id===current));
+  }
+ }
  update(widget:TableWidget){
   this.raw=widget.raw;this.from=widget.from;this.readOnly=widget.readOnly;this.dom.dataset.from=String(this.from);
   this.button.disabled=this.blocked();this.button.setAttribute('aria-label',messages.fTableActions());this.popup.setAttribute('aria-label',messages.fTableActions());
-  const actions:[TableAction,string][]=[['rowAbove',messages.fInsertRowAbove()],['rowBelow',messages.fInsertRowBelow()],['columnLeft',messages.fInsertColumnLeft()],['columnRight',messages.fInsertColumnRight()],['deleteRow',messages.fDeleteRow()],['deleteColumn',messages.fDeleteColumn()],['left',messages.fAlignColumnLeft()],['center',messages.fAlignColumnCenter()],['right',messages.fAlignColumnRight()],['deleteTable',messages.fDeleteTable()]];
-  actions.forEach(([id,label],i)=>{
-   let item=this.popup.children[i] as HTMLButtonElement|undefined;
-   if(!item){item=document.createElement('button');item.type='button';item.tabIndex=-1;item.setAttribute('role','menuitem');item.dataset.menuAction=id;this.popup.append(item)}
-   item.textContent=label;
-  });
   const {rows,aligns}=parseTable(this.raw),count=rows[0].length;
+  const labels:Partial<Record<TableAction,string>>={
+   rowAbove:messages.fInsertRowAbove(),rowBelow:messages.fInsertRowBelow(),
+   columnLeft:messages.fInsertColumnLeft(),columnRight:messages.fInsertColumnRight(),
+   deleteRow:messages.fDeleteRow(),deleteColumn:messages.fDeleteColumn(),
+   left:messages.fAlignColumnLeft(),center:messages.fAlignColumnCenter(),right:messages.fAlignColumnRight(),
+   deleteTable:messages.fDeleteTable()};
+  for(const group of TABLE_MENU_GROUPS)for(const id of group){
+   const item=this.popup.querySelector<HTMLButtonElement>(`[data-menu-action="${id}"]`);
+   if(item)item.firstElementChild!.textContent=labels[id]!;
+  }
+  this.updateAlignState();
   while(this.table.rows.length>rows.length)this.table.deleteRow(-1);
   rows.forEach((row,i)=>{
    const tr=this.table.rows[i]||this.table.insertRow();
@@ -142,7 +181,7 @@ class TableDOM{
    cell.title=!this.blocked()&&!this.view.composing&&this.view.state.facet(tableLink).length&&this.wikiLink(cell,e)?messages.fCtrlClickToOpenTheLink(keyLabel('Mod')):'';
   });
   cell.addEventListener('focus',()=>{
-   this.row=Number(cell.dataset.row);this.column=Number(cell.dataset.column);this.fresh=true;
+   this.row=Number(cell.dataset.row);this.column=Number(cell.dataset.column);this.fresh=true;this.updateAlignState();
    if(!this.blocked())this.view.dispatch({selection:{anchor:this.from+2},userEvent:'select.table'});
   });
   cell.addEventListener('input',()=>{if(!this.blocked())this.commit(cell)});

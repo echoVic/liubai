@@ -730,6 +730,12 @@ export interface Messages {
    */
   fViewOnline(): string;
   /**
+   * Accessible name for an inline image in the reading view; activating it opens the full-size image viewer.
+   *
+   * `查看图片`
+   */
+  fViewImage(): string;
+  /**
    * Interface text for Missing Image:.
    *
    * `图片缺失：`
@@ -1129,6 +1135,12 @@ export interface Messages {
    * `直接写，也可以用快捷键`
    */
   fStartWritingOrUseAShortcut(): string;
+  /**
+   * Empty state shown in the All Commands palette when the search matches nothing.
+   *
+   * `没有匹配的操作`
+   */
+  fNoCommandsMatch(): string;
   /**
    * Interface text for esc Close.
    *
@@ -2150,6 +2162,18 @@ export interface Messages {
    */
   fTableHeaderCell(column: number): string;
   /**
+   * Accessible name for a reader table with horizontal overflow.
+   *
+   * `{table}，可左右滚动`
+   */
+  fScrollableTable(table: string): string;
+  /**
+   * Accessible name for a reader code block or document properties with horizontal overflow.
+   *
+   * `{content}，可左右滚动`
+   */
+  fScrollableContent(content: string): string;
+  /**
    * Interface message: TableCell.
    *
    * `第{row}行 第{column}列`
@@ -2854,6 +2878,270 @@ export interface Messages {
    */
   fIndigoCaption(): string;
   /**
+   * Interface text for GitHub.
+   *
+   * `代码纸`
+   */
+  fGithub(): string;
+  /**
+   * Interface text for Clean white paper, a GitHub-blue caret.
+   *
+   * `干净的白纸，GitHub 蓝的光标`
+   */
+  fGithubCaption(): string;
+  /**
+   * Interface text for Code.
+   *
+   * `码`
+   */
+  fStudioGithubTag(): string;
+  /**
+   * Interface text for Solarized Light.
+   *
+   * `晴窗`
+   */
+  fSolar(): string;
+  /**
+   * Interface text for Warm cream paper, muted accents.
+   *
+   * `暖米色的纸，低饱和的强调色`
+   */
+  fSolarCaption(): string;
+  /**
+   * Interface text for Clear.
+   *
+   * `晴`
+   */
+  fStudioSolarTag(): string;
+  /**
+   * Interface text for Solarized Dark.
+   *
+   * `夜栈`
+   */
+  fSolare(): string;
+  /**
+   * Interface text for Deep navy terminal, a cyan caret.
+   *
+   * `深海蓝的终端，青色的光标`
+   */
+  fSolareCaption(): string;
+  /**
+   * Interface text for Terminal.
+   *
+   * `栈`
+   */
+  fStudioSolareTag(): string;
+  /**
+   * Interface text for Monokai.
+   *
+   * `霓虹`
+   */
+  fMonokai(): string;
+  /**
+   * Interface text for Charcoal night, neon highlights.
+   *
+   * `深炭色的夜，霓虹色的高亮`
+   */
+  fMonokaiCaption(): string;
+  /**
+   * Interface text for Neon.
+   *
+   * `霓`
+   */
+  fStudioMonokaiTag(): string;
+  /**
+   * Interface text for Nord.
+   *
+   * `极光`
+   */
+  fNord(): string;
+  /**
+   * Interface text for Arctic blue-grey, a frost caret.
+   *
+   * `北极的蓝灰，霜色的光标`
+   */
+  fNordCaption(): string;
+  /**
+   * Interface text for Ice.
+   *
+   * `冰`
+   */
+  fStudioNordTag(): string;
+  /**
+   * Interface text for One Dark.
+   *
+   * `暮蓝`
+   */
+  fOnedark(): string;
+  /**
+   * Interface text for Atom's deep blue-grey, violet accents.
+   *
+   * `Atom 的深蓝灰，紫蓝的强调色`
+   */
+  fOnedarkCaption(): string;
+  /**
+   * Interface text for Dusk.
+   *
+   * `暮`
+   */
+  fStudioOnedarkTag(): string;
+  /**
+   * Interface text for Dracula.
+   *
+   * `吸血`
+   */
+  fDracula(): string;
+  /**
+   * Interface text for Deep purple-black night, a pink caret.
+   *
+   * `深紫黑的夜，粉紫的光标`
+   */
+  fDraculaCaption(): string;
+  /**
+   * Interface text for Violet.
+   *
+   * `紫`
+   */
+  fStudioDraculaTag(): string;
+  /**
+   * Interface text for Catppuccin Mocha.
+   *
+   * `咖啡`
+   */
+  fCatppuccin(): string;
+  /**
+   * Interface text for Macaron night, a soft blue caret.
+   *
+   * `马卡龙的夜，柔蓝的光标`
+   */
+  fCatppuccinCaption(): string;
+  /**
+   * Interface text for Coffee.
+   *
+   * `咖`
+   */
+  fStudioCatppuccinTag(): string;
+  /**
+   * Interface text for Gruvbox Dark.
+   *
+   * `复古`
+   */
+  fGruvbox(): string;
+  /**
+   * Interface text for Warm orange retro, cream text.
+   *
+   * `暖橙的复古，奶黄的文字`
+   */
+  fGruvboxCaption(): string;
+  /**
+   * Interface text for Retro.
+   *
+   * `古`
+   */
+  fStudioGruvboxTag(): string;
+  /**
+   * Interface text for Rosé Pine.
+   *
+   * `玫瑰`
+   */
+  fRosepine(): string;
+  /**
+   * Interface text for Deep violet night, a pale violet caret.
+   *
+   * `深紫的夜，淡紫的光标`
+   */
+  fRosepineCaption(): string;
+  /**
+   * Interface text for Rose.
+   *
+   * `玫`
+   */
+  fStudioRosepineTag(): string;
+  /**
+   * Interface text for One Light.
+   *
+   * `素笺`
+   */
+  fOnelight(): string;
+  /**
+   * Interface text for Atom's white paper, a cool blue caret.
+   *
+   * `Atom 的白纸，冷蓝的光标`
+   */
+  fOnelightCaption(): string;
+  /**
+   * Interface text for Dawn.
+   *
+   * `笺`
+   */
+  fStudioOnelightTag(): string;
+  /**
+   * Interface text for GitHub Dark.
+   *
+   * `星夜`
+   */
+  fGhdark(): string;
+  /**
+   * Interface text for GitHub's dark side, blue links.
+   *
+   * `GitHub 的深色，蓝紫的链接`
+   */
+  fGhdarkCaption(): string;
+  /**
+   * Interface text for Star.
+   *
+   * `星`
+   */
+  fStudioGhdarkTag(): string;
+  /**
+   * Interface text for Catppuccin Latte.
+   *
+   * `奶霜`
+   */
+  fCatlight(): string;
+  /**
+   * Interface text for Catppuccin's daylight, blue links.
+   *
+   * `Catppuccin 的白昼，蓝紫的链接`
+   */
+  fCatlightCaption(): string;
+  /**
+   * Interface text for Cream.
+   *
+   * `霜`
+   */
+  fStudioCatlightTag(): string;
+  /**
+   * Interface text for Gruvbox Light.
+   *
+   * `暖阳`
+   */
+  fGruvlite(): string;
+  /**
+   * Interface text for Cream paper, a brown-orange caret.
+   *
+   * `奶黄的纸，棕橙的光标`
+   */
+  fGruvliteCaption(): string;
+  /**
+   * Interface text for Sun.
+   *
+   * `阳`
+   */
+  fStudioGruvliteTag(): string;
+  /**
+   * Interface text for Studio.
+   *
+   * `工作坊`
+   */
+  fStudio(): string;
+  /**
+   * Interface text for Palettes for coding and notes.
+   *
+   * `写代码和笔记时用的配色`
+   */
+  fThemesForCodingAndNotes(): string;
+  /**
    * Interface text for 5 am.
    *
    * `卯`
@@ -3370,6 +3658,7 @@ const catalog = createCatalog<Messages>({
     "fCaution": [],
     "fExternalImage": [],
     "fViewOnline": [],
+    "fViewImage": [],
     "fMissingImage": [],
     "fUnreadableImage": [],
     "fDocumentProperties": [],
@@ -3438,6 +3727,7 @@ const catalog = createCatalog<Messages>({
     "fSearchCommandsAndThemes": [],
     "fSearchCommands": [],
     "fStartWritingOrUseAShortcut": [],
+    "fNoCommandsMatch": [],
     "fEscClose": [],
     "fDocumentNotSaved": [],
     "fSaveThisPageFirst": [],
@@ -3608,6 +3898,8 @@ const catalog = createCatalog<Messages>({
     "fClipboardError": ["error"],
     "fOverwritten": ["title"],
     "fTableHeaderCell": ["column"],
+    "fScrollableTable": ["table"],
+    "fScrollableContent": ["content"],
     "fTableCell": ["row", "column"],
     "fCaptured": ["title"],
     "fOpenFailed": ["name", "error"],
@@ -3726,6 +4018,50 @@ const catalog = createCatalog<Messages>({
     "fAutumnCaption": [],
     "fMoonWhiteCaption": [],
     "fIndigoCaption": [],
+    "fGithub": [],
+    "fGithubCaption": [],
+    "fStudioGithubTag": [],
+    "fSolar": [],
+    "fSolarCaption": [],
+    "fStudioSolarTag": [],
+    "fSolare": [],
+    "fSolareCaption": [],
+    "fStudioSolareTag": [],
+    "fMonokai": [],
+    "fMonokaiCaption": [],
+    "fStudioMonokaiTag": [],
+    "fNord": [],
+    "fNordCaption": [],
+    "fStudioNordTag": [],
+    "fOnedark": [],
+    "fOnedarkCaption": [],
+    "fStudioOnedarkTag": [],
+    "fDracula": [],
+    "fDraculaCaption": [],
+    "fStudioDraculaTag": [],
+    "fCatppuccin": [],
+    "fCatppuccinCaption": [],
+    "fStudioCatppuccinTag": [],
+    "fGruvbox": [],
+    "fGruvboxCaption": [],
+    "fStudioGruvboxTag": [],
+    "fRosepine": [],
+    "fRosepineCaption": [],
+    "fStudioRosepineTag": [],
+    "fOnelight": [],
+    "fOnelightCaption": [],
+    "fStudioOnelightTag": [],
+    "fGhdark": [],
+    "fGhdarkCaption": [],
+    "fStudioGhdarkTag": [],
+    "fCatlight": [],
+    "fCatlightCaption": [],
+    "fStudioCatlightTag": [],
+    "fGruvlite": [],
+    "fGruvliteCaption": [],
+    "fStudioGruvliteTag": [],
+    "fStudio": [],
+    "fThemesForCodingAndNotes": [],
     "fHourMao": [],
     "fHourWu": [],
     "fHourShen": [],
@@ -3934,6 +4270,7 @@ const catalog = createCatalog<Messages>({
       "fCaution": "注意",
       "fExternalImage": "外链图片",
       "fViewOnline": "（联网查看）",
+      "fViewImage": "查看图片",
       "fMissingImage": "图片缺失：",
       "fUnreadableImage": "图片无法读取：",
       "fDocumentProperties": "文稿属性",
@@ -4002,6 +4339,7 @@ const catalog = createCatalog<Messages>({
       "fSearchCommandsAndThemes": "搜索操作、主题…",
       "fSearchCommands": "搜索操作",
       "fStartWritingOrUseAShortcut": "直接写，也可以用快捷键",
+      "fNoCommandsMatch": "没有匹配的操作",
       "fEscClose": "esc 关闭",
       "fDocumentNotSaved": "文稿保存未完成",
       "fSaveThisPageFirst": "先把这一页留住",
@@ -4172,6 +4510,8 @@ const catalog = createCatalog<Messages>({
       "fClipboardError": "无法读取剪贴板：{error}",
       "fOverwritten": "已用当前版本覆盖磁盘文件；原磁盘内容另存为「{title} · 磁盘版本」",
       "fTableHeaderCell": "表头 第{column}列",
+      "fScrollableTable": "{table}，可左右滚动",
+      "fScrollableContent": "{content}，可左右滚动",
       "fTableCell": "第{row}行 第{column}列",
       "fCaptured": "随手记已存为草稿「{title}」",
       "fOpenFailed": "无法打开「{name}」：{error}",
@@ -4290,6 +4630,50 @@ const catalog = createCatalog<Messages>({
       "fAutumnCaption": "秋 · 秋香色的纸，秋水石青",
       "fMoonWhiteCaption": "冬 · 月白风清，靛青点睛",
       "fIndigoCaption": "夜 · 远山如黛，一点烫金",
+      "fGithub": "代码纸",
+      "fGithubCaption": "干净的白纸，GitHub 蓝的光标",
+      "fStudioGithubTag": "码",
+      "fSolar": "晴窗",
+      "fSolarCaption": "暖米色的纸，低饱和的强调色",
+      "fStudioSolarTag": "晴",
+      "fSolare": "夜栈",
+      "fSolareCaption": "深海蓝的终端，青色的光标",
+      "fStudioSolareTag": "栈",
+      "fMonokai": "霓虹",
+      "fMonokaiCaption": "深炭色的夜，霓虹色的高亮",
+      "fStudioMonokaiTag": "霓",
+      "fNord": "极光",
+      "fNordCaption": "北极的蓝灰，霜色的光标",
+      "fStudioNordTag": "冰",
+      "fOnedark": "暮蓝",
+      "fOnedarkCaption": "Atom 的深蓝灰，紫蓝的强调色",
+      "fStudioOnedarkTag": "暮",
+      "fDracula": "吸血",
+      "fDraculaCaption": "深紫黑的夜，粉紫的光标",
+      "fStudioDraculaTag": "紫",
+      "fCatppuccin": "咖啡",
+      "fCatppuccinCaption": "马卡龙的夜，柔蓝的光标",
+      "fStudioCatppuccinTag": "咖",
+      "fGruvbox": "复古",
+      "fGruvboxCaption": "暖橙的复古，奶黄的文字",
+      "fStudioGruvboxTag": "古",
+      "fRosepine": "玫瑰",
+      "fRosepineCaption": "深紫的夜，淡紫的光标",
+      "fStudioRosepineTag": "玫",
+      "fOnelight": "素笺",
+      "fOnelightCaption": "Atom 的白纸，冷蓝的光标",
+      "fStudioOnelightTag": "笺",
+      "fGhdark": "星夜",
+      "fGhdarkCaption": "GitHub 的深色，蓝紫的链接",
+      "fStudioGhdarkTag": "星",
+      "fCatlight": "奶霜",
+      "fCatlightCaption": "Catppuccin 的白昼，蓝紫的链接",
+      "fStudioCatlightTag": "霜",
+      "fGruvlite": "暖阳",
+      "fGruvliteCaption": "奶黄的纸，棕橙的光标",
+      "fStudioGruvliteTag": "阳",
+      "fStudio": "工作坊",
+      "fThemesForCodingAndNotes": "写代码和笔记时用的配色",
       "fHourMao": "卯",
       "fHourWu": "午",
       "fHourShen": "申",
@@ -4497,6 +4881,7 @@ const catalog = createCatalog<Messages>({
       "fCaution": "Caution",
       "fExternalImage": "External Image",
       "fViewOnline": " (View Online)",
+      "fViewImage": "View image",
       "fMissingImage": "Missing Image: ",
       "fUnreadableImage": "Unreadable Image: ",
       "fDocumentProperties": "Document Properties",
@@ -4565,6 +4950,7 @@ const catalog = createCatalog<Messages>({
       "fSearchCommandsAndThemes": "Search commands and themes…",
       "fSearchCommands": "Search Commands",
       "fStartWritingOrUseAShortcut": "Start writing, or use a shortcut",
+      "fNoCommandsMatch": "No matching commands",
       "fEscClose": "esc Close",
       "fDocumentNotSaved": "Document Not Saved",
       "fSaveThisPageFirst": "Save This Page First",
@@ -4735,6 +5121,8 @@ const catalog = createCatalog<Messages>({
       "fClipboardError": "Could not read the clipboard: {error}",
       "fOverwritten": "Disk file overwritten with the current version. The original was saved as “{title} · Disk Version”.",
       "fTableHeaderCell": "Header, column {column}",
+      "fScrollableTable": "{table}, scroll horizontally",
+      "fScrollableContent": "{content}, scroll horizontally",
       "fTableCell": "Row {row}, column {column}",
       "fCaptured": "Quick Note saved as draft “{title}”",
       "fOpenFailed": "Could not open “{name}”: {error}",
@@ -4853,6 +5241,50 @@ const catalog = createCatalog<Messages>({
       "fAutumnCaption": "Autumn · Olive-gold paper, river blue",
       "fMoonWhiteCaption": "Winter · Pale blue-white with an indigo accent",
       "fIndigoCaption": "Night · Midnight blue with a touch of gold",
+      "fGithub": "GitHub",
+      "fGithubCaption": "Clean white paper, a GitHub-blue caret",
+      "fStudioGithubTag": "Code",
+      "fSolar": "Solarized",
+      "fSolarCaption": "Warm cream paper, muted accents",
+      "fStudioSolarTag": "Clear",
+      "fSolare": "Solarized Dark",
+      "fSolareCaption": "Deep navy terminal, a cyan caret",
+      "fStudioSolareTag": "Terminal",
+      "fMonokai": "Monokai",
+      "fMonokaiCaption": "Charcoal night, neon highlights",
+      "fStudioMonokaiTag": "Neon",
+      "fNord": "Nord",
+      "fNordCaption": "Arctic blue-grey, a frost caret",
+      "fStudioNordTag": "Ice",
+      "fOnedark": "One Dark",
+      "fOnedarkCaption": "Atom's deep blue-grey, violet accents",
+      "fStudioOnedarkTag": "Dusk",
+      "fDracula": "Dracula",
+      "fDraculaCaption": "Deep purple-black night, a pink caret",
+      "fStudioDraculaTag": "Violet",
+      "fCatppuccin": "Catppuccin",
+      "fCatppuccinCaption": "Macaron night, a soft blue caret",
+      "fStudioCatppuccinTag": "Latte",
+      "fGruvbox": "Gruvbox",
+      "fGruvboxCaption": "Warm orange retro, cream text",
+      "fStudioGruvboxTag": "Retro",
+      "fRosepine": "Rosé Pine",
+      "fRosepineCaption": "Deep violet night, a pale violet caret",
+      "fStudioRosepineTag": "Rose",
+      "fOnelight": "One Light",
+      "fOnelightCaption": "Atom's white paper, a cool blue caret",
+      "fStudioOnelightTag": "Dawn",
+      "fGhdark": "GitHub Dark",
+      "fGhdarkCaption": "GitHub's dark side, blue links",
+      "fStudioGhdarkTag": "Star",
+      "fCatlight": "Catppuccin Latte",
+      "fCatlightCaption": "Catppuccin's daylight, blue links",
+      "fStudioCatlightTag": "Cream",
+      "fGruvlite": "Gruvbox Light",
+      "fGruvliteCaption": "Cream paper, a brown-orange caret",
+      "fStudioGruvliteTag": "Sun",
+      "fStudio": "Studio",
+      "fThemesForCodingAndNotes": "Palettes for coding and notes",
       "fHourMao": "5 am",
       "fHourWu": "9 am",
       "fHourShen": "3 pm",
@@ -4900,7 +5332,7 @@ const catalog = createCatalog<Messages>({
       "bSearchQueryLineBreak": "Search for text on a single line.",
       "fSearchDocuments": "Search document titles and content…",
       "fSearching": "Searching…",
-      "fSearchCount": "Found {count} documents",
+      "fSearchCount": "{count, plural, one {Found # document} other {Found # documents}}",
       "fSearchEmpty": "No documents contain “{query}”.",
       "fSearchTruncated": "Showing the first 100 documents. Narrow your search.",
       "fSearchMoreHits": "More matches; continue with Find in Document.",
@@ -4919,7 +5351,7 @@ const catalog = createCatalog<Messages>({
       "fTagCount": "{tag} · {count}",
       "fFilterTag": "Filter by tag “{tag}”",
       "fClearTag": "Clear tag filter “{tag}”",
-      "fMoreTags": "+{count} tags",
+      "fMoreTags": "{count, plural, one {+# tag} other {+# tags}}",
       "fTagEmpty": "No documents have the tag “{tag}”.",
       "bWikiInvalidName": "Use a single-line title of up to 256 characters without control characters, square brackets or a vertical bar.",
       "bWikiSourceChanged": "The source document has changed. Click the reference again.",
@@ -4929,7 +5361,7 @@ const catalog = createCatalog<Messages>({
       "fBacklinkEmpty": "No other documents reference this one yet.",
       "fBacklinkUnnamed": "Give this document a title that can be referenced first.",
       "fBacklinkAmbiguous": "Multiple documents have this title; references cannot be assigned uniquely.",
-      "fBacklinkCount": "Referenced by {count} documents",
+      "fBacklinkCount": "{count, plural, one {Referenced by # document} other {Referenced by # documents}}",
       "fBacklinkPending": "References will update after your changes are saved. Open results after saving.",
       "fBacklinkRetry": "Retry Finding References",
       "fBacklinkTruncated": "Showing the first 100 referencing documents.",

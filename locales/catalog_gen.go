@@ -1804,6 +1804,22 @@ func (msgs Messages) FViewOnline() string {
 	return Catalog.Format(msgs.locale, "fViewOnline", nil)
 }
 
+// FViewImage says "查看图片"
+// in the language the app shows.
+//
+// Accessible name for an inline image in the reading view; activating it
+// opens the full-size image viewer.
+func FViewImage() string { return In(i18n.Locale()).FViewImage() }
+
+// FViewImage says "查看图片"
+// in the language of msgs.
+//
+// Accessible name for an inline image in the reading view; activating it
+// opens the full-size image viewer.
+func (msgs Messages) FViewImage() string {
+	return Catalog.Format(msgs.locale, "fViewImage", nil)
+}
+
 // FMissingImage says "图片缺失："
 // in the language the app shows.
 //
@@ -2760,6 +2776,22 @@ func FStartWritingOrUseAShortcut() string { return In(i18n.Locale()).FStartWriti
 // Interface text for Start writing, or use a shortcut.
 func (msgs Messages) FStartWritingOrUseAShortcut() string {
 	return Catalog.Format(msgs.locale, "fStartWritingOrUseAShortcut", nil)
+}
+
+// FNoCommandsMatch says "没有匹配的操作"
+// in the language the app shows.
+//
+// Empty state shown in the All Commands palette when the search matches
+// nothing.
+func FNoCommandsMatch() string { return In(i18n.Locale()).FNoCommandsMatch() }
+
+// FNoCommandsMatch says "没有匹配的操作"
+// in the language of msgs.
+//
+// Empty state shown in the All Commands palette when the search matches
+// nothing.
+func (msgs Messages) FNoCommandsMatch() string {
+	return Catalog.Format(msgs.locale, "fNoCommandsMatch", nil)
 }
 
 // FEscClose says "esc 关闭"
@@ -5178,6 +5210,36 @@ func (msgs Messages) FTableHeaderCell(column int) string {
 	return Catalog.Format(msgs.locale, "fTableHeaderCell", map[string]any{"column": column})
 }
 
+// FScrollableTable says "{table}，可左右滚动"
+// in the language the app shows.
+//
+// Accessible name for a reader table with horizontal overflow.
+func FScrollableTable(table string) string { return In(i18n.Locale()).FScrollableTable(table) }
+
+// FScrollableTable says "{table}，可左右滚动"
+// in the language of msgs.
+//
+// Accessible name for a reader table with horizontal overflow.
+func (msgs Messages) FScrollableTable(table string) string {
+	return Catalog.Format(msgs.locale, "fScrollableTable", map[string]any{"table": table})
+}
+
+// FScrollableContent says "{content}，可左右滚动"
+// in the language the app shows.
+//
+// Accessible name for a reader code block or document properties with
+// horizontal overflow.
+func FScrollableContent(content string) string { return In(i18n.Locale()).FScrollableContent(content) }
+
+// FScrollableContent says "{content}，可左右滚动"
+// in the language of msgs.
+//
+// Accessible name for a reader code block or document properties with
+// horizontal overflow.
+func (msgs Messages) FScrollableContent(content string) string {
+	return Catalog.Format(msgs.locale, "fScrollableContent", map[string]any{"content": content})
+}
+
 // FTableCell says "第{row}行 第{column}列"
 // in the language the app shows.
 //
@@ -6836,6 +6898,622 @@ func FIndigoCaption() string { return In(i18n.Locale()).FIndigoCaption() }
 // Interface text for Night · Midnight blue with a touch of gold.
 func (msgs Messages) FIndigoCaption() string {
 	return Catalog.Format(msgs.locale, "fIndigoCaption", nil)
+}
+
+// FGithub says "代码纸"
+// in the language the app shows.
+//
+// Interface text for GitHub.
+func FGithub() string { return In(i18n.Locale()).FGithub() }
+
+// FGithub says "代码纸"
+// in the language of msgs.
+//
+// Interface text for GitHub.
+func (msgs Messages) FGithub() string {
+	return Catalog.Format(msgs.locale, "fGithub", nil)
+}
+
+// FGithubCaption says "干净的白纸，GitHub 蓝的光标"
+// in the language the app shows.
+//
+// Interface text for Clean white paper, a GitHub-blue caret.
+func FGithubCaption() string { return In(i18n.Locale()).FGithubCaption() }
+
+// FGithubCaption says "干净的白纸，GitHub 蓝的光标"
+// in the language of msgs.
+//
+// Interface text for Clean white paper, a GitHub-blue caret.
+func (msgs Messages) FGithubCaption() string {
+	return Catalog.Format(msgs.locale, "fGithubCaption", nil)
+}
+
+// FStudioGithubTag says "码"
+// in the language the app shows.
+//
+// Interface text for Code.
+func FStudioGithubTag() string { return In(i18n.Locale()).FStudioGithubTag() }
+
+// FStudioGithubTag says "码"
+// in the language of msgs.
+//
+// Interface text for Code.
+func (msgs Messages) FStudioGithubTag() string {
+	return Catalog.Format(msgs.locale, "fStudioGithubTag", nil)
+}
+
+// FSolar says "晴窗"
+// in the language the app shows.
+//
+// Interface text for Solarized Light.
+func FSolar() string { return In(i18n.Locale()).FSolar() }
+
+// FSolar says "晴窗"
+// in the language of msgs.
+//
+// Interface text for Solarized Light.
+func (msgs Messages) FSolar() string {
+	return Catalog.Format(msgs.locale, "fSolar", nil)
+}
+
+// FSolarCaption says "暖米色的纸，低饱和的强调色"
+// in the language the app shows.
+//
+// Interface text for Warm cream paper, muted accents.
+func FSolarCaption() string { return In(i18n.Locale()).FSolarCaption() }
+
+// FSolarCaption says "暖米色的纸，低饱和的强调色"
+// in the language of msgs.
+//
+// Interface text for Warm cream paper, muted accents.
+func (msgs Messages) FSolarCaption() string {
+	return Catalog.Format(msgs.locale, "fSolarCaption", nil)
+}
+
+// FStudioSolarTag says "晴"
+// in the language the app shows.
+//
+// Interface text for Clear.
+func FStudioSolarTag() string { return In(i18n.Locale()).FStudioSolarTag() }
+
+// FStudioSolarTag says "晴"
+// in the language of msgs.
+//
+// Interface text for Clear.
+func (msgs Messages) FStudioSolarTag() string {
+	return Catalog.Format(msgs.locale, "fStudioSolarTag", nil)
+}
+
+// FSolare says "夜栈"
+// in the language the app shows.
+//
+// Interface text for Solarized Dark.
+func FSolare() string { return In(i18n.Locale()).FSolare() }
+
+// FSolare says "夜栈"
+// in the language of msgs.
+//
+// Interface text for Solarized Dark.
+func (msgs Messages) FSolare() string {
+	return Catalog.Format(msgs.locale, "fSolare", nil)
+}
+
+// FSolareCaption says "深海蓝的终端，青色的光标"
+// in the language the app shows.
+//
+// Interface text for Deep navy terminal, a cyan caret.
+func FSolareCaption() string { return In(i18n.Locale()).FSolareCaption() }
+
+// FSolareCaption says "深海蓝的终端，青色的光标"
+// in the language of msgs.
+//
+// Interface text for Deep navy terminal, a cyan caret.
+func (msgs Messages) FSolareCaption() string {
+	return Catalog.Format(msgs.locale, "fSolareCaption", nil)
+}
+
+// FStudioSolareTag says "栈"
+// in the language the app shows.
+//
+// Interface text for Terminal.
+func FStudioSolareTag() string { return In(i18n.Locale()).FStudioSolareTag() }
+
+// FStudioSolareTag says "栈"
+// in the language of msgs.
+//
+// Interface text for Terminal.
+func (msgs Messages) FStudioSolareTag() string {
+	return Catalog.Format(msgs.locale, "fStudioSolareTag", nil)
+}
+
+// FMonokai says "霓虹"
+// in the language the app shows.
+//
+// Interface text for Monokai.
+func FMonokai() string { return In(i18n.Locale()).FMonokai() }
+
+// FMonokai says "霓虹"
+// in the language of msgs.
+//
+// Interface text for Monokai.
+func (msgs Messages) FMonokai() string {
+	return Catalog.Format(msgs.locale, "fMonokai", nil)
+}
+
+// FMonokaiCaption says "深炭色的夜，霓虹色的高亮"
+// in the language the app shows.
+//
+// Interface text for Charcoal night, neon highlights.
+func FMonokaiCaption() string { return In(i18n.Locale()).FMonokaiCaption() }
+
+// FMonokaiCaption says "深炭色的夜，霓虹色的高亮"
+// in the language of msgs.
+//
+// Interface text for Charcoal night, neon highlights.
+func (msgs Messages) FMonokaiCaption() string {
+	return Catalog.Format(msgs.locale, "fMonokaiCaption", nil)
+}
+
+// FStudioMonokaiTag says "霓"
+// in the language the app shows.
+//
+// Interface text for Neon.
+func FStudioMonokaiTag() string { return In(i18n.Locale()).FStudioMonokaiTag() }
+
+// FStudioMonokaiTag says "霓"
+// in the language of msgs.
+//
+// Interface text for Neon.
+func (msgs Messages) FStudioMonokaiTag() string {
+	return Catalog.Format(msgs.locale, "fStudioMonokaiTag", nil)
+}
+
+// FNord says "极光"
+// in the language the app shows.
+//
+// Interface text for Nord.
+func FNord() string { return In(i18n.Locale()).FNord() }
+
+// FNord says "极光"
+// in the language of msgs.
+//
+// Interface text for Nord.
+func (msgs Messages) FNord() string {
+	return Catalog.Format(msgs.locale, "fNord", nil)
+}
+
+// FNordCaption says "北极的蓝灰，霜色的光标"
+// in the language the app shows.
+//
+// Interface text for Arctic blue-grey, a frost caret.
+func FNordCaption() string { return In(i18n.Locale()).FNordCaption() }
+
+// FNordCaption says "北极的蓝灰，霜色的光标"
+// in the language of msgs.
+//
+// Interface text for Arctic blue-grey, a frost caret.
+func (msgs Messages) FNordCaption() string {
+	return Catalog.Format(msgs.locale, "fNordCaption", nil)
+}
+
+// FStudioNordTag says "冰"
+// in the language the app shows.
+//
+// Interface text for Ice.
+func FStudioNordTag() string { return In(i18n.Locale()).FStudioNordTag() }
+
+// FStudioNordTag says "冰"
+// in the language of msgs.
+//
+// Interface text for Ice.
+func (msgs Messages) FStudioNordTag() string {
+	return Catalog.Format(msgs.locale, "fStudioNordTag", nil)
+}
+
+// FOnedark says "暮蓝"
+// in the language the app shows.
+//
+// Interface text for One Dark.
+func FOnedark() string { return In(i18n.Locale()).FOnedark() }
+
+// FOnedark says "暮蓝"
+// in the language of msgs.
+//
+// Interface text for One Dark.
+func (msgs Messages) FOnedark() string {
+	return Catalog.Format(msgs.locale, "fOnedark", nil)
+}
+
+// FOnedarkCaption says "Atom 的深蓝灰，紫蓝的强调色"
+// in the language the app shows.
+//
+// Interface text for Atom's deep blue-grey, violet accents.
+func FOnedarkCaption() string { return In(i18n.Locale()).FOnedarkCaption() }
+
+// FOnedarkCaption says "Atom 的深蓝灰，紫蓝的强调色"
+// in the language of msgs.
+//
+// Interface text for Atom's deep blue-grey, violet accents.
+func (msgs Messages) FOnedarkCaption() string {
+	return Catalog.Format(msgs.locale, "fOnedarkCaption", nil)
+}
+
+// FStudioOnedarkTag says "暮"
+// in the language the app shows.
+//
+// Interface text for Dusk.
+func FStudioOnedarkTag() string { return In(i18n.Locale()).FStudioOnedarkTag() }
+
+// FStudioOnedarkTag says "暮"
+// in the language of msgs.
+//
+// Interface text for Dusk.
+func (msgs Messages) FStudioOnedarkTag() string {
+	return Catalog.Format(msgs.locale, "fStudioOnedarkTag", nil)
+}
+
+// FDracula says "吸血"
+// in the language the app shows.
+//
+// Interface text for Dracula.
+func FDracula() string { return In(i18n.Locale()).FDracula() }
+
+// FDracula says "吸血"
+// in the language of msgs.
+//
+// Interface text for Dracula.
+func (msgs Messages) FDracula() string {
+	return Catalog.Format(msgs.locale, "fDracula", nil)
+}
+
+// FDraculaCaption says "深紫黑的夜，粉紫的光标"
+// in the language the app shows.
+//
+// Interface text for Deep purple-black night, a pink caret.
+func FDraculaCaption() string { return In(i18n.Locale()).FDraculaCaption() }
+
+// FDraculaCaption says "深紫黑的夜，粉紫的光标"
+// in the language of msgs.
+//
+// Interface text for Deep purple-black night, a pink caret.
+func (msgs Messages) FDraculaCaption() string {
+	return Catalog.Format(msgs.locale, "fDraculaCaption", nil)
+}
+
+// FStudioDraculaTag says "紫"
+// in the language the app shows.
+//
+// Interface text for Violet.
+func FStudioDraculaTag() string { return In(i18n.Locale()).FStudioDraculaTag() }
+
+// FStudioDraculaTag says "紫"
+// in the language of msgs.
+//
+// Interface text for Violet.
+func (msgs Messages) FStudioDraculaTag() string {
+	return Catalog.Format(msgs.locale, "fStudioDraculaTag", nil)
+}
+
+// FCatppuccin says "咖啡"
+// in the language the app shows.
+//
+// Interface text for Catppuccin Mocha.
+func FCatppuccin() string { return In(i18n.Locale()).FCatppuccin() }
+
+// FCatppuccin says "咖啡"
+// in the language of msgs.
+//
+// Interface text for Catppuccin Mocha.
+func (msgs Messages) FCatppuccin() string {
+	return Catalog.Format(msgs.locale, "fCatppuccin", nil)
+}
+
+// FCatppuccinCaption says "马卡龙的夜，柔蓝的光标"
+// in the language the app shows.
+//
+// Interface text for Macaron night, a soft blue caret.
+func FCatppuccinCaption() string { return In(i18n.Locale()).FCatppuccinCaption() }
+
+// FCatppuccinCaption says "马卡龙的夜，柔蓝的光标"
+// in the language of msgs.
+//
+// Interface text for Macaron night, a soft blue caret.
+func (msgs Messages) FCatppuccinCaption() string {
+	return Catalog.Format(msgs.locale, "fCatppuccinCaption", nil)
+}
+
+// FStudioCatppuccinTag says "咖"
+// in the language the app shows.
+//
+// Interface text for Coffee.
+func FStudioCatppuccinTag() string { return In(i18n.Locale()).FStudioCatppuccinTag() }
+
+// FStudioCatppuccinTag says "咖"
+// in the language of msgs.
+//
+// Interface text for Coffee.
+func (msgs Messages) FStudioCatppuccinTag() string {
+	return Catalog.Format(msgs.locale, "fStudioCatppuccinTag", nil)
+}
+
+// FGruvbox says "复古"
+// in the language the app shows.
+//
+// Interface text for Gruvbox Dark.
+func FGruvbox() string { return In(i18n.Locale()).FGruvbox() }
+
+// FGruvbox says "复古"
+// in the language of msgs.
+//
+// Interface text for Gruvbox Dark.
+func (msgs Messages) FGruvbox() string {
+	return Catalog.Format(msgs.locale, "fGruvbox", nil)
+}
+
+// FGruvboxCaption says "暖橙的复古，奶黄的文字"
+// in the language the app shows.
+//
+// Interface text for Warm orange retro, cream text.
+func FGruvboxCaption() string { return In(i18n.Locale()).FGruvboxCaption() }
+
+// FGruvboxCaption says "暖橙的复古，奶黄的文字"
+// in the language of msgs.
+//
+// Interface text for Warm orange retro, cream text.
+func (msgs Messages) FGruvboxCaption() string {
+	return Catalog.Format(msgs.locale, "fGruvboxCaption", nil)
+}
+
+// FStudioGruvboxTag says "古"
+// in the language the app shows.
+//
+// Interface text for Retro.
+func FStudioGruvboxTag() string { return In(i18n.Locale()).FStudioGruvboxTag() }
+
+// FStudioGruvboxTag says "古"
+// in the language of msgs.
+//
+// Interface text for Retro.
+func (msgs Messages) FStudioGruvboxTag() string {
+	return Catalog.Format(msgs.locale, "fStudioGruvboxTag", nil)
+}
+
+// FRosepine says "玫瑰"
+// in the language the app shows.
+//
+// Interface text for Rosé Pine.
+func FRosepine() string { return In(i18n.Locale()).FRosepine() }
+
+// FRosepine says "玫瑰"
+// in the language of msgs.
+//
+// Interface text for Rosé Pine.
+func (msgs Messages) FRosepine() string {
+	return Catalog.Format(msgs.locale, "fRosepine", nil)
+}
+
+// FRosepineCaption says "深紫的夜，淡紫的光标"
+// in the language the app shows.
+//
+// Interface text for Deep violet night, a pale violet caret.
+func FRosepineCaption() string { return In(i18n.Locale()).FRosepineCaption() }
+
+// FRosepineCaption says "深紫的夜，淡紫的光标"
+// in the language of msgs.
+//
+// Interface text for Deep violet night, a pale violet caret.
+func (msgs Messages) FRosepineCaption() string {
+	return Catalog.Format(msgs.locale, "fRosepineCaption", nil)
+}
+
+// FStudioRosepineTag says "玫"
+// in the language the app shows.
+//
+// Interface text for Rose.
+func FStudioRosepineTag() string { return In(i18n.Locale()).FStudioRosepineTag() }
+
+// FStudioRosepineTag says "玫"
+// in the language of msgs.
+//
+// Interface text for Rose.
+func (msgs Messages) FStudioRosepineTag() string {
+	return Catalog.Format(msgs.locale, "fStudioRosepineTag", nil)
+}
+
+// FOnelight says "素笺"
+// in the language the app shows.
+//
+// Interface text for One Light.
+func FOnelight() string { return In(i18n.Locale()).FOnelight() }
+
+// FOnelight says "素笺"
+// in the language of msgs.
+//
+// Interface text for One Light.
+func (msgs Messages) FOnelight() string {
+	return Catalog.Format(msgs.locale, "fOnelight", nil)
+}
+
+// FOnelightCaption says "Atom 的白纸，冷蓝的光标"
+// in the language the app shows.
+//
+// Interface text for Atom's white paper, a cool blue caret.
+func FOnelightCaption() string { return In(i18n.Locale()).FOnelightCaption() }
+
+// FOnelightCaption says "Atom 的白纸，冷蓝的光标"
+// in the language of msgs.
+//
+// Interface text for Atom's white paper, a cool blue caret.
+func (msgs Messages) FOnelightCaption() string {
+	return Catalog.Format(msgs.locale, "fOnelightCaption", nil)
+}
+
+// FStudioOnelightTag says "笺"
+// in the language the app shows.
+//
+// Interface text for Dawn.
+func FStudioOnelightTag() string { return In(i18n.Locale()).FStudioOnelightTag() }
+
+// FStudioOnelightTag says "笺"
+// in the language of msgs.
+//
+// Interface text for Dawn.
+func (msgs Messages) FStudioOnelightTag() string {
+	return Catalog.Format(msgs.locale, "fStudioOnelightTag", nil)
+}
+
+// FGhdark says "星夜"
+// in the language the app shows.
+//
+// Interface text for GitHub Dark.
+func FGhdark() string { return In(i18n.Locale()).FGhdark() }
+
+// FGhdark says "星夜"
+// in the language of msgs.
+//
+// Interface text for GitHub Dark.
+func (msgs Messages) FGhdark() string {
+	return Catalog.Format(msgs.locale, "fGhdark", nil)
+}
+
+// FGhdarkCaption says "GitHub 的深色，蓝紫的链接"
+// in the language the app shows.
+//
+// Interface text for GitHub's dark side, blue links.
+func FGhdarkCaption() string { return In(i18n.Locale()).FGhdarkCaption() }
+
+// FGhdarkCaption says "GitHub 的深色，蓝紫的链接"
+// in the language of msgs.
+//
+// Interface text for GitHub's dark side, blue links.
+func (msgs Messages) FGhdarkCaption() string {
+	return Catalog.Format(msgs.locale, "fGhdarkCaption", nil)
+}
+
+// FStudioGhdarkTag says "星"
+// in the language the app shows.
+//
+// Interface text for Star.
+func FStudioGhdarkTag() string { return In(i18n.Locale()).FStudioGhdarkTag() }
+
+// FStudioGhdarkTag says "星"
+// in the language of msgs.
+//
+// Interface text for Star.
+func (msgs Messages) FStudioGhdarkTag() string {
+	return Catalog.Format(msgs.locale, "fStudioGhdarkTag", nil)
+}
+
+// FCatlight says "奶霜"
+// in the language the app shows.
+//
+// Interface text for Catppuccin Latte.
+func FCatlight() string { return In(i18n.Locale()).FCatlight() }
+
+// FCatlight says "奶霜"
+// in the language of msgs.
+//
+// Interface text for Catppuccin Latte.
+func (msgs Messages) FCatlight() string {
+	return Catalog.Format(msgs.locale, "fCatlight", nil)
+}
+
+// FCatlightCaption says "Catppuccin 的白昼，蓝紫的链接"
+// in the language the app shows.
+//
+// Interface text for Catppuccin's daylight, blue links.
+func FCatlightCaption() string { return In(i18n.Locale()).FCatlightCaption() }
+
+// FCatlightCaption says "Catppuccin 的白昼，蓝紫的链接"
+// in the language of msgs.
+//
+// Interface text for Catppuccin's daylight, blue links.
+func (msgs Messages) FCatlightCaption() string {
+	return Catalog.Format(msgs.locale, "fCatlightCaption", nil)
+}
+
+// FStudioCatlightTag says "霜"
+// in the language the app shows.
+//
+// Interface text for Cream.
+func FStudioCatlightTag() string { return In(i18n.Locale()).FStudioCatlightTag() }
+
+// FStudioCatlightTag says "霜"
+// in the language of msgs.
+//
+// Interface text for Cream.
+func (msgs Messages) FStudioCatlightTag() string {
+	return Catalog.Format(msgs.locale, "fStudioCatlightTag", nil)
+}
+
+// FGruvlite says "暖阳"
+// in the language the app shows.
+//
+// Interface text for Gruvbox Light.
+func FGruvlite() string { return In(i18n.Locale()).FGruvlite() }
+
+// FGruvlite says "暖阳"
+// in the language of msgs.
+//
+// Interface text for Gruvbox Light.
+func (msgs Messages) FGruvlite() string {
+	return Catalog.Format(msgs.locale, "fGruvlite", nil)
+}
+
+// FGruvliteCaption says "奶黄的纸，棕橙的光标"
+// in the language the app shows.
+//
+// Interface text for Cream paper, a brown-orange caret.
+func FGruvliteCaption() string { return In(i18n.Locale()).FGruvliteCaption() }
+
+// FGruvliteCaption says "奶黄的纸，棕橙的光标"
+// in the language of msgs.
+//
+// Interface text for Cream paper, a brown-orange caret.
+func (msgs Messages) FGruvliteCaption() string {
+	return Catalog.Format(msgs.locale, "fGruvliteCaption", nil)
+}
+
+// FStudioGruvliteTag says "阳"
+// in the language the app shows.
+//
+// Interface text for Sun.
+func FStudioGruvliteTag() string { return In(i18n.Locale()).FStudioGruvliteTag() }
+
+// FStudioGruvliteTag says "阳"
+// in the language of msgs.
+//
+// Interface text for Sun.
+func (msgs Messages) FStudioGruvliteTag() string {
+	return Catalog.Format(msgs.locale, "fStudioGruvliteTag", nil)
+}
+
+// FStudio says "工作坊"
+// in the language the app shows.
+//
+// Interface text for Studio.
+func FStudio() string { return In(i18n.Locale()).FStudio() }
+
+// FStudio says "工作坊"
+// in the language of msgs.
+//
+// Interface text for Studio.
+func (msgs Messages) FStudio() string {
+	return Catalog.Format(msgs.locale, "fStudio", nil)
+}
+
+// FThemesForCodingAndNotes says "写代码和笔记时用的配色"
+// in the language the app shows.
+//
+// Interface text for Palettes for coding and notes.
+func FThemesForCodingAndNotes() string { return In(i18n.Locale()).FThemesForCodingAndNotes() }
+
+// FThemesForCodingAndNotes says "写代码和笔记时用的配色"
+// in the language of msgs.
+//
+// Interface text for Palettes for coding and notes.
+func (msgs Messages) FThemesForCodingAndNotes() string {
+	return Catalog.Format(msgs.locale, "fThemesForCodingAndNotes", nil)
 }
 
 // FHourMao says "卯"

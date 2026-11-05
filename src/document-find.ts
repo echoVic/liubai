@@ -36,7 +36,14 @@ export function createDocumentFind(options:{getView:()=>EditorView;reading:()=>b
  document.body.append(bar);
  const entry=document.querySelector<HTMLElement>('#document-find-button')!;
  const desk=document.querySelector<HTMLElement>('.desk')!;
- const position=()=>{if(!bar.hidden)bar.style.top=`${desk.getBoundingClientRect().top+8}px`};
+ const position=()=>{if(bar.hidden)return;
+  // Sit just below the topbar, but never let the panel extend past the bottom
+  // edge (short landscape windows with the replace row open would otherwise
+  // leave the navigation and replace controls unreachable).
+  const desired=desk.getBoundingClientRect().top+8;
+  const maxTop=window.innerHeight-bar.offsetHeight-8;
+  bar.style.top=`${Math.max(8,Math.min(desired,maxTop))}px`;
+ };
  new ResizeObserver(position).observe(desk);
  let expanded=false,caseSensitive=false,wholeWord=false,regexp=false,frame=0,composing=false;
  let editorDocument:EditorView['state']['doc']|undefined,editorQuery:SearchQuery|undefined,result:ReturnType<typeof findMatches>={matches:[],limited:false};

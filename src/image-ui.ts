@@ -49,14 +49,19 @@ class ImageDOM{
  constructor(private view:EditorView,private composing:StateField<boolean>){
   const signal=this.abort.signal;
   this.dom.className='inline-image';this.dom.contentEditable='false';this.dom.tabIndex=-1;
-  this.frame.className='image-frame';this.img.loading='lazy';this.img.draggable=false;this.img.onerror=()=>{if(!this.disposed){this.img.hidden=true;this.dom.dataset.error=messages.fImageResourceMissing(this.img.alt)}};this.frame.append(this.img);
+  this.frame.className='image-frame';this.img.loading='lazy';this.img.draggable=false;this.img.onerror=()=>{if(!this.disposed){this.img.hidden=true;this.dom.dataset.error=messages.fImageResourceMissing(this.img.alt||this.source)}};this.frame.append(this.img);
   this.toolbar.className='image-toolbar';this.toolbar.setAttribute('role','toolbar');this.toolbar.hidden=true;
   this.handle.type='button';this.handle.className='image-resize-handle';this.handle.hidden=true;
   this.badge.className='image-width-badge';this.badge.hidden=true;this.badge.setAttribute('role','status');
   this.popover.className='image-alt-popover';this.popover.hidden=true;this.input.type='text';this.popover.append(this.input);
-  this.frame.append(this.handle,this.badge);this.dom.append(this.frame,this.toolbar,this.popover);
+  this.frame.append(this.handle,this.badge,this.toolbar,this.popover);this.dom.append(this.frame);
+  window.addEventListener('resize',()=>this.placeControls(),{signal});
+  this.img.addEventListener('load',()=>this.placeControls(),{signal});
   this.dom.addEventListener('pointerdown',e=>{if(this.blocked()||this.input===e.target)return;e.preventDefault();if(!this.selected)this.select();else if(!(e.target as HTMLElement).closest('button'))this.dom.focus()},{signal});
   this.dom.addEventListener('click',e=>{if(this.blocked())return;e.stopPropagation();if(!this.selected)this.select()},{signal});
+  // Keyboard and assistive-tech focus is the pointer click equivalent: the figure itself shows no
+  // focus ring, so without selecting, focus landed invisibly and Enter/Delete did nothing.
+  this.dom.addEventListener('focus',()=>{if(!this.selected&&!this.blocked())this.select()},{signal});
   this.dom.addEventListener('keydown',e=>this.key(e),{signal});
   this.dom.addEventListener('beforeinput',e=>{if(this.selected&&e.target!==this.input){e.preventDefault();e.stopPropagation()}},{signal});
   for(const type of ['copy','cut'] as const)document.addEventListener(type,e=>{if(!this.selected||this.input===document.activeElement||this.blocked())return;e.preventDefault();e.stopPropagation();e.clipboardData?.setData('text/plain',this.widget.raw);if(type==='cut')this.change('delete')},{capture:true,signal});
@@ -82,7 +87,7 @@ class ImageDOM{
   if(previous&&previous.raw!==widget.raw)this.cancel();
   this.dom.dataset.from=String(widget.from);this.dom.classList.toggle('image-selected',this.selected);this.dom.tabIndex=widget.readOnly?-1:0;
   this.dom.setAttribute('aria-label',model.alt||messages.fImage());this.dom.setAttribute('aria-selected',String(this.selected));this.dom.setAttribute('role','group');
-  this.img.alt=model.alt;this.img.title=model.title||'';this.img.style.width=model.width!==undefined?model.width+'px':'';this.dom.style.textAlign=model.align;this.dom.style.paddingLeft='calc('+widget.quotes*16+'px + var(--editor-size) * '+widget.listEms+')'; // A quote's 2px rule and 14px padding, a list's 1.7em, as in the reader.
+  this.img.alt=model.alt;this.img.title=model.title||'';this.img.style.width=model.width!==undefined?model.width+'px':'';this.dom.style.textAlign=model.align;this.dom.style.paddingLeft='calc('+widget.quotes*14+'px + var(--editor-size) * '+widget.listEms+')'; // A quote's 2px rule and 12px padding (14px), a list's 1.7em, as in the reader.
   this.toolbar.hidden=!this.selected;this.handle.hidden=!this.selected;
   this.toolbar.setAttribute('aria-label',messages.fImageActions());this.handle.setAttribute('aria-label',messages.fResizeImage());this.handle.title=messages.fResizeImage();this.input.setAttribute('aria-label',messages.fImageAlt());
   const actions:[ImageAction,string,string][]=[['left',messages.fImageAlignLeft(),'align-left'],['center',messages.fImageAlignCenter(),'align-center'],['right',messages.fImageAlignRight(),'align-right'],['original',messages.fImageOriginalSize(),'maximize'],['alt',messages.fImageAlt(),'image-alt'],['delete',messages.fDeleteImage(),'trash']];
@@ -92,9 +97,10 @@ class ImageDOM{
    button.title=label;button.setAttribute('aria-label',label);button.disabled=this.blocked();if(['left','center','right'].includes(action))button.setAttribute('aria-pressed',String(model.align===action));
   });
   if(!this.selected){this.popover.hidden=true;this.cancel()}
+  this.placeControls();
   if(model.src!==this.source){
    this.source=model.src;const source=this.source;this.img.hidden=false;delete this.dom.dataset.error;
-   widget.resolve(source).then(url=>{if(!this.disposed&&this.source===source)this.img.src=url}).catch(()=>{if(!this.disposed&&this.source===source){this.img.hidden=true;this.dom.dataset.error=messages.fImageTemporarilyUnreadable(model.alt)}});
+   widget.resolve(source).then(url=>{if(!this.disposed&&this.source===source)this.img.src=url}).catch(()=>{if(!this.disposed&&this.source===source){this.img.hidden=true;this.dom.dataset.error=messages.fImageTemporarilyUnreadable(model.alt||source)}});
   }
  }
  // The text caret waits beside the image, so a saved or restored position never lands on the image line and reveals its source.
@@ -116,12 +122,22 @@ class ImageDOM{
   if(action==='delete'){spec.effects=selectImage.of(null);this.selected=false}
   this.view.dispatch(spec);if(action==='delete')this.view.focus();else this.dom.focus();
  }
- private editAlt(){if(this.blocked())return;this.input.value=parseImage(this.widget.raw)!.alt;this.popover.hidden=false;this.input.focus();this.input.select()}
+ private editAlt(){if(this.blocked())return;this.input.value=parseImage(this.widget.raw)!.alt;this.popover.hidden=false;this.input.focus();this.input.select();this.placeControls()}
+ // Toolbar and alt popover right-anchor to the frame; flip them left when the viewport's left edge would clip them.
+ private placeControls(){
+  requestAnimationFrame(()=>{
+   if(this.disposed)return;
+   const right=this.frame.getBoundingClientRect().right;
+   this.frame.classList.toggle('image-tb-flip',!this.toolbar.hidden&&right-this.toolbar.offsetWidth<8);
+   this.frame.classList.toggle('image-pp-flip',!this.popover.hidden&&right-this.popover.offsetWidth<8);
+   this.popover.style.maxWidth=!this.popover.hidden&&this.frame.classList.contains('image-pp-flip')?Math.min(256,Math.max(120,innerWidth-8-this.frame.getBoundingClientRect().left))+'px':'';
+  });
+ }
  private key(e:KeyboardEvent){
   if(e.isComposing||this.blocked())return;
   if(e.target===this.input){
    if(e.key==='Enter'){e.preventDefault();e.stopPropagation();this.change('alt',this.input.value)}
-   else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();this.popover.hidden=true;this.dom.focus()}
+   else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();this.popover.hidden=true;this.placeControls();this.dom.focus()}
    return;
   }
   if(!this.selected)return;

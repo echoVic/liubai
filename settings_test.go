@@ -152,7 +152,7 @@ func TestSettingsStopsAutomaticSwitchingAtDisplayedTheme(t *testing.T) {
 	w.localePreference = "en"
 	w.appearance.Auto = "system"
 	s := &settingsWindow{desktop: &Desktop{w: w}}
-	tt := ui.NewTester(s.view, 720, 650)
+	tt := ui.NewTester(s.view, 720, 960)
 	tt.SetDark(true)
 	if err := tt.Click("Off"); err != nil {
 		t.Fatal(err)
@@ -190,11 +190,11 @@ func TestSettingsThemeCardsAcrossLocales(t *testing.T) {
 			w.localePreference = locale
 			w.appearance.Auto = "off"
 			s := &settingsWindow{desktop: &Desktop{w: w}}
-			tt := ui.NewTester(s.view, 640, 500)
+			tt := ui.NewTester(s.view, 640, 920)
 			for _, theme := range themes {
 				name := s.text(themeTextKeys[theme.ID][0])
 				r, ok := tt.Find(name)
-				if !ok || r.X < 24 || r.X+r.W > 616 || r.Y < 0 || r.Y+r.H > 450 {
+				if !ok || r.X < 24 || r.X+r.W > 616 || r.Y < 0 || r.Y+r.H > 870 {
 					t.Fatalf("theme %s does not fit the small window: %+v", name, r)
 				}
 				if err := tt.Click(name); err != nil {
@@ -220,7 +220,7 @@ func TestSettingsSystemThemeDoesNotFollowSelectedCardDarkness(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		s.view(c)
 		displayed = c.Theme().Background
-	}, 720, 650)
+	}, 720, 960)
 	if displayed != nativeThemes["moon"].Background {
 		t.Fatal("settings did not adopt the document's palette")
 	}
@@ -249,7 +249,7 @@ func TestSettingsSmallWindowCanScrollToTypography(t *testing.T) {
 	w.appearance.Layout, w.appearance.Source = "split", true
 	s := &settingsWindow{desktop: &Desktop{w: w}}
 	tt := ui.NewTester(s.view, 640, 500)
-	tt.Scroll(600, 400, 0, 400)
+	tt.Scroll(600, 400, 0, 600)
 	if err := tt.Click("18"); err != nil {
 		t.Fatal(err)
 	}
@@ -274,7 +274,7 @@ func TestSettingsRespectDesktopAccessibilityPreferences(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		s.view(c)
 		displayed = *c.Theme()
-	}, 720, 760)
+	}, 720, 860)
 	before := displayed
 	card, _ := tt.Find("Dawn")
 	tt.SetPreferences(ui.Preferences{TextScale: 1.5, HighContrast: true})

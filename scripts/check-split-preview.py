@@ -434,16 +434,22 @@ def run(page):
 
     # Theme/font controls must not reset the new global fields.
     page.locator('[data-action="settings"]').click()
-    names = {"dawn": "晨光", "paper": "纸白", "warm": "暖纸", "lamp": "灯下", "ink": "夜墨", "moon": "月夜", "mist": "雾绿", "lotus": "藕荷", "autumn": "秋香", "moonwhite": "月白", "indigo": "黛蓝"}
+    radios = page.locator('#themes [role="radio"]')
+    expect(radios).to_have_count(len(THEMES))
+    # Labels are localized and carry no id; map them from data-theme order instead of hardcoding names.
+    labels = dict(zip(
+        radios.evaluate_all("els => els.map(el => el.dataset.theme)"),
+        radios.evaluate_all("els => els.map(el => el.getAttribute('aria-label'))"),
+    ))
     for theme in [t["id"] for t in THEMES]:
-        appearance_change(page, lambda: page.get_by_role("radio", name=names[theme], exact=True).click())
+        appearance_change(page, lambda label=labels[theme]: page.get_by_role("radio", name=label, exact=True).click())
         colors = page.evaluate("""() => ({
           editor:getComputedStyle(document.querySelector('.cm-editor')).color,
           preview:getComputedStyle(document.querySelector('#preview article')).color
         })""")
         assert colors["editor"] == colors["preview"], colors
-    # The loop used to end on paper: end there again, so the layout checks below run on the default theme and not on 黛蓝's sans font.
-    appearance_change(page, lambda: page.get_by_role("radio", name=names["paper"], exact=True).click())
+    # The loop ends on the last studio theme: switch back to paper so the layout checks below run on the default theme and its serif font.
+    appearance_change(page, lambda: page.get_by_role("radio", name=labels["paper"], exact=True).click())
     appearance_change(page, lambda: page.locator("#font-size").select_option("20"))
     assert page.locator("#preview article").evaluate("(el) => getComputedStyle(el).fontSize") == "20px"
     page.locator('[data-close="appearance"]').click()

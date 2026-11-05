@@ -8,8 +8,9 @@ export function captureSettingsDialog(show:()=>void){
  const login=document.querySelector<HTMLInputElement>('#capture-login')!;
  const error=document.querySelector<HTMLElement>('#capture-settings-error')!;
  const web=document.querySelector<HTMLElement>('#capture-web-note')!;
+ const desktopNote=document.querySelector<HTMLElement>('#capture-desktop-note')!;
  let settings:CaptureSettings,recording=false,queue:Promise<void>=Promise.resolve();
- function render(){enabled.checked=settings.enabled;enabled.setAttribute('aria-checked',String(settings.enabled));login.checked=settings.openAtLogin;login.setAttribute('aria-checked',String(settings.openAtLogin));shortcut.value=displayCaptureShortcut(settings.shortcut);for(const el of [enabled,shortcut,login])el.disabled=!desktop;web.hidden=desktop}
+ function render(){enabled.checked=settings.enabled;enabled.setAttribute('aria-checked',String(settings.enabled));login.checked=settings.openAtLogin;login.setAttribute('aria-checked',String(settings.openAtLogin));shortcut.value=displayCaptureShortcut(settings.shortcut);for(const el of [enabled,shortcut,login])el.disabled=!desktop;web.hidden=desktop;desktopNote.hidden=!desktop}
  function update(change:Partial<CaptureSettings>){
   if(!desktop)return;settings={...settings,...change};const next={...settings};render();
   queue=queue.catch(()=>{}).then(async()=>{try{await call('SetCaptureSettings',next);error.textContent=''}catch(e){error.textContent=e instanceof Error?e.message:String(e)}});

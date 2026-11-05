@@ -76,6 +76,10 @@ export function createBacklinks(options:{
   const hadFocus=!!active&&options.list.contains(active)||!!pendingFocus&&(active===document.body||active===pendingFocus.element);
   const key=active?.dataset.backlinkKey||pendingFocus?.key;pendingFocus=undefined;
   options.list.replaceChildren();
+  // A full re-render is a new result set: start at the top instead of keeping
+  // the scroll offset left by a previous document or keyboard session. Focus
+  // restoration below still scrolls the previously focused row back into view.
+  options.list.scrollTop=0;
   if(state.kind==='error'){
    options.status.textContent=localizedError(state.error);
    const retry=element('button','search-retry',messages.fBacklinkRetry());retry.type='button';retry.dataset.backlinkKey='retry';retry.onclick=()=>queue.retry();options.list.append(retry);
@@ -88,7 +92,7 @@ export function createBacklinks(options:{
      const node=element('button',cls);node.type='button';node.dataset.backlinkKey=item.id+':'+key;
      node.onclick=()=>{if(current.kind==='ready')options.activate(item,hit)};return node;
     };
-    const title=button('search-title','title');title.textContent=item.title;
+    const title=button('search-title','title');title.textContent=item.title||messages.fUntitledDocument();
     const path=element('small','search-path',item.path||messages.fSearchDraft());path.title=item.path;
     group.append(title,path);
     for(const hit of item.hits){
@@ -106,6 +110,14 @@ export function createBacklinks(options:{
  const queue=createBacklinkQueue({request:options.request,show});
  const toggle=()=>queue.visible(sidebarVisible&&options.details.open);
  options.details.addEventListener('toggle',toggle);
+ // ArrowUp at the top row and Escape both park focus on the summary, so
+ // ArrowDown there must re-enter the result list instead of stranding it.
+ const summaryKeydown=(event:KeyboardEvent)=>{
+  if(event.isComposing||event.key!=='ArrowDown')return;
+  const first=buttons()[0];
+  if(first){event.preventDefault();first.focus()}
+ };
+ summary.addEventListener('keydown',summaryKeydown);
  const focusChanged=(event:FocusEvent)=>{if(pendingFocus&&event.target!==document.body&&event.target!==pendingFocus.element)pendingFocus=undefined};
  const pointerChanged=(event:PointerEvent)=>{if(pendingFocus&&!options.list.contains(event.target as Node))pendingFocus=undefined};
  document.addEventListener('focusin',focusChanged);document.addEventListener('pointerdown',pointerChanged);
@@ -121,6 +133,6 @@ export function createBacklinks(options:{
   context:queue.context,refresh:queue.refresh,
   visible(next:boolean){sidebarVisible=next;toggle()},
   language(){summary.textContent=messages.fBacklinks();queue.language()},
-  dispose(){queue.dispose();options.details.removeEventListener('toggle',toggle);document.removeEventListener('focusin',focusChanged);document.removeEventListener('pointerdown',pointerChanged)},
+  dispose(){queue.dispose();options.details.removeEventListener('toggle',toggle);summary.removeEventListener('keydown',summaryKeydown);document.removeEventListener('focusin',focusChanged);document.removeEventListener('pointerdown',pointerChanged)},
  };
 }

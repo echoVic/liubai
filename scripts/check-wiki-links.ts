@@ -11,6 +11,8 @@ import {WikiSyntax,wikiPlugin,wikiAt,wikiURL,wikiTarget,wikiNodeAllowed} from '.
 import {splitFrontMatter} from '../src/markdown';
 import {frontMatterRange,safeLink} from '../src/editing';
 import {inlineDecorations,composing} from '../src/editor';
+import {extraRanges} from '../src/extras';
+import {FootnoteWidget} from '../src/extras-ui';
 import * as tableUI from '../src/table-ui';
 
 assert.deepEqual(wikiAt('中😀 [[ 目标😀 ]] 后',4),{target:'目标😀',end:14});
@@ -133,5 +135,48 @@ for(const content of cases.filter(test=>test.name.startsWith('footnote-continuat
   if(target)decorated.push({target,raw:content.content.slice(from,to)});
  });
  assert.deepEqual(decorated,content.references,'rich editor original UTF-16 footnote ranges '+content.name);
+}
+{
+ // Pandoc-style inline footnotes ^[...] must number, hover and jump in the editor like [^n] references.
+ const source='行内 ^[内联甲] 与引用[^a]，再来 ^[内联 含 [括号] 与 `code]`] 和重复[^a]。\n\n[^a]: 引用定义';
+ const editor=EditorState.create({doc:source,extensions:[composing,markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+ ensureSyntaxTree(editor,editor.doc.length,5000);
+ const extras=extraRanges(editor);
+ assert.deepEqual([...extras.labels],['a'],'synthetic inline labels never enter the numbered label set');
+ const inline=extras.references.filter(r=>r.inline);
+ assert.equal(inline.length,2,'both inline notes found');
+ assert.equal(editor.sliceDoc(inline[0].from,inline[0].to),'^[内联甲]','first inline range covers the marker');
+ assert.equal(extras.definitions.get(inline[0].label)?.text,'内联甲','inline definition keeps its body text');
+ assert.equal(editor.sliceDoc(inline[1].from,inline[1].to),'^[内联 含 [括号] 与 `code]`]','balanced brackets and inert code spans close correctly');
+ const widgets:number[]=[],lines:string[]=[];
+ inlineDecorations(editor,[{from:0,to:source.length}]).between(0,source.length,(from,to,dec)=>{
+  const w=dec.spec.widget;if(w instanceof FootnoteWidget)widgets.push(w.number);
+  if(dec.spec.class==='md-footnote-definition')lines.push(editor.doc.lineAt(from).text);
+ });
+ assert.deepEqual(widgets,[1,2,3,2],'inline and referenced notes interleave and reuse numbers by document order');
+ assert.deepEqual(lines,['[^a]: 引用定义'],'inline notes never gray their paragraph as a footnote definition');
+ // markdown-it must number the same markers in the same order.
+ const refIds:number[]=[];
+ const probe=new MarkdownIt({html:true}).use(footnote);
+ probe.core.ruler.before('footnote_tail','capture_ref_order',state=>{
+  const walk=(tokens:ReturnType<MarkdownIt['parse']>)=>{for(const token of tokens){if(token.type==='footnote_ref')refIds.push(token.meta.id+1);if(token.children)walk(token.children)}};
+  walk(state.tokens);
+ });
+ probe.parse(source,{});
+ assert.deepEqual(refIds,widgets,'editor numbering matches markdown-it');
+ for(const excluded of ['`^[code]`',String.raw`\^[x]`,'^[unclosed','^[first\n\nsecond]','![alt ^[x]](img.png)']){
+  const state=EditorState.create({doc:excluded,extensions:[markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+  ensureSyntaxTree(state,state.doc.length,5000);
+  assert.equal(extraRanges(state).references.filter(r=>r.inline).length,0,'excluded inline note: '+excluded);
+ }
+ // Footnote_inline runs before the link/wiki rules and link labels tokenize recursively, so its own bracket opener
+ // and notes nested inside link labels are both accepted; only destinations, code and escapes are inert.
+ for(const [doc,body] of [['见^[[x]]终','[x]'],['前 ^[no-space-label] 后','no-space-label'],['[label ^[x]](u)','x']] as const){
+  const state=EditorState.create({doc,extensions:[markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+  ensureSyntaxTree(state,state.doc.length,5000);
+  const refs=extraRanges(state).references.filter(r=>r.inline);
+  assert.equal(refs.length,1,'inline note recognized: '+doc);
+  assert.equal(extraRanges(state).definitions.get(refs[0].label)?.text,body,'body kept for: '+doc);
+ }
 }
 console.log(`PASS: ${cases.length} shared Wiki cases, strict internal URL, portable render and rich editor`);

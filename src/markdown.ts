@@ -69,6 +69,14 @@ if(authorPurifier.addHook)authorPurifier.addHook('uponSanitizeAttribute',(node,d
  if(data.attrName==='class')data.attrValue=data.attrValue.split(/\s+/).filter(value=>/^(md-|language-|task-list|contains-task-list|footnote|markdown-alert)/.test(value)).join(' ');
  else if(data.attrName==='style'&&/^T[HD]$/.test(node.nodeName)&&/^text-align:\s*(left|center|right);?$/i.test(data.attrValue))data.forceKeepAttr=true;
 });
+// Blink compiles inline event-handler attributes while parsing HTML — even into a detached <template>, DOMPurify's parse substrate — and dispatches a script-src-attr CSP violation before DOMPurify gets to remove the attribute. Strip on* handlers from raw author HTML so the dirty attribute never reaches an HTML parser; the sanitizer stays the security boundary and drops these attributes either way. Only attribute positions inside tags are touched, never prose such as "once = 1" in a table cell.
+const tagPattern=/<!--[\s\S]*?-->|<\/?[a-zA-Z](?:"[^"]*"|'[^']*'|[^'">])*>/g;
+const htmlAttributePattern=/([\s/])([^\s"'<>/=]+)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/g;
+function stripEventHandlers(html:string):string {
+ // Consume whole attributes, including their values, before examining names.
+ // Otherwise a path such as /online or words inside alt= could be erased.
+ return html.replace(tagPattern,tag=>tag.startsWith('<!--')||tag.startsWith('</')?tag:tag.replace(htmlAttributePattern,(attribute,separator,name)=>/^on[a-z]+$/i.test(name)?separator:attribute));
+}
 
 function lineAttributes(map:[number,number]|null):string {
  if(!map)return '';
@@ -96,6 +104,10 @@ const lineMapPlugin:PluginSimple=md=>{
  };
  md.renderer.rules.code_block=(tokens,index)=>
   `<pre class="md-pre"${lineAttributes(tokens[index].map)}><code>${md.utils.escapeHtml(tokens[index].content)}</code></pre>\n`;
+ // Author HTML needs source ranges too; a DOM index cannot identify a block
+ // after another table, code block or disclosure is inserted before it.
+ md.renderer.rules.html_block=(tokens,index)=>tokens[index].content.replace(tagPattern,tag=>
+  /^<(pre|table|details)(?=[\s>])/i.test(tag)?tag.replace(/^<[a-z]+/i,open=>open+lineAttributes(tokens[index].map)):tag);
 };
 
 const taskPlugin:PluginSimple=md=>{
@@ -145,6 +157,7 @@ const semanticClassPlugin:PluginSimple=md=>{
    else if(token.type==='paragraph_open')token.attrJoin('class','md-p');
    else if(token.type==='blockquote_open')token.attrJoin('class','md-quote');
    else if(token.type==='table_open')token.attrJoin('class','md-table');
+   else if(token.type==='th_open')token.attrSet('scope','col');
    else if(token.type==='bullet_list_open')token.attrJoin('class','md-ul');
    else if(token.type==='ordered_list_open')token.attrJoin('class','md-ol');
    for(const child of token.children||[]){
@@ -208,7 +221,9 @@ function imageNotice(image:HTMLImageElement,source:string,kind:'missing'|'error'
   link.textContent=(image.alt||messages.fExternalImage())+messages.fViewOnline();
   label.append(link);
  }else{
-  label.textContent=(kind==='missing'?messages.fMissingImage():messages.fUnreadableImage())+(image.alt||source)+' · '+source;
+  // With no alt (or an alt identical to the path), name the image once by its source instead of repeating it ("… · x · x").
+  const identify=image.alt&&image.alt!==source?image.alt+' · '+source:source;
+  label.textContent=(kind==='missing'?messages.fMissingImage():messages.fUnreadableImage())+identify;
  }
  return label;
 }
@@ -227,6 +242,10 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
  const meta=splitFrontMatter(content);
  const env:{lineOffset:number;wikiLinks?:'interactive'|'text';math?:{source:string;display:boolean}[];mathID?:string;mermaid?:{source:string;fallback:string}[];mermaidID?:string}={lineOffset:meta.lines,wikiLinks:options.wikiLinks};
  const tokens=parser.parse(meta.body,env);
+ for(const token of tokens){
+  if(token.type==='html_block'&&!token.meta?.liubai)token.content=stripEventHandlers(token.content);
+  for(const child of token.children||[])if(child.type==='html_inline'&&!child.meta?.liubai)child.content=stripEventHandlers(child.content);
+ }
  const authorHTML=tokens.some(t=>(t.type==='html_block'&&!t.meta?.liubai)||(t.children||[]).some(c=>c.type==='html_inline'&&!c.meta?.liubai));
  const rendered=parser.renderer.render(tokens,parser.options,env);
  const properties=meta.raw!==null&&options.frontMatter!=='hide'?`<details class="md-front-matter" data-line="0" data-line-end="${meta.lines-1}"><summary>${parser.utils.escapeHtml(messages.fDocumentProperties())}</summary><pre>${parser.utils.escapeHtml(meta.raw)}</pre></details>`:'';

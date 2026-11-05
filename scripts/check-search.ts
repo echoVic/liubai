@@ -75,7 +75,9 @@ console.log('PASS: 180ms debounce, one flight/latest pending, stale success/erro
   scrollTo:(options:{top:number})=>{scroll.scrollTop=options.top},
   addEventListener:()=>{},removeEventListener:()=>{},
  };
- const host={closest:()=>({hidden:true}),replaceChildren:(block:Block)=>{blocks=[block]}};
+ // This fixture has only a prose block: no image or table decorations. Supply
+ // the browser APIs the controller uses without replacing its jump logic.
+ const host={closest:()=>({hidden:true}),replaceChildren:(block:Block)=>{blocks=[block]},querySelectorAll:()=>[]};
  mock.module('../src/markdown',()=>({
   headingSlug:()=>'',renderMarkdown:()=>{
    const job={y:100,complete:()=>{}};
@@ -86,7 +88,9 @@ console.log('PASS: 180ms debounce, one flight/latest pending, stale success/erro
  }));
  mock.module('../src/highlight',()=>({highlightCodeBlocks:async()=>{}}));
  const details=Object.getOwnPropertyDescriptor(globalThis,'HTMLDetailsElement');
+ const resizeObserver=Object.getOwnPropertyDescriptor(globalThis,'ResizeObserver');
  Object.defineProperty(globalThis,'HTMLDetailsElement',{value:class {},configurable:true});
+ Object.defineProperty(globalThis,'ResizeObserver',{value:class {observe(){}disconnect(){}},configurable:true});
  try{
   const {createPreviewController}=await import('../src/preview');
   const preview=createPreviewController({
@@ -103,6 +107,8 @@ console.log('PASS: 180ms debounce, one flight/latest pending, stale success/erro
  }finally{
   if(details)Object.defineProperty(globalThis,'HTMLDetailsElement',details);
   else Reflect.deleteProperty(globalThis,'HTMLDetailsElement');
+  if(resizeObserver)Object.defineProperty(globalThis,'ResizeObserver',resizeObserver);
+  else Reflect.deleteProperty(globalThis,'ResizeObserver');
  }
  console.log('PASS: obsolete preview render cannot cancel the current search jump before its layout is ready');
 }

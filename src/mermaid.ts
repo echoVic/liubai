@@ -43,6 +43,12 @@ export function createMermaidRenderer(load:()=>Promise<MermaidAPI>):MermaidRende
     const mermaid=await (api??=load().catch(error=>{api=undefined;throw error}));
     if(initialized!==theme){
      mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:isDark(theme)?'dark':'default',fontFamily:mermaidFont,htmlLabels:false,arrowMarkerAbsolute:false,flowchart:{htmlLabels:false},suppressErrorRendering:true,
+      // Mermaid's dark palette derives edge-label backgrounds (a 30% mix of secondaryColor,
+      // ~#585858) that only reach 4.43:1 against its #ccc label text. A slightly deeper
+      // neutral keeps the upstream mid-tone look and clears 4.5:1 on every dark app theme.
+      // The light value is restated explicitly: initialize() deep-merges config, so an
+      // omitted/undefined key would keep the dark override alive after a dark->light switch.
+      themeVariables:{edgeLabelBackground:isDark(theme)?'#4a4a4a':'#e8e8e8'},
       // Diagram directives/front matter cannot override the safety, offline font or theme policy.
       secure:['secure','securityLevel','startOnLoad','maxTextSize','maxEdges','suppressErrorRendering','theme','themeVariables','themeCSS','fontFamily','htmlLabels','arrowMarkerAbsolute','flowchart','dompurifyConfig']});
      initialized=theme;

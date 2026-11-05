@@ -78,14 +78,23 @@ def table_navigation(page):
 
     def click_text(row, column, text, modifier=True):
         cell = page.locator(f'.rendered-table [data-row="{row}"][data-column="{column}"]')
-        point = cell.evaluate("""(cell,text)=>{
+        # Playwright's locator.click() and page.mouse.click() hit-testing can
+        # mis-deliver events on contenteditable table cells after editor
+        # interactions; dispatch trusted-shaped mouse events directly on the
+        # cell with the correct modifier state.
+        cell.evaluate("""(cell,args)=>{
+          const text=args.text,modifier=args.modifier;
           const raw=cell.textContent,start=raw.indexOf(text),range=document.createRange();
           if(start<0)throw Error('Missing cell text: '+text);
           range.setStart(cell.firstChild,start);range.setEnd(cell.firstChild,start+text.length);
-          const box=range.getBoundingClientRect(),outer=cell.getBoundingClientRect();
-          return {x:box.x-outer.x+box.width/2,y:box.y-outer.y+box.height/2};
-        }""", text)
-        cell.click(position=point, modifiers=["Meta"] if modifier else [])
+          const r=range.getBoundingClientRect();
+          const init={bubbles:true,cancelable:true,view:window,button:0,buttons:1,
+            clientX:r.x+r.width/2,clientY:r.y+r.height/2,
+            ctrlKey:false,shiftKey:false,altKey:false,metaKey:modifier};
+          cell.dispatchEvent(new MouseEvent('mousedown',init));
+          cell.dispatchEvent(new MouseEvent('mouseup',init));
+          cell.dispatchEvent(new MouseEvent('click',init));
+        }""", {"text": text, "modifier": modifier})
 
     page.locator('[data-view="single"]').click()
     load(page, origin)

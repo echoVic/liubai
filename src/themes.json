@@ -9,5 +9,19 @@
  {"id": "lotus", "series": "seasons", "dark": false, "season": "summer"},
  {"id": "autumn", "series": "seasons", "dark": false, "season": "autumn"},
  {"id": "moonwhite", "series": "seasons", "dark": false, "season": "winter"},
- {"id": "indigo", "series": "seasons", "dark": true, "season": "night"}
+ {"id": "indigo", "series": "seasons", "dark": true, "season": "night"},
+ {"id": "github", "series": "studio", "dark": false},
+ {"id": "solar", "series": "studio", "dark": false},
+ {"id": "solare", "series": "studio", "dark": true},
+ {"id": "monokai", "series": "studio", "dark": true},
+ {"id": "nord", "series": "studio", "dark": true},
+ {"id": "onedark", "series": "studio", "dark": true},
+ {"id": "dracula", "series": "studio", "dark": true},
+ {"id": "catppuccin", "series": "studio", "dark": true},
+ {"id": "gruvbox", "series": "studio", "dark": true},
+ {"id": "rosepine", "series": "studio", "dark": true},
+ {"id": "onelight", "series": "studio", "dark": false},
+ {"id": "ghdark", "series": "studio", "dark": true},
+ {"id": "catlight", "series": "studio", "dark": false},
+ {"id": "gruvlite", "series": "studio", "dark": false}
 ]

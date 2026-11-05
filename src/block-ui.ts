@@ -49,8 +49,9 @@ class BlockControls {
   this.plus.addEventListener('pointerdown',e=>e.preventDefault(),{signal});
   this.plus.addEventListener('click',()=>{if(this.enabled()&&this.hovered){this.range={from:this.hovered.from,to:this.hovered.to};options.action('insert')}},{signal});
   this.grip.addEventListener('pointerdown',e=>this.down(e),{signal});
+  this.pane.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'&&!this.pointer)this.hover(e)},{signal});
   this.pane.addEventListener('pointermove',e=>{if(!this.pointer)this.hover(e)},{signal});
-  this.pane.addEventListener('pointerleave',()=>{if(!this.pointer)this.hide()},{signal});
+  this.pane.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&!this.pointer)this.hide()},{signal});
   window.addEventListener('pointermove',e=>this.move(e),{signal});
   window.addEventListener('pointerup',e=>this.up(e),{signal});
   window.addEventListener('pointercancel',()=>{this.cancel();this.redraw()},{signal});

@@ -110,7 +110,7 @@ def check_format_bar(page):
     icons = bar.locator("button.tool").evaluate_all("els => els.map(el => ({action:el.dataset.action, svg:el.querySelector('svg').outerHTML}))")
     assert len(icons) == 24
     assert len({item["svg"] for item in icons}) == len(icons), icons
-    assert bar.locator("button.tool").evaluate_all("els => els.every(el => el.getAttribute('aria-label') && getComputedStyle(el).width === '30px' && getComputedStyle(el).height === '32px')")
+    assert bar.locator("button.tool").evaluate_all("els => els.every(el => el.getAttribute('aria-label') && getComputedStyle(el).width === '34px' && getComputedStyle(el).height === '34px')")
     accessible_buttons(page)
     for button in bar.locator("button:visible").all():
         assert button.get_attribute("data-tip") and button.get_attribute("title") is None, button.evaluate("el => el.outerHTML")
@@ -916,7 +916,8 @@ def run(page):
     more.click()
     expect(menu).to_be_visible()
     expect(more).to_have_attribute("aria-expanded", "true")
-    expect(first).to_be_focused()
+    # Pointer opens keep focus on the menu container itself, so no item paints a focus ring.
+    expect(menu).to_be_focused()
     # Dropdowns on the right half open right-aligned under their button.
     button_box, menu_box = more.bounding_box(), menu.bounding_box()
     assert abs((menu_box["x"] + menu_box["width"]) - (button_box["x"] + button_box["width"])) <= 1 and menu_box["y"] >= button_box["y"] + button_box["height"], (button_box, menu_box)
@@ -924,7 +925,7 @@ def run(page):
     expect(source).to_have_attribute("aria-disabled", "true")
     expect(source).to_contain_text("仅分栏可用")
     page.keyboard.press("ArrowDown")
-    expect(menu.locator('[data-menu-action="open"]')).to_be_focused()
+    expect(first).to_be_focused()
     page.keyboard.press("End")
     expect(menu.locator('[data-menu-action="commands"]')).to_be_focused()
     page.keyboard.press("ArrowUp")

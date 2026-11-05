@@ -26,17 +26,18 @@ import {attachTooltips} from './tooltip';
 import {attachMenu} from './menu';
 import {insertFootnote} from './extras';
 import {disposeMermaid} from './mermaid';
-import {renderDelivery,waitImages,copyRich,type Delivery} from './delivery';
+import {renderDelivery,waitImages,prepareRichClipboard,copyRich,type RichClipboard,type Delivery} from './delivery';
 import {createPreviewController,type PreviewController} from './preview';
 import {normalizeImageDestination} from './markdown';
 import {countWords} from './stats';
 import {captureSettingsDialog} from './capture-settings';
 import {appearanceSettings,themeText} from './appearance-settings';
+import {preserveEditorScroll} from './typography';
 import {pasteText,dataUrlBlob,type PasteImage} from './paste';
 import {themes,isDark,resolveTheme,paintTheme,watchTheme,type ThemeID} from './theme';
 const $=<T extends HTMLElement=HTMLElement>(s:string)=>document.querySelector<T>(s)!;
 const $$=(s:string)=>Array.from(document.querySelectorAll<HTMLElement>(s));
-const node=(tag:string,cls='',text='')=>{const n=document.createElement(tag);n.className=cls;n.textContent=text;return n};
+const node=(tag:string,cls='',text='')=>{const n=document.createElement(tag);n.className=cls;n.textContent=text;if(tag==='button')n.setAttribute('type','button');return n};
 let state:WorkspaceState,doc:Doc,view:EditorView,appearance:Appearance,source=false,loading=false,busy=false,dirty=false;
 let timer:ReturnType<typeof setTimeout>,toastTimer:ReturnType<typeof setTimeout>,saveFlight:Promise<boolean>|null=null;
 let wordCountTimer:ReturnType<typeof setTimeout>;
@@ -46,19 +47,23 @@ let localePending=false;
 let retainedNotices:LocaleNotice[]=[];
 let failedSaveError:unknown;
 let readyData:Delivery|null=null;
+let readyClipboard:RichClipboard|null=null;
 let removeID='',removeUntil=0,removeTimer:ReturnType<typeof setTimeout>;
 let appearanceQueue:Promise<void>=Promise.resolve();
 let pendingAppearance:Partial<Appearance>|null=null;
+let cancelTypographyScroll=()=>{};
 let preview:PreviewController;
 let documentFind:ReturnType<typeof createDocumentFind>;
 let sidebarSearch:ReturnType<typeof createSidebarSearch>;
 let backlinks:ReturnType<typeof createBacklinks>;
 let navigationEpoch=0;
+let cancelLayoutScroll=()=>{};
 let layoutBeforeRead:Appearance['layout'];
 const editLock=new Compartment();
 const openedQueue:string[]=[];
 let compositionActive=false,focusMode=false;let pendingClose=false;let pendingMissing:()=>Promise<void>=async()=>{};let prepared:HTMLElement|null=null,readyAction='';let editRange:{from:number;to:number;raw?:string}|null=null;
 const sessions=new Map<string,EditorState>();
+const sessionRich=new Map<string,boolean>();
 const imageCache=new Map<string,Promise<string>>();
 const imageKey=(id:string,dest:string)=>id+':'+normalizeImageDestination(dest);
 const mq=matchMedia('(prefers-color-scheme:dark)'),reducedMotion=matchMedia('(prefers-reduced-motion:reduce)');
@@ -70,14 +75,14 @@ if(desktop){document.body.classList.add('desktop');$('#command-search').dataset.
 const errorText=localizedError;
 function toast(s:string,label='',activate?:()=>void){$('#toast').textContent=s;if(activate){const b=node('button','',label);b.onclick=activate;$('#toast').append(b)}$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,4200)}
 function showNotices(next:WorkspaceState){retainedNotices=next.noticeMessages||next.notices?.map(text=>({text}))||[];banner(retainedNotices.map(noticeText).join('; '),'notice',next.quarantineDir)}
-function banner(s='',kind:'error'|'conflict'|'notice'='error',reveal=''){bannerKind=kind;$('#banner').hidden=!s;$('#banner-text').textContent=s;$('#retry-save').hidden=kind!=='error';$('#banner-save-as').hidden=kind==='notice';$('#reload-disk').hidden=kind!=='conflict';$('#overwrite-disk').hidden=kind!=='conflict';quarantineReveal=kind==='notice'?reveal:'';$('#reveal-quarantine').hidden=!desktop||!quarantineReveal}
+function banner(s='',kind:'error'|'conflict'|'notice'='error',reveal=''){bannerKind=kind;const bannerEl=$('#banner');bannerEl.dataset.kind=kind;bannerEl.hidden=!s;$('#banner-text').textContent=s;$('#retry-save').hidden=kind!=='error';$('#banner-save-as').hidden=kind==='notice';$('#reload-disk').hidden=kind!=='conflict';$('#overwrite-disk').hidden=kind!=='conflict';quarantineReveal=kind==='notice'?reveal:'';$('#reveal-quarantine').hidden=!desktop||!quarantineReveal}
 $('#reveal-quarantine').onclick=()=>{if(quarantineReveal)void call('Reveal',quarantineReveal).catch(e=>toast(errorText(e)))};
 const split=()=>appearance?.layout==='split';
 const reading=()=>appearance?.layout==='read';
 function focusContent(){if(reading())$('.preview-scroll').focus();else view.focus()}
 const sourceActive=()=>split()&&source;
 function position(){const r=view.state.selection.main;return {anchor:r.anchor,head:r.head,scroll:$('.editor-scroll').scrollTop,source:false}}
-function header(){if(!doc)return;const isSplit=split(),isSource=sourceActive();$('#doc-title').textContent=doc.title;$('#save-status').textContent=dirty?(compositionActive?messages.fTyping():messages.fUnsaved()):statusText(doc);const current=reading()?'read':isSplit?'split':'single';$$('[data-view]').forEach(b=>{const checked=b.dataset.view===current;b.setAttribute('aria-checked',String(checked));b.tabIndex=checked?0:-1});const sourceItem=$('[data-menu-action=source]');sourceItem.setAttribute('aria-checked',String(isSource));sourceItem.setAttribute('aria-disabled',String(!isSplit));sourceItem.querySelector('small')!.hidden=isSplit;$('[data-menu-action=focus]').setAttribute('aria-disabled',String(reading()));const sourceButton=$('#format-bar [data-action=source]');sourceButton.hidden=!isSplit;$('.format-source-sep').hidden=!isSplit;sourceButton.setAttribute('aria-pressed',String(isSource));updateHeading();$('.paper').classList.toggle('source-mode',isSource)}
+function header(){if(!doc)return;const isSplit=split(),isSource=sourceActive();$('#doc-title').textContent=doc.title||messages.fUntitledDocument();$('#save-status').textContent=dirty?(compositionActive?messages.fTyping():messages.fUnsaved()):statusText(doc);const current=reading()?'read':isSplit?'split':'single';$$('[data-view]').forEach(b=>{const checked=b.dataset.view===current;b.setAttribute('aria-checked',String(checked));b.tabIndex=checked?0:-1});const sourceItem=$('[data-menu-action=source]');sourceItem.setAttribute('aria-checked',String(isSource));sourceItem.setAttribute('aria-disabled',String(!isSplit));sourceItem.querySelector('small')!.hidden=isSplit;$('[data-menu-action=focus]').setAttribute('aria-disabled',String(reading()));const sourceButton=$('#format-bar [data-action=source]');sourceButton.hidden=!isSplit;$('.format-source-sep').hidden=!isSplit;sourceButton.setAttribute('aria-pressed',String(isSource));updateHeading();$('.paper').classList.toggle('source-mode',isSource)}
 function updateHeading(){
  const image=!!focusedImageRange(view),cell=!!focusedTableRange(view);
  $<HTMLButtonElement>('#heading-button').disabled=cell||image;
@@ -85,7 +90,9 @@ function updateHeading(){
   const b=$<HTMLButtonElement>('#format-bar [data-action='+id+']');if(b)b.disabled=cell||image||(['indent','outdent'].includes(id)&&!inList(view.state));
  }
  for(const id of [...Object.keys(inlineMarkers),'clearFormatting','link']){const b=$<HTMLButtonElement>('#format-bar [data-action='+id+']');if(b)b.disabled=image}
- const level=headingLevel(view.state);$('#heading-label').textContent=level?messages.fHeading(level):messages.fBody();
+ const level=headingLevel(view.state),headingValue=level?messages.fHeading(level):messages.fBody();$('#heading-label').textContent=headingValue;
+ // The trigger shows the current paragraph style, but its accessible name must also state what it controls.
+ $<HTMLButtonElement>('#heading-button').setAttribute('aria-label',messages.fHeadingLevel()+(pageLocale().startsWith('zh')?'：':': ')+headingValue);
  $$('#heading-menu [data-menu-action]').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.menuAction===(level?'h'+level:'paragraph'))));
 }
 // A worker counts; the page counts itself only where no worker runs. The last count is kept with its text, so a language change relabels it at once.
@@ -113,7 +120,9 @@ function syncBacklinks(){if(doc)backlinks?.context(doc.id,doc.revision,dirty||co
 let pendingSent=false;function syncPending(){syncBacklinks();const pending=dirty||compositionActive||busy||!!saveFlight;if(pending===pendingSent||!desktop)return;pendingSent=pending;void call('SetPending',pending).catch(()=>{pendingSent=!pending})}
 function changed(content=true){if(loading||!doc)return;updateHeading();if(content){dirty=true;generation++;sidebarSearch?.contentPending();header();scheduleWordCount()}documentFind?.changed(content);preview.changed(content,view.state.doc.lineAt(view.state.selection.main.head).number-1);if(content)scheduleOutline();else scheduleOutlineLayout();clearTimeout(timer);if(!compositionActive)timer=setTimeout(()=>void save(),content?450:800);syncPending()}
 function composition(active:boolean){if(active)navigationEpoch++;compositionActive=active;if(!active&&localePending){localePending=false;refreshLanguage()}preview.composition(active);if(active)clearTimeout(outlineTimer);else scheduleOutline();clearTimeout(timer);if(!active){timer=setTimeout(()=>void save(),800);if(pendingClose){pendingClose=false;void closeApp()}else void processOpened()}syncPending()}
-function reconfigure(){view.dispatch({effects:mode.reconfigure(sourceActive()?[]:richExtensions(resolveImage)),annotations:Transaction.addToHistory.of(false)})}
+// Reading/single/split without source all share the same rich extension set; rebuilding it on every layout switch remounts every block widget (shaking the height map and dropping inline decorations). Only reconfigure when source mode actually toggles.
+let richMode=true;
+function reconfigure(){const want=!sourceActive();if(want===richMode)return;richMode=want;view.dispatch({effects:mode.reconfigure(want?richExtensions(resolveImage):[]),annotations:Transaction.addToHistory.of(false)})}
 // force: an explicit save or retry resends the content so a failed file write is retried.
 async function save(force=false):Promise<boolean>{
  clearTimeout(timer);if(compositionActive)return false;if(saveFlight){const pending=await saveFlight;if(!pending&&dirty)return false;if(dirty||force)return save(force);return true}if(!doc||!view)return true;
@@ -161,13 +170,16 @@ function validCurrentSearchTarget(item:SearchItem,hit:SearchHit|undefined){
 }
 function load(next:WorkspaceState,hit?:SearchHit){
  const epoch=++navigationEpoch;
- loading=true;if(view){sessions.set(doc.id,view.state);view.destroy()}
+ loading=true;if(view){sessions.set(doc.id,view.state);sessionRich.set(doc.id,richMode);view.destroy()}
  if(!appearance)appearance={...next.appearance,...pendingAppearance};next.appearance=appearance;pendingAppearance=null;
  state=next;doc=next.current;source=!!appearance.source;dirty=false;generation=0;savedPosition=JSON.stringify(doc.position);
  view=createEditor($('#editor'),doc,resolveImage,changed,insertImages,composition,openLink,files=>{if(!desktop&&files[0])void importFile(files[0])},importPastedImage,error=>toast(errorText(error)),{action:id=>void action(id==='image'?id:'block:'+id),dispatch:spec=>{if(!compositionActive&&!view.state.readOnly)view.dispatch(spec);view.focus()}});
- view.dispatch({effects:StateEffect.appendConfig.of([editLock.of(EditorState.readOnly.of(false)),EditorView.scrollMargins.of(()=>({top:parseFloat(getComputedStyle($('#editor')).paddingTop)+24}))])});
- const cached=sessions.get(doc.id);if(cached&&cached.doc.toString()===doc.content)view.setState(cached);
- view.dispatch({effects:[editLock.reconfigure(EditorState.readOnly.of(busy||reading())),editorLocale.reconfigure(localizedEditor())]});
+ // Top margin is the breathing room kept below the format bar when scrolling targets into view. It must stay below the first line's height above the scroller (about 19px at the 16px minimum font size), or hover tooltips anchored on the document's first line are measured as hidden and parked off-screen by CodeMirror.
+ view.dispatch({effects:StateEffect.appendConfig.of([editLock.of(EditorState.readOnly.of(false)),EditorView.scrollMargins.of(()=>({top:12}))])});
+ const cached=sessions.get(doc.id);if(cached&&cached.doc.toString()===doc.content){view.setState(cached);richMode=sessionRich.get(doc.id)??true}
+ else richMode=!doc.position.source;
+ // Reading layout keeps the editor editable-state (it is visibility:hidden, pointer-events:none and focus moves to the preview): flipping readOnly swaps widget DOM (e.g. table cell line boxes) and corrupts CodeMirror's cached height map for off-viewport blocks, so the document jumped on return.
+ view.dispatch({effects:[editLock.reconfigure(EditorState.readOnly.of(busy)),editorLocale.reconfigure(localizedEditor())]});
  reconfigure();
  loading=false;view.dispatch({effects:setFocus.of(focusMode)});applyTheme();const changedPreviewDocument=preview.setDocument(doc.id);applyLayout();if(!changedPreviewDocument)preview.refresh();header();scheduleWordCount(true);scheduleOutline(true);if(doc.conflict||statusFailed(doc))banner(statusText(doc),doc.conflict?'conflict':'error');else banner();
  const loadedView=view,loadedID=doc.id,loadedGeneration=generation,scroll=doc.position.scroll||0;
@@ -187,27 +199,59 @@ let fadeTimer:ReturnType<typeof setTimeout>;
 function themeFade(on:boolean){clearTimeout(fadeTimer);document.documentElement.classList.toggle('theme-fade',on);if(on)fadeTimer=setTimeout(()=>document.documentElement.classList.remove('theme-fade'),1100)}
 function applyTheme(){if(!appearance)return;paintTheme(document.documentElement,themeID());document.documentElement.style.setProperty('--editor-size',(appearance.fontSize||18)+'px');document.documentElement.style.setProperty('--paper-width',appearance.lineWidth==='full'?'100%':appearance.lineWidth==='wide'?'920px':'760px');appearanceDialog.render();syncDrawer();scheduleOutlineLayout()}
 function applyLayout(){
- const scroll=$('.editor-scroll').scrollTop;
+ cancelLayoutScroll();
+ const scrollEl=$('.editor-scroll');
+ const currentView=view,selection=view.state.selection;
+ const controller=new AbortController();
+ cancelLayoutScroll=()=>controller.abort();
+ for(const event of ['wheel','pointerdown','keydown'])scrollEl.addEventListener(event,cancelLayoutScroll,{passive:true,capture:true,signal:controller.signal});
+ const scroll=scrollEl.scrollTop,beforeHeight=scrollEl.clientHeight,wasRead=$('.desk').classList.contains('read-layout');
  $('.desk').classList.toggle('split-layout',split());
  $('.desk').classList.toggle('read-layout',reading());
  $('#format-bar').hidden=reading();
  preview.setVisible(split()||reading());
- view.dispatch({effects:[editLock.reconfigure(EditorState.readOnly.of(busy||reading())),editorLocale.reconfigure(localizedEditor())]});
- if(reading())$('.preview-scroll').focus();
+ view.dispatch({effects:[editLock.reconfigure(EditorState.readOnly.of(busy))]});
+ if(reading()&&!wasRead)$('.preview-scroll').focus();
  reconfigure();
  header();
  documentFind?.refresh();
- requestAnimationFrame(()=>{$('.editor-scroll').scrollTop=scroll;scheduleOutlineLayout()});
+ requestAnimationFrame(()=>{
+  // Hiding the format bar in reading view makes the scroller 1 bar taller; shift scroll by the same delta so the viewed line stays put (clamped at both ends).
+  // A later navigation or gesture owns the viewport; the old frame must not
+  // restore the previous position over Home, a table click or a manual scroll.
+  if(!controller.signal.aborted&&view===currentView&&view.state.selection.eq(selection)){
+   const target=scroll-(scrollEl.clientHeight-beforeHeight);
+   scrollEl.scrollTop=Math.max(0,Math.min(target,scrollEl.scrollHeight-scrollEl.clientHeight));
+  }
+  controller.abort();
+  scheduleOutlineLayout();
+ });
 }
-async function setAppearance(change:Partial<Appearance>){const next={...appearance,...change};appearance=next;source=!!next.source;state.appearance=next;themeFade(false);applyTheme();try{const pending=appearanceQueue.catch(()=>{}).then(async()=>{await call('UpdateAppearance',change);try{localStorage.setItem('liubai-appearance',JSON.stringify(appearance))}catch{}});appearanceQueue=pending;await pending}catch(e){toast(messages.fPreferencesError(errorText(e)))}}
+function applyAppearance(next:Appearance){
+ cancelTypographyScroll();
+ const typography=next.fontSize!==appearance.fontSize||next.lineWidth!==appearance.lineWidth;
+ const apply=()=>{appearance=next;source=!!next.source;state.appearance=next;themeFade(false);applyTheme()};
+ if(!typography){apply();return}
+ const repaint=()=>preview.preserveScroll(apply);
+ if(reading())repaint();else cancelTypographyScroll=preserveEditorScroll(view,$('.editor-scroll'),repaint);
+}
+async function setAppearance(change:Partial<Appearance>){
+ applyAppearance({...appearance,...change});
+ try{const pending=appearanceQueue.catch(()=>{}).then(async()=>{await call('UpdateAppearance',change);try{localStorage.setItem('liubai-appearance',JSON.stringify(appearance))}catch{}});appearanceQueue=pending;await pending}catch(e){toast(messages.fPreferencesError(errorText(e)))}
+}
 // The caption under each row names the theme under the pointer or focus, else the one in use.
 const appearanceDialog=appearanceSettings(()=>appearance,themeID,setAppearance);
 watchTheme(()=>{if(!appearance)return;const from=document.documentElement.dataset.liubaiTheme||'',to=themeID();if(from===to)return;themeFade(!reducedMotion.matches&&isDark(from)===isDark(to));applyTheme()});
 const triggers=new Map<string,HTMLElement>();
-function dialog(id:string){triggers.set(id,document.activeElement as HTMLElement);($<HTMLDialogElement>('#'+id)).showModal()}
+function dialog(id:string,trigger?:HTMLElement){
+ const origin=trigger??document.activeElement;
+ if(origin instanceof HTMLElement)triggers.set(id,origin);
+ $<HTMLDialogElement>('#'+id).showModal();
+}
 const wikiChooser=createWikiChooser($<HTMLDialogElement>('#wiki-dialog'),$('#wiki-candidates'),()=>dialog('wiki-dialog'));
 const openCaptureSettings=captureSettingsDialog(()=>dialog('capture-settings'));
 function closeDialog(id:string){$<HTMLDialogElement>('#'+id).close();triggers.get(id)?.focus()}
+function validateDraftName(){const input=$<HTMLInputElement>('#rename-input');input.setCustomValidity(input.value.trim()?'':messages.bNameRequired())}
 $$('[data-close]').forEach(b=>b.onclick=()=>{const id=b.dataset.close!;if(id==='drawer'){closeDrawer();$('#sidebar-button').focus()}else closeDialog(id)});
 $$('dialog').forEach(el=>{const d=el as HTMLDialogElement;d.addEventListener('close',()=>triggers.get(d.id)?.focus());d.addEventListener('click',e=>{const r=d.getBoundingClientRect();if(e.target===d&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))closeDialog(d.id)})});
 function renderDrawer(){if(sidebarSearch)sidebarSearch.renderRecent();else renderRecent()}
@@ -215,8 +259,8 @@ function renderRecent(selected=''){
  const active=document.activeElement as HTMLElement|null;
  const focusedRemove=active?.dataset.remove,focusedKey=active?.dataset.searchKey;
  const list=$('#drawer-list');list.replaceChildren();
- for(const d of state.recent){const b=node('button','recent-item'+(d.id===doc.id?' active':''));b.dataset.searchKey=d.id+':recent';b.append(node('b','',d.title),node('p','',d.excerpt||messages.fADocumentWaitingToBegin()),node('small','',new Date(d.updated).toLocaleString(pageLocale(),{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})));b.onclick=()=>void run(async()=>{if(await saveForAction()){load(await call<WorkspaceState>('Activate',d.id));closeOverlayDrawer()}});
-  const armed=removeID===d.id&&Date.now()<removeUntil,row=node('div','recent-row'),body=node('div','recent-body'),remove=node('button','recent-remove'+(armed?' armed':''),armed?messages.fConfirmRemoval():'×');remove.dataset.remove=d.id;remove.setAttribute('aria-label',messages.fRemoveFromRecentDocuments());remove.dataset.tip=messages.fRemoveFromRecentDocuments();remove.onclick=()=>confirmRemove(d.id);
+ for(const d of state.recent){const b=node('button','recent-item'+(d.id===doc.id?' active':''));b.dataset.searchKey=d.id+':recent';b.append(node('b','',d.title||messages.fUntitledDocument()),node('p','',d.excerpt||messages.fADocumentWaitingToBegin()),node('small','',new Date(d.updated).toLocaleString(pageLocale(),{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})));b.onclick=()=>void run(async()=>{if(await saveForAction()){load(await call<WorkspaceState>('Activate',d.id));closeOverlayDrawer()}});
+  const armed=removeID===d.id&&Date.now()<removeUntil,row=node('div','recent-row'),body=node('div','recent-body'),remove=node('button','recent-remove'+(armed?' armed':''),armed?messages.fConfirmRemoval():'×');remove.dataset.remove=d.id;const removeLabel=armed?messages.fConfirmRemoval():messages.fRemoveFromRecentDocuments();remove.setAttribute('aria-label',removeLabel);remove.dataset.tip=removeLabel;remove.onclick=()=>confirmRemove(d.id);
   body.append(b);if(d.tags?.length){const tags=node('div','document-tags');tags.append(tagButtons(d.tags,selected,tag=>sidebarSearch.chooseTag(tag),d.id));body.append(tags)}row.append(body,remove);list.append(row);if(focusedRemove===d.id)remove.focus()
  }
  if(!list.childElementCount)list.append(node('p','dialog-note',messages.fNoDocumentsFound()))
@@ -280,7 +324,7 @@ async function removeDocument(id:string){
  if(id===doc.id&&!await saveForAction())return;
  const next=await call<WorkspaceState>('Delete',id);next.appearance=appearance;
  if(next.current.id!==doc.id)load(next);else state=next;
- sessions.delete(id);for(const key of imageCache.keys())if(key.startsWith(id+':'))imageCache.delete(key);
+ sessions.delete(id);sessionRich.delete(id);for(const key of imageCache.keys())if(key.startsWith(id+':'))imageCache.delete(key);
  sidebarSearch?.refresh();backlinks?.refresh();renderDrawer();toast(removed.path?messages.fRemovedFromRecentDocumentsTheFileIsUnchanged():messages.fRemovedTheDraftStaysInTheTrashFolderFor())
 }
 function syncDrawer(){
@@ -307,7 +351,9 @@ async function setView(layout:Appearance['layout']){
 }
 async function toggleLayout(){await setView(split()?'single':'split')}
 async function toggleRead(){await setView(reading()?layoutBeforeRead||'single':'read')}
-async function toggleMode(){if(!split()){toast(messages.fMarkdownSourceIsAvailableInSplitView());return}const pending=setAppearance({source:!source});reconfigure();header();await pending;view.focus()}
+async function toggleMode(){if(!split()){toast(messages.fMarkdownSourceIsAvailableInSplitView());return}const before=document.activeElement;const pending=setAppearance({source:!source});reconfigure();header();await pending;
+ // The appearance save can resolve after the user already moved focus (e.g. they clicked a table cell); only hand focus to the editor when nobody else took it.
+ if(document.activeElement===before||document.activeElement===document.body)view.focus();}
 $$('[data-view]').forEach((b,i)=>{
  b.onclick=e=>{const keyboard=e.detail===0;void setView(b.dataset.view as Appearance['layout']).then(()=>{if(keyboard&&b.getAttribute('aria-checked')==='true')b.focus()})};
  b.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();const next=$$('[data-view]')[(i+(e.key==='ArrowRight'?1:2))%3];next.click()}};
@@ -335,7 +381,7 @@ async function insertImages(files:File[],at?:number){
  try{for(const file of files){const image=await importImage(file,id);const alt=file.name.replace(/[\[\]\\\r\n]/g,'').replace(/\.[^.]+$/,'')||messages.fImage();const text=`\n\n![${alt}](${image.markdown})\n\n`;view.dispatch({changes:{from:offset,insert:text},selection:{anchor:offset+text.length},userEvent:'input.paste'});offset+=text.length}await save();reconfigure();view.focus()}catch(e){toast(errorText(e))}finally{setBusy(false)}
 }
 $('#image-input').onchange=()=>{const input=$<HTMLInputElement>('#image-input');void insertImages(Array.from(input.files||[]));input.value=''};
-function setBusy(value:boolean){busy=value;if(view)view.dispatch({effects:editLock.reconfigure(EditorState.readOnly.of(value||reading()))});if(!value){if(pendingClose){pendingClose=false;void closeApp()}else if(openedQueue.length)setTimeout(()=>void processOpened(),500)}syncPending()}
+function setBusy(value:boolean){busy=value;if(view)view.dispatch({effects:editLock.reconfigure(EditorState.readOnly.of(value))});if(!value){if(pendingClose){pendingClose=false;void closeApp()}else if(openedQueue.length)setTimeout(()=>void processOpened(),500)}syncPending()}
 async function run(fn:()=>Promise<void>){if(busy)return;setBusy(true);try{await fn()}catch(e){toast(errorText(e))}finally{setBusy(false)}}
 async function processOpened(){if(busy||compositionActive||!openedQueue.length)return;const id=openedQueue.shift()!;await run(async()=>{if(await saveForAction())load(await call<WorkspaceState>('Activate',id));else toast(messages.fSaveTheCurrentDocumentFirstFindTheOpenedFile())})}
 async function saveAs(){if(!await saveForAction()){await rescue();return;}if(!desktop){download(doc.title+'.md',view.state.doc.toString(),'text/markdown');toast(messages.fMarkdownDownloadedUseExportToIncludeImages());return}const r=await call<ExportResult>('SaveAs',doc.id);if(r.cancelled)return;const old=view.state.doc.toString();doc=r.document;loading=true;if(old!==doc.content)view.dispatch({changes:r.changes||[],annotations:Transaction.addToHistory.of(false)});loading=false;imageCache.clear();reconfigure();const next=await call<WorkspaceState>('State');next.appearance=appearance;state=next;dirty=false;savedPosition='';if(!preview.setDocument(doc.id))preview.refresh();header();scheduleOutline(true);sidebarSearch?.contentAccepted();banner();toast(messages.fSavedWithImages(r.path,r.missing?.length||0))}
@@ -359,7 +405,8 @@ async function prepareDelivery(kind:string,allowMissing=false){
  if(!await saveForAction())return;const data=await call<Delivery>('Delivery',doc.id);
  if(data.missing.length&&!allowMissing){pendingMissing=()=>prepareDelivery(kind,true);$('#missing-list').textContent=data.missing.join('\n');dialog('missing-dialog');return}
  if(prepared)disposeMermaid(prepared);
- prepared=renderDelivery(data,kind==='pdf'?'htmlAndMathml':'mathml');$('#print-document').replaceChildren(prepared);await waitImages(prepared);await document.fonts.ready;readyAction=kind;
+ prepared=renderDelivery(data,kind==='pdf'?'htmlAndMathml':'mathml');$('#print-document').replaceChildren(prepared);await waitImages(prepared);await document.fonts.ready;
+ readyClipboard=kind==='copyRich'?await prepareRichClipboard(prepared):null;readyAction=kind;
  readyData=data;renderReadyInfo();dialog('ready-dialog');
 }
 function renderReadyInfo(){if(!readyData)return;
@@ -368,7 +415,8 @@ function renderReadyInfo(){if(!readyData)return;
 }
 $('#ready-go').onclick=()=>{if(!prepared)return;const root=prepared;
  if(readyAction==='copyRich'){
-  const promise=desktop?call('CopyRich',root.outerHTML,root.innerText):copyRich(root);void promise.then(()=>{closeDialog('ready-dialog');toast(messages.fRichTextCopiedImageSupportDependsOnTheReceiving())}).catch(e=>toast(errorText(e)));return;
+  if(!readyClipboard)return;
+  const promise=desktop?call('CopyRich',readyClipboard.html,readyClipboard.text):copyRich(readyClipboard);void promise.then(()=>{closeDialog('ready-dialog');toast(messages.fRichTextCopiedImageSupportDependsOnTheReceiving())}).catch(e=>toast(errorText(e)));return;
  }
  closeDialog('ready-dialog');
  if(readyAction==='html'){const html='<!doctype html><html lang="'+pageLocale()+'"><meta charset="utf-8"><title>'+doc.title.replace(/[<>&]/g,'')+'</title><body>'+root.outerHTML+'</body></html>';if(desktop)void run(async()=>{const r=await call<ExportResult>('SaveHTML',doc.title,html);if(!r.cancelled)toast(messages.fHTMLSaved(r.path))});else download(doc.title+'.html',html,'text/html');return}
@@ -386,11 +434,12 @@ $('#discard-close').onclick=()=>{if(desktop)void call('Close');else closeDialog(
 const kbd=(keys:string)=>keyLabel(keys,{spaced:true});
 const commands=()=>[
  ['settings',messages.fSettings(),kbd('Mod+,')],
- ['language:system',messages.fLanguageSystem(),''],['language:zh-Hans',messages.fLanguageChinese(),''],['language:en',messages.fLanguageEnglish(),''],['capture',messages.fQuickNote(),''],['captureSettings',messages.fQuickNoteSettings(),''],['new',messages.fNewDocument(),kbd('Mod+N')],['rename',messages.fRename(),''],['open',messages.fOpenDocument(),kbd('Mod+O')],['save',messages.fSave(),kbd('Mod+S')],['saveAs',messages.fSaveAs(),kbd('Mod+Shift+S')],['deliver',messages.fExport(),''],['export',messages.fDocumentAndImagesZIP(),'ZIP'],['pdf',messages.fExportPDF(),''],['docx',messages.fExportWordDocument(),''],['copyRich',messages.fCopyRichText(),''],['pastePlain',messages.fPasteAsPlainText(),kbd('Mod+Shift+V')],['html',messages.fDownloadHTML(),''],['focus',messages.fFocusMode(),kbd(focusKeys)],['recent',messages.fRecentDocuments(),''],['remove',messages.fRemoveCurrentDocumentFromRecents(),''],['outline',messages.fOutline(),''],['find',messages.fFindInDocument(),kbd('Mod+F')],['layout',messages.fToggleSplitView(),kbd('Mod+\\')],['read',messages.fReadingMode(),kbd('Mod+Shift+R')],['source',messages.fShowMarkdownSource(),kbd('Mod+Shift+M')],['image',messages.fInsertImage(),''],['theme',messages.fAppearanceAndTypography(),''],['commands',messages.fAllCommands(),kbd('Mod+K')],...themes.map(t=>['theme:'+t.id,messages.fSwitchTheme(themeText(t.id)[0]),'']),['bold',messages.fBoldSelection(),kbd(shortcuts.bold)],['italic',messages.fItalicizeSelection(),kbd(shortcuts.italic)],['paragraph',messages.fBody(),kbd(shortcuts.paragraph)],['h1',messages.fHeading1(),kbd(shortcuts.h1)],['h2',messages.fHeading2(),kbd(shortcuts.h2)],['h3',messages.fHeading3(),kbd(shortcuts.h3)],['h4',messages.fHeading4(),kbd(shortcuts.h4)],['h5',messages.fHeading5(),kbd(shortcuts.h5)],['h6',messages.fHeading6(),kbd(shortcuts.h6)],['underline',messages.fUnderline(),kbd(shortcuts.underline)],['highlight',messages.fHighlight(),kbd(shortcuts.highlight)],['superscript',messages.fSuperscript(),''],['subscript',messages.fSubscript(),''],['clearFormatting',messages.fClearFormatting(),''],['indent',messages.fIndent(),''],['outdent',messages.fOutdent(),''],['strike',messages.fStrikethrough(),kbd(shortcuts.strike)],['inlineCode',messages.fInlineCode(),kbd(shortcuts.inlineCode)],['quote',messages.fInsertBlockquote(),''],['task',messages.fInsertTaskList(),kbd(shortcuts.task)],['code',messages.fInsertCodeBlock(),''],['math',messages.fFormula(),''],['mermaid',messages.fDiagram(),''],['footnote',messages.fFootnote(),''],['details',messages.fDetails(),''],['table',messages.fInsertTable(),''],['link',messages.fInsertEditLink(),kbd(shortcuts.link)],['bullet',messages.fBulletedList(),kbd(shortcuts.bullet)],['ordered',messages.fNumberedList(),kbd(shortcuts.ordered)],['undo',messages.fUndo(),kbd('Mod+Z')],['redo',messages.fRedo(),kbd(redoKeys)],...(desktop?[['checkUpdates',messages.bMenuCheckForUpdates(),''],['about',messages.bMenuAbout(),'']]:[])
+ ['language:system',messages.fLanguageSystem(),''],['language:zh-Hans',messages.fLanguageChinese(),''],['language:en',messages.fLanguageEnglish(),''],['capture',messages.fQuickNote(),''],['captureSettings',messages.fQuickNoteSettings(),''],['new',messages.fNewDocument(),kbd('Mod+N')],['rename',messages.fRename(),''],['open',messages.fOpenDocument(),kbd('Mod+O')],['save',messages.fSave(),kbd('Mod+S')],['saveAs',messages.fSaveAs(),kbd('Mod+Shift+S')],['deliver',messages.fExport(),''],['export',messages.fDocumentAndImagesZIP(),'ZIP'],['pdf',messages.fExportPDF(),''],['docx',messages.fExportWordDocument(),''],['copyRich',messages.fCopyRichText(),''],['pastePlain',messages.fPasteAsPlainText(),kbd('Mod+Shift+V')],['html',messages.fDownloadHTML(),''],['focus',messages.fFocusMode(),kbd(focusKeys)],['recent',messages.fRecentDocuments(),''],['remove',messages.fRemoveCurrentDocumentFromRecents(),''],['outline',messages.fOutline(),''],['find',messages.fFindInDocument(),kbd('Mod+F')],['layout',messages.fToggleSplitView(),kbd('Mod+\\')],['read',messages.fReadingMode(),kbd('Mod+Shift+R')],['source',messages.fShowMarkdownSource(),kbd('Mod+Shift+M')],['image',messages.fInsertImage(),''],['theme',messages.fAppearanceAndTypography(),''],['commands',messages.fAllCommands(),kbd('Mod+K')],...themes.map(t=>{const[n,,g]=themeText(t.id);return['theme:'+t.id,messages.fSwitchTheme(t.series==='hours'?g+' '+n:n+' '+g),'']}),['bold',messages.fBoldSelection(),kbd(shortcuts.bold)],['italic',messages.fItalicizeSelection(),kbd(shortcuts.italic)],['paragraph',messages.fBody(),kbd(shortcuts.paragraph)],['h1',messages.fHeading1(),kbd(shortcuts.h1)],['h2',messages.fHeading2(),kbd(shortcuts.h2)],['h3',messages.fHeading3(),kbd(shortcuts.h3)],['h4',messages.fHeading4(),kbd(shortcuts.h4)],['h5',messages.fHeading5(),kbd(shortcuts.h5)],['h6',messages.fHeading6(),kbd(shortcuts.h6)],['underline',messages.fUnderline(),kbd(shortcuts.underline)],['highlight',messages.fHighlight(),kbd(shortcuts.highlight)],['superscript',messages.fSuperscript(),''],['subscript',messages.fSubscript(),''],['clearFormatting',messages.fClearFormatting(),''],['indent',messages.fIndent(),''],['outdent',messages.fOutdent(),''],['strike',messages.fStrikethrough(),kbd(shortcuts.strike)],['inlineCode',messages.fInlineCode(),kbd(shortcuts.inlineCode)],['quote',messages.fInsertBlockquote(),''],['task',messages.fInsertTaskList(),kbd(shortcuts.task)],['code',messages.fInsertCodeBlock(),''],['math',messages.fFormula(),''],['mermaid',messages.fDiagram(),''],['footnote',messages.fFootnote(),''],['details',messages.fDetails(),''],['table',messages.fInsertTable(),''],['link',messages.fInsertEditLink(),kbd(shortcuts.link)],['bullet',messages.fBulletedList(),kbd(shortcuts.bullet)],['ordered',messages.fNumberedList(),kbd(shortcuts.ordered)],['undo',messages.fUndo(),kbd('Mod+Z')],['redo',messages.fRedo(),kbd(redoKeys)],...(desktop?[['checkUpdates',messages.bMenuCheckForUpdates(),''],['about',messages.bMenuAbout(),'']]:[])
 ].filter(([id])=>!desktop||!(['settings','theme','captureSettings'].includes(id)||id.startsWith('theme:')||id.startsWith('language:')));
-function renderCommands(){const q=$<HTMLInputElement>('#command-search').value.trim().toLowerCase();const list=$('#command-list');list.replaceChildren();commands().filter(c=>c[1].toLowerCase().includes(q)).forEach(([id,title,key])=>{const b=node('button','command');b.append(node('span','',title),node('kbd','',key));if(id==='language:zh-Hans')b.dataset.languageAutonym='true';b.onclick=()=>{closeDialog('commands');void action(id)};list.append(b)})}
-$('#command-search').oninput=renderCommands;$('#command-search').onkeydown=e=>{if(e.key==='ArrowDown'){e.preventDefault();$('#command-list button')?.focus()}if(e.key==='Enter'){e.preventDefault();$('#command-list button')?.click()}};
-async function action(id:string){
+function renderCommands(){const q=$<HTMLInputElement>('#command-search').value.trim().toLowerCase();const list=$('#command-list');const empty=$<HTMLParagraphElement>('#command-empty');const matches=commands().filter(c=>c[1].toLowerCase().includes(q));list.replaceChildren();matches.forEach(([id,title,key])=>{const b=node('button','command');b.tabIndex=-1;b.append(node('span','',title));if(key)b.append(node('kbd','',key));if(id==='language:zh-Hans')b.dataset.languageAutonym='true';b.onclick=()=>{closeDialog('commands');void action(id)};list.append(b)});empty.textContent=messages.fNoCommandsMatch();list.append(empty);empty.hidden=matches.length>0}
+$('#command-search').oninput=renderCommands;$('#command-search').onkeydown=e=>{if(e.key==='ArrowDown'){e.preventDefault();$('#command-list button')?.focus()}else if(e.key==='ArrowUp'){e.preventDefault();const all=$$('#command-list .command');all[all.length-1]?.focus()}else if(e.key==='Enter'){e.preventDefault();$('#command-list button')?.click()}else if(e.key==='Escape'){e.preventDefault();closeDialog('commands')}};
+$('#command-list').addEventListener('keydown',e=>{const all=$$('#command-list .command'),index=all.indexOf(document.activeElement as HTMLElement);if(index<0)return;let next=-1;if(e.key==='ArrowDown')next=(index+1)%all.length;else if(e.key==='ArrowUp'){next=index-1;if(next<0){e.preventDefault();$('#command-search').focus();return}}else if(e.key==='Home')next=0;else if(e.key==='End')next=all.length-1;if(next>=0){e.preventDefault();all[next]?.focus()}});
+async function action(id:string,trigger?:HTMLElement){
  if(id.startsWith('language:')){try{await setPageLocale(id.slice(9)==='system'?'':id.slice(9))}catch(error){toast(errorText(error))}return}
  if(id==='checkUpdates'||id==='about'){void call(id==='about'?'About':'CheckForUpdates').catch(e=>toast(errorText(e)));return}
  if(id==='undo'||id==='redo'){const el=document.activeElement;if(el instanceof HTMLInputElement||el instanceof HTMLTextAreaElement){document.execCommand(id);return}}
@@ -426,25 +475,27 @@ async function action(id:string){
  if(id in inlineMarkers){view.dispatch(wrapSelection(view.state,...inlineMarkers[id]));view.focus();return}
  if(id==='pastePlain'){
   const target=view;
-  try{const text=desktop?await call<string>('ClipboardText'):await navigator.clipboard.readText();if(view!==target||view.state.readOnly||compositionActive)return;view.dispatch(pasteText(view.state,text));view.focus()}catch(error){toast(messages.fClipboardError(errorText(error)))}return;
+  try{const text=desktop?await call<string>('ClipboardText'):await navigator.clipboard.readText();if(view!==target||view.state.readOnly||reading()||compositionActive)return;view.dispatch(pasteText(view.state,text));view.focus()}catch(error){toast(messages.fClipboardError(errorText(error)))}return;
  }
  if(id==='footnote'){view.dispatch(insertFootnote(view.state));view.focus();return}
  if(id==='details'){view.dispatch(insertToolbarItem(view.state,'details'));view.focus();return}
  if(id==='mermaid'){view.dispatch(insertToolbarItem(view.state,'mermaid'));view.focus();return}
  if(id==='math'){view.dispatch(insertMath(view.state));view.focus();return}
  if(id==='code'){view.dispatch(codeBlock(view.state));view.focus();return}
- if(id==='link'){openLinkEditor();return}if(id==='table'){view.dispatch(insertTable(view.state));if(!focusTableCell(view))view.focus();return}
- if(id==='focus'){focusMode=!focusMode;document.body.classList.toggle('focus-mode',focusMode);scheduleOutlineLayout();$('#focus-exit').hidden=!focusMode;view.dispatch({effects:setFocus.of(focusMode)});$$('[data-action=focus]').forEach(b=>b.setAttribute('aria-pressed',String(focusMode)));view.focus();return}
- if(id==='deliver'){dialog('delivery-dialog');return}
+ if(id==='link'){openLinkEditor(trigger);return}if(id==='table'){view.dispatch(insertTable(view.state));if(!focusTableCell(view))view.focus();return}
+ if(id==='focus'){focusMode=!focusMode;document.body.classList.toggle('focus-mode',focusMode);scheduleOutlineLayout();$('#focus-exit').hidden=!focusMode;view.dispatch({effects:setFocus.of(focusMode)});$$('[data-action=focus]').forEach(b=>b.setAttribute('aria-pressed',String(focusMode)));
+ // The More-menu entry is a menuitemcheckbox, so screen readers announce whether focus mode is on.
+ $$('#more-menu [data-menu-action=focus]').forEach(b=>b.setAttribute('aria-checked',String(focusMode)));view.focus();return}
+ if(id==='deliver'){dialog('delivery-dialog',trigger);return}
  if(id==='rescue'){await rescue();return}
  if(id==='retry-close'){closeDialog('close-dialog');savedPosition='';await closeApp();return}
  if(id.startsWith('theme:')){await setAppearance({theme:id.split(':')[1] as ThemeID,auto:'off'});return}
- if(id==='rename'){if(doc.path){toast(messages.fUseSaveAsToGiveAnExistingFileA());return}$<HTMLInputElement>('#rename-input').value=doc.title===messages.fUntitledDocument()?'':doc.title;dialog('rename-dialog');$<HTMLInputElement>('#rename-input').select();return}
+ if(id==='rename'){if(doc.path){toast(messages.fUseSaveAsToGiveAnExistingFileA());return}$<HTMLInputElement>('#rename-input').value=doc.title===messages.fUntitledDocument()?'':doc.title;validateDraftName();dialog('rename-dialog',trigger);$<HTMLInputElement>('#rename-input').select();return}
  if(id==='read'){await toggleRead();return}if(id==='layout'){await toggleLayout();return}if(id==='source'){await toggleMode();return}if(id==='undo'){undo(view);view.focus();return}if(id==='redo'){redo(view);view.focus();return}if(id==='find'){documentFind.open();return}
- if(id==='settings'||id==='theme'){if(desktop)await call('ShowSettings',id==='theme'?'appearance':'');else{dialog('appearance');requestAnimationFrame(()=>$('#themes [aria-checked=true]').focus())}return}
+ if(id==='settings'||id==='theme'){if(desktop)await call('ShowSettings',id==='theme'?'appearance':'');else{dialog('appearance',trigger);requestAnimationFrame(()=>$('#themes [aria-checked=true]').focus())}return}
  if(id==='captureSettings'){try{if(desktop)await call('ShowSettings','capture');else await openCaptureSettings()}catch(e){toast(errorText(e))}return}
  if(id==='capture'){if(desktop)await call('ShowCapture');else toast(messages.fQuickNoteIsAvailableInTheDesktopApp());return}
- if(id==='commands'){renderCommands();dialog('commands');$<HTMLInputElement>('#command-search').value='';renderCommands();$('#command-search').focus();return}
+ if(id==='commands'){renderCommands();dialog('commands',trigger);$<HTMLInputElement>('#command-search').value='';renderCommands();$('#command-search').focus();return}
  if(id==='sidebar'||id==='recent'){await openDrawer();return}if(id==='outline'){toggleOutline();const item=outlinePopover?outlineItem():null;if(item)triggers.set('commands',item);return}
  if(id==='remove'){confirmRemove(doc.id,true);return}
  if(id==='image'){$('#image-input').click();return}if(id==='close'){await closeApp();return}
@@ -482,10 +533,19 @@ function layoutOutline(){
  if(inline||focusMode)outlinePopover=false;
  button.hidden=focusMode;outline.classList.toggle('popover',outlinePopover);outline.hidden=!outlinePopover&&!(inline&&!appearance?.outlineHidden);button.setAttribute('aria-expanded',String(!outline.hidden));
  if(outline.hidden)return;
- if(outlinePopover){const r=button.getBoundingClientRect(),width=Math.min(280,innerWidth-16);outline.style.width=width+'px';outline.style.left=Math.max(8,r.right-width)+'px';outline.style.top=(r.bottom+6)+'px';outline.style.maxHeight=Math.max(120,innerHeight-r.bottom-22)+'px'}
+ if(outlinePopover){
+  // Below 480px the button is display:none, but the popover can still open from the command palette or stay open across a resize.
+  // A zero-size button rect would pin it to the viewport's top-left corner, so anchor it under the top bar's right edge instead.
+  const r=button.getBoundingClientRect(),anchored=r.width>0&&r.height>0,bar=$('.topbar').getBoundingClientRect(),
+   top=(anchored?r.bottom:bar.bottom)+6,right=anchored?r.right:innerWidth-8,width=Math.min(280,innerWidth-16);
+  outline.style.width=width+'px';outline.style.left=Math.max(8,right-width)+'px';outline.style.top=top+'px';outline.style.maxHeight=Math.max(120,innerHeight-top-16)+'px'}
  else{const {column,viewport,box,free}=room!,desk=$('.desk').getBoundingClientRect(),padding=parseFloat(getComputedStyle(column).paddingTop),top=Math.max(viewport.top+padding,box.top+padding);outline.style.left=(box.right-desk.left+24)+'px';outline.style.top=(top-desk.top)+'px';outline.style.width=Math.min(240,free-40)+'px';outline.style.maxHeight=Math.max(0,viewport.bottom-top-24)+'px'}
  let current:string|undefined;
- if(reading()){const top=$('.preview-scroll').getBoundingClientRect().top;for(const h of $('#preview-content').querySelectorAll<HTMLElement>('h1,h2,h3'))if(h.getBoundingClientRect().top<=top+2)current=h.id}
+ if(reading()){const scrollEl=$('.preview-scroll'),top=scrollEl.getBoundingClientRect().top,heads=$('#preview-content').querySelectorAll<HTMLElement>('h1,h2,h3');for(const h of heads)if(h.getBoundingClientRect().top<=top+2)current=h.id;
+  // Before the first heading reaches the top edge the reader is still inside the first section.
+  if(!current&&heads.length&&heads[0].getBoundingClientRect().top>top+2)current=heads[0].id;
+  // A final section shorter than the viewport can never scroll its heading to the top; pin it once the reader is at the bottom.
+  if(scrollEl.scrollHeight>scrollEl.clientHeight+2&&scrollEl.scrollTop+scrollEl.clientHeight>=scrollEl.scrollHeight-2&&heads.length)current=heads[heads.length-1].id}
  else for(const h of outlineHeadings){if(h.from>view.state.selection.main.head)break;current=h.slug}
  for(const b of $$('#right-outline button')){if(b.dataset.slug===current)b.setAttribute('aria-current','location');else b.removeAttribute('aria-current')}
 }
@@ -522,6 +582,7 @@ function openLink(url:string){
  if(url.startsWith('#')){let slug=url.slice(1);try{slug=decodeURIComponent(slug)}catch{}jumpToHeading(slug);return}
  if(desktop)void call('OpenLink',url).catch(e=>toast(errorText(e)));else window.open(url,'_blank','noopener,noreferrer');
 }
+const canOpenLink=(url:string)=>wikiTarget(url)!==null||!!localDocumentLink(url)||safeLink(url);
 async function openWikiLink(target:string){
  if(busy||!doc||!view)return;
  if(compositionActive||view.composing){toast(messages.fFinishComposingYourTextFirst());return}
@@ -541,16 +602,17 @@ async function openWikiLink(target:string){
  const item=candidates.total===1?candidates.items[0]:await wikiChooser.choose(candidates.items);
  if(item&&valid())await navigateSearch(item,undefined,false);
 }
-function openLinkEditor(){
+function openLinkEditor(trigger?:HTMLElement){
  const existing=linkAt(view.state),r=view.state.selection.main;editRange=existing?{from:existing.from,to:existing.to,raw:view.state.sliceDoc(existing.from,existing.to)}:{from:r.from,to:r.to,raw:view.state.sliceDoc(r.from,r.to)};
  $<HTMLInputElement>('#link-text').value=existing?.text||view.state.sliceDoc(r.from,r.to);
- $<HTMLInputElement>('#link-url').value=existing?.url||'';$('#link-remove').hidden=!existing;$('#link-error').hidden=true;dialog('link-dialog');$('#link-text').focus();
+ $<HTMLInputElement>('#link-url').value=existing?.url||'';$('#link-remove').hidden=!existing;$('#link-open').hidden=!canOpenLink($<HTMLInputElement>('#link-url').value);$('#link-error').hidden=true;dialog('link-dialog',trigger);$('#link-text').focus();
 }
 function applyRange(text:string){if(!editRange)return;if(view.state.sliceDoc(editRange.from,editRange.to)!==editRange.raw){throw Error(messages.fTheDocumentChangedReopenTheEditingPanel())}
  view.dispatch({changes:{from:editRange.from,to:editRange.to,insert:text},selection:{anchor:editRange.from+text.length},userEvent:'input.format',annotations:isolateHistory.of('full')});view.focus();
 }
 $('#link-form').onsubmit=e=>{e.preventDefault();try{applyRange(makeLink($<HTMLInputElement>('#link-text').value,$<HTMLInputElement>('#link-url').value));closeDialog('link-dialog');view.focus()}catch(e){$('#link-error').textContent=errorText(e);$('#link-error').hidden=false}};
 $('#link-open').onclick=()=>openLink($<HTMLInputElement>('#link-url').value);
+$('#link-url').addEventListener('input',()=>{const url=$<HTMLInputElement>('#link-url').value;$('#link-open').hidden=!canOpenLink(url);if(!$('#link-error').hidden&&safeLink(url))$('#link-error').hidden=true});
 $('#link-remove').onclick=()=>{try{applyRange($<HTMLInputElement>('#link-text').value.replace(/[\\`*_{}[\]()#+.!|>~-]/g,'\\$&'));closeDialog('link-dialog');view.focus()}catch(e){toast(errorText(e))}};
 // Each button's keys come from shortcuts.ts, so its tooltip, All Commands and the key handler agree.
 const formatButtons=()=>[
@@ -585,6 +647,19 @@ for(const [index,buttons] of formatButtons().entries()){
 const sourceSeparator=node('span','format-sep format-source-sep');sourceSeparator.setAttribute('aria-hidden','true');sourceSeparator.hidden=true;group.append(sourceSeparator);
 const sourceButton=node('button','format-text format-source',messages.fSource());sourceButton.dataset.action='source';sourceButton.dataset.tip=messages.fShowMarkdownSource();sourceButton.dataset.shortcut=shortcuts.source;sourceButton.setAttribute('aria-keyshortcuts',ariaKeys(shortcuts.source));sourceButton.setAttribute('aria-pressed','false');sourceButton.hidden=true;sourceButton.dataset.i18n='fSource';sourceButton.dataset.i18nTip='fShowMarkdownSource';group.append(sourceButton);
 $$('#format-bar button').forEach(b=>b.onmousedown=e=>e.preventDefault());
+// Native Tab scrolling can leave the end of an overflowing flex toolbar
+// clipped. Correct only that local strip after focus and its labels settle.
+$('#format-bar').addEventListener('focusin',event=>{
+ const button=event.target;
+ if(!(button instanceof HTMLButtonElement))return;
+ requestAnimationFrame(()=>{
+  const bar=$('#format-bar');
+  if(document.activeElement!==button||bar.scrollWidth<=bar.clientWidth)return;
+  const bounds=bar.getBoundingClientRect(),target=button.getBoundingClientRect();
+  const delta=target.left<bounds.left+12?target.left-bounds.left-12:target.right>bounds.right-12?target.right-bounds.right+12:0;
+  if(delta)bar.scrollLeft+=delta;
+ });
+});
 // A separator left at either end of a wrapped row is hidden.
 const middle=(el:Element)=>{const r=el.getBoundingClientRect();return r.top+r.height/2};
 const separators=new ResizeObserver(()=>{for(const sep of group.querySelectorAll<HTMLElement>(':scope>.format-sep')){const a=sep.previousElementSibling,b=sep.nextElementSibling;sep.style.visibility=a&&b&&Math.max(Math.abs(middle(a)-middle(sep)),Math.abs(middle(b)-middle(sep)))>8?'hidden':''}});
@@ -600,7 +675,9 @@ applyIcons();
 // The drawn tooltip replaces title. Controls whose keys do their own action announce them.
 attachTooltips();for(const el of $$('.topbar [data-shortcut],.drawer-head [data-shortcut]'))el.setAttribute('aria-keyshortcuts',ariaKeys(el.dataset.shortcut!));
 for(const item of $$('#heading-menu [data-menu-action]'))item.setAttribute('aria-keyshortcuts',ariaKeys(shortcuts[item.dataset.menuAction!]));
-$$('[data-action]').forEach(b=>b.onclick=()=>void action(b.dataset.action!));
+// Safari does not focus clicked buttons; the opening control is still the return target.
+$$('[data-action]').forEach(b=>b.onclick=()=>void action(b.dataset.action!,b));
+$('#rename-input').addEventListener('input',validateDraftName);
 $('#rename-form').onsubmit=e=>{e.preventDefault();const title=$<HTMLInputElement>('#rename-input').value.trim();if(!title)return;void run(async()=>{if(!await saveForAction())return;const result=await call<WorkspaceState>('Rename',doc.id,title);result.appearance=appearance;doc.title=result.current.title;doc.customTitle=result.current.customTitle;state=result;header();sidebarSearch?.refresh();backlinks?.refresh();closeDialog('rename-dialog')})};
 async function importFile(file:File){await run(async()=>{if(!await saveForAction())return;const content=await file.text();load(await call<WorkspaceState>('New'));view.dispatch({changes:{from:0,to:view.state.doc.length,insert:content}});await save()})}
 $('#open-input').onchange=async()=>{const f=$<HTMLInputElement>('#open-input').files?.[0];if(!f)return;await importFile(f);$<HTMLInputElement>('#open-input').value=''};
@@ -633,7 +710,7 @@ $('.editor-pane').addEventListener('mousedown',e=>{
 });
 $('.editor-scroll').addEventListener('scroll',()=>{if(loading||!doc)return;clearTimeout(timer);timer=setTimeout(()=>void save(),500)},{passive:true});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
-if(window.mygo){window.mygo.on<Partial<Appearance>>('liubai:appearance-changed',change=>{if(!appearance){pendingAppearance={...pendingAppearance,...change};return}appearance={...appearance,...change};state.appearance=appearance;try{localStorage.setItem('liubai-appearance',JSON.stringify(appearance))}catch{}themeFade(false);applyTheme()});window.mygo.on<Summary>('liubai:captured',summary=>{if(state){state.recent=[summary,...state.recent.filter(d=>d.id!==summary.id)];sidebarSearch?.refresh();backlinks?.refresh();if(!$('#drawer').hidden)renderDrawer()}toast(messages.fCaptured(summary.title),messages.fOpen(),()=>void run(async()=>{if(await saveForAction())load(await call<WorkspaceState>('Activate',summary.id))}))});window.mygo.on<string>('liubai:action',id=>void action(id));window.mygo.on<string>('liubai:disk-changed',id=>{backlinks?.refresh();if(doc?.id===id)void pollStatus()});window.mygo.on<WorkspaceState>('liubai:opened',next=>{openedQueue.push(next.current.id);sidebarSearch?.refresh();backlinks?.refresh();void processOpened()});window.mygo.on<{path:string;error:string}>('liubai:open-failed',f=>toast(messages.fOpenFailed(f.path.split('/').pop()||f.path,f.error)))}
+if(window.mygo){window.mygo.on<Partial<Appearance>>('liubai:appearance-changed',change=>{if(!appearance){pendingAppearance={...pendingAppearance,...change};return}applyAppearance({...appearance,...change});try{localStorage.setItem('liubai-appearance',JSON.stringify(appearance))}catch{}});window.mygo.on<Summary>('liubai:captured',summary=>{if(state){state.recent=[summary,...state.recent.filter(d=>d.id!==summary.id)];sidebarSearch?.refresh();backlinks?.refresh();if(!$('#drawer').hidden)renderDrawer()}toast(messages.fCaptured(summary.title),messages.fOpen(),()=>void run(async()=>{if(await saveForAction())load(await call<WorkspaceState>('Activate',summary.id))}))});window.mygo.on<string>('liubai:action',id=>void action(id));window.mygo.on<string>('liubai:disk-changed',id=>{backlinks?.refresh();if(doc?.id===id)void pollStatus()});window.mygo.on<WorkspaceState>('liubai:opened',next=>{openedQueue.push(next.current.id);sidebarSearch?.refresh();backlinks?.refresh();void processOpened()});window.mygo.on<{path:string;error:string}>('liubai:open-failed',f=>toast(messages.fOpenFailed(f.path.split('/').pop()||f.path,f.error)))}
 preview=createPreviewController({
  host:$('#preview-content'),
  scroll:$('.preview-scroll'),
@@ -684,6 +761,7 @@ function refreshLanguage(){
  if(doc.conflict||statusFailed(doc))banner(statusText(doc),doc.conflict?'conflict':'error');else if(failedSaveError)banner(messages.fSaveError(errorText(failedSaveError)),'error');
  if($<HTMLDialogElement>('#ready-dialog').open&&readyData){renderReadyInfo();if(prepared)disposeMermaid(prepared);prepared=renderDelivery(readyData,readyAction==='pdf'?'htmlAndMathml':'mathml');$('#print-document').replaceChildren(prepared);const button=$<HTMLButtonElement>('#ready-go');button.disabled=true;void waitImages(prepared).then(()=>{button.disabled=false}).catch(error=>toast(errorText(error)))}
  if($<HTMLDialogElement>('#link-dialog').open&&!$('#link-error').hidden){try{makeLink($<HTMLInputElement>('#link-text').value,$<HTMLInputElement>('#link-url').value)}catch(error){$('#link-error').textContent=errorText(error)}}
+ if($<HTMLDialogElement>('#rename-dialog').open)validateDraftName();
  if(bannerKind==='notice'&&retainedNotices.length)banner(retainedNotices.map(noticeText).join('; '),'notice',quarantineReveal);
  $('#toast').hidden=true;
  const locale=pageLocale();

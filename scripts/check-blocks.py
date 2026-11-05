@@ -211,9 +211,10 @@ def run(page):
     hover(page, "第二段。").click()
     expect(page.locator("#block-menu")).to_be_visible()
     expect(page.locator(".cm-block-selected")).to_have_count(1)
-    expect(page.locator('#block-menu [data-menu-action="convert"]')).to_be_focused()
+    # Pointer opens focus the menu container; the first item is focused only on key use.
+    expect(page.locator("#block-menu")).to_be_focused()
     page.keyboard.press("ArrowDown")
-    expect(page.locator('#block-menu [data-menu-action="duplicate"]')).to_be_focused()
+    expect(page.locator('#block-menu [data-menu-action="convert"]')).to_be_focused()
     page.keyboard.press("Home")
     page.keyboard.press("ArrowRight")
     expect(page.locator('#block-convert-menu [data-menu-action="paragraph"]')).to_be_focused()

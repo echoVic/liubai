@@ -55,10 +55,10 @@ def palette_theme(page, name, how):
     # ArrowDown moves focus to it, and the listed button can also be clicked: drive each the way a person would.
     page.keyboard.press("Meta+k")
     search = page.locator("#command-search")
-    search.fill("切换主题 · " + name)
+    search.fill(name)
     items = page.locator("#command-list button")
     expect(items).to_have_count(1)
-    expect(items.first).to_contain_text("切换主题 · " + name)
+    expect(items.first).to_contain_text("切换主题")
     if how == "enter":
         appearance_change(page, lambda: search.press("Enter"))
     elif how == "arrow":
@@ -71,7 +71,7 @@ def palette_theme(page, name, how):
 
 with sync_playwright() as p:
     browser = p.chromium.launch(channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
-    context = browser.new_context(viewport={"width": 1440, "height": 900}, color_scheme="light", locale="zh-CN")
+    context = browser.new_context(viewport={"width": 1440, "height": 1100}, color_scheme="light", locale="zh-CN")
     page = context.new_page()
     page.clock.install(time=dt.datetime(2026, 10, 22, 16, 0))
     # What the boot script painted, before the app module ran.
@@ -91,7 +91,7 @@ with sync_playwright() as p:
     assert len(set(names)) == len(THEMES) and all(names), names
     expect(dialog.locator('[data-auto="system"]')).to_have_attribute("aria-checked", "true")
     expect(dialog.locator(".system-themes")).to_be_visible()
-    assert dialog.locator("#light-theme option").count() == 7 and dialog.locator("#dark-theme option").count() == 4
+    assert dialog.locator("#light-theme option").count() == 12 and dialog.locator("#dark-theme option").count() == 13
 
     # Other elements carry data-theme too (a Mermaid diagram does); the panel must find its own buttons.
     page.evaluate("ids => ids.forEach(id => { const el = document.createElement('i'); el.className = 'decoy'; el.dataset.theme = id; document.body.prepend(el) })", [t["id"] for t in THEMES])
@@ -110,9 +110,9 @@ with sync_playwright() as p:
     expect(dialog.locator("#themes .theme-check")).to_have_attribute("aria-hidden", "true")
     page.keyboard.press("ArrowLeft"); expect(dialog.locator('[data-theme="paper"]')).to_be_focused()
     assert style(dialog, "paper", "outlineStyle") == "solid" and style(dialog, "paper", "boxShadow") != "none"  # selected and focused: both show
-    page.keyboard.press("End"); expect(dialog.locator('[data-theme="indigo"]')).to_be_focused()
-    page.keyboard.press("ArrowUp"); expect(dialog.locator('[data-theme="moon"]')).to_be_focused()
-    page.keyboard.press("ArrowDown"); expect(dialog.locator('[data-theme="indigo"]')).to_be_focused()
+    page.keyboard.press("End"); expect(dialog.locator('[data-theme="gruvlite"]')).to_be_focused()
+    page.keyboard.press("ArrowUp"); expect(dialog.locator('[data-theme="indigo"]')).to_be_focused()
+    page.keyboard.press("ArrowDown"); expect(dialog.locator('[data-theme="nord"]')).to_be_focused()
     page.keyboard.press("Home"); expect(dialog.locator('[data-theme="dawn"]')).to_be_focused()
     page.keyboard.press("ArrowDown"); expect(dialog.locator('[data-theme="mist"]')).to_be_focused()
     page.keyboard.press("ArrowUp"); expect(dialog.locator('[data-theme="dawn"]')).to_be_focused()
@@ -137,6 +137,10 @@ with sync_playwright() as p:
     assert a["theme"] == THEMES[-1]["id"] and a["auto"] == "off" and not a["followSystem"], a
     expect(dialog.locator(".system-themes")).to_be_hidden()
     reload_keeps(page, THEMES[-1]["id"], auto="off", theme=THEMES[-1]["id"]); open_panel(page)
+    # On a short scrollable panel the switch can sit just below the fold (open focuses the last
+    # theme). Reveal it the way a person would before measuring; otherwise the driver's click
+    # auto-scrolls the off-screen control and that pre-click scroll reads as a false "jump".
+    dialog.locator(".segmented").scroll_into_view_if_needed()
     # The panel keeps its top edge while the mode changes its height (the selects, the notes), so the switch under the pointer stays put.
     switch_top = lambda: dialog.locator(".segmented").bounding_box()["y"]
     top = switch_top()
@@ -207,7 +211,7 @@ with sync_playwright() as p:
 
     # The command palette reaches every theme and turns automatic switching off.
     palette_theme(page, names[-1], "enter")
-    assert painted(page) == ["indigo", "dark"] and api(page, "State")["appearance"]["auto"] == "off"
+    assert painted(page) == ["gruvlite", "light"] and api(page, "State")["appearance"]["auto"] == "off"
     for i, (t, name) in enumerate(zip(THEMES, names)):
         palette_theme(page, name, "arrow" if i % 2 else "click")
         assert painted(page) == [t["id"], "dark" if t["dark"] else "light"], t["id"]

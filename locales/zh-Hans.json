@@ -507,6 +507,10 @@
   "@fViewOnline": {
     "description": "Interface text for (View Online)."
   },
+  "fViewImage": "查看图片",
+  "@fViewImage": {
+    "description": "Accessible name for an inline image in the reading view; activating it opens the full-size image viewer."
+  },
   "fMissingImage": "图片缺失：",
   "@fMissingImage": {
     "description": "Interface text for Missing Image:."
@@ -771,6 +775,10 @@
   "fStartWritingOrUseAShortcut": "直接写，也可以用快捷键",
   "@fStartWritingOrUseAShortcut": {
     "description": "Interface text for Start writing, or use a shortcut."
+  },
+  "fNoCommandsMatch": "没有匹配的操作",
+  "@fNoCommandsMatch": {
+    "description": "Empty state shown in the All Commands palette when the search matches nothing."
   },
   "fEscClose": "esc 关闭",
   "@fEscClose": {
@@ -1540,6 +1548,24 @@
     }
   },
   "fTableHeaderCell": "表头 第{column}列",
+  "fScrollableTable": "{table}，可左右滚动",
+  "fScrollableContent": "{content}，可左右滚动",
+  "@fScrollableContent": {
+    "description": "Accessible name for a reader code block or document properties with horizontal overflow.",
+    "placeholders": {
+      "content": {
+        "type": "String"
+      }
+    }
+  },
+  "@fScrollableTable": {
+    "description": "Accessible name for a reader table with horizontal overflow.",
+    "placeholders": {
+      "table": {
+        "type": "String"
+      }
+    }
+  },
   "@fTableHeaderCell": {
     "description": "Interface message: TableHeaderCell.",
     "placeholders": {
@@ -2055,6 +2081,182 @@
   "fIndigoCaption": "夜 · 远山如黛，一点烫金",
   "@fIndigoCaption": {
     "description": "Interface text for Night · Midnight blue with a touch of gold."
+  },
+  "fGithub": "代码纸",
+  "@fGithub": {
+    "description": "Interface text for GitHub."
+  },
+  "fGithubCaption": "干净的白纸，GitHub 蓝的光标",
+  "@fGithubCaption": {
+    "description": "Interface text for Clean white paper, a GitHub-blue caret."
+  },
+  "fStudioGithubTag": "码",
+  "@fStudioGithubTag": {
+    "description": "Interface text for Code."
+  },
+  "fSolar": "晴窗",
+  "@fSolar": {
+    "description": "Interface text for Solarized Light."
+  },
+  "fSolarCaption": "暖米色的纸，低饱和的强调色",
+  "@fSolarCaption": {
+    "description": "Interface text for Warm cream paper, muted accents."
+  },
+  "fStudioSolarTag": "晴",
+  "@fStudioSolarTag": {
+    "description": "Interface text for Clear."
+  },
+  "fSolare": "夜栈",
+  "@fSolare": {
+    "description": "Interface text for Solarized Dark."
+  },
+  "fSolareCaption": "深海蓝的终端，青色的光标",
+  "@fSolareCaption": {
+    "description": "Interface text for Deep navy terminal, a cyan caret."
+  },
+  "fStudioSolareTag": "栈",
+  "@fStudioSolareTag": {
+    "description": "Interface text for Terminal."
+  },
+  "fMonokai": "霓虹",
+  "@fMonokai": {
+    "description": "Interface text for Monokai."
+  },
+  "fMonokaiCaption": "深炭色的夜，霓虹色的高亮",
+  "@fMonokaiCaption": {
+    "description": "Interface text for Charcoal night, neon highlights."
+  },
+  "fStudioMonokaiTag": "霓",
+  "@fStudioMonokaiTag": {
+    "description": "Interface text for Neon."
+  },
+  "fNord": "极光",
+  "@fNord": {
+    "description": "Interface text for Nord."
+  },
+  "fNordCaption": "北极的蓝灰，霜色的光标",
+  "@fNordCaption": {
+    "description": "Interface text for Arctic blue-grey, a frost caret."
+  },
+  "fStudioNordTag": "冰",
+  "@fStudioNordTag": {
+    "description": "Interface text for Ice."
+  },
+  "fOnedark": "暮蓝",
+  "@fOnedark": {
+    "description": "Interface text for One Dark."
+  },
+  "fOnedarkCaption": "Atom 的深蓝灰，紫蓝的强调色",
+  "@fOnedarkCaption": {
+    "description": "Interface text for Atom's deep blue-grey, violet accents."
+  },
+  "fStudioOnedarkTag": "暮",
+  "@fStudioOnedarkTag": {
+    "description": "Interface text for Dusk."
+  },
+  "fDracula": "吸血",
+  "@fDracula": {
+    "description": "Interface text for Dracula."
+  },
+  "fDraculaCaption": "深紫黑的夜，粉紫的光标",
+  "@fDraculaCaption": {
+    "description": "Interface text for Deep purple-black night, a pink caret."
+  },
+  "fStudioDraculaTag": "紫",
+  "@fStudioDraculaTag": {
+    "description": "Interface text for Violet."
+  },
+  "fCatppuccin": "咖啡",
+  "@fCatppuccin": {
+    "description": "Interface text for Catppuccin Mocha."
+  },
+  "fCatppuccinCaption": "马卡龙的夜，柔蓝的光标",
+  "@fCatppuccinCaption": {
+    "description": "Interface text for Macaron night, a soft blue caret."
+  },
+  "fStudioCatppuccinTag": "咖",
+  "@fStudioCatppuccinTag": {
+    "description": "Interface text for Coffee."
+  },
+  "fGruvbox": "复古",
+  "@fGruvbox": {
+    "description": "Interface text for Gruvbox Dark."
+  },
+  "fGruvboxCaption": "暖橙的复古，奶黄的文字",
+  "@fGruvboxCaption": {
+    "description": "Interface text for Warm orange retro, cream text."
+  },
+  "fStudioGruvboxTag": "古",
+  "@fStudioGruvboxTag": {
+    "description": "Interface text for Retro."
+  },
+  "fRosepine": "玫瑰",
+  "@fRosepine": {
+    "description": "Interface text for Rosé Pine."
+  },
+  "fRosepineCaption": "深紫的夜，淡紫的光标",
+  "@fRosepineCaption": {
+    "description": "Interface text for Deep violet night, a pale violet caret."
+  },
+  "fStudioRosepineTag": "玫",
+  "@fStudioRosepineTag": {
+    "description": "Interface text for Rose."
+  },
+  "fOnelight": "素笺",
+  "@fOnelight": {
+    "description": "Interface text for One Light."
+  },
+  "fOnelightCaption": "Atom 的白纸，冷蓝的光标",
+  "@fOnelightCaption": {
+    "description": "Interface text for Atom's white paper, a cool blue caret."
+  },
+  "fStudioOnelightTag": "笺",
+  "@fStudioOnelightTag": {
+    "description": "Interface text for Dawn."
+  },
+  "fGhdark": "星夜",
+  "@fGhdark": {
+    "description": "Interface text for GitHub Dark."
+  },
+  "fGhdarkCaption": "GitHub 的深色，蓝紫的链接",
+  "@fGhdarkCaption": {
+    "description": "Interface text for GitHub's dark side, blue links."
+  },
+  "fStudioGhdarkTag": "星",
+  "@fStudioGhdarkTag": {
+    "description": "Interface text for Star."
+  },
+  "fCatlight": "奶霜",
+  "@fCatlight": {
+    "description": "Interface text for Catppuccin Latte."
+  },
+  "fCatlightCaption": "Catppuccin 的白昼，蓝紫的链接",
+  "@fCatlightCaption": {
+    "description": "Interface text for Catppuccin's daylight, blue links."
+  },
+  "fStudioCatlightTag": "霜",
+  "@fStudioCatlightTag": {
+    "description": "Interface text for Cream."
+  },
+  "fGruvlite": "暖阳",
+  "@fGruvlite": {
+    "description": "Interface text for Gruvbox Light."
+  },
+  "fGruvliteCaption": "奶黄的纸，棕橙的光标",
+  "@fGruvliteCaption": {
+    "description": "Interface text for Cream paper, a brown-orange caret."
+  },
+  "fStudioGruvliteTag": "阳",
+  "@fStudioGruvliteTag": {
+    "description": "Interface text for Sun."
+  },
+  "fStudio": "工作坊",
+  "@fStudio": {
+    "description": "Interface text for Studio."
+  },
+  "fThemesForCodingAndNotes": "写代码和笔记时用的配色",
+  "@fThemesForCodingAndNotes": {
+    "description": "Interface text for Palettes for coding and notes."
   },
   "fHourMao": "卯",
   "@fHourMao": {

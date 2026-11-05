@@ -1,9 +1,9 @@
 import list from './themes.json';
 import type {Appearance} from './types';
-export const themeIDs=['dawn','paper','warm','lamp','ink','moon','mist','lotus','autumn','moonwhite','indigo'] as const;
+export const themeIDs=['dawn','paper','warm','lamp','ink','moon','mist','lotus','autumn','moonwhite','indigo','github','solar','solare','monokai','nord','onedark','dracula','catppuccin','gruvbox','rosepine','onelight','ghdark','catlight','gruvlite'] as const;
 export type ThemeID=typeof themeIDs[number];
 export type AutoSwitch='off'|'system'|'hours'|'seasons';
-export interface ThemeSpec {id:ThemeID;series:'hours'|'seasons';dark:boolean;hours?:[number,number];season?:'spring'|'summer'|'autumn'|'winter'|'night'}
+export interface ThemeSpec {id:ThemeID;series:'hours'|'seasons'|'studio';dark:boolean;hours?:[number,number];season?:'spring'|'summer'|'autumn'|'winter'|'night'}
 export const themes=list as ThemeSpec[];
 const known=(id:unknown):id is ThemeID=>themes.some(t=>t.id===id);
 export const isDark=(id:string)=>themes.some(t=>t.id===id&&t.dark);

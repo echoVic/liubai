@@ -12,7 +12,9 @@ export function attachTooltips(){
   clearTimeout(timer);pending=null;
   if(!el.isConnected||el.closest('[hidden]')||el.getAttribute('aria-expanded')==='true'||document.body.classList.contains('printing'))return;
   shown?.removeAttribute('aria-describedby');shown=el;el.setAttribute('aria-describedby',tip.id);
-  label.textContent=el.dataset.tip||'';keys.textContent=el.dataset.shortcut?keyLabel(el.dataset.shortcut):'';tip.hidden=false;
+  label.textContent=el.dataset.tip||'';keys.textContent=el.dataset.shortcut?keyLabel(el.dataset.shortcut):'';
+  // Clear the previous placement while still hidden so a stale left can't shrink the shrink-to-fit width measurement.
+  tip.style.left='';tip.style.top='';tip.hidden=false;
   // Under the control, or above it where the window ends first; never closer than 8px to an edge.
   const r=el.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight,below=r.bottom+6;
   tip.style.left=Math.max(8,Math.min(r.left+r.width/2-w/2,innerWidth-w-8))+'px';tip.style.top=Math.max(8,below+h>innerHeight-8?r.top-6-h:below)+'px';

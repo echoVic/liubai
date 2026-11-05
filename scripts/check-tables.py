@@ -22,11 +22,19 @@ def api(page, method, *args):
 
 
 def saved(page, expected=None):
-    expect(page.locator('#save-status')).to_have_text('草稿已保存')
-    current = api(page, 'State')['current']
     if expected is not None:
+        # A slow renderer can leave the previous "草稿已保存" text in place when
+        # this assertion runs, so poll the saved content until the debounced save lands.
+        import time
+        deadline = time.time() + 15
+        current = api(page, 'State')['current']
+        while current['content'] != expected and time.time() < deadline:
+            time.sleep(0.15)
+            current = api(page, 'State')['current']
         assert current['content'] == expected, current['content']
-    return current
+        return current
+    expect(page.locator('#save-status')).to_have_text('草稿已保存', timeout=15000)
+    return api(page, 'State')['current']
 
 
 def source(page, value):
@@ -72,6 +80,9 @@ def run(page):
     saved(page, expected)
     expect(target).to_be_focused()
     assert target.evaluate('el => el === window.originalCell'), 'cell DOM replaced during input'
+    # CodeMirror groups typing within 500ms. A debounced save is not a history
+    # boundary; make the pause in this separate-undo assertion explicit.
+    page.wait_for_timeout(550)
     target.evaluate('el => window.getSelection().collapse(el.firstChild,1)')
     page.keyboard.insert_text('X')
     saved(page, TEXT.replace('[链接](x)', '*X*新** \\| `原样`'))
@@ -326,7 +337,7 @@ def run(page):
     page.locator('.table-menu-button').click()
     popup = page.locator('.table-menu:not([hidden])')
     expect(popup).to_have_accessible_name('Table actions')
-    expect(popup.get_by_role('menuitem')).to_have_text(['Insert row above', 'Insert row below', 'Insert column left', 'Insert column right', 'Delete row', 'Delete column', 'Align column left', 'Align column center', 'Align column right', 'Delete table'])
+    expect(popup.locator('[role="menuitem"],[role="menuitemradio"]')).to_have_text(['Insert row above', 'Insert row below', 'Insert column left', 'Insert column right', 'Delete row', 'Delete column', 'Align column left', 'Align column center', 'Align column right', 'Delete table'])
     page.screenshot(path=str(ARTIFACTS / 'english-table.png'))
     print('PASS: inline table input/caret/IME, cell-scoped ⌘A/⌘B, Tab/arrows/Escape, all menu edits/undo, block handles, insertion and English')
 

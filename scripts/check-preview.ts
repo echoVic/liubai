@@ -302,6 +302,12 @@ export async function runPreviewChecks(): Promise<string> {
  assert(!/border/.test(footnoteDelivery.querySelector('section.footnotes')?.getAttribute('style')||''),'delivery footnotes have a second separator');
  const deliveryCode=renderDelivery({title:'t',content:'```ts\nconst a = 1\n```',images:{},missing:[],external:0});
  assert(!deliveryCode.querySelector('code span'),'delivery code was highlighted');
+ const foldDelivery=renderDelivery({title:'t',content:'<details>\n<summary>更多</summary>\n\n折叠正文\n\n</details>',images:{},missing:[],external:0});
+ const fold=foldDelivery.querySelector('details');
+ assert(fold?.open,'delivery fold blocks are expanded for the static paper');
+ assert(fold?.textContent.includes('折叠正文'),'fold body is present in delivery');
+ const foldSummaryStyle=fold?.querySelector('summary')?.getAttribute('style')||'';
+ assert(/display:block/.test(foldSummaryStyle)&&/font-weight:700/.test(foldSummaryStyle),'fold summary is a bold static heading without the disclosure marker');
  const plainSanitizeCalls=sanitizeStats.calls;
  const longMarkdown=renderMarkdown([
   '---','title: <img src=x onerror=alert(1)>','---','',
@@ -322,6 +328,13 @@ export async function runPreviewChecks(): Promise<string> {
  equal(longMarkdown.root.querySelector('img')?.getAttribute('src'),localURL,'plain Markdown image was not resolved');
  assert(!longMarkdown.root.querySelector('details img'),'front matter HTML was not escaped');
  await longMarkdown.ready;
+
+ const preservedSources:string[]=[];
+ const preservedHTML=renderMarkdown('<a href="https://example.com/online" title="the onboarding guide">online</a>\n\n<img src="images/one.png" alt="the onboarding guide">',{resolve:source=>{preservedSources.push(source);return localURL},external:'load'});
+ equal(preservedHTML.root.querySelector('a')?.getAttribute('href'),'https://example.com/online','raw HTML link path');
+ equal(preservedSources[0],'images/one.png','raw HTML image filename');
+ equal(preservedHTML.root.querySelector('img')?.getAttribute('alt'),'the onboarding guide','raw HTML attribute words');
+ await preservedHTML.ready;
 
  const htmlSanitizeCalls=sanitizeStats.calls;
  const authorHTML=renderMarkdown('<kbd>⌘</kbd>\n\n<img src=x onerror=alert(1)>',{resolve:()=>localURL,external:'load'});
@@ -445,3 +458,4 @@ export async function runDOCXChecks():Promise<string>{
  let ticks=0,maxGap=0,last=performance.now();const timer=setInterval(()=>{const now=performance.now();maxGap=Math.max(maxGap,now-last);last=now;ticks++},0),start=performance.now();await exportDOCX(huge,'十万字');const elapsed=performance.now()-start;maxGap=Math.max(maxGap,performance.now()-last);clearInterval(timer);assert(ticks>0,'export yields');assert(elapsed<5000,'100k conversion exceeds five seconds: '+elapsed);
  return `Word DOM/OOXML checks passed; 100,000 Chinese characters ${elapsed.toFixed(0)} ms (${ticks} event-loop ticks, max gap ${maxGap.toFixed(0)} ms)`;
 }
+

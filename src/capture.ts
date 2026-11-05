@@ -22,7 +22,7 @@ async function refreshTargets(){
   const state=await call<{recent:Summary[];appearance:Appearance}>('GetCaptureContext');if(turn!==refresh)return;theme(state.appearance);
   const selected=target.value,old=target.selectedOptions[0]?.textContent||'';
   target.replaceChildren(new Option(messages.fCaptureNewDraft(),''));
-  for(const doc of state.recent)target.append(new Option(doc.title,doc.id));
+  for(const doc of state.recent)target.append(new Option(doc.title||messages.fUntitledDocument(),doc.id));
   if(selected&&!state.recent.some(doc=>doc.id===selected))target.append(new Option(old,selected));
   target.value=selected;
  }catch(e){message(e instanceof Error?e.message:String(e),true)}

@@ -70,6 +70,8 @@ function ordinal(marker:string):number{
 }
 export function htmlToMarkdown(html:string,plain:string):{markdown:string;images:PasteImage[]}{
  const body=new DOMParser().parseFromString(html,'text/html').body,code:Element[]=[];
+ // Cocoa's writer appends empty <b> siblings. They must not count as continuing emphasis.
+ for(const el of [...body.querySelectorAll('b,strong,i,em,s,strike,del,span')].reverse())if(!el.textContent&&!el.children.length)el.remove();
  // A <pre> is code already: it is taken whole when code is styled inside it.
  (function find(node:Element){for(const child of Array.from(node.children))if(editorCode(child)||child.nodeName==='PRE'&&Array.from(child.getElementsByTagName('*')).some(editorCode))code.push(child);else if(child.nodeName!=='PRE')find(child)})(body);
  // Code that is all that was copied pastes as its text. Among other content it
@@ -95,6 +97,10 @@ export function htmlToMarkdown(html:string,plain:string):{markdown:string;images
    if(!/^\|[ :|-]+\|$/.test(rows[1]||''))rows.splice(1,0,'| '+Array.from(table.rows[0].cells).map(cell=>({left:':--',right:'--:',center:':-:'}[cell.getAttribute('align')||'']||'---')).join(' | ')+' |');
    return '\n\n'+rows.join('\n')+'\n\n';
   }
+ });
+ service.addRule('tableParagraph',{
+  filter:node=>node.nodeName==='P'&&!!(node as HTMLElement).closest('td,th'),
+  replacement:(content,node)=>content.trim().replace(/\n+/g,'<br>')+((node as HTMLElement).nextElementSibling?'<br>':'')
  });
  service.addRule('listItem',{
   filter:'li',replacement:(content,node)=>{

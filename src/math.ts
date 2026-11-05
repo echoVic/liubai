@@ -100,5 +100,11 @@ export function renderMath(source:string,display:boolean,output:MathOutput='html
 }
 export function fillMath(element:HTMLElement,source:string,display:boolean,output?:MathOutput){
  const result=renderMath(source,display,output);element.innerHTML=result.html;element.classList.add(display?'math-display':'math-inline');
- if(result.error){element.classList.add('math-error');element.title=result.error==='unsupported'?messages.fFormulaUnsupported():result.error}
+ if(result.error){
+  const message=result.error==='unsupported'?messages.fFormulaUnsupported():result.error;
+  element.classList.add('math-error');element.title=message;
+  // The reason is otherwise a hover-only title on a non-focusable node, invisible to keyboards and AT.
+  // Publish it as the accessible name; the raw source keeps it identifiable among several broken formulas.
+  element.setAttribute('role','img');element.setAttribute('aria-label',`${message} (${source})`);
+ }else{element.removeAttribute('role');element.removeAttribute('aria-label');}
 }

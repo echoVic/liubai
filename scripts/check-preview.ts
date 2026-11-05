@@ -458,4 +458,3 @@ export async function runDOCXChecks():Promise<string>{
  let ticks=0,maxGap=0,last=performance.now();const timer=setInterval(()=>{const now=performance.now();maxGap=Math.max(maxGap,now-last);last=now;ticks++},0),start=performance.now();await exportDOCX(huge,'十万字');const elapsed=performance.now()-start;maxGap=Math.max(maxGap,performance.now()-last);clearInterval(timer);assert(ticks>0,'export yields');assert(elapsed<5000,'100k conversion exceeds five seconds: '+elapsed);
  return `Word DOM/OOXML checks passed; 100,000 Chinese characters ${elapsed.toFixed(0)} ms (${ticks} event-loop ticks, max gap ${maxGap.toFixed(0)} ms)`;
 }
-

@@ -240,28 +240,41 @@ func TestSettingsSystemThemeDoesNotFollowSelectedCardDarkness(t *testing.T) {
 	}
 }
 
-// scrollIntoSettingsView scrolls the settings window's content until the
-// element showing text lies wholly inside the window, and returns its box.
-// A view clips what scrolled out of sight to an empty rectangle, and the
-// Tester's Click only checks that the element's center is inside the window,
-// so a click at a guessed scroll offset can report success while landing on
-// nothing. Platform text metrics make any fixed offset wrong somewhere.
-func scrollIntoSettingsView(t *testing.T, tt *ui.Tester, text string) ui.Rect {
+// revealControl scrolls the window a little at a time until the element
+// labeled label is on screen, then clicks it and checks that it opened its
+// menu. It scrolls to the control rather than a fixed distance because the
+// heights of the texts come from the desktop's fonts: the same fixed
+// distance can reach the bottom with one platform's text metrics and stop
+// short with another's. The Tester's Find walks labels without checking
+// geometry, so a control clipped out of view has an empty box whose center
+// Click can still take for a click on the control.
+func revealControl(t *testing.T, tt *ui.Tester, width, height int, label, option string) {
 	t.Helper()
-	bounds := tt.Image().Bounds()
-	width, height := float32(bounds.Dx()), float32(bounds.Dy())
-	for i := 0; i < 400; i++ {
-		r, ok := tt.Find(text)
-		if !ok {
-			t.Fatalf("settings window does not show %q", text)
+	const step, tries = 80, 30
+	seen := false
+	for i := 0; i < tries; i++ {
+		if r, ok := tt.Find(label); ok && onScreen(r, width, height) {
+			seen = true
+			if err := tt.Click(label); err != nil {
+				t.Fatalf("click %q: %v", label, err)
+			}
+			if _, ok := tt.Find(option); ok {
+				return
+			}
 		}
-		if r.W > 0 && r.H > 0 && r.X >= 0 && r.Y >= 0 && r.X+r.W <= width && r.Y+r.H <= height {
-			return r
-		}
-		tt.Scroll(width/2, height/2, 0, 10)
+		tt.Scroll(float32(width)/2, float32(height)/2, 0, step)
 	}
-	t.Fatalf("settings window cannot scroll %q into view", text)
-	return ui.Rect{}
+	if seen {
+		t.Fatalf("clicking %q did not open its menu: %q", label, tt.Texts())
+	}
+	t.Fatalf("settings did not scroll %q into view: %q", label, tt.Texts())
+}
+
+// onScreen reports whether r is a box with an area that lies wholly inside a
+// window of the given size.
+func onScreen(r ui.Rect, width, height int) bool {
+	return r.W > 0 && r.H > 0 && r.X >= 0 && r.Y >= 0 &&
+		r.X+r.W <= float32(width) && r.Y+r.H <= float32(height)
 }
 
 func TestSettingsSmallWindowCanScrollToTypography(t *testing.T) {
@@ -273,12 +286,19 @@ func TestSettingsSmallWindowCanScrollToTypography(t *testing.T) {
 	w.appearance.Layout, w.appearance.Source = "split", true
 	s := &settingsWindow{desktop: &Desktop{w: w}}
 	tt := ui.NewTester(s.view, 640, 500)
-	rect := scrollIntoSettingsView(t, tt, "18")
-	if err := tt.Click("18"); err != nil {
-		t.Fatal(err)
+	// The typography row starts below the fold: the settings window at its
+	// minimum size exists to prove the user can scroll to it.
+	if r, ok := tt.Find("Body Font Size"); ok && onScreen(r, 640, 500) {
+		t.Fatalf("typography is visible at 640x500 before scrolling: %+v", r)
 	}
-	if !tt.HasText("22") || !tt.Focused("18") {
-		t.Fatalf("font size control did not open at %+v; focused=%v", rect, tt.Focused("18"))
+	revealControl(t, tt, 640, 500, "Body Font Size", "15")
+	if !tt.Focused("Body Font Size") {
+		t.Fatalf("typography select did not take the focus: %q", tt.Texts())
+	}
+	for _, size := range []string{"15", "16", "17", "18", "19", "20", "21", "22"} {
+		if _, ok := tt.Find(size); !ok {
+			t.Fatalf("font size menu does not offer %q: %q", size, tt.Texts())
+		}
 	}
 	tt.Key(0, ui.KeyDown)
 	tt.Key(0, ui.KeyEnd)

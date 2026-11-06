@@ -370,7 +370,16 @@ func searchFiles(t *testing.T, roots ...string) map[string]searchFileSnapshot {
 					return err
 				}
 			}
-			files[path] = searchFileSnapshot{string(data), info.Mode(), info.ModTime().UnixNano()}
+			// Windows updates directory modification times lazily: a
+			// directory changed by the workspace's own setup can report a
+			// later time when a later walk flushes the update, without any
+			// write during the measured window. Files carry the write
+			// evidence that a read-only query must not produce.
+			snapshot := searchFileSnapshot{Data: string(data), Mode: info.Mode()}
+			if !entry.IsDir() {
+				snapshot.ModTime = info.ModTime().UnixNano()
+			}
+			files[path] = snapshot
 			return nil
 		})
 		if err != nil {
@@ -378,6 +387,45 @@ func searchFiles(t *testing.T, roots ...string) map[string]searchFileSnapshot {
 		}
 	}
 	return files
+}
+
+// shortText trims long values in diagnostic output.
+func shortText(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + fmt.Sprintf("...(truncated %d bytes)", len(s)-n)
+}
+
+// searchFilesDiff says what changed between two snapshots; it exists to
+// diagnose the Windows-only failures of the read-only query tests.
+func searchFilesDiff(before, after map[string]searchFileSnapshot) string {
+	var b strings.Builder
+	for path, was := range before {
+		now, ok := after[path]
+		if !ok {
+			fmt.Fprintf(&b, "removed %q\n", path)
+			continue
+		}
+		if was.Data != now.Data {
+			fmt.Fprintf(&b, "data %q: %d -> %d bytes\n  before=%q\n  after=%q\n", path, len(was.Data), len(now.Data), shortText(was.Data, 512), shortText(now.Data, 512))
+		}
+		if was.Mode != now.Mode {
+			fmt.Fprintf(&b, "mode %q: %v -> %v\n", path, was.Mode, now.Mode)
+		}
+		if was.ModTime != now.ModTime {
+			fmt.Fprintf(&b, "modtime %q: %d -> %d (delta %d ns)\n", path, was.ModTime, now.ModTime, now.ModTime-was.ModTime)
+		}
+	}
+	for path := range after {
+		if _, ok := before[path]; !ok {
+			fmt.Fprintf(&b, "added %q\n", path)
+		}
+	}
+	if b.Len() == 0 {
+		b.WriteString("(snapshots unequal but no per-file field differs)\n")
+	}
+	return b.String()
 }
 
 func TestSearchHasNoSideEffects(t *testing.T) {

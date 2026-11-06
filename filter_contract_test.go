@@ -156,8 +156,13 @@ func TestDocumentFilterReadOnly(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if !bytes.Equal(before, searchStateBytes(t, w)) || !reflect.DeepEqual(files, searchFiles(t, w.root, dir)) {
-		t.Fatal("filter changed workspace state or file bytes")
+	afterState := searchStateBytes(t, w)
+	afterFiles := searchFiles(t, w.root, dir)
+	if !bytes.Equal(before, afterState) {
+		t.Fatalf("filter changed workspace state\nroot=%s dir=%s\nbefore=%s\nafter=%s", w.root, dir, shortText(string(before), 6000), shortText(string(afterState), 6000))
+	}
+	if !reflect.DeepEqual(files, afterFiles) {
+		t.Fatalf("filter changed file bytes or metadata\nroot=%s dir=%s\n%s", w.root, dir, searchFilesDiff(files, afterFiles))
 	}
 	if got := filterResult(t, w, "", "磁盘"); got.Total != 0 {
 		t.Fatal("filter reloaded disk content")

@@ -394,9 +394,17 @@ func TestWikiRegisteredScopeRestartAndReadOnly(t *testing.T) {
 			_, err = current.Backlinks("absent", locale)
 			wikiErrorKey(t, err, "bDocumentMissing")
 		}
-		if !bytes.Equal(before, searchStateBytes(t, current)) || global != i18n.Locale() ||
-			!reflect.DeepEqual(files, searchFiles(t, current.root, filepath.Dir(path))) {
-			t.Fatal("wiki query changed state, notices, locale, file bytes, or metadata")
+		afterState := searchStateBytes(t, current)
+		afterFiles := searchFiles(t, current.root, filepath.Dir(path))
+		afterLocale := i18n.Locale()
+		if !bytes.Equal(before, afterState) {
+			t.Fatalf("wiki query changed workspace state or notices\nroot=%s file=%s quarantine=%q\nbefore=%s\nafter=%s", current.root, path, current.quarantineDir, shortText(string(before), 6000), shortText(string(afterState), 6000))
+		}
+		if global != afterLocale {
+			t.Fatalf("wiki query changed the global locale: %q -> %q", global, afterLocale)
+		}
+		if !reflect.DeepEqual(files, afterFiles) {
+			t.Fatalf("wiki query changed file bytes or metadata\nroot=%s file=%s quarantine=%q\n%s", current.root, path, current.quarantineDir, searchFilesDiff(files, afterFiles))
 		}
 	}
 	if err := os.Remove(path); err != nil {

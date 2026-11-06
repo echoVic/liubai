@@ -240,6 +240,30 @@ func TestSettingsSystemThemeDoesNotFollowSelectedCardDarkness(t *testing.T) {
 	}
 }
 
+// scrollIntoSettingsView scrolls the settings window's content until the
+// element showing text lies wholly inside the window, and returns its box.
+// A view clips what scrolled out of sight to an empty rectangle, and the
+// Tester's Click only checks that the element's center is inside the window,
+// so a click at a guessed scroll offset can report success while landing on
+// nothing. Platform text metrics make any fixed offset wrong somewhere.
+func scrollIntoSettingsView(t *testing.T, tt *ui.Tester, text string) ui.Rect {
+	t.Helper()
+	bounds := tt.Image().Bounds()
+	width, height := float32(bounds.Dx()), float32(bounds.Dy())
+	for i := 0; i < 400; i++ {
+		r, ok := tt.Find(text)
+		if !ok {
+			t.Fatalf("settings window does not show %q", text)
+		}
+		if r.W > 0 && r.H > 0 && r.X >= 0 && r.Y >= 0 && r.X+r.W <= width && r.Y+r.H <= height {
+			return r
+		}
+		tt.Scroll(width/2, height/2, 0, 10)
+	}
+	t.Fatalf("settings window cannot scroll %q into view", text)
+	return ui.Rect{}
+}
+
 func TestSettingsSmallWindowCanScrollToTypography(t *testing.T) {
 	w, err := openWorkspace(t.TempDir())
 	if err != nil {
@@ -249,9 +273,12 @@ func TestSettingsSmallWindowCanScrollToTypography(t *testing.T) {
 	w.appearance.Layout, w.appearance.Source = "split", true
 	s := &settingsWindow{desktop: &Desktop{w: w}}
 	tt := ui.NewTester(s.view, 640, 500)
-	tt.Scroll(600, 400, 0, 600)
+	rect := scrollIntoSettingsView(t, tt, "18")
 	if err := tt.Click("18"); err != nil {
 		t.Fatal(err)
+	}
+	if !tt.HasText("22") || !tt.Focused("18") {
+		t.Fatalf("font size control did not open at %+v; focused=%v", rect, tt.Focused("18"))
 	}
 	tt.Key(0, ui.KeyDown)
 	tt.Key(0, ui.KeyEnd)

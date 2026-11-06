@@ -370,8 +370,9 @@ func searchFiles(t *testing.T, roots ...string) map[string]searchFileSnapshot {
 					return err
 				}
 			}
-			// Windows updates directory modification times lazily: a
-			// directory changed by the workspace's own setup can report a
+			// Windows reports directory modification times from its directory
+			// enumeration cache until the handle closes (golang.org/issue/42637):
+			// a directory changed by the workspace's own setup can report a
 			// later time when a later walk flushes the update, without any
 			// write during the measured window. Files carry the write
 			// evidence that a read-only query must not produce.

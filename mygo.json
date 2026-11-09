@@ -2,6 +2,7 @@
   "name": "Liubai",
   "identifier": "app.liubai.desktop",
   "version": "0.7.0",
+  "license": "MIT",
   "resources": ["web"],
   "out": "build",
   "bindings": "bindings.ts",

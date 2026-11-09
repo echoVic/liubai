@@ -1052,6 +1052,12 @@ export interface Messages {
    */
   fChangesApplyImmediatelyYourDocumentAndEditingPositionAre(): string;
   /**
+   * Link in the settings footer that opens the app's GitHub issue form.
+   *
+   * `问题反馈…`
+   */
+  fFeedback(): string;
+  /**
    * Interface text for Close Quick Note Settings.
    *
    * `关闭随手记设置`
@@ -1699,6 +1705,12 @@ export interface Messages {
    * `检查更新…`
    */
   bMenuCheckForUpdates(): string;
+  /**
+   * Native menu label: Feedback, which opens the app's GitHub issue form
+   *
+   * `问题反馈…`
+   */
+  bMenuFeedback(): string;
   /**
    * Native menu label: Hide
    *
@@ -3713,6 +3725,7 @@ const catalog = createCatalog<Messages>({
     "fWide": [],
     "fFullWidth": [],
     "fChangesApplyImmediatelyYourDocumentAndEditingPositionAre": [],
+    "fFeedback": [],
     "fCloseQuickNoteSettings": [],
     "fEnableQuickNote": [],
     "fKeyboardShortcut": [],
@@ -3821,6 +3834,7 @@ const catalog = createCatalog<Messages>({
     "bMenuAppName": [],
     "bMenuAbout": [],
     "bMenuCheckForUpdates": [],
+    "bMenuFeedback": [],
     "bMenuHide": [],
     "bMenuHideOthers": [],
     "bMenuShowAll": [],
@@ -4325,6 +4339,7 @@ const catalog = createCatalog<Messages>({
       "fWide": "宽阔",
       "fFullWidth": "全宽",
       "fChangesApplyImmediatelyYourDocumentAndEditingPositionAre": "选择即应用。你的文稿和编辑位置会保持原样。",
+      "fFeedback": "问题反馈…",
       "fCloseQuickNoteSettings": "关闭随手记设置",
       "fEnableQuickNote": "启用随手记",
       "fKeyboardShortcut": "快捷键",
@@ -4433,6 +4448,7 @@ const catalog = createCatalog<Messages>({
       "bMenuAppName": "留白",
       "bMenuAbout": "关于留白",
       "bMenuCheckForUpdates": "检查更新…",
+      "bMenuFeedback": "问题反馈…",
       "bMenuHide": "隐藏留白",
       "bMenuHideOthers": "隐藏其他",
       "bMenuShowAll": "全部显示",
@@ -4936,6 +4952,7 @@ const catalog = createCatalog<Messages>({
       "fWide": "Wide",
       "fFullWidth": "Full Width",
       "fChangesApplyImmediatelyYourDocumentAndEditingPositionAre": "Changes apply immediately. Your document and editing position are preserved.",
+      "fFeedback": "Report an Issue…",
       "fCloseQuickNoteSettings": "Close Quick Note Settings",
       "fEnableQuickNote": "Enable Quick Note",
       "fKeyboardShortcut": "Keyboard Shortcut",
@@ -5044,6 +5061,7 @@ const catalog = createCatalog<Messages>({
       "bMenuAppName": "Liubai",
       "bMenuAbout": "About Liubai",
       "bMenuCheckForUpdates": "Check for Updates…",
+      "bMenuFeedback": "Report an Issue…",
       "bMenuHide": "Hide Liubai",
       "bMenuHideOthers": "Hide Others",
       "bMenuShowAll": "Show All",

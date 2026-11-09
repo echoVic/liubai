@@ -120,6 +120,41 @@ func TestSettingsTabsAndThemeSelection(t *testing.T) {
 	}
 }
 
+func TestSettingsFooterOffersFeedbackLink(t *testing.T) {
+	for _, tc := range []struct{ locale, label string }{
+		{"zh-Hans", "问题反馈…"},
+		{"en", "Report an Issue…"},
+	} {
+		t.Run(tc.locale, func(t *testing.T) {
+			w, err := openWorkspace(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.localePreference = tc.locale
+			s := &settingsWindow{desktop: &Desktop{w: w}}
+			tt := ui.NewTester(s.view, 720, 760)
+			// The footer keeps the hint that was there, beside the new link.
+			if hint := s.text("fChangesApplyImmediatelyYourDocumentAndEditingPositionAre"); !tt.HasText(hint) {
+				t.Fatalf("settings footer lost its hint %q: %q", hint, tt.Texts())
+			}
+			if !tt.HasText(tc.label) {
+				t.Fatalf("settings has no feedback link %q: %q", tc.label, tt.Texts())
+			}
+			// The link sits in the right half of the footer, inside the window.
+			r, ok := tt.Find(tc.label)
+			if !ok || r.W <= 0 || r.H <= 0 || r.X < 360 || r.X+r.W > 696 || r.Y+r.H > 760 {
+				t.Fatalf("feedback link is not right-aligned in the footer: %+v (found %v)", r, ok)
+			}
+			if err := tt.Click(tc.label); err != nil {
+				t.Fatal(err)
+			}
+			if got := tt.OpenedURLs(); len(got) != 1 || got[0] != feedbackURL {
+				t.Fatalf("feedback link opened %v, want %q", got, feedbackURL)
+			}
+		})
+	}
+}
+
 func TestSettingsShortcutRecordsAndCancels(t *testing.T) {
 	w, err := openWorkspace(t.TempDir())
 	if err != nil {

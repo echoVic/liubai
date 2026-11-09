@@ -2578,6 +2578,20 @@ func (msgs Messages) FChangesApplyImmediatelyYourDocumentAndEditingPositionAre()
 	return Catalog.Format(msgs.locale, "fChangesApplyImmediatelyYourDocumentAndEditingPositionAre", nil)
 }
 
+// FFeedback says "问题反馈…"
+// in the language the app shows.
+//
+// Link in the settings footer that opens the app's GitHub issue form.
+func FFeedback() string { return In(i18n.Locale()).FFeedback() }
+
+// FFeedback says "问题反馈…"
+// in the language of msgs.
+//
+// Link in the settings footer that opens the app's GitHub issue form.
+func (msgs Messages) FFeedback() string {
+	return Catalog.Format(msgs.locale, "fFeedback", nil)
+}
+
 // FCloseQuickNoteSettings says "关闭随手记设置"
 // in the language the app shows.
 //
@@ -4122,6 +4136,20 @@ func BMenuCheckForUpdates() string { return In(i18n.Locale()).BMenuCheckForUpdat
 // Native menu label: Check for Updates
 func (msgs Messages) BMenuCheckForUpdates() string {
 	return Catalog.Format(msgs.locale, "bMenuCheckForUpdates", nil)
+}
+
+// BMenuFeedback says "问题反馈…"
+// in the language the app shows.
+//
+// Native menu label: Feedback, which opens the app's GitHub issue form
+func BMenuFeedback() string { return In(i18n.Locale()).BMenuFeedback() }
+
+// BMenuFeedback says "问题反馈…"
+// in the language of msgs.
+//
+// Native menu label: Feedback, which opens the app's GitHub issue form
+func (msgs Messages) BMenuFeedback() string {
+	return Catalog.Format(msgs.locale, "bMenuFeedback", nil)
 }
 
 // BMenuHide says "隐藏留白"

@@ -55,8 +55,32 @@ func TestAppMenuOffersCheckForUpdatesAfterAbout(t *testing.T) {
 			if app[1].Label != tt.label || app[1].Click == nil {
 				t.Errorf("item after About = %+v, want %q with Click", app[1], tt.label)
 			}
-			if app[2].Type != mygo.MenuItemSeparator || app[3].Label != locales.In(tt.locale).FSettings() || app[4].Type != mygo.MenuItemSeparator || app[5].Role != mygo.RoleHide {
-				t.Error("Check for Updates must be followed by Settings, then the standard app actions")
+			if app[3].Type != mygo.MenuItemSeparator || app[4].Label != locales.In(tt.locale).FSettings() || app[5].Type != mygo.MenuItemSeparator || app[6].Role != mygo.RoleHide {
+				t.Error("Check for Updates must be followed by Feedback and Settings, then the standard app actions")
+			}
+		})
+	}
+}
+
+func TestMenusOfferFeedbackEntry(t *testing.T) {
+	for _, tc := range []struct{ locale, label string }{
+		{"zh-Hans", "问题反馈…"},
+		{"en", "Report an Issue…"},
+	} {
+		t.Run(tc.locale, func(t *testing.T) {
+			msgs := locales.In(tc.locale)
+			if got := msgs.BMenuFeedback(); got != tc.label {
+				t.Fatalf("bMenuFeedback = %q, want %q", got, tc.label)
+			}
+			darwin := menuTemplateFor("darwin", msgs, func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
+			app := darwin[0].Submenu
+			if len(app) < 5 || app[2].Label != tc.label || app[2].Click == nil {
+				t.Errorf("macOS app menu should offer %q after Check for Updates: %+v", tc.label, app)
+			}
+			windows := menuTemplateFor("windows", msgs, func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
+			help := windows[len(windows)-1].Submenu
+			if len(help) < 2 || help[1].Label != tc.label || help[1].Click == nil {
+				t.Errorf("Windows Help menu should offer %q after Check for Updates: %+v", tc.label, help)
 			}
 		})
 	}
@@ -216,9 +240,9 @@ func TestSettingsMenuIsTheOnlyPreferenceEntry(t *testing.T) {
 }
 
 func TestWindowsMenusFollowWindowsHabits(t *testing.T) {
-	for _, tt := range []struct{ locale, file, exit, help, updates, about string }{
-		{"zh-Hans", "文件", "退出", "帮助", "检查更新…", "关于留白"},
-		{"en", "File", "Exit", "Help", "Check for Updates…", "About Liubai"},
+	for _, tt := range []struct{ locale, file, exit, help, updates, feedback, about string }{
+		{"zh-Hans", "文件", "退出", "帮助", "检查更新…", "问题反馈…", "关于留白"},
+		{"en", "File", "Exit", "Help", "Check for Updates…", "Report an Issue…", "About Liubai"},
 	} {
 		t.Run(tt.locale, func(t *testing.T) {
 			items := menuTemplateFor("windows", locales.In(tt.locale), func(string) func(*mygo.MenuItem, *mygo.Window) { return nil })
@@ -230,7 +254,7 @@ func TestWindowsMenusFollowWindowsHabits(t *testing.T) {
 				t.Errorf("File ends with %+v, want %q", exit, tt.exit)
 			}
 			help := items[3].Submenu
-			if len(help) != 3 || help[0].Label != tt.updates || help[0].Click == nil || help[1].Type != mygo.MenuItemSeparator || help[2].Label != tt.about || help[2].Click == nil {
+			if len(help) != 4 || help[0].Label != tt.updates || help[0].Click == nil || help[1].Label != tt.feedback || help[1].Click == nil || help[2].Type != mygo.MenuItemSeparator || help[3].Label != tt.about || help[3].Click == nil {
 				t.Errorf("Help menu %+v", help)
 			}
 			var walk func([]*mygo.MenuItem)

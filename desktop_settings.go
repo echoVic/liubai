@@ -100,8 +100,11 @@ func (s *settingsWindow) view(c *ui.Context) {
 				}
 			})
 		})
-		ui.Text(c, m.FChangesApplyImmediatelyYourDocumentAndEditingPositionAre()).
-			FontSize(12 * c.Preferences().TextScale).TextColor(c.Theme().TextMuted)
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(12).Children(func() {
+			ui.Text(c, m.FChangesApplyImmediatelyYourDocumentAndEditingPositionAre()).
+				Grow(1).FontSize(12 * c.Preferences().TextScale).TextColor(c.Theme().TextMuted)
+			ui.Link(c, m.FFeedback(), feedbackURL).FontSize(12 * c.Preferences().TextScale)
+		})
 	})
 	if !s.recording && (c.Shortcut(0, ui.KeyEscape) || c.Shortcut(ui.Cmd, ui.KeyW)) && s.win != nil {
 		s.win.Close()

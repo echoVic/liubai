@@ -336,6 +336,10 @@ func (d *Desktop) requestClose()      { _ = desktopAction.Broadcast("close") }
 
 func quitAllowed(allowClose, pending bool) bool { return allowClose || !pending }
 
+// feedbackURL is the app's GitHub issue form. The menus and the settings
+// window both lead there, so that reporting a problem needs no search.
+const feedbackURL = "https://github.com/echoVic/liubai/issues/new"
+
 func menuTemplate(action func(string) func(*mygo.MenuItem, *mygo.Window)) []*mygo.MenuItem {
 	return menuTemplateFor(runtime.GOOS, locales.In(i18n.Locale()), action)
 }
@@ -366,6 +370,7 @@ func menuTemplateFor(goos string, msgs locales.Messages, action func(string) fun
 	mac := goos == "darwin"
 	about := &mygo.MenuItem{Label: msgs.BMenuAbout(), Click: func(*mygo.MenuItem, *mygo.Window) { showAbout(msgs) }}
 	updates := &mygo.MenuItem{Label: msgs.BMenuCheckForUpdates(), Click: func(*mygo.MenuItem, *mygo.Window) { updater.CheckForUpdates() }}
+	feedback := &mygo.MenuItem{Label: msgs.BMenuFeedback(), Click: func(*mygo.MenuItem, *mygo.Window) { _ = mygo.Shell.OpenExternal(feedbackURL) }}
 	// Microsoft Pinyin and Sogou switch to Traditional Chinese on Ctrl+Shift+F,
 	// so Windows has Typora's F8 for focus mode, and its Ctrl+Y for redo.
 	focus, redo := "CmdOrCtrl+Shift+F", "CmdOrCtrl+Shift+Z"
@@ -384,11 +389,11 @@ func menuTemplateFor(goos string, msgs locales.Messages, action func(string) fun
 		return []*mygo.MenuItem{
 			{Label: msgs.BMenuFile(), Submenu: append(file, &mygo.MenuItem{Role: mygo.RoleQuit, Label: msgs.BMenuExit()})},
 			edit, view,
-			{Label: msgs.BMenuHelp(), Submenu: []*mygo.MenuItem{updates, mygo.Separator(), about}},
+			{Label: msgs.BMenuHelp(), Submenu: []*mygo.MenuItem{updates, feedback, mygo.Separator(), about}},
 		}
 	}
 	return []*mygo.MenuItem{
-		{Label: msgs.BMenuAppName(), Submenu: []*mygo.MenuItem{about, updates, mygo.Separator(), settings, mygo.Separator(), {Role: mygo.RoleHide, Label: msgs.BMenuHide()}, {Role: mygo.RoleHideOthers, Label: msgs.BMenuHideOthers()}, {Role: mygo.RoleUnhide, Label: msgs.BMenuShowAll()}, mygo.Separator(), {Role: mygo.RoleQuit, Label: msgs.BMenuQuit()}}},
+		{Label: msgs.BMenuAppName(), Submenu: []*mygo.MenuItem{about, updates, feedback, mygo.Separator(), settings, mygo.Separator(), {Role: mygo.RoleHide, Label: msgs.BMenuHide()}, {Role: mygo.RoleHideOthers, Label: msgs.BMenuHideOthers()}, {Role: mygo.RoleUnhide, Label: msgs.BMenuShowAll()}, mygo.Separator(), {Role: mygo.RoleQuit, Label: msgs.BMenuQuit()}}},
 		{Label: msgs.BMenuFile(), Submenu: append(file, &mygo.MenuItem{Role: mygo.RoleClose, Label: msgs.BMenuCloseWindow()})},
 		edit, view,
 		{Label: msgs.BMenuWindow(), Submenu: []*mygo.MenuItem{{Role: mygo.RoleMinimize, Label: msgs.BMenuMinimize()}, {Role: mygo.RoleZoom, Label: msgs.BMenuZoom()}, mygo.Separator(), {Role: mygo.RoleFront, Label: msgs.BMenuFront()}}},

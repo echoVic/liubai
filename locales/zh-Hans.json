@@ -715,6 +715,10 @@
   "@fChangesApplyImmediatelyYourDocumentAndEditingPositionAre": {
     "description": "Interface text for Changes apply immediately. Your document and editing position are preserved.."
   },
+  "fFeedback": "问题反馈…",
+  "@fFeedback": {
+    "description": "Link in the settings footer that opens the app's GitHub issue form."
+  },
   "fCloseQuickNoteSettings": "关闭随手记设置",
   "@fCloseQuickNoteSettings": {
     "description": "Interface text for Close Quick Note Settings."
@@ -1151,6 +1155,10 @@
   "bMenuCheckForUpdates": "检查更新…",
   "@bMenuCheckForUpdates": {
     "description": "Native menu label: Check for Updates"
+  },
+  "bMenuFeedback": "问题反馈…",
+  "@bMenuFeedback": {
+    "description": "Native menu label: Feedback, which opens the app's GitHub issue form"
   },
   "bMenuHide": "隐藏留白",
   "@bMenuHide": {

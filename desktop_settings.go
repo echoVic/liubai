@@ -189,6 +189,13 @@ func (s *settingsWindow) recordShortcut(ev ui.InputEvent) bool {
 	if !s.recording || ev.Kind != ui.InputKeyDown {
 		return false
 	}
+	// MyGo v0.8 sends every key to HandleInput, keys it names neither by Code
+	// nor by Key too, as one an input method keeps from the application: not a
+	// shortcut, and recording goes on for the one the user means to press. A
+	// key of a non-US layout it names only by position (PhysicalKey) still is.
+	if ev.Key == ui.KeyUnknown && ev.PhysicalKey == ui.KeyUnknown && ev.Code == ui.CodeUnknown {
+		return true
+	}
 	if ev.Key == ui.KeyEscape {
 		s.recording = false
 		return true
@@ -210,28 +217,16 @@ func settingsShortcut(ev ui.InputEvent) string {
 	if ev.Mods&(ui.Ctrl|ui.Alt|ui.Super) == 0 {
 		return ""
 	}
-	key := ev.PhysicalKey
-	if key == ui.KeyUnknown {
-		key = ev.Key
-	}
-	name := ""
-	switch {
-	case key >= ui.KeyA && key <= ui.KeyZ:
-		name = string(rune('A' + key - ui.KeyA))
-	case key >= ui.Key0 && key <= ui.Key9:
-		name = string(rune('0' + key - ui.Key0))
-	case key >= ui.KeyF1 && key <= ui.KeyF12:
-		name = "F" + strconv.Itoa(int(key-ui.KeyF1)+1)
-	default:
-		name = map[ui.Key]string{
-			ui.KeySpace: "Space", ui.KeyEnter: "Enter", ui.KeyTab: "Tab",
-			ui.KeyBackspace: "Backspace", ui.KeyDelete: "Delete", ui.KeyInsert: "Insert",
-			ui.KeyUp: "Up", ui.KeyDown: "Down", ui.KeyLeft: "Left", ui.KeyRight: "Right",
-			ui.KeyHome: "Home", ui.KeyEnd: "End", ui.KeyPageUp: "PageUp", ui.KeyPageDown: "PageDown",
-			ui.KeyMinus: "-", ui.KeyEqual: "=", ui.KeyComma: ",", ui.KeyPeriod: ".",
-			ui.KeySlash: "/", ui.KeySemicolon: ";", ui.KeyQuote: "'", ui.KeyBracketLeft: "[",
-			ui.KeyBracketRight: "]", ui.KeyBackslash: "\\", ui.KeyBackquote: "`",
-		}[key]
+	// MyGo v0.8's Code names the key by its position, whatever the layout
+	// types, even where PhysicalKey and Key are unknown. The older fields
+	// remain for backends that report no code.
+	name := shortcutCodeName(ev.Code)
+	if name == "" {
+		key := ev.PhysicalKey
+		if key == ui.KeyUnknown {
+			key = ev.Key
+		}
+		name = shortcutKeyName(key)
 	}
 	if name == "" {
 		return ""
@@ -246,6 +241,54 @@ func settingsShortcut(ev ui.InputEvent) string {
 		}
 	}
 	return strings.Join(append(parts, name), "+")
+}
+
+// shortcutCodeName names a key by its position on the keyboard
+// (InputEvent.Code), "" for one no accelerator can name.
+func shortcutCodeName(code ui.KeyCode) string {
+	switch {
+	case code >= ui.CodeKeyA && code <= ui.CodeKeyZ:
+		return string(rune('A' + code - ui.CodeKeyA))
+	case code >= ui.CodeDigit1 && code <= ui.CodeDigit9:
+		return strconv.Itoa(int(code-ui.CodeDigit1) + 1)
+	case code == ui.CodeDigit0:
+		// Codes are USB HID usages: 0 follows 9, not leads it.
+		return "0"
+	case code >= ui.CodeF1 && code <= ui.CodeF12:
+		return "F" + strconv.Itoa(int(code-ui.CodeF1)+1)
+	}
+	return map[ui.KeyCode]string{
+		ui.CodeSpace: "Space", ui.CodeEnter: "Enter", ui.CodeTab: "Tab",
+		ui.CodeBackspace: "Backspace", ui.CodeDelete: "Delete", ui.CodeInsert: "Insert",
+		ui.CodeArrowUp: "Up", ui.CodeArrowDown: "Down", ui.CodeArrowLeft: "Left", ui.CodeArrowRight: "Right",
+		ui.CodeHome: "Home", ui.CodeEnd: "End", ui.CodePageUp: "PageUp", ui.CodePageDown: "PageDown",
+		ui.CodeMinus: "-", ui.CodeEqual: "=", ui.CodeComma: ",", ui.CodePeriod: ".",
+		ui.CodeSlash: "/", ui.CodeSemicolon: ";", ui.CodeQuote: "'", ui.CodeBracketLeft: "[",
+		ui.CodeBracketRight: "]", ui.CodeBackslash: "\\", ui.CodeBackquote: "`",
+	}[code]
+}
+
+// shortcutKeyName names a key by position on an ANSI US keyboard
+// (InputEvent.PhysicalKey) or, where the platform reports none, by the key
+// the active layout types (InputEvent.Key).
+func shortcutKeyName(key ui.Key) string {
+	switch {
+	case key >= ui.KeyA && key <= ui.KeyZ:
+		return string(rune('A' + key - ui.KeyA))
+	case key >= ui.Key0 && key <= ui.Key9:
+		return string(rune('0' + key - ui.Key0))
+	case key >= ui.KeyF1 && key <= ui.KeyF12:
+		return "F" + strconv.Itoa(int(key-ui.KeyF1)+1)
+	}
+	return map[ui.Key]string{
+		ui.KeySpace: "Space", ui.KeyEnter: "Enter", ui.KeyTab: "Tab",
+		ui.KeyBackspace: "Backspace", ui.KeyDelete: "Delete", ui.KeyInsert: "Insert",
+		ui.KeyUp: "Up", ui.KeyDown: "Down", ui.KeyLeft: "Left", ui.KeyRight: "Right",
+		ui.KeyHome: "Home", ui.KeyEnd: "End", ui.KeyPageUp: "PageUp", ui.KeyPageDown: "PageDown",
+		ui.KeyMinus: "-", ui.KeyEqual: "=", ui.KeyComma: ",", ui.KeyPeriod: ".",
+		ui.KeySlash: "/", ui.KeySemicolon: ";", ui.KeyQuote: "'", ui.KeyBracketLeft: "[",
+		ui.KeyBracketRight: "]", ui.KeyBackslash: "\\", ui.KeyBackquote: "`",
+	}[key]
 }
 
 func displaySettingsShortcut(shortcut string) string {

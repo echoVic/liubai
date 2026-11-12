@@ -2,13 +2,17 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"image"
 	"image/png"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
+
+	"liubai/locales"
 )
 
 func TestSaveAsKeepsUserImageReferencesInSameFolder(t *testing.T) {
@@ -235,5 +239,207 @@ func TestSaveAsReusesIdenticalImageAndSkipsNameCollisions(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestDocumentFilenameKeepsDotsAndSlashesOfTitles(t *testing.T) {
+	for title, want := range map[string]string{
+		"Release 0.7.0 plan": "Release 0.7.0 plan.md",
+		"v1.2":               "v1.2.md",
+		"2026.11.11 日记":      "2026.11.11 日记.md",
+		"Dr. Strange":        "Dr. Strange.md",
+		"A/B testing":        "A-B testing.md",
+		"notes.md":           "notes.md",
+		"NOTES.Markdown":     "NOTES.md",
+		"draft.txt":          "draft.md",
+		"  ":                 locales.BDefaultFilename() + ".md",
+	} {
+		if got := documentFilename(title, ".md"); got != want {
+			t.Errorf("documentFilename(%q) = %q, want %q", title, got, want)
+		}
+	}
+}
+
+// A picture inside a list item is indented like code but is not code; the
+// Markdown parser, not the indentation, tells the two apart.
+func TestPicturesInListItemsTravel(t *testing.T) {
+	for _, shape := range []string{"- a\n  - b\n    ![x](%s)\n", "1. step\n\n    ![x](%s)\n", "- a\n\t![x](%s)\n"} {
+		w := workspace(t)
+		d := w.State().Current
+		im, err := w.ImportImage(d.ID, "a.png", base64.StdEncoding.EncodeToString(tinyPNG()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		content := fmt.Sprintf(shape, im.Destination)
+		edit(t, w, content)
+		if _, err := w.Export(d.ID, filepath.Join(t.TempDir(), "out.zip"), false); err != nil {
+			t.Errorf("%q: export: %v", content, err)
+		}
+		if _, err := w.SaveRecovery(d.ID, content, filepath.Join(t.TempDir(), "rescue.md")); err != nil {
+			t.Errorf("%q: recovery: %v", content, err)
+		}
+		r, err := w.SaveAs(d.ID, filepath.Join(t.TempDir(), "out.md"))
+		if err != nil || strings.Contains(r.Document.Content, "liubai-asset:") {
+			t.Errorf("%q: save as: %q %v", content, r.Document.Content, err)
+		}
+	}
+}
+
+func TestCodeInListItemsKeepsItsText(t *testing.T) {
+	w := workspace(t)
+	dir := t.TempDir()
+	writeFixture(t, filepath.Join(dir, "images", "shot.png"))
+	code := "- a\n  - b\n    ```\n    ![](images/shot.png)\n    ```\n\n<!-- -->\n\n    ![](images/shot.png)\n\n> ```\n> ![](images/shot.png)\n> ```\n"
+	p := filepath.Join(dir, "notes.md")
+	if err := os.WriteFile(p, []byte("- a\n  - b\n    ![](images/shot.png)\n\n"+code), 0644); err != nil {
+		t.Fatal(err)
+	}
+	s, err := w.Open(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := w.SaveAs(s.Current.ID, filepath.Join(t.TempDir(), "copy.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "- a\n  - b\n    ![](copy.assets/shot.png)\n\n" + code; r.Document.Content != want {
+		t.Fatalf("got %q\nwant %q", r.Document.Content, want)
+	}
+	if _, err := w.Export(s.Current.ID, filepath.Join(t.TempDir(), "copy.zip"), false); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// The recovery copy is the last resort: when pictures cannot be converted it
+// still keeps the text, as it is.
+func TestRecoveryKeepsTextWhenPicturesCannotBeConverted(t *testing.T) {
+	w := workspace(t)
+	d := w.State().Current
+	im, err := w.ImportImage(d.ID, "a.png", base64.StdEncoding.EncodeToString(tinyPNG()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := "正文\n\n![图](\n" + im.Destination + "\n)\n"
+	p := filepath.Join(t.TempDir(), "rescue.md")
+	if _, err := w.SaveRecovery(d.ID, content, p); err != nil {
+		t.Fatal(err)
+	}
+	if b, err := os.ReadFile(p); err != nil || string(b) != content {
+		t.Fatalf("recovery %q %v", b, err)
+	}
+}
+
+// One file, one document: Save As onto a file another document has open
+// would leave two documents writing to it.
+func TestSaveAsRefusesTheFileOfAnotherDocument(t *testing.T) {
+	w := workspace(t)
+	p, b := openFile(t, w, "b.md", "B content\n")
+	s, err := w.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := w.Update(Edit{ID: s.Current.ID, Revision: s.Current.Revision, Content: "A content\n"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	spellings := []string{p}
+	if upper := filepath.Join(filepath.Dir(p), "B.md"); regularFile(upper) {
+		spellings = append(spellings, upper)
+	}
+	for _, target := range spellings {
+		_, err := w.SaveAs(a.ID, target)
+		if e, ok := err.(*catalogError); !ok || e.Key != "bFileOpenInAnotherDocument" {
+			t.Fatalf("Save As onto %s: %v", target, err)
+		}
+	}
+	if disk, _ := os.ReadFile(p); string(disk) != "B content\n" {
+		t.Fatalf("file overwritten: %q", disk)
+	}
+	if w.docs[a.ID].Path != "" || w.docs[b.ID].Content != "B content\n" {
+		t.Fatal("documents changed")
+	}
+	if _, err := w.SaveAs(b.ID, p); err != nil {
+		t.Fatalf("Save As onto its own file: %v", err)
+	}
+}
+
+// Save As stores the path as Open does, so reopening the file through any
+// symbolic link finds the same document.
+func TestSaveAsStoresThePathOpenWouldStore(t *testing.T) {
+	real := t.TempDir()
+	link := filepath.Join(t.TempDir(), "linked")
+	if err := os.Symlink(real, link); err != nil {
+		if runtime.GOOS == "windows" {
+			t.Skip("symbolic links need Developer Mode or administrator rights on Windows")
+		}
+		t.Fatal(err)
+	}
+	for _, dir := range []string{link, t.TempDir()} {
+		w := workspace(t)
+		d := edit(t, w, "hello\n")
+		p := filepath.Join(dir, "note.md")
+		if _, err := w.SaveAs(d.ID, p); err != nil {
+			t.Fatal(err)
+		}
+		s, err := w.Open(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if s.Current.ID != d.ID || len(w.docs) != 1 {
+			t.Fatalf("%s: reopened as another document (%d documents)", dir, len(w.docs))
+		}
+	}
+}
+
+func TestRecoveryRefusesTheOriginalThroughASymlink(t *testing.T) {
+	w := workspace(t)
+	p, d := openFile(t, w, "original.md", "saved\n")
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(filepath.Dir(p), link); err != nil {
+		if runtime.GOOS == "windows" {
+			t.Skip("symbolic links need Developer Mode or administrator rights on Windows")
+		}
+		t.Fatal(err)
+	}
+	for _, target := range []string{p, filepath.Join(link, "original.md")} {
+		if _, err := w.SaveRecovery(d.ID, "latest\n", target); err == nil {
+			t.Fatalf("recovery copy written onto the original through %s", target)
+		}
+	}
+	if b, _ := os.ReadFile(p); string(b) != "saved\n" {
+		t.Fatalf("original overwritten: %q", b)
+	}
+	other, _ := openFile(t, w, "other.md", "other\n")
+	if _, err := w.SaveRecovery(d.ID, "latest\n", other); err == nil {
+		t.Fatal("recovery copy written onto another open document")
+	}
+	if b, _ := os.ReadFile(other); string(b) != "other\n" {
+		t.Fatalf("other document overwritten: %q", b)
+	}
+}
+
+// A recovery copy is an ordinary file the user chose, written as Save As
+// writes one: readable by others when new, keeping the mode it replaces.
+func TestRecoveryCopyIsWrittenLikeSaveAs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows has no permission bits")
+	}
+	w := workspace(t)
+	d := w.State().Current
+	fresh := filepath.Join(t.TempDir(), "fresh.md")
+	existing := filepath.Join(t.TempDir(), "existing.md")
+	if err := os.WriteFile(existing, []byte("old\n"), 0640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(existing, 0640); err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]os.FileMode{fresh: 0644, existing: 0640} {
+		if _, err := w.SaveRecovery(d.ID, "text\n", path); err != nil {
+			t.Fatal(err)
+		}
+		if info, err := os.Stat(path); err != nil || info.Mode().Perm() != want {
+			t.Errorf("%s: mode %v, want %v (%v)", filepath.Base(path), info.Mode().Perm(), want, err)
+		}
 	}
 }

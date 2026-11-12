@@ -45,7 +45,6 @@ const paths:Record<string,IconElement[]>={
  check:[["path",{"d":"M20 6 9 17l-5-5"}]], // check
  sidebar:[["rect",{"width":"18","height":"18","x":"3","y":"3","rx":"2"}],["path",{"d":"M9 3v18"}]], // panel-left
  outline:[["path",{"d":"M16 5H3"}],["path",{"d":"M16 12H3"}],["path",{"d":"M16 19H3"}],["path",{"d":"M21 5h.01"}],["path",{"d":"M21 12h.01"}],["path",{"d":"M21 19h.01"}]], // table-of-contents
- appearance:[["path",{"d":"m15 16 2.536-7.328a1.02 1.02 1 0 1 1.928 0L22 16"}],["path",{"d":"M15.697 14h5.606"}],["path",{"d":"m2 16 4.039-9.69a.5.5 0 0 1 .923 0L11 16"}],["path",{"d":"M3.304 13h6.392"}]], // a-large-small
  settings:[["path",{"d":"M21 4h-7"}],["path",{"d":"M10 4H3"}],["path",{"d":"M21 12h-9"}],["path",{"d":"M8 12H3"}],["path",{"d":"M21 20h-5"}],["path",{"d":"M12 20H3"}],["path",{"d":"M14 2v4"}],["path",{"d":"M8 10v4"}],["path",{"d":"M16 18v4"}]], // sliders-horizontal
  export:[["path",{"d":"M12 2v13"}],["path",{"d":"m16 6-4-4-4 4"}],["path",{"d":"M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"}]], // share
  more:[["circle",{"cx":"12","cy":"12","r":"1"}],["circle",{"cx":"19","cy":"12","r":"1"}],["circle",{"cx":"5","cy":"12","r":"1"}]], // ellipsis

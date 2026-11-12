@@ -196,11 +196,26 @@ func TestWikiMeaningfulTitles(t *testing.T) {
 		{Document{Title: "A|B", CustomTitle: true}, false},
 		{Document{Title: "A\nB", CustomTitle: true}, false},
 		{Document{Title: strings.Repeat("😀", 257), CustomTitle: true}, false},
+		// Recovery and disk-version copies show a localized suffix; like generated titles they are no link targets.
+		{Document{Title: "note.md · 恢复副本", GeneratedTitleSuffix: "recovery", Path: "/notes/note.md"}, false},
+		{Document{Title: "note.md · 磁盘版本", GeneratedTitleSuffix: "diskVersion", CustomTitle: true}, false},
 	} {
 		name, ok := wikiTitle(tc.doc)
 		if ok != tc.want || ok && name != tc.doc.Title {
 			t.Fatalf("wikiTitle(%+v) = %q, %v; want %v", tc.doc, name, ok, tc.want)
 		}
+	}
+	copies := searchMemoryWorkspace(
+		Document{ID: "copy", Title: "note.md · 恢复副本", GeneratedTitleSuffix: "recovery", Content: "x"},
+		Document{ID: "source", Title: "Source", CustomTitle: true, Content: "[[note.md · Recovery Copy]] [[note.md · 恢复副本]]"},
+	)
+	for _, target := range []string{"note.md · Recovery Copy", "note.md · 恢复副本"} {
+		if got := wikiResolveResult(t, copies, WikiResolveRequest{"source", 0, target}, "en"); got.Total != 0 {
+			t.Fatalf("suffix title %q resolved: %+v", target, got)
+		}
+	}
+	if got := wikiBacklinkResult(t, copies, "copy", "en"); got.Status != BacklinkUnnamed || got.Total != 0 {
+		t.Fatalf("suffix title has backlinks: %+v", got)
 	}
 	w := searchMemoryWorkspace(
 		Document{ID: "source", Title: "Source", CustomTitle: true, Content: "[[Untitled Document]]"},

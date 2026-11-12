@@ -105,6 +105,53 @@ func TestDocumentFilterCachedExcerpt(t *testing.T) {
 	}
 }
 
+func TestDocumentCachesFollowContent(t *testing.T) {
+	w := searchMemoryWorkspace(
+		Document{ID: "cache-target", Title: "Target", CustomTitle: true},
+		Document{ID: "cache-source", Content: "---\ntags: [旧]\n---\n[[Target]]", Revision: 3},
+	)
+	tags := func() []string {
+		got, err := w.FilterDocuments(DocumentFilterRequest{}, "en")
+		if err != nil {
+			t.Fatal(err)
+		}
+		names := []string{}
+		for _, tag := range got.Tags {
+			names = append(names, tag.Name)
+		}
+		return names
+	}
+	backlinks := func() int { return wikiBacklinkResult(t, w, "cache-target", "en").Total }
+	if got := tags(); !reflect.DeepEqual(got, []string{"旧"}) || backlinks() != 1 {
+		t.Fatalf("tags = %v", got)
+	}
+	// Content can change without a revision bump; the caches must not answer from the old text.
+	w.mu.Lock()
+	w.docs["cache-source"].Content = "---\ntags: [新]\n---\n`[[Target]]`"
+	w.mu.Unlock()
+	if got := tags(); !reflect.DeepEqual(got, []string{"新"}) || backlinks() != 0 {
+		t.Fatalf("stale cache: tags = %v", got)
+	}
+	summary := summaryOf(w.docs["cache-source"])
+	summary.Tags[0] = "changed by caller"
+	if got := tags(); !reflect.DeepEqual(got, []string{"新"}) {
+		t.Fatalf("a caller changed the cached tags: %v", got)
+	}
+	w.mu.Lock()
+	delete(w.docs, "cache-source")
+	w.mu.Unlock()
+	tags()
+	frontMatterCache.Lock()
+	_, meta := frontMatterCache.entries["cache-source"]
+	frontMatterCache.Unlock()
+	wikiReferenceCache.Lock()
+	_, refs := wikiReferenceCache.entries["cache-source"]
+	wikiReferenceCache.Unlock()
+	if meta || refs {
+		t.Fatal("caches kept a deleted document")
+	}
+}
+
 // docFilterCall runs FilterDocuments and checks what the front end relies on:
 // every array is a nonnil JSON array and recent is newest first, with the ID
 // ascending on ties.
@@ -210,6 +257,7 @@ func TestDocumentFilterMetadataCatalog(t *testing.T) {
 		{"invalid-utf8", "---\ntags: [good, \xff]\n---\nbody", nil},
 		{"no-front-matter", "tags: [good]\nbody", nil},
 		{"tags-in-body", "body\n---\ntags: [good]\n---\n", nil},
+		{"hashtag-in-body", "body #good\n#good", nil},
 	}
 	var docs []Document
 	counts := map[string]int{}
@@ -541,7 +589,8 @@ func TestDocumentFilterRegisteredScopeAndLimits(t *testing.T) {
 			t.Fatalf("the excerpt is the first 90 runes of the body: %q", item.Excerpt)
 		}
 		// Neither the excerpt window nor a Unicode case fold may hide a match.
-		if got := docFilterCall(t, w, DocumentFilterRequest{Query: "尾needle😀", Tag: "long"}, "en"); got.Total != 1 {
+		// The emoji in the match counts two UTF-16 units.
+		if got := docFilterCall(t, w, DocumentFilterRequest{Query: "尾needle😀", Tag: "long"}, "en"); got.Total != 1 || got.Items[0].Document.Hits[0].From != from-1 || got.Items[0].Document.Hits[0].To != from+8 {
 			t.Fatalf("query spanning CJK, ASCII and emoji: %+v", got)
 		}
 	})
@@ -625,6 +674,10 @@ func TestDocumentFilterRegisteredScopeAndLimits(t *testing.T) {
 			}
 			if got := docFilterCall(t, current.w, DocumentFilterRequest{Query: "scope-token", Tag: "recovery"}, "en"); got.Total != 1 {
 				t.Fatalf("%s: recovery copy matched %d documents", current.name, got.Total)
+			}
+			// The body never says "opened": only the title taken from the file name can match.
+			if got := docFilterCall(t, current.w, DocumentFilterRequest{Query: "opened", Tag: "file"}, "en"); got.Total != 1 || got.Items[0].Document.ID != file.ID {
+				t.Fatalf("%s: file title query matched %+v", current.name, got.Items)
 			}
 			for _, tag := range []string{"removed", "unregistered", "corrupt"} {
 				if got := docFilterCall(t, current.w, DocumentFilterRequest{Tag: tag}, "en"); got.Total != 0 {

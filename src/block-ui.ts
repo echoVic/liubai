@@ -1,6 +1,6 @@
 import {Facet,type StateField,type TransactionSpec} from '@codemirror/state';
 import {EditorView,ViewPlugin,Decoration,type DecorationSet,type ViewUpdate} from '@codemirror/view';
-import {visibleBlocks,blockAt,sameBlockLevel,moveBlocksTo,dropTargets,type Block} from './blocks';
+import {blockAt,sameBlockLevel,moveBlocksTo,dropTargets,type Block} from './blocks';
 import {messages,localizePage} from './i18n';
 import {icon} from './icons';
 import {attachMenu} from './menu';
@@ -82,14 +82,13 @@ class BlockControls {
  }
  private redraw(){this.view.dispatch({})}
  private hide(){this.overlay.hidden=true;this.hovered=null}
- private candidates(){const {from,to}=this.view.viewport;return visibleBlocks(this.view.state,from,to)}
  private hover(e:PointerEvent){
   if(!this.enabled()){this.hide();return}
   if(this.overlay.contains(e.target as Node)||!document.querySelector<HTMLElement>('#block-menu')!.hidden)return;
   const bounds=this.scroll.getBoundingClientRect(),text=this.view.contentDOM.getBoundingClientRect();
   if(e.clientY<bounds.top||e.clientY>bounds.bottom){this.hide();return}
   const pos=this.view.posAtCoords({x:Math.max(text.left+1,Math.min(text.right-1,e.clientX)),y:e.clientY});
-  const b=pos===null?null:this.candidates().filter(b=>b.from<=pos&&b.to>=pos).at(-1);
+  const b=pos===null?null:blockAt(this.view.state,pos);
   if(!b){this.hide();return}
   const top=this.view.lineBlockAt(b.from).top+this.view.documentTop,bottom=this.view.lineBlockAt(b.to).bottom+this.view.documentTop;
   if(e.clientY<top||e.clientY>bottom){this.hide();return}this.show(b);

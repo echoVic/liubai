@@ -6,6 +6,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"unicode/utf16"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestCaptureTagsPersistInMarkdownWithoutChangingCurrent(t *testing.T) {
@@ -96,6 +99,77 @@ func TestCaptureTagsPreserveCommentsAndEmptyProperties(t *testing.T) {
 	content, _, err := captureTags(text, []string{"灵感"})
 	if err != nil || !strings.Contains(content, "# 作者说明\nauthor: 作者") {
 		t.Fatalf("comments were removed: %q, %v", content, err)
+	}
+}
+
+func TestCaptureTagsKeepCommentsOnRewrittenLines(t *testing.T) {
+	for text, want := range map[string]string{
+		"---\ntags: [a] # 说明\nx: 1\n---\nbody":                           "---\ntags: [\"a\",\"new\"] # 说明\nx: 1\n---\nbody",
+		"---\ntags:\n  - a   # why\n  - b\n\n# about z\nz: 1\n---\nbody": "---\ntags: [\"a\",\"b\",\"new\"]\n# why\n\n# about z\nz: 1\n---\nbody",
+		"---\ntags:\n  # first\n  - a\nz: 1\n---\nbody":                  "---\ntags: [\"a\",\"new\"]\n# first\nz: 1\n---\nbody",
+		"---\n  x: 1\n  tags: [a] # c\n---\nbody":                        "---\n  x: 1\n  tags: [\"a\",\"new\"] # c\n---\nbody",
+		"---\ntags: [\"a #b\"] # c\n---\nbody":                           "---\ntags: [\"a #b\",\"new\"] # c\n---\nbody",
+		"---\ntags: |\n  #a\nz: 1\n---\nbody":                            "---\ntags: [\"a\",\"new\"]\nz: 1\n---\nbody",
+		"---\n? tags\n: [a]\nz: 3\n---\nbody":                            "---\ntags: [\"a\",\"new\"]\nz: 3\n---\nbody",
+		"---\n? a\n: 1\n---\nbody":                                       "---\ntags: [\"new\"]\n? a\n: 1\n---\nbody",
+	} {
+		got, _, err := captureTags(text, []string{"new"})
+		if err != nil || got != want {
+			t.Errorf("captureTags(%q) = %q, %v; want %q", text, got, err, want)
+		}
+	}
+}
+
+// Every accepted rewrite keeps the other properties, the body and the change offsets.
+func TestCaptureTagsKeepOtherProperties(t *testing.T) {
+	fields := func(content string) (map[string]any, string, bool) {
+		end := frontMatterEnd(content)
+		if end == 0 {
+			// New front matter is followed by a blank line before the old text.
+			return map[string]any{}, "\n" + content, true
+		}
+		lines := capturePropertyLines(content, end)
+		m := map[string]any{}
+		if err := yaml.Unmarshal([]byte(strings.Join(lines[1:len(lines)-1], "")), &m); err != nil {
+			return nil, "", false
+		}
+		delete(m, "tags")
+		return m, content[end:], true
+	}
+	for _, text := range []string{
+		"---\ntags: [a] # comment\nx: 1\n---\nbody", "---\ntags:\n- a\n- b\nx: 1\n---\nbody",
+		"---\ntags:\n  - a\n\n\nx: 1\n---\nbody", "---\ntags: a\n  b\nx: 1\n---\nbody",
+		"---\n\"tags\": [a]\n---\nbody", "---\ntags : [a]\n---\nbody", "---\nx:\n  tags: [inner]\ny: 2\n---\nbody",
+		"---\n? tags\n: [a]\nz: 3\n---\nbody", "---\n? tags\n:\n  - a\nz: 3\n---\nbody", "---\n? a\n: 1\nz: 3\n---\nbody",
+		"---\ntags: [a]\n...\nbody", "---\ntags: [a,\n  b]\nz: 1\n---\nbody",
+		"---\nz: 1\ntags: [a]\n# trailing comment\n---\nbody", "---\ntags: |\n  a\nz: 1\n---\nbody",
+		"---\ntags: |\n  #a\nz: 1\n---\nbody", "---\ntags: >-\n  a\n\nz: 1\n---\nbody", "---\r\ntags: [a] # c\r\nx: 1\r\n---\r\nbody",
+		"---\n# c\ntags: [a]\n---\nbody", "---\ntags:\n  - a   # why\n  - b\n\n# about z\nz: 1\n---\nbody",
+		"---\ntags:\n  # first\n  - a\nz: 1\n---\nbody", "---\nz: |\n  tags: [x]\n  more\ntags: [a]\n---\nbody",
+		"---\nz: 1\ntags:\n---\nbody", "---\nz: 1\ntags: ~\ny: 2\n---\nbody", "---\ntags: 'a'\ny: 2\n---\nbody",
+		"---\ntags: \"a\n  b\"\ny: 2\n---\nbody", "---\ntags:\n  - a\n  -\n    b\ny: 2\n---\nbody",
+		"---\ntags: [a]\ny: 2\n--- \nbody", "---\ntags: [a]\ny: 2\n---", "---\ny: 2\n---", "---\n---", "---\n\n\n---\nbody",
+		"---\ntitle: 中😀\ntags: [中😀] # 😀\n---\n😀 body", "---\n  a: 1\n  tags:\n    - x\n  b: 2\n---\nbody",
+		"---\ntags:\n\n  - a\n---\nbody", "---\ntags: [a]   \n\n\n---\nbody", "---\ntags: [\"#a\", a]\nz: 1\n---\nbody",
+		"body only", "",
+	} {
+		content, changes, err := captureTags(text, []string{"new"})
+		if err != nil {
+			continue
+		}
+		before, bodyBefore, _ := fields(text)
+		after, bodyAfter, ok := fields(content)
+		if !ok || !reflect.DeepEqual(before, after) || bodyBefore != bodyAfter {
+			t.Errorf("properties or body changed:\n in=%q\nout=%q", text, content)
+		}
+		want, _ := normalizeTags(append(summaryOf(&Document{Content: text}).Tags, "new"))
+		if tags := summaryOf(&Document{Content: content}).Tags; !reflect.DeepEqual(tags, want) {
+			t.Errorf("tags of %q = %v, want %v", content, tags, want)
+		}
+		u := utf16.Encode([]rune(text))
+		if len(changes) != 1 || string(utf16.Decode(u[:changes[0].From]))+changes[0].Insert+string(utf16.Decode(u[changes[0].To:])) != content {
+			t.Errorf("change does not reproduce %q from %q: %+v", content, text, changes)
+		}
 	}
 }
 
@@ -198,5 +272,15 @@ func TestCaptureDestinationTitlesFollowRequestLocale(t *testing.T) {
 	english := valueIn(context, "en").(CaptureContext)
 	if english.Recent[0].Title != "Untitled Document" {
 		t.Fatalf("English destination = %+v", english.Recent)
+	}
+}
+
+func TestCaptureTagsKeepAmpersandsAndAngleBrackets(t *testing.T) {
+	content, _, err := captureTags("正文", []string{"R&D", "a<b>"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(content, `tags: ["R&D","a<b>"]`) {
+		t.Fatalf("tags were escaped in the Markdown: %q", content)
 	}
 }

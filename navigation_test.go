@@ -28,7 +28,7 @@ func TestSearchActivationKeepsDraftsForCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := reopened.State().Current; got.ID != saved.ID || got.Content != saved.Content {
+	if got := reopened.State().Current; got.ID != saved.ID || got.Content != "after cancellation" {
 		t.Fatalf("cancelled search did not persist the origin: %+v", got)
 	}
 	if _, err := d.ActivateSearch("missing"); err == nil || d.State().Current.ID != saved.ID {

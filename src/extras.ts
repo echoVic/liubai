@@ -3,7 +3,7 @@ import {Decoration,EditorView,type DecorationSet} from '@codemirror/view';
 import {isolateHistory} from '@codemirror/commands';
 import {syntaxTree,codeFolding,foldedRanges,unfoldEffect,foldService} from '@codemirror/language';
 import type {Tree,SyntaxNode} from '@lezer/common';
-import {frontMatterRange} from './editing';
+import {frontMatterRange,containerPrefix} from './editing';
 
 export type CalloutKind='note'|'tip'|'important'|'warning'|'caution';
 export interface CalloutRange {from:number;to:number;markerFrom:number;markerTo:number;kind:CalloutKind}
@@ -63,7 +63,7 @@ export function extraRanges(state:EditorState):Extras{
   for(const block of html){
    const stack=stacks.get(block.scope)||[];stacks.set(block.scope,stack);
    for(let i=state.doc.lineAt(block.from).number,last=state.doc.lineAt(block.to).number;i<=last;i++){
-    const line=state.doc.line(i),body=state.sliceDoc(Math.max(line.from,block.from),line.to).replace(/^(?:[ \t]*>[ \t]?)*[ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?/,'');
+    const line=state.doc.line(i),body=state.sliceDoc(Math.max(line.from,block.from),line.to).replace(containerPrefix,'');
     if(/^<details(?:\s+[^<>]*)?>\s*$/i.test(body))stack.push({start:line.from});
     else if(/^<summary(?:\s+[^<>]*)?>.*<\/summary>\s*$/i.test(body)&&stack.length){const item=stack.at(-1)!;if(item.summary===undefined){item.summary=line.from;item.from=line.to}}
     else if(/^<\/details>\s*$/i.test(body)&&stack.length){const item=stack.pop()!;if(item.from!==undefined)result.details.push({start:item.start,summary:item.summary!,from:item.from,to:line.to})}

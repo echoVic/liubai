@@ -417,15 +417,6 @@
   "@fPressAShortcut": {
     "description": "Interface text for Press a shortcut…."
   },
-  "fSaveAsDraftEscClose": "{shortcut} 存为草稿 · Esc 关闭",
-  "@fSaveAsDraftEscClose": {
-    "description": "Quick note hint: the shortcut saves the note as a draft, Esc closes the panel.",
-    "placeholders": {
-      "shortcut": {
-        "type": "String"
-      }
-    }
-  },
   "fSavedAsDraft": "已存为草稿",
   "@fSavedAsDraft": {
     "description": "Interface text for Saved as Draft."
@@ -583,9 +574,9 @@
   "@fAppearanceAndTypography2": {
     "description": "Interface text for Appearance and Typography."
   },
-  "fExportPDFHTMLZIPOrCopyRichText": "导出 PDF、HTML、ZIP 或复制富文本",
-  "@fExportPDFHTMLZIPOrCopyRichText": {
-    "description": "Interface text for Export PDF, HTML, ZIP, or copy rich text."
+  "fExportPDFWordHTMLZIPOrCopyRichText": "导出 PDF、Word、HTML、ZIP 或复制富文本",
+  "@fExportPDFWordHTMLZIPOrCopyRichText": {
+    "description": "Interface text for Export PDF, Word, HTML, ZIP, or copy rich text."
   },
   "fExport2": "导出",
   "@fExport2": {
@@ -610,6 +601,10 @@
   "fViewDiskVersion": "查看磁盘版本",
   "@fViewDiskVersion": {
     "description": "Interface text for View Disk Version."
+  },
+  "fReload": "重新载入",
+  "@fReload": {
+    "description": "Banner button that loads the document's latest saved version after a save failed because the document changed."
   },
   "fOverwriteWithCurrentVersion": "用当前版本覆盖",
   "@fOverwriteWithCurrentVersion": {
@@ -651,21 +646,9 @@
   "@fReadOnly": {
     "description": "Interface text for Read Only."
   },
-  "fL": "白",
-  "@fL": {
-    "description": "Interface text for L."
-  },
   "fCloseSidebar": "关闭侧栏",
   "@fCloseSidebar": {
     "description": "Interface text for Close Sidebar."
-  },
-  "fFindADocument": "找一篇文稿…",
-  "@fFindADocument": {
-    "description": "Interface text for Find a document…."
-  },
-  "fSearchRecentDocuments": "搜索最近文稿",
-  "@fSearchRecentDocuments": {
-    "description": "Interface text for Search Recent Documents."
   },
   "fOpenLocalMarkdown": "打开本地 Markdown",
   "@fOpenLocalMarkdown": {
@@ -940,14 +923,6 @@
   "@fLanguage": {
     "description": "Interface text for Language."
   },
-  "fSimplifiedChinese": "简体中文",
-  "@fSimplifiedChinese": {
-    "description": "Interface text for 简体中文."
-  },
-  "fEnglish": "English",
-  "@fEnglish": {
-    "description": "Interface text for English."
-  },
   "bStatusDraftSaved": "草稿已保存",
   "@bStatusDraftSaved": {
     "description": "Document status: draftSaved"
@@ -1140,6 +1115,10 @@
   "@bExternalConflict": {
     "description": "Backend interface: File has an external conflict. Choose a new filename"
   },
+  "bFileOpenInAnotherDocument": "这个文件已在另一篇文稿中打开，请选择新文件名",
+  "@bFileOpenInAnotherDocument": {
+    "description": "Backend interface: Save As chose the file of another open document. Choose a new filename"
+  },
   "bUnsupportedImageSyntax": "存在无法转换的图片语法，请将图片引用单独放在一行后再保存",
   "@bUnsupportedImageSyntax": {
     "description": "Backend interface: Some image syntax cannot be converted. Place each image reference on its own line before saving"
@@ -1268,10 +1247,6 @@
   "@bMenuFocus": {
     "description": "Native menu label: Focus"
   },
-  "bMenuAppearance": "外观与排版…",
-  "@bMenuAppearance": {
-    "description": "Native menu label: Appearance"
-  },
   "bMenuLayout": "切换分栏",
   "@bMenuLayout": {
     "description": "Native menu label: Layout"
@@ -1307,22 +1282,6 @@
   "bMenuFront": "前置全部窗口",
   "@bMenuFront": {
     "description": "Native menu label: Front"
-  },
-  "bMenuLanguage": "语言",
-  "@bMenuLanguage": {
-    "description": "Native menu label: Language"
-  },
-  "bMenuFollowSystem": "跟随系统",
-  "@bMenuFollowSystem": {
-    "description": "Native menu label: FollowSystem"
-  },
-  "bMenuChinese": "简体中文",
-  "@bMenuChinese": {
-    "description": "Native menu label: Chinese"
-  },
-  "bMenuEnglish": "English",
-  "@bMenuEnglish": {
-    "description": "Native menu label: English"
   },
   "bOpenMarkdown": "打开 Markdown 文稿",
   "@bOpenMarkdown": {
@@ -1430,10 +1389,6 @@
         "type": "String"
       }
     }
-  },
-  "fAppName": "留白",
-  "@fAppName": {
-    "description": "Interface message: AppName."
   },
   "fHeading": "标题 {level}",
   "@fHeading": {
@@ -1672,10 +1627,6 @@
   "@fPrevious": {
     "description": "Interface message: Previous."
   },
-  "fAll": "全部",
-  "@fAll": {
-    "description": "Interface message: All."
-  },
   "fMatchCase": "区分大小写",
   "@fMatchCase": {
     "description": "Interface message: MatchCase."
@@ -1695,14 +1646,6 @@
   "fClose": "关闭",
   "@fClose": {
     "description": "Interface message: Close."
-  },
-  "fFindLabel": "查找：",
-  "@fFindLabel": {
-    "description": "Interface message: FindLabel."
-  },
-  "fReplaceLabel": "替换：",
-  "@fReplaceLabel": {
-    "description": "Interface message: ReplaceLabel."
   },
   "bImageFormatUnsupported": "图片格式不受支持",
   "@bImageFormatUnsupported": {
@@ -1895,10 +1838,6 @@
   "@fInsert": {
     "description": "Format toolbar: Insert."
   },
-  "fFindReplace": "查找替换",
-  "@fFindReplace": {
-    "description": "Format toolbar: Find and Replace."
-  },
   "fHeading4": "标题 4",
   "@fHeading4": {
     "description": "Format toolbar: Heading 4."
@@ -1980,6 +1919,10 @@
   "fExpandDetails": "展开内容",
   "@fExpandDetails": {
     "description": "Button to show details content in this editor."
+  },
+  "fFoldedContent": "已折叠的内容",
+  "@fFoldedContent": {
+    "description": "Accessible name of the marker that stands for folded details content in this editor."
   },
   "fWordDocument": "Word 文稿（.docx）",
   "@fWordDocument": {
@@ -2220,7 +2163,7 @@
   },
   "fStudioOnelightTag": "笺",
   "@fStudioOnelightTag": {
-    "description": "Interface text for Dawn."
+    "description": "Interface text for Letter."
   },
   "fGhdark": "星夜",
   "@fGhdark": {

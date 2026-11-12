@@ -610,12 +610,6 @@ export interface Messages {
    */
   fPressAShortcut(): string;
   /**
-   * Quick note hint: the shortcut saves the note as a draft, Esc closes the panel.
-   *
-   * `{shortcut} 存为草稿 · Esc 关闭`
-   */
-  fSaveAsDraftEscClose(shortcut: string): string;
-  /**
    * Interface text for Saved as Draft.
    *
    * `已存为草稿`
@@ -854,11 +848,11 @@ export interface Messages {
    */
   fLaunchAtLogin(): string;
   /**
-   * Interface text for Export PDF, HTML, ZIP, or copy rich text.
+   * Interface text for Export PDF, Word, HTML, ZIP, or copy rich text.
    *
-   * `导出 PDF、HTML、ZIP 或复制富文本`
+   * `导出 PDF、Word、HTML、ZIP 或复制富文本`
    */
-  fExportPDFHTMLZIPOrCopyRichText(): string;
+  fExportPDFWordHTMLZIPOrCopyRichText(): string;
   /**
    * Interface text for Export.
    *
@@ -895,6 +889,12 @@ export interface Messages {
    * `查看磁盘版本`
    */
   fViewDiskVersion(): string;
+  /**
+   * Banner button that loads the document's latest saved version after a save failed because the document changed.
+   *
+   * `重新载入`
+   */
+  fReload(): string;
   /**
    * Interface text for Overwrite with Current Version.
    *
@@ -956,29 +956,11 @@ export interface Messages {
    */
   fReadOnly(): string;
   /**
-   * Interface text for L.
-   *
-   * `白`
-   */
-  fL(): string;
-  /**
    * Interface text for Close Sidebar.
    *
    * `关闭侧栏`
    */
   fCloseSidebar(): string;
-  /**
-   * Interface text for Find a document….
-   *
-   * `找一篇文稿…`
-   */
-  fFindADocument(): string;
-  /**
-   * Interface text for Search Recent Documents.
-   *
-   * `搜索最近文稿`
-   */
-  fSearchRecentDocuments(): string;
   /**
    * Interface text for Open Local Markdown.
    *
@@ -1382,18 +1364,6 @@ export interface Messages {
    */
   fLanguage(): string;
   /**
-   * Interface text for 简体中文.
-   *
-   * `简体中文`
-   */
-  fSimplifiedChinese(): string;
-  /**
-   * Interface text for English.
-   *
-   * `English`
-   */
-  fEnglish(): string;
-  /**
    * Document status: draftSaved
    *
    * `草稿已保存`
@@ -1682,6 +1652,12 @@ export interface Messages {
    */
   bExternalConflict(): string;
   /**
+   * Backend interface: Save As chose the file of another open document. Choose a new filename
+   *
+   * `这个文件已在另一篇文稿中打开，请选择新文件名`
+   */
+  bFileOpenInAnotherDocument(): string;
+  /**
    * Backend interface: Some image syntax cannot be converted. Place each image reference on its own line before saving
    *
    * `存在无法转换的图片语法，请将图片引用单独放在一行后再保存`
@@ -1874,12 +1850,6 @@ export interface Messages {
    */
   bMenuFocus(): string;
   /**
-   * Native menu label: Appearance
-   *
-   * `外观与排版…`
-   */
-  bMenuAppearance(): string;
-  /**
    * Native menu label: Layout
    *
    * `切换分栏`
@@ -1933,30 +1903,6 @@ export interface Messages {
    * `前置全部窗口`
    */
   bMenuFront(): string;
-  /**
-   * Native menu label: Language
-   *
-   * `语言`
-   */
-  bMenuLanguage(): string;
-  /**
-   * Native menu label: FollowSystem
-   *
-   * `跟随系统`
-   */
-  bMenuFollowSystem(): string;
-  /**
-   * Native menu label: Chinese
-   *
-   * `简体中文`
-   */
-  bMenuChinese(): string;
-  /**
-   * Native menu label: English
-   *
-   * `English`
-   */
-  bMenuEnglish(): string;
   /**
    * Backend interface: Open Markdown Document
    *
@@ -2083,12 +2029,6 @@ export interface Messages {
    * `无法打开「{name}」：{error}`
    */
   bOpenFailed(name: string, error: string): string;
-  /**
-   * Interface message: AppName.
-   *
-   * `留白`
-   */
-  fAppName(): string;
   /**
    * Interface message: Heading.
    *
@@ -2272,12 +2212,6 @@ export interface Messages {
    */
   fPrevious(): string;
   /**
-   * Interface message: All.
-   *
-   * `全部`
-   */
-  fAll(): string;
-  /**
    * Interface message: MatchCase.
    *
    * `区分大小写`
@@ -2307,18 +2241,6 @@ export interface Messages {
    * `关闭`
    */
   fClose(): string;
-  /**
-   * Interface message: FindLabel.
-   *
-   * `查找：`
-   */
-  fFindLabel(): string;
-  /**
-   * Interface message: ReplaceLabel.
-   *
-   * `替换：`
-   */
-  fReplaceLabel(): string;
   /**
    * Image validation error: Unsupported image format
    *
@@ -2584,12 +2506,6 @@ export interface Messages {
    */
   fInsert(): string;
   /**
-   * Format toolbar: Find and Replace.
-   *
-   * `查找替换`
-   */
-  fFindReplace(): string;
-  /**
    * Format toolbar: Heading 4.
    *
    * `标题 4`
@@ -2733,6 +2649,12 @@ export interface Messages {
    * `展开内容`
    */
   fExpandDetails(): string;
+  /**
+   * Accessible name of the marker that stands for folded details content in this editor.
+   *
+   * `已折叠的内容`
+   */
+  fFoldedContent(): string;
   /**
    * Export format option for an editable Word document.
    *
@@ -3082,7 +3004,7 @@ export interface Messages {
    */
   fOnelightCaption(): string;
   /**
-   * Interface text for Dawn.
+   * Interface text for Letter.
    *
    * `笺`
    */
@@ -3650,7 +3572,6 @@ const catalog = createCatalog<Messages>({
     "fOpen": [],
     "fLoadedTheLatestVersionFromDisk": [],
     "fPressAShortcut": [],
-    "fSaveAsDraftEscClose": ["shortcut"],
     "fSavedAsDraft": [],
     "fTheImageCouldNotBeDecoded": [],
     "fTheImageTookTooLongToLoad": [],
@@ -3692,13 +3613,14 @@ const catalog = createCatalog<Messages>({
     "fSettingsTitle": [],
     "fAppearance": [],
     "fLaunchAtLogin": [],
-    "fExportPDFHTMLZIPOrCopyRichText": [],
+    "fExportPDFWordHTMLZIPOrCopyRichText": [],
     "fExport2": [],
     "fMore": [],
     "fSplitViewOnly": [],
     "fHeadingLevel": [],
     "fRetrySave": [],
     "fViewDiskVersion": [],
+    "fReload": [],
     "fOverwriteWithCurrentVersion": [],
     "fShowInFinder": [],
     "fShowInFileExplorer": [],
@@ -3709,10 +3631,7 @@ const catalog = createCatalog<Messages>({
     "fReadingPreview": [],
     "fReadingView": [],
     "fReadOnly": [],
-    "fL": [],
     "fCloseSidebar": [],
-    "fFindADocument": [],
-    "fSearchRecentDocuments": [],
     "fOpenLocalMarkdown": [],
     "fCloseAppearance": [],
     "fTheme": [],
@@ -3780,8 +3699,6 @@ const catalog = createCatalog<Messages>({
     "fCaptureThisMoment": [],
     "fSaveAsDraft": [],
     "fLanguage": [],
-    "fSimplifiedChinese": [],
-    "fEnglish": [],
     "bStatusDraftSaved": [],
     "bStatusFileSaved": [],
     "bStatusFileUnavailable": [],
@@ -3830,6 +3747,7 @@ const catalog = createCatalog<Messages>({
     "bImageNameConflict": [],
     "bRegularFilePathRequired": [],
     "bExternalConflict": [],
+    "bFileOpenInAnotherDocument": [],
     "bUnsupportedImageSyntax": [],
     "bMenuAppName": [],
     "bMenuAbout": [],
@@ -3862,7 +3780,6 @@ const catalog = createCatalog<Messages>({
     "bMenuFind": [],
     "bMenuView": [],
     "bMenuFocus": [],
-    "bMenuAppearance": [],
     "bMenuLayout": [],
     "bMenuRead": [],
     "bMenuSource": [],
@@ -3872,10 +3789,6 @@ const catalog = createCatalog<Messages>({
     "bMenuMinimize": [],
     "bMenuZoom": [],
     "bMenuFront": [],
-    "bMenuLanguage": [],
-    "bMenuFollowSystem": [],
-    "bMenuChinese": [],
-    "bMenuEnglish": [],
     "bOpenMarkdown": [],
     "bSaveMarkdown": [],
     "bExportZIP": [],
@@ -3897,7 +3810,6 @@ const catalog = createCatalog<Messages>({
     "bShortcutUnavailable": ["shortcut"],
     "bImageUnreadable": ["path"],
     "bOpenFailed": ["name", "error"],
-    "fAppName": [],
     "fHeading": ["level"],
     "fWordCount": ["count"],
     "fSaveError": ["error"],
@@ -3929,14 +3841,11 @@ const catalog = createCatalog<Messages>({
     "fReplace": [],
     "fNext": [],
     "fPrevious": [],
-    "fAll": [],
     "fMatchCase": [],
     "fRegexp": [],
     "fWholeWord": [],
     "fReplaceAll": [],
     "fClose": [],
-    "fFindLabel": [],
-    "fReplaceLabel": [],
     "bImageFormatUnsupported": [],
     "bImageDimensionsTooLarge": [],
     "bCaptureWindowTitle": [],
@@ -3981,7 +3890,6 @@ const catalog = createCatalog<Messages>({
     "fOutdent": [],
     "fIndent": [],
     "fInsert": [],
-    "fFindReplace": [],
     "fHeading4": [],
     "fHeading5": [],
     "fHeading6": [],
@@ -4006,6 +3914,7 @@ const catalog = createCatalog<Messages>({
     "fDetailsContent": [],
     "fCollapseDetails": [],
     "fExpandDetails": [],
+    "fFoldedContent": [],
     "fWordDocument": [],
     "fExportWordDocument": [],
     "fWordDescription": [],
@@ -4264,7 +4173,6 @@ const catalog = createCatalog<Messages>({
       "fOpen": "打开",
       "fLoadedTheLatestVersionFromDisk": "已载入磁盘上的新版本",
       "fPressAShortcut": "按下快捷键…",
-      "fSaveAsDraftEscClose": "{shortcut} 存为草稿 · Esc 关闭",
       "fSavedAsDraft": "已存为草稿",
       "fTheImageCouldNotBeDecoded": "图片无法解码",
       "fTheImageTookTooLongToLoad": "图片加载超时",
@@ -4306,13 +4214,14 @@ const catalog = createCatalog<Messages>({
       "fSettingsTitle": "设置",
       "fAppearance": "外观",
       "fLaunchAtLogin": "登录时启动",
-      "fExportPDFHTMLZIPOrCopyRichText": "导出 PDF、HTML、ZIP 或复制富文本",
+      "fExportPDFWordHTMLZIPOrCopyRichText": "导出 PDF、Word、HTML、ZIP 或复制富文本",
       "fExport2": "导出",
       "fMore": "更多",
       "fSplitViewOnly": "仅分栏可用",
       "fHeadingLevel": "标题级别",
       "fRetrySave": "重试保存",
       "fViewDiskVersion": "查看磁盘版本",
+      "fReload": "重新载入",
       "fOverwriteWithCurrentVersion": "用当前版本覆盖",
       "fShowInFinder": "在 Finder 中显示",
       "fShowInFileExplorer": "在资源管理器中显示",
@@ -4323,10 +4232,7 @@ const catalog = createCatalog<Messages>({
       "fReadingPreview": "阅读预览",
       "fReadingView": "阅读视图",
       "fReadOnly": "只读",
-      "fL": "白",
       "fCloseSidebar": "关闭侧栏",
-      "fFindADocument": "找一篇文稿…",
-      "fSearchRecentDocuments": "搜索最近文稿",
       "fOpenLocalMarkdown": "打开本地 Markdown",
       "fCloseAppearance": "关闭外观",
       "fTheme": "主题",
@@ -4394,8 +4300,6 @@ const catalog = createCatalog<Messages>({
       "fCaptureThisMoment": "记下这一刻……",
       "fSaveAsDraft": "存为草稿",
       "fLanguage": "语言",
-      "fSimplifiedChinese": "简体中文",
-      "fEnglish": "English",
       "bStatusDraftSaved": "草稿已保存",
       "bStatusFileSaved": "文件已保存",
       "bStatusFileUnavailable": "文件不可访问，草稿已保留",
@@ -4444,6 +4348,7 @@ const catalog = createCatalog<Messages>({
       "bImageNameConflict": "同名图片已存在且内容不同",
       "bRegularFilePathRequired": "请选择普通文件路径，避免替换符号链接",
       "bExternalConflict": "文件存在外部冲突，请选择新文件名",
+      "bFileOpenInAnotherDocument": "这个文件已在另一篇文稿中打开，请选择新文件名",
       "bUnsupportedImageSyntax": "存在无法转换的图片语法，请将图片引用单独放在一行后再保存",
       "bMenuAppName": "留白",
       "bMenuAbout": "关于留白",
@@ -4476,7 +4381,6 @@ const catalog = createCatalog<Messages>({
       "bMenuFind": "查找",
       "bMenuView": "显示",
       "bMenuFocus": "专注模式",
-      "bMenuAppearance": "外观与排版…",
       "bMenuLayout": "切换分栏",
       "bMenuRead": "阅读模式",
       "bMenuSource": "显示 Markdown 源码",
@@ -4486,10 +4390,6 @@ const catalog = createCatalog<Messages>({
       "bMenuMinimize": "最小化",
       "bMenuZoom": "缩放",
       "bMenuFront": "前置全部窗口",
-      "bMenuLanguage": "语言",
-      "bMenuFollowSystem": "跟随系统",
-      "bMenuChinese": "简体中文",
-      "bMenuEnglish": "English",
       "bOpenMarkdown": "打开 Markdown 文稿",
       "bSaveMarkdown": "保存 Markdown",
       "bExportZIP": "导出文稿与图片（ZIP）",
@@ -4511,7 +4411,6 @@ const catalog = createCatalog<Messages>({
       "bShortcutUnavailable": "快捷键 {shortcut} 已被其他应用占用",
       "bImageUnreadable": "图片缺失或无法读取：{path}",
       "bOpenFailed": "无法打开「{name}」：{error}",
-      "fAppName": "留白",
       "fHeading": "标题 {level}",
       "fWordCount": "{count, number} 字",
       "fSaveError": "保存失败：{error}",
@@ -4543,14 +4442,11 @@ const catalog = createCatalog<Messages>({
       "fReplace": "替换",
       "fNext": "下一个",
       "fPrevious": "上一个",
-      "fAll": "全部",
       "fMatchCase": "区分大小写",
       "fRegexp": "正则表达式",
       "fWholeWord": "全字匹配",
       "fReplaceAll": "全部替换",
       "fClose": "关闭",
-      "fFindLabel": "查找：",
-      "fReplaceLabel": "替换：",
       "bImageFormatUnsupported": "图片格式不受支持",
       "bImageDimensionsTooLarge": "图片尺寸超过 16000 像素",
       "bCaptureWindowTitle": "随手记 · 留白",
@@ -4595,7 +4491,6 @@ const catalog = createCatalog<Messages>({
       "fOutdent": "减少缩进",
       "fIndent": "增加缩进",
       "fInsert": "插入",
-      "fFindReplace": "查找替换",
       "fHeading4": "标题 4",
       "fHeading5": "标题 5",
       "fHeading6": "标题 6",
@@ -4620,6 +4515,7 @@ const catalog = createCatalog<Messages>({
       "fDetailsContent": "内容",
       "fCollapseDetails": "折叠内容",
       "fExpandDetails": "展开内容",
+      "fFoldedContent": "已折叠的内容",
       "fWordDocument": "Word 文稿（.docx）",
       "fExportWordDocument": "导出 Word 文稿",
       "fWordDescription": "可编辑的 Word 文稿，保留标题、列表、表格、图片、公式和脚注。",
@@ -4877,7 +4773,6 @@ const catalog = createCatalog<Messages>({
       "fOpen": "Open",
       "fLoadedTheLatestVersionFromDisk": "Loaded the Latest Version from Disk",
       "fPressAShortcut": "Press a shortcut…",
-      "fSaveAsDraftEscClose": "{shortcut} Save as Draft · Esc Close",
       "fSavedAsDraft": "Saved as Draft",
       "fTheImageCouldNotBeDecoded": "The image could not be decoded.",
       "fTheImageTookTooLongToLoad": "The image took too long to load.",
@@ -4919,13 +4814,14 @@ const catalog = createCatalog<Messages>({
       "fSettingsTitle": "Settings",
       "fAppearance": "Appearance",
       "fLaunchAtLogin": "Launch at Login",
-      "fExportPDFHTMLZIPOrCopyRichText": "Export PDF, HTML, ZIP, or copy rich text",
+      "fExportPDFWordHTMLZIPOrCopyRichText": "Export PDF, Word, HTML, ZIP, or copy rich text",
       "fExport2": "Export",
       "fMore": "More",
       "fSplitViewOnly": "Split View only",
       "fHeadingLevel": "Heading Level",
       "fRetrySave": "Retry Save",
       "fViewDiskVersion": "View Disk Version",
+      "fReload": "Reload",
       "fOverwriteWithCurrentVersion": "Overwrite with Current Version",
       "fShowInFinder": "Show in Finder",
       "fShowInFileExplorer": "Show in File Explorer",
@@ -4936,10 +4832,7 @@ const catalog = createCatalog<Messages>({
       "fReadingPreview": "Reading Preview",
       "fReadingView": "Reading View",
       "fReadOnly": "Read Only",
-      "fL": "L",
       "fCloseSidebar": "Close Sidebar",
-      "fFindADocument": "Find a document…",
-      "fSearchRecentDocuments": "Search Recent Documents",
       "fOpenLocalMarkdown": "Open Local Markdown",
       "fCloseAppearance": "Close Appearance",
       "fTheme": "Theme",
@@ -5007,8 +4900,6 @@ const catalog = createCatalog<Messages>({
       "fCaptureThisMoment": "Capture this moment…",
       "fSaveAsDraft": "Save as Draft",
       "fLanguage": "Language",
-      "fSimplifiedChinese": "简体中文",
-      "fEnglish": "English",
       "bStatusDraftSaved": "Draft saved",
       "bStatusFileSaved": "File saved",
       "bStatusFileUnavailable": "File unavailable; draft retained",
@@ -5057,6 +4948,7 @@ const catalog = createCatalog<Messages>({
       "bImageNameConflict": "An image with this name already exists with different content",
       "bRegularFilePathRequired": "Choose a regular file path to avoid replacing a symbolic link",
       "bExternalConflict": "File has an external conflict. Choose a new filename",
+      "bFileOpenInAnotherDocument": "This file is open in another document. Choose a new filename",
       "bUnsupportedImageSyntax": "Some image syntax cannot be converted. Place each image reference on its own line before saving",
       "bMenuAppName": "Liubai",
       "bMenuAbout": "About Liubai",
@@ -5089,7 +4981,6 @@ const catalog = createCatalog<Messages>({
       "bMenuFind": "Find",
       "bMenuView": "View",
       "bMenuFocus": "Focus Mode",
-      "bMenuAppearance": "Appearance and Typography…",
       "bMenuLayout": "Toggle Split View",
       "bMenuRead": "Reading Mode",
       "bMenuSource": "Show Markdown Source",
@@ -5099,10 +4990,6 @@ const catalog = createCatalog<Messages>({
       "bMenuMinimize": "Minimize",
       "bMenuZoom": "Zoom",
       "bMenuFront": "Bring All to Front",
-      "bMenuLanguage": "Language",
-      "bMenuFollowSystem": "Follow System",
-      "bMenuChinese": "简体中文",
-      "bMenuEnglish": "English",
       "bOpenMarkdown": "Open Markdown Document",
       "bSaveMarkdown": "Save Markdown",
       "bExportZIP": "Export Document and Images (ZIP)",
@@ -5124,7 +5011,6 @@ const catalog = createCatalog<Messages>({
       "bShortcutUnavailable": "Shortcut {shortcut} is used by another application",
       "bImageUnreadable": "Image is missing or unreadable: {path}",
       "bOpenFailed": "Could not open “{name}”: {error}",
-      "fAppName": "Liubai",
       "fHeading": "Heading {level}",
       "fWordCount": "{count, plural, one {# word} other {# words}}",
       "fSaveError": "Could not save: {error}",
@@ -5156,14 +5042,11 @@ const catalog = createCatalog<Messages>({
       "fReplace": "Replace",
       "fNext": "Next",
       "fPrevious": "Previous",
-      "fAll": "All",
       "fMatchCase": "Match case",
       "fRegexp": "Regular expression",
       "fWholeWord": "By word",
       "fReplaceAll": "Replace all",
       "fClose": "Close",
-      "fFindLabel": "Find:",
-      "fReplaceLabel": "Replace:",
       "bImageFormatUnsupported": "Unsupported image format",
       "bImageDimensionsTooLarge": "Image dimensions exceed 16000 pixels",
       "bCaptureWindowTitle": "Quick Note · Liubai",
@@ -5208,7 +5091,6 @@ const catalog = createCatalog<Messages>({
       "fOutdent": "Decrease Indent",
       "fIndent": "Increase Indent",
       "fInsert": "Insert",
-      "fFindReplace": "Find and Replace",
       "fHeading4": "Heading 4",
       "fHeading5": "Heading 5",
       "fHeading6": "Heading 6",
@@ -5233,6 +5115,7 @@ const catalog = createCatalog<Messages>({
       "fDetailsContent": "Content",
       "fCollapseDetails": "Collapse details",
       "fExpandDetails": "Expand details",
+      "fFoldedContent": "Folded content",
       "fWordDocument": "Word Document (.docx)",
       "fExportWordDocument": "Export Word Document",
       "fWordDescription": "An editable Word document with headings, lists, tables, images, formulas and footnotes.",
@@ -5282,7 +5165,7 @@ const catalog = createCatalog<Messages>({
       "fStudioDraculaTag": "Violet",
       "fCatppuccin": "Catppuccin",
       "fCatppuccinCaption": "Macaron night, a soft blue caret",
-      "fStudioCatppuccinTag": "Latte",
+      "fStudioCatppuccinTag": "Mocha",
       "fGruvbox": "Gruvbox",
       "fGruvboxCaption": "Warm orange retro, cream text",
       "fStudioGruvboxTag": "Retro",
@@ -5291,7 +5174,7 @@ const catalog = createCatalog<Messages>({
       "fStudioRosepineTag": "Rose",
       "fOnelight": "One Light",
       "fOnelightCaption": "Atom's white paper, a cool blue caret",
-      "fStudioOnelightTag": "Dawn",
+      "fStudioOnelightTag": "Letter",
       "fGhdark": "GitHub Dark",
       "fGhdarkCaption": "GitHub's dark side, blue links",
       "fStudioGhdarkTag": "Star",

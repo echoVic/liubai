@@ -2,9 +2,11 @@ import {messages} from './i18n';
 import {EditorState, type TransactionSpec} from '@codemirror/state';
 import {isolateHistory} from '@codemirror/commands';
 import {syntaxTree,ensureSyntaxTree} from '@codemirror/language';
-import type {SyntaxNode} from '@lezer/common';
+import type {SyntaxNode,Tree} from '@lezer/common';
 import {inlineTagPairs,tagHosts} from './marks';
 import {windows} from './platform';
+import {headingSlug} from './headings';
+import {unescapeAll} from 'markdown-it/lib/common/utils.mjs';
 
 export type BlockKind='heading'|'quote'|'bullet'|'ordered'|'task';
 export function headingLevel(state:EditorState):number {
@@ -164,6 +166,8 @@ export function makeLink(text:string,url:string){
  if(!safeLink(url))throw Error(messages.fEnterAnHttpsHttpMailtoOrHeadingLink());
  return `[${text.replace(/[\[\]\\]/g,'\\$&').replace(/\n/g,' ')}](<${url.trim()}>)`;
 }
+// Quote marks and a list marker in front of a line's text; the list marker, if any, is the first group.
+export const containerPrefix=/^(?:[ \t]*>[ \t]?)*[ \t]*((?:[-+*]|\d+[.)])[ \t]+)?/;
 export function frontMatterRange(state:EditorState):{from:number;to:number}|null {
  if(state.doc.line(1).text!=='---'||state.doc.lines<2)return null;
  for(let i=2;i<=Math.min(200,state.doc.lines);i++){
@@ -172,20 +176,76 @@ export function frontMatterRange(state:EditorState):{from:number;to:number}|null
  }
  return null;
 }
+// Marks and destinations that the reading view does not show as text.
+const unseen=/^(?:HeaderMark|EmphasisMark|CodeMark|LinkMark|LinkLabel|LinkTitle|HTMLTag|Comment|ProcessingInstruction|HighlightMark|StrikethroughMark|WikiMark|Image)$/;
+const label=(text:string)=>text.trim().replace(/\s+/g,' ').toLowerCase();
+function destination(state:EditorState,node:SyntaxNode){
+ const url=node.getChild('URL');if(!url)return '';
+ return state.sliceDoc(url.from,url.to).replace(/^<(.*)>$/s,'$1').replace(/\\([!-/:-@[-`{-~])/g,'$1');
+}
+// The label a reference-style link looks up, or null for a link with its own destination.
+function referenceName(state:EditorState,link:SyntaxNode):string|null{
+ const marks=link.getChildren('LinkMark');if(marks.some(m=>state.sliceDoc(m.from,m.to)==='('))return null;
+ const ref=link.getChild('LinkLabel'),close=marks.find(m=>state.sliceDoc(m.from,m.to)===']');
+ return ref&&ref.to-ref.from>2?state.sliceDoc(ref.from+1,ref.to-1):state.sliceDoc(link.from+1,close?.from??link.to);
+}
+const referenceCache=new WeakMap<Tree,{doc:EditorState['doc'];found:Map<string,string>}>();
+// Each definition's destination by label; the first definition of a label wins. Definitions sit only in containers.
+function linkReferences(state:EditorState,tree=syntaxTree(state)):Map<string,string>{
+ const cached=referenceCache.get(tree);if(cached?.doc===state.doc)return cached.found;
+ const found=new Map<string,string>(),meta=frontMatterRange(state);
+ tree.iterate({enter(n){
+  if(meta&&n.from<meta.to&&n.name!=='Document')return false;
+  if(n.name==='LinkReference'){const ref=n.node.getChild('LinkLabel'),key=ref&&label(state.sliceDoc(ref.from+1,ref.to-1));if(key&&!found.has(key))found.set(key,destination(state,n.node))}
+  return /^(?:Document|Blockquote|BulletList|OrderedList|ListItem)$/.test(n.name);
+ }});
+ referenceCache.set(tree,{doc:state.doc,found});return found;
+}
+// Where a link leads: its own destination, or its definition's. Null for a reference without a definition, which the
+// reading view leaves as text.
+export function linkTarget(state:EditorState,link:SyntaxNode):string|null{
+ const name=referenceName(state,link);return name===null?destination(state,link):linkReferences(state).get(label(name))??null;
+}
+// A heading's text as the reading view renders it, so that both give it the same slug (see headingText).
+function inlineText(state:EditorState,node:SyntaxNode,from:number,to:number,links:Map<string,string>,notes:Set<string>):string{
+ let text='',pos=from;
+ for(let child=node.firstChild;child;child=child.nextSibling){
+  if(child.to<=from||child.from>=to)continue;
+  text+=state.sliceDoc(pos,child.from);pos=child.to;
+  if(child.name==='Link'){
+   // Only the text in the brackets shows. A reference without a definition stays literal, as markdown-it leaves it.
+   const marks=child.getChildren('LinkMark'),close=marks.find(m=>state.sliceDoc(m.from,m.to)===']'),inner=close?inlineText(state,child,child.from+1,close.from,links,notes):'';
+   const name=referenceName(state,child),ref=child.getChild('LinkLabel');
+   if(name?.startsWith('^')&&!ref)text+=notes.has(name.slice(1))?'':state.sliceDoc(child.from,child.to);
+   else text+=name===null||links.has(label(name))?inner:'['+inner+']'+(ref?state.sliceDoc(ref.from,ref.to):'');
+  }
+  else if(child.name==='InlineMath'){const source=child.getChild('MathText');if(source)text+=state.sliceDoc(source.from,source.to)}
+  else if(child.name==='Entity'||child.name==='Escape')text+=unescapeAll(state.sliceDoc(child.from,child.to));
+  else if(!unseen.test(child.name))text+=inlineText(state,child,child.from,child.to,links,notes);
+ }
+ return text+state.sliceDoc(pos,to);
+}
 // Pass a fuller tree than the state's (see ensureSyntaxTree) to also find headings past what has been parsed for the screen.
 export function headings(state:EditorState,tree=syntaxTree(state)){
- const out:{from:number;text:string;level:number;slug:string}[]=[];const used=new Map<string,number>();
- const meta=frontMatterRange(state);
- tree.iterate({enter(n){if(meta&&n.from<meta.to&&n.name!=='Document')return false;if(/^(ATX|Setext)Heading/.test(n.name)){
-  const raw=state.sliceDoc(n.from,n.to);const text=raw.replace(/^#{1,6}\s+/,'').replace(/\n[=-]+\s*$/,'').replace(/\s+#+\s*$/,'');
-  const base=text.toLowerCase().replace(/[\p{P}\p{S}]/gu,'').trim().replace(/\s+/g,'-');const count=used.get(base)||0;used.set(base,count+1);
-  out.push({from:n.from,text,level:Number(n.name.slice(-1))||1,slug:base+(count?'-'+count:'')});return false;
- }} });return out;
+ const out:{from:number;text:string;level:number;slug:string}[]=[],used=new Map<string,number>(),meta=frontMatterRange(state);
+ const found:SyntaxNode[]=[],links=linkReferences(state,tree),notes=new Set<string>();
+ // Headings and footnote definitions sit only in containers, so the walk does not descend into inline content.
+ tree.iterate({enter(n){
+  if(meta&&n.from<meta.to&&n.name!=='Document')return false;
+  if(/^(ATX|Setext)Heading/.test(n.name))found.push(n.node);
+  else if(n.name==='WikiFootnoteMark')notes.add(/^\[\^([^\]]*)\]/.exec(state.sliceDoc(n.from,n.to))?.[1]||'');
+  return /^(?:Document|Blockquote|BulletList|OrderedList|ListItem|WikiFootnote)$/.test(n.name);
+ }});
+ for(const node of found){
+  // An empty heading takes a slug in the reading view too, but has nothing to show in the outline.
+  const text=inlineText(state,node,node.from,node.to,links,notes).replace(/\s+/g,' ').trim(),slug=headingSlug(text,used);
+  if(text)out.push({from:node.from,text,level:Number(node.name.slice(-1))||1,slug});
+ }
+ return out;
 }
-export function tableAt(state:EditorState){let n=syntaxTree(state).resolveInner(state.selection.main.head,-1);for(;n;n=n.parent!){if(n.name==='Table')return {from:n.from,to:n.to,raw:state.sliceDoc(n.from,n.to)}}return null}
-export function splitCells(line:string){
+function splitCells(line:string){
  const s=line.trim();let cells:string[]=[],cell='',escaped=false;
- for(let i=0;i<s.length;i++){const c=s[i];if(c==='|'&&!escaped){cells.push(cell.trim());cell=''}else cell+=c;escaped=c==='\\'&&!escaped;if(c!=='\\')escaped=false;}
+ for(let i=0;i<s.length;i++){const c=s[i];if(c==='|'&&!escaped){cells.push(cell.trim());cell=''}else cell+=c;escaped=c==='\\'&&!escaped}
  cells.push(cell.trim());if(s.startsWith('|'))cells.shift();if(s.endsWith('|')&&/^(?:\\\\)*$/.test(/\\*$/.exec(s.slice(0,-1))![0]))cells.pop();return cells;
 }
 export function parseTable(raw:string){

@@ -66,14 +66,6 @@ func (d *Desktop) AppendCapture(req CaptureRequest) (CaptureAppendResult, error)
 	return result, err
 }
 
-func (d *Desktop) Capture(text string) (Summary, error) {
-	summary, err := d.w.Capture(text)
-	if err == nil && d.native != nil && d.win != nil {
-		_ = captured.Emit(d.win, summary)
-	}
-	return summary, err
-}
-
 func (d *Desktop) GetCaptureSettings() CaptureStatus {
 	if d.capture != nil {
 		d.capture.mu.Lock()

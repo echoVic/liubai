@@ -112,15 +112,13 @@ export function createBacklinks(options:{
  options.details.addEventListener('toggle',toggle);
  // ArrowUp at the top row and Escape both park focus on the summary, so
  // ArrowDown there must re-enter the result list instead of stranding it.
- const summaryKeydown=(event:KeyboardEvent)=>{
+ summary.addEventListener('keydown',event=>{
   if(event.isComposing||event.key!=='ArrowDown')return;
   const first=buttons()[0];
   if(first){event.preventDefault();first.focus()}
- };
- summary.addEventListener('keydown',summaryKeydown);
- const focusChanged=(event:FocusEvent)=>{if(pendingFocus&&event.target!==document.body&&event.target!==pendingFocus.element)pendingFocus=undefined};
- const pointerChanged=(event:PointerEvent)=>{if(pendingFocus&&!options.list.contains(event.target as Node))pendingFocus=undefined};
- document.addEventListener('focusin',focusChanged);document.addEventListener('pointerdown',pointerChanged);
+ });
+ document.addEventListener('focusin',event=>{if(pendingFocus&&event.target!==document.body&&event.target!==pendingFocus.element)pendingFocus=undefined});
+ document.addEventListener('pointerdown',event=>{if(pendingFocus&&!options.list.contains(event.target as Node))pendingFocus=undefined});
  options.list.addEventListener('keydown',event=>{
   if(event.isComposing)return;
   if(event.key==='Escape'){event.preventDefault();event.stopPropagation();summary.focus();return}
@@ -133,6 +131,5 @@ export function createBacklinks(options:{
   context:queue.context,refresh:queue.refresh,
   visible(next:boolean){sidebarVisible=next;toggle()},
   language(){summary.textContent=messages.fBacklinks();queue.language()},
-  dispose(){queue.dispose();options.details.removeEventListener('toggle',toggle);summary.removeEventListener('keydown',summaryKeydown);document.removeEventListener('focusin',focusChanged);document.removeEventListener('pointerdown',pointerChanged)},
  };
 }

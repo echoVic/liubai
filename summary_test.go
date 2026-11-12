@@ -22,6 +22,17 @@ func TestInferredTitle(t *testing.T) {
 		"[!WARNING] 注意事项\n正文":                               "注意事项",
 		"> [!TIP]\n\n提示块之后的标题":                              "提示块之后的标题",
 		"[!NOTE]\n[!TIP]\n连续两个标记后":                          "连续两个标记后",
+		"[WIP] my plan":                                     "[WIP] my plan",
+		"[TODO] buy milk\nmore":                             "[TODO] buy milk",
+		"---\nnested:\n  title: inner\n---\n\n正文标题":         "正文标题",
+		"---\ntitle: |\n  多行\n  标题\n---\n":                  "多行 标题",
+		"---\ntitle: \"a: b\" # c\n---\n":                   "a: b",
+		"---\ntitle: 'it''s'\n---\n":                        "it's",
+		"---\ntitle: [a\n---\n\n未解析时按行读取":                   "[a",
+		"$$\nx^2\n$$\n\n公式之后":                               "公式之后",
+		"$$x^2$$\n单行公式之后":                                   "单行公式之后",
+		"- [ ]\n- [x] 第二项":                                  "第二项",
+		"[abc]: http://x\n\n定义之后":                           "定义之后",
 		"ABCD":                                              "ABCD",
 		"Kſ":                                                "Kſ",
 	} {
@@ -50,8 +61,10 @@ func TestHasInferredContentTitle(t *testing.T) {
 		{"```md\nignored\n```", false}, {"[!NOTE]", false},
 		{"---\ntags: [x]\n---\n```\nignored\n```", false},
 		{"---\ntitle: named\n---\n", true},
+		{"$$\nx^2\n$$", false}, {"- [ ]", false}, {"[abc]: http://x", false},
+		{"---\nnested:\n  title: inner\n---\n", false},
 	} {
-		if got := hasInferredContentTitle(tc.text); got != tc.want {
+		if got := hasInferredContentTitle("", tc.text); got != tc.want {
 			t.Errorf("hasInferredContentTitle(%q) = %v, want %v", tc.text, got, tc.want)
 		}
 	}

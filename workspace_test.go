@@ -565,3 +565,42 @@ func TestThemeAppearanceRestoresFromNewerIndex(t *testing.T) {
 		}
 	}
 }
+
+func TestRecentListKeepsOneOrderForEqualTimes(t *testing.T) {
+	w := workspace(t)
+	for i := 0; i < 6; i++ {
+		d, err := w.newLocked(strings.Repeat("x", i+1))
+		if err != nil {
+			t.Fatal(err)
+		}
+		d.Updated = 1000
+	}
+	w.docs[w.current].Updated = 1000
+	order := func() string {
+		ids := ""
+		for _, r := range w.snapshot().Recent {
+			ids += r.ID + " "
+		}
+		return ids
+	}
+	first := order()
+	for i := 0; i < 50; i++ {
+		if got := order(); got != first {
+			t.Fatalf("recent list changed order between snapshots:\n%s\n%s", first, got)
+		}
+	}
+}
+
+// The Word export names its file after Delivery's title, which must read as
+// the document list does in the page's language.
+func TestDeliveryTitleIsLocalized(t *testing.T) {
+	w := workspace(t)
+	d := w.State().Current
+	r, err := w.Delivery(d.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := deliveryIn(r, "en").Title, valueIn(w.State(), "en").(WorkspaceState).Current.Title; got != want || got == r.Title {
+		t.Fatalf("title %q, want %q", got, want)
+	}
+}

@@ -1,4 +1,5 @@
-import {renderMarkdown,headingSlug,type MarkdownRender} from './markdown';
+import {renderMarkdown,type MarkdownRender} from './markdown';
+import {anchorPrefix,installAnchors} from './headings';
 import {highlightCodeBlocks} from './highlight';
 import {messages,pageLocale} from './i18n';
 import {icon} from './icons';
@@ -202,12 +203,6 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
   const top=options.scroll.getBoundingClientRect().top;
   options.scroll.scrollTop+=element.getBoundingClientRect().top-top-saved.offset;
  };
- const installHeadingAnchors=()=>{
-  const used=new Map<string,number>();
-  for(const heading of options.scroll.querySelectorAll<HTMLElement>('h1,h2,h3,h4,h5,h6')){
-   heading.id=headingSlug(heading.textContent||'',used);
-  }
- };
  const retryAfterSave=(epoch:number)=>{
   if(epoch<=retriedSaveEpoch)return;
   retriedSaveEpoch=epoch;
@@ -250,8 +245,8 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
   renderedDocumentID=id;
   renderedContent=content;
   options.host.replaceChildren(next.root);
+  installAnchors(options.host,anchorPrefix);
   void highlightCodeBlocks(next.root,()=>id===documentID&&generation===renderGeneration);
-  installHeadingAnchors();
   decorateImages();
   decorateTables();
   restoreReaderState();
@@ -313,7 +308,7 @@ export function createPreviewController(options:PreviewControllerOptions):Previe
    if(href.startsWith('#')){
     let id=href.slice(1);
     try{id=decodeURIComponent(id)}catch{}
-    const target=Array.from(options.host.querySelectorAll<HTMLElement>('[id]')).find(h=>h.id===id||(/^H[1-6]$/.test(h.tagName)&&h.textContent===id));
+    const target=Array.from(options.host.querySelectorAll<HTMLElement>('[id]')).find(h=>h.id===anchorPrefix+id||(/^H[1-6]$/.test(h.tagName)&&h.textContent===id));
     if(target){
      for(let parent:HTMLElement|null=target;parent&&parent!==options.host;parent=parent.parentElement){
       if(parent instanceof HTMLDetailsElement)parent.open=true;

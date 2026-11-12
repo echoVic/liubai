@@ -3,23 +3,11 @@ import type {MarkdownConfig} from '@lezer/markdown';
 import type {MermaidConfig} from 'mermaid';
 import {messages} from './i18n';
 import {isDark,themes,type ThemeID} from './theme';
+import {infoFence} from './math';
 
-// Like MathFence, let the enclosing Markdown parser own quote/list depth and indentation.
 export const MermaidSyntax:MarkdownConfig={
  defineNodes:[{name:'MermaidFence',block:true},'MermaidText'],
- parseBlock:[{name:'MermaidFence',before:'FencedCode',parse(cx,line){
-  if(line.indent-line.baseIndent>=4)return false;
-  const open=/^(`{3,}|~{3,})[ \t]*mermaid[ \t]*$/.exec(line.text.slice(line.pos));if(!open)return false;
-  const from=cx.lineStart+line.pos,parts=[],depth=cx.depth,fence=open[1],indent=line.indent-line.baseIndent;let end=cx.lineStart+line.text.length;
-  while(cx.nextLine()){
-   if((line as unknown as {depth:number}).depth<depth)break;
-   const raw=line.text.slice(line.pos),close=new RegExp('^'+fence[0]+'{'+fence.length+',}[ \\t]*$');
-   end=cx.lineStart+line.text.length;
-   if(line.indent-line.baseIndent<4&&close.test(raw)){cx.nextLine();break}
-   const start=cx.lineStart+Math.min(line.pos,line.findColumn(line.baseIndent+indent));parts.push(cx.elt('MermaidText',start,end));
-  }
-  cx.addElement(cx.elt('MermaidFence',from,end,parts));return true;
- }}],
+ parseBlock:[infoFence('MermaidFence','MermaidText','mermaid')],
 };
 export function mermaidSource(node:SyntaxNode,slice:(from:number,to:number)=>string):string|null{
  return node.name==='MermaidFence'?node.getChildren('MermaidText').map(part=>slice(part.from,part.to)).join('\n').trimEnd():null;
@@ -32,7 +20,7 @@ interface MermaidAPI {
 }
 export type MermaidRenderer=(source:string,theme:MermaidTheme)=>Promise<MermaidResult>;
 const identifier=()=> 'liubai-mermaid-'+Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-');
-export const mermaidFont="'Iowan Old Style', 'Songti SC', 'Noto Serif CJK SC', Georgia, serif";
+const mermaidFont="'Iowan Old Style', 'Songti SC', 'Noto Serif CJK SC', Georgia, serif";
 export function createMermaidRenderer(load:()=>Promise<MermaidAPI>):MermaidRenderer{
  let api:Promise<MermaidAPI>|undefined,queue=Promise.resolve(),initialized:MermaidTheme|undefined;
  const cache=new Map<string,Promise<MermaidResult>>();
@@ -40,7 +28,8 @@ export function createMermaidRenderer(load:()=>Promise<MermaidAPI>):MermaidRende
   const key=JSON.stringify([source,theme]),cached=cache.get(key);if(cached){cache.delete(key);cache.set(key,cached);return cached}
   const result=queue.then(async()=>{
    try{
-    const mermaid=await (api??=load().catch(error=>{api=undefined;throw error}));
+    // A failed load is retried by the next render, so its error must not stay cached for this diagram.
+    const mermaid=await (api??=load().catch(error=>{api=undefined;if(cache.get(key)===result)cache.delete(key);throw error}));
     if(initialized!==theme){
      mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:isDark(theme)?'dark':'default',fontFamily:mermaidFont,htmlLabels:false,arrowMarkerAbsolute:false,flowchart:{htmlLabels:false},suppressErrorRendering:true,
       // Mermaid's dark palette derives edge-label backgrounds (a 30% mix of secondaryColor,
@@ -64,7 +53,7 @@ export function createMermaidRenderer(load:()=>Promise<MermaidAPI>):MermaidRende
 const painted=()=>new Promise<void>(resolve=>{if(typeof requestAnimationFrame!=='function')return resolve();requestAnimationFrame(()=>setTimeout(resolve,0));setTimeout(resolve,200)});
 // This is the only runtime import of Mermaid. A plain document never evaluates it.
 export const renderMermaid=createMermaidRenderer(async()=>{await painted();return (await import('./mermaid-runtime')).default});
-export function mermaidTheme():MermaidTheme{
+function mermaidTheme():MermaidTheme{
  const value=typeof document==='undefined'?'paper':document.documentElement.dataset.liubaiTheme;
  return themes.find(t=>t.id===value)?.id||'paper';
 }

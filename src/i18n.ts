@@ -43,12 +43,13 @@ function statusCode(doc:Status){
  for(const code of Object.keys(statusMessages) as (keyof typeof statusMessages)[])if(source[statusMessages[code]]()===doc.status)return code;
  return doc.conflict?'diskConflict':'draftSaved';
 }
-export function catalogText(key:string,args:Record<string,unknown>={},fallback=''){
+function catalogText(key:string,args:Record<string,unknown>={},fallback=''){
  switch(key){
   case 'bCorruptDrafts':return messages.bCorruptDrafts(Number(args.count||0));
   case 'bShortcutUnavailable':return messages.bShortcutUnavailable(String(args.shortcut||''));
   case 'bImageUnreadable':return messages.bImageUnreadable(String(args.path||''));
   case 'bOpenFailed':return messages.bOpenFailed(String(args.name||''),String(args.error||''));
+  case 'bReadOnlyTarget':return messages.bReadOnlyTarget(String(args.name||''));
   default:{const say=(messages as unknown as Record<string,()=>string>)[key];return say?say():fallback}
  }
 }
@@ -62,7 +63,7 @@ export function localizedError(error:unknown){
  // Native bridge errors contain prose; no-argument catalog errors can still be identified.
  for(const tag of ['zh-Hans','en']){
   const source=messagesIn(tag) as unknown as Record<string,()=>string>;
-  for(const key of Object.keys(source))if(key.startsWith('b')&&!['bCorruptDrafts','bShortcutUnavailable','bImageUnreadable','bOpenFailed'].includes(key)&&source[key]()===text)return catalogText(key);
+  for(const key of Object.keys(source))if(key.startsWith('b')&&!['bCorruptDrafts','bShortcutUnavailable','bImageUnreadable','bOpenFailed','bReadOnlyTarget'].includes(key)&&source[key]()===text)return catalogText(key);
  }
  return text;
 }

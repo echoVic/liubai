@@ -305,3 +305,20 @@ func TestDeleteTrashFailureKeepsDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestFailedDeleteOfTheOnlyDocumentAddsNoDraft(t *testing.T) {
+	w := workspace(t)
+	d := edit(t, w, "唯一一篇\n")
+	if err := os.WriteFile(filepath.Join(w.root, "trash"), []byte("blocked"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		if _, err := w.Delete(d.ID); err == nil {
+			t.Fatal("trash failure ignored")
+		}
+	}
+	drafts, _ := filepath.Glob(filepath.Join(w.root, "drafts", "*.json"))
+	if len(w.docs) != 1 || len(drafts) != 1 || w.State().Current.ID != d.ID {
+		t.Fatalf("documents %d, drafts %d", len(w.docs), len(drafts))
+	}
+}

@@ -3,6 +3,7 @@ package main
 import (
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/egoist/mygo/i18n"
 )
@@ -30,9 +31,68 @@ type BacklinkResponse struct {
 	Truncated  bool           `json:"truncated"`
 }
 
+// Backlinks parses every document that contains the title on each call, and
+// only the edited document changes between calls. Entries are keyed by
+// document ID and hold the exact content they were parsed from; the cached
+// slices are never modified.
+var wikiReferenceCache = struct {
+	sync.Mutex
+	entries    map[string]wikiReferenceEntry
+	references int
+}{entries: map[string]wikiReferenceEntry{}}
+
+type wikiReferenceEntry struct {
+	content    string
+	references []wikiReference
+}
+
+const wikiReferenceCacheLimit = 1 << 18
+
+func cachedWikiReferences(id, content string) []wikiReference {
+	wikiReferenceCache.Lock()
+	entry, ok := wikiReferenceCache.entries[id]
+	wikiReferenceCache.Unlock()
+	if ok && entry.content == content {
+		return entry.references
+	}
+	references := wikiReferences(content)
+	if id == "" || len(references) > wikiReferenceCacheLimit/64 {
+		return references
+	}
+	wikiReferenceCache.Lock()
+	if old, ok := wikiReferenceCache.entries[id]; ok {
+		wikiReferenceCache.references -= len(old.references)
+	}
+	if len(wikiReferenceCache.entries) >= 8192 || wikiReferenceCache.references+len(references) > wikiReferenceCacheLimit {
+		clear(wikiReferenceCache.entries)
+		wikiReferenceCache.references = 0
+	}
+	// The entry shares the document's content string instead of copying it.
+	wikiReferenceCache.entries[id] = wikiReferenceEntry{content, references}
+	wikiReferenceCache.references += len(references)
+	wikiReferenceCache.Unlock()
+	return references
+}
+
+// pruneWikiReferenceCache also drops entries whose document changed, so the
+// cache does not keep old document text alive.
+func pruneWikiReferenceCache(docs map[string]*Document) {
+	wikiReferenceCache.Lock()
+	defer wikiReferenceCache.Unlock()
+	for id, entry := range wikiReferenceCache.entries {
+		if doc := docs[id]; doc == nil || doc.Content != entry.content {
+			delete(wikiReferenceCache.entries, id)
+			wikiReferenceCache.references -= len(entry.references)
+		}
+	}
+}
+
+// A copy whose title carries a generated suffix (recovery, disk version) is
+// displayed with a localized suffix, so like a generated title it is no link
+// target; renaming it gives it one.
 func wikiTitle(d Document) (string, bool) {
 	title, ok := wikiName(d.Title)
-	if !ok || title != d.Title || d.GeneratedTitleSuffix == "" && d.generatedTitle() {
+	if !ok || title != d.Title || d.GeneratedTitleSuffix != "" || d.generatedTitle() {
 		return "", false
 	}
 	return d.Title, true
@@ -66,7 +126,7 @@ func wikiResolveDocuments(docs []Document, request WikiResolveRequest, locale st
 		return empty, messageError("bWikiInvalidName", nil)
 	}
 	present := false
-	for _, ref := range wikiReferences(source.Content) {
+	for _, ref := range cachedWikiReferences(source.ID, source.Content) {
 		if ref.Target == target {
 			present = true
 			break
@@ -127,11 +187,12 @@ func wikiBacklinkDocuments(docs []Document, id, locale string) (BacklinkResponse
 	// only the first 100 rows and the fourth-hit probe for each retained row.
 	wikiSortDocuments(docs)
 	for _, doc := range docs {
-		if doc.ID == id {
+		// A reference names its target as a raw substring, so a document without the title cannot link here and need not be parsed.
+		if doc.ID == id || !strings.Contains(doc.Content, title) {
 			continue
 		}
 		var positions [][]int
-		for _, ref := range wikiReferences(doc.Content) {
+		for _, ref := range cachedWikiReferences(doc.ID, doc.Content) {
 			if ref.Target == title {
 				positions = append(positions, []int{ref.From, ref.To})
 				if len(positions) == 4 {

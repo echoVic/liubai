@@ -1,15 +1,17 @@
 import {messages} from './i18n';
 import {waitMermaid} from './mermaid';
 import type {MathOutput} from './math';
-import {normalizeImageDestination,renderMarkdown,headingSlug} from './markdown';
+import {normalizeImageDestination,renderMarkdown} from './markdown';
+import {installAnchors,plainAnchors} from './headings';
 export interface Delivery {title:string;content:string;images:Record<string,string>;missing:string[];external:number}
-export function renderDelivery(data:Delivery,mathOutput:MathOutput='mathml'){
+// The copy kept in the app takes a prefix for its ids (see anchorPrefix); its own links follow them.
+export function renderDelivery(data:Delivery,mathOutput:MathOutput='mathml',prefix=''){
  const images=new Map(Object.entries(data.images).map(([src,value])=>[normalizeImageDestination(src),value]));
  // Exports are styled for white paper, so diagrams use the light theme whatever the app theme is.
  const {root}=renderMarkdown(data.content,{resolve:destination=>images.get(destination),external:'link',frontMatter:'hide',mathOutput,diagramTheme:'paper'});
  root.className='delivery-document';
- const used=new Map<string,number>();
- for(const heading of root.querySelectorAll('h1,h2,h3,h4,h5,h6'))heading.id=headingSlug(heading.textContent||'',used);
+ installAnchors(root,prefix);
+ if(prefix)for(const a of root.querySelectorAll('a[href^="#"]'))a.setAttribute('href','#'+prefix+a.getAttribute('href')!.slice(1));
  for(const img of root.querySelectorAll('img')){img.removeAttribute('data-image-source');img.style.maxWidth='100%';img.style.height='auto'}
  for(const note of root.querySelectorAll('.markdown-image-note')){note.className='delivery-image-note';note.setAttribute('style','display:block;margin:10px 0;padding:8px 12px;border:1px dashed #cdd2cc;border-radius:6px;color:#5b6b62;font-size:12px;line-height:1.7')}
  for(const el of root.querySelectorAll('.task-list, .task-list-item')){
@@ -32,9 +34,10 @@ export function renderDelivery(data:Delivery,mathOutput:MathOutput='mathml'){
  for(const [tag,style]of Object.entries(styles))root.querySelectorAll(tag).forEach(el=>el.setAttribute('style',style+';'+(el.getAttribute('style')||'')));
  const readerStyles:Record<string,string>={'.markdown-alert':'border-left:3px solid #809387;background:#edf2ee;padding:12px 16px;margin:18px 0','.markdown-alert-title':'font-weight:700;margin:0 0 8px;display:flex;align-items:center;gap:8px',kbd:'border:1px solid #cdd2cc;border-radius:4px;padding:4px 6px;font-family:monospace;font-size:12px;color:#242523;background:#f1f2ef','section.footnotes':'font-size:13px'};
  for(const [selector,style] of Object.entries(readerStyles))root.querySelectorAll(selector).forEach(el=>el.setAttribute('style',style));
- for(const [kind,colour] of Object.entries({note:'#316dba',tip:'#34794c',important:'#8250b5',warning:'#8f600f',caution:'#bd4343'})){
+ // The light theme's alert colours (--alert-* in themes.css), with the reader's 9% tint on white paper.
+ for(const [kind,colour] of Object.entries({note:'#2d64aa',tip:'#306f46',important:'#7d4bb0',warning:'#865b0f',caution:'#ad3d3d'})){
   for(const alert of root.querySelectorAll<HTMLElement>('.markdown-alert-'+kind)){
-   alert.style.borderLeftColor=colour;alert.style.background={note:'#edf2f9',tip:'#edf3ef',important:'#f4eff8',warning:'#f6f2e9',caution:'#f9eeee'}[kind as 'note'];
+   alert.style.borderLeftColor=colour;alert.style.background={note:'#ecf1f7',tip:'#ecf2ee',important:'#f3eff8',warning:'#f4f0e9',caution:'#f8eeee'}[kind as 'note'];
    const title=alert.querySelector<HTMLElement>('.markdown-alert-title');if(title)title.style.color=colour;
   }
  }
@@ -46,7 +49,7 @@ export function renderDelivery(data:Delivery,mathOutput:MathOutput='mathml'){
 export async function waitImages(root:HTMLElement){await waitMermaid(root);await Promise.all([...root.querySelectorAll('img')].map(img=>new Promise<void>((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(Error(messages.fTheImageCouldNotBeDecoded()));return}const timeout=setTimeout(()=>reject(Error(messages.fTheImageTookTooLongToLoad())),10000);img.onload=()=>{clearTimeout(timeout);resolve()};img.onerror=()=>{clearTimeout(timeout);reject(Error(messages.fTheImageCouldNotBeDecoded()))}})))}
 export interface RichClipboard {html:string;text:string}
 export async function prepareRichClipboard(root:HTMLElement):Promise<RichClipboard>{
- const copy=root.cloneNode(true) as HTMLElement;
+ const copy=plainAnchors(root);
  // AppKit treats MathML annotations as another visible formula. Basic rich text keeps one TeX source.
  for(const math of copy.querySelectorAll<HTMLElement>('.math-inline,.math-display')){
   const source=math.querySelector('annotation[encoding="application/x-tex"]')?.textContent;

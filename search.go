@@ -42,6 +42,7 @@ type SearchResponse struct {
 	Truncated bool         `json:"truncated"`
 }
 
+// Search is kept for tests and scripts/check-search.py; the sidebar calls FilterDocuments.
 func (w *Workspace) Search(query, locale string) (SearchResponse, error) {
 	empty := SearchResponse{Items: []SearchItem{}}
 	query, err := normalizeSearchQuery(query)
@@ -76,6 +77,8 @@ func normalizeSearchQuery(query string) (string, error) {
 func (w *Workspace) searchSnapshot() []Document {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	// Every reader of a full snapshot passes here, so it is where caches lose deleted documents.
+	pruneDocumentCaches(w.docs)
 	docs := make([]Document, 0, len(w.docs))
 	for _, d := range w.docs {
 		docs = append(docs, Document{

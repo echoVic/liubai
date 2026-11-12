@@ -37,6 +37,16 @@ type wikiInlineParser struct {
 	references   []wikiReference
 	parent       ast.Node
 	blockedUntil int
+	// failed holds the start of every rejected candidate that blocked the rest
+	// of its bracket region; native holds those found to open a native link or
+	// image, which block nothing.
+	failed []int
+	native map[int]bool
+}
+
+func (p *wikiInlineParser) block(from, to int) {
+	p.blockedUntil = to
+	p.failed = append(p.failed, from)
 }
 
 func (*wikiInlineParser) Trigger() []byte { return []byte{'[', '!'} }
@@ -51,13 +61,12 @@ func (p *wikiInlineParser) Parse(parent ast.Node, reader text.Reader, _ parser.C
 		line = line[1:]
 		segment.Start++
 	}
-	if segment.Padding != 0 || segment.Start < p.blockedUntil || !bytes.HasPrefix(line, []byte("[[")) {
+	if segment.Padding != 0 || segment.Start < p.blockedUntil || !bytes.HasPrefix(line, []byte("[[")) || p.native[segment.Start] {
 		return nil
 	}
 	source := reader.Source()
-	if segment.Start > 0 && source[segment.Start-1] == '[' {
-		return nil
-	}
+	// A third opening bracket still blocks the rest of its region, as in both TypeScript parsers.
+	preceded := segment.Start > 0 && source[segment.Start-1] == '['
 	end, depth, boundary := -1, 1, len(line)
 	for i := 2; i < len(line); i++ {
 		if line[i] == '\r' || line[i] == '\n' {
@@ -80,17 +89,17 @@ func (p *wikiInlineParser) Parse(parent ast.Node, reader text.Reader, _ parser.C
 		}
 	}
 	if end < 0 {
-		p.blockedUntil = segment.Start + boundary
+		p.block(segment.Start, segment.Start+boundary)
+		return nil
+	}
+	// An escaped first closing bracket is literal text, so there is no closer.
+	name, ok := wikiName(string(line[2 : end-2]))
+	if preceded || end < len(line) && line[end] == ']' || wikiEscaped(line, end-2) || !ok {
+		p.block(segment.Start, segment.Start+end)
 		return nil
 	}
 	p.blockedUntil = segment.Start + end
-	if end < len(line) && line[end] == ']' {
-		return nil
-	}
-	name, ok := wikiName(string(line[2 : end-2]))
-	if ok {
-		p.references = append(p.references, wikiReference{Target: name, From: segment.Start, To: segment.Start + end})
-	}
+	p.references = append(p.references, wikiReference{Target: name, From: segment.Start, To: segment.Start + end})
 	// Leave brackets to Goldmark so a later closing label can still make a
 	// native Link/Image. Candidates are accepted only after AST exclusions.
 	return nil
@@ -102,34 +111,47 @@ func wikiReferences(content string) []wikiReference {
 	}
 	prefix := frontMatterEnd(content)
 	source := []byte(content[prefix:])
-	inline := &wikiInlineParser{}
-	spans := &wikiSpanCollector{}
-	md := goldmark.New(
-		goldmark.WithExtensions(extension.Table, extension.Strikethrough, extension.Footnote, extension.Linkify),
-		goldmark.WithParserOptions(
-			parser.WithInlineParsers(util.Prioritized(inline, 150), util.Prioritized(wikiMathInlineParser{}, 150)),
-			parser.WithParagraphTransformers(util.Prioritized(wikiMathParagraphTransformer{}, 50)),
-			parser.WithASTTransformers(util.Prioritized(spans, 998)),
-		),
-	)
-	md.Parser().Parse(text.NewReader(source))
-	allowed, excluded := spans.allowed, spans.excluded
+	native := map[int]bool{}
+	var inline *wikiInlineParser
+	var spans *wikiSpanCollector
+	// A rejected "[[" whose first bracket opens a native link or image, as in
+	// "[[1] Smith](url) [[Topic]]", leaves the rest of the line to that link,
+	// as in both TypeScript parsers. Goldmark resolves links only after the
+	// candidate was seen, so parse again without blocking there; the bound
+	// only matters for images nested in link labels.
+	for pass := 0; pass < 3; pass++ {
+		inline, spans = &wikiInlineParser{native: native}, &wikiSpanCollector{}
+		md := goldmark.New(
+			goldmark.WithExtensions(extension.Table, extension.Strikethrough, extension.Footnote, extension.Linkify),
+			goldmark.WithParserOptions(
+				parser.WithInlineParsers(util.Prioritized(inline, 150), util.Prioritized(wikiMathInlineParser{}, 150)),
+				parser.WithParagraphTransformers(util.Prioritized(wikiMathParagraphTransformer{}, 50)),
+				parser.WithASTTransformers(util.Prioritized(spans, 998)),
+			),
+		)
+		md.Parser().Parse(text.NewReader(source))
+		changed := false
+		for _, from := range inline.failed {
+			if spans.labels[from+1] && !native[from] {
+				native[from], changed = true, true
+			}
+		}
+		if !changed {
+			break
+		}
+	}
+	allowed := spans.allowed
 	sort.Slice(inline.references, func(i, j int) bool { return inline.references[i].From < inline.references[j].From })
 	sort.Slice(allowed, func(i, j int) bool { return allowed[i].from < allowed[j].from })
-	sort.Slice(excluded, func(i, j int) bool { return excluded[i].from < excluded[j].from })
+	inText := func(at int) bool {
+		i := sort.Search(len(allowed), func(i int) bool { return allowed[i].to > at })
+		return i < len(allowed) && allowed[i].from <= at
+	}
 	references := make([]wikiReference, 0, len(inline.references))
-	at, blocked := 0, 0
 	for _, ref := range inline.references {
-		for at < len(allowed) && allowed[at].to <= ref.From {
-			at++
-		}
-		if at == len(allowed) || allowed[at].from > ref.From {
-			continue
-		}
-		for blocked < len(excluded) && excluded[blocked].to <= ref.From {
-			blocked++
-		}
-		if blocked < len(excluded) && excluded[blocked].from <= ref.From {
+		// Code, math, raw HTML and autolinks bind tighter than the brackets:
+		// a closer inside one of them closes nothing.
+		if !inText(ref.From) || !inText(ref.To-1) {
 			continue
 		}
 		ref.From += prefix
@@ -140,7 +162,11 @@ func wikiReferences(content string) []wikiReference {
 }
 
 type wikiSourceSpan struct{ from, to int }
-type wikiSpanCollector struct{ allowed, excluded []wikiSourceSpan }
+type wikiSpanCollector struct {
+	allowed []wikiSourceSpan
+	// labels holds where the label text of each native link or image starts.
+	labels map[int]bool
+}
 
 // Collect native text contexts after inline parsing and before Goldmark's
 // footnote transformer (999) removes uncited definitions from the rendered AST.
@@ -149,19 +175,23 @@ func (p *wikiSpanCollector) Transform(root *ast.Document, _ text.Reader, _ parse
 		if !entering {
 			return ast.WalkContinue, nil
 		}
-		switch node.(type) {
-		case *ast.Link, *ast.Image, *ast.AutoLink, *ast.RawHTML, *ast.HTMLBlock, *ast.FencedCodeBlock, *ast.CodeBlock, *wikiMathBlock:
-			return ast.WalkSkipChildren, nil
-		case *ast.CodeSpan:
-			for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+		switch n := node.(type) {
+		case *ast.Link, *ast.Image:
+			for child := node.FirstChild(); child != nil; child = child.FirstChild() {
 				if value, ok := child.(*ast.Text); ok {
-					p.excluded = append(p.excluded, wikiSourceSpan{value.Segment.Start, value.Segment.Stop})
+					if p.labels == nil {
+						p.labels = map[int]bool{}
+					}
+					p.labels[value.Segment.Start] = true
+					break
 				}
 			}
 			return ast.WalkSkipChildren, nil
+		case *ast.AutoLink, *ast.RawHTML, *ast.HTMLBlock, *ast.FencedCodeBlock, *ast.CodeBlock, *ast.CodeSpan, *wikiMathBlock:
+			// Only text outside these is collected; a reference must start in it.
+			return ast.WalkSkipChildren, nil
 		case *ast.Text:
-			value := node.(*ast.Text)
-			p.allowed = append(p.allowed, wikiSourceSpan{value.Segment.Start, value.Segment.Stop})
+			p.allowed = append(p.allowed, wikiSourceSpan{n.Segment.Start, n.Segment.Stop})
 		}
 		return ast.WalkContinue, nil
 	})

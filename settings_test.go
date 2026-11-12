@@ -1,10 +1,15 @@
 package main
 
 import (
+	"fmt"
+	"image"
+	"image/color"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"liubai/locales"
 
 	"github.com/egoist/mygo/ui"
 )
@@ -187,7 +192,7 @@ func TestSettingsStopsAutomaticSwitchingAtDisplayedTheme(t *testing.T) {
 	w.localePreference = "en"
 	w.appearance.Auto = "system"
 	s := &settingsWindow{desktop: &Desktop{w: w}}
-	tt := ui.NewTester(s.view, 720, 960)
+	tt := ui.NewTester(s.view, 720, 1080)
 	tt.SetDark(true)
 	if err := tt.Click("Off"); err != nil {
 		t.Fatal(err)
@@ -243,6 +248,213 @@ func TestSettingsThemeCardsAcrossLocales(t *testing.T) {
 	}
 }
 
+// As in the page's dialog, Studio runs four across and the check of a
+// Seasons or Studio card sits on its tag row, clear of the name, which can
+// run to the card's right edge (Catppuccin Latte).
+func TestSettingsCheckStaysClearOfThemeNames(t *testing.T) {
+	near := func(c color.RGBA, k ui.Color) bool {
+		d := func(a, b uint8) int { return max(int(a), int(b)) - min(int(a), int(b)) }
+		return d(c.R, k.R)+d(c.G, k.G)+d(c.B, k.B) < 30
+	}
+	render := func(locale, selected string, width int) (*ui.Tester, *settingsWindow) {
+		w, err := openWorkspace(t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		w.localePreference = locale
+		w.appearance.Theme, w.appearance.Auto = selected, "off"
+		s := &settingsWindow{desktop: &Desktop{w: w}}
+		return ui.NewTester(s.view, width, 1000), s
+	}
+	for _, locale := range []string{"en", "zh-Hans"} {
+		for _, width := range []int{720, 640} {
+			plain, _ := render(locale, "paper", width)
+			for _, theme := range themes {
+				if theme.Series == "hours" {
+					continue
+				}
+				tt, s := render(locale, theme.ID, width)
+				r, ok := tt.Find(s.text(themeTextKeys[theme.ID][0]))
+				if !ok {
+					t.Fatalf("%s: no card", theme.ID)
+				}
+				if theme.ID == "github" && width == 720 {
+					across := 0
+					for _, other := range themes {
+						if o, _ := tt.Find(s.text(themeTextKeys[other.ID][0])); other.Series == "studio" && o.Y == r.Y {
+							across++
+						}
+					}
+					if across != 4 {
+						t.Errorf("%s: %d Studio cards across, want 4", locale, across)
+					}
+				}
+				// The check is the accent the unselected card lacks, the text
+				// what it showed too. The border's rounded corners are left out.
+				img, before, nt := tt.Image(), plain.Image(), nativeThemes[theme.ID]
+				x0, y0, x1, y1 := int(r.X)+8, int(r.Y)+6, int(r.X+r.W)-6, int(r.Y+r.H)-6
+				inside := func(x, y int) bool {
+					return x >= x0 && x < x1 && y >= y0 && y < y1 && !((x < x0+6 || x >= x1-6) && (y < y0+6 || y >= y1-6))
+				}
+				had := func(x, y int, match func(color.RGBA) bool) bool { return match(before.RGBAAt(x, y)) }
+				accent := func(c color.RGBA) bool { return near(c, nt.Accent) }
+				ink := func(c color.RGBA) bool { return !near(c, nt.Surface) }
+				check := image.Rectangle{Min: image.Pt(1<<20, 1<<20)}
+				var text []image.Point
+				for y := y0; y < y1; y++ {
+					for x := x0; x < x1; x++ {
+						if !inside(x, y) {
+							continue
+						}
+						if c := img.RGBAAt(x, y); accent(c) && !had(x, y, accent) {
+							check = check.Union(image.Rect(x, y, x+1, y+1))
+						} else if ink(c) && had(x, y, ink) {
+							text = append(text, image.Pt(x, y))
+						}
+					}
+				}
+				where := fmt.Sprintf("%s %s %dpx", locale, theme.ID, width)
+				if check.Dx() == 0 || check.Dx() > 16 || check.Dy() > 16 {
+					t.Fatalf("%s: check not found alone: %v in %+v", where, check, r)
+				}
+				if float32(check.Min.Y) < r.Y+r.H/2 {
+					t.Errorf("%s: check at %v is not on the tag row of %+v", where, check, r)
+				}
+				clear := check.Inset(-2)
+				for _, p := range text {
+					if p.In(clear) {
+						t.Errorf("%s: text at %v touches the check at %v", where, p, check)
+						break
+					}
+				}
+			}
+		}
+	}
+}
+
+// The selected card's second border pixel is drawn inside the first, as the
+// page's inset shadow is, so the card's name stays where it was.
+func TestSettingsSelectedCardKeepsItsContentInPlace(t *testing.T) {
+	render := func(selected string) *ui.Tester {
+		w, err := openWorkspace(t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		w.localePreference = "en"
+		w.appearance.Theme, w.appearance.Auto = selected, "off"
+		return ui.NewTester((&settingsWindow{desktop: &Desktop{w: w}}).view, 720, 1000)
+	}
+	plain := render("paper")
+	for _, theme := range themes {
+		if theme.Series == "hours" {
+			continue // centred, so a thicker border never moved it
+		}
+		tt, nt := render(theme.ID), nativeThemes[theme.ID]
+		r, ok := tt.Find(locales.Catalog.Format("en", themeTextKeys[theme.ID][0], nil))
+		if !ok {
+			t.Fatalf("%s: no card", theme.ID)
+		}
+		// The top half, clear of the stripe, the border and its corners.
+		name := func(img *image.RGBA) image.Rectangle {
+			box := image.Rectangle{}
+			for y := int(r.Y) + 4; y < int(r.Y+r.H/2); y++ {
+				for x := int(r.X) + 10; x < int(r.X+r.W)-10; x++ {
+					c := img.RGBAAt(x, y)
+					if d := colourDistance(ui.Color{R: c.R, G: c.G, B: c.B, A: 255}, nt.Surface); d > 10 {
+						box = box.Union(image.Rect(x, y, x+1, y+1))
+					}
+				}
+			}
+			return box
+		}
+		if before, after := name(plain.Image()), name(tt.Image()); before.Empty() || before != after {
+			t.Errorf("%s: name drawn at %v when selected, %v when not", theme.ID, after, before)
+		}
+	}
+}
+
+// The chosen segment of Switch Automatically is Background on a muted track,
+// which nord, catppuccin, gruvbox and rosepine make one colour, so an accent
+// ring marks it, as on the page. The ring may fall across two pixels.
+func TestSettingsChosenSegmentShowsInEveryTheme(t *testing.T) {
+	for _, theme := range themes {
+		w, err := openWorkspace(t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		w.localePreference = "en"
+		w.appearance.Theme, w.appearance.Auto = theme.ID, "off"
+		tt := ui.NewTester((&settingsWindow{desktop: &Desktop{w: w}}).view, 720, 1080)
+		r, ok := tt.Find("Off")
+		if !ok || !onScreen(r, 720, 1080) {
+			t.Fatalf("%s: segment Off not on screen: %+v", theme.ID, r)
+		}
+		img, nt := tt.Image(), nativeThemes[theme.ID]
+		ringed := func(x, y, dx, dy int) bool {
+			for i := -1; i <= 1; i++ {
+				c := img.RGBAAt(x+i*dx, y+i*dy)
+				pixel := ui.Color{R: c.R, G: c.G, B: c.B, A: 255}
+				if ring := colourDistance(pixel, nt.Accent); ring < colourDistance(pixel, nt.Background) && ring < colourDistance(pixel, nt.muted) {
+					return true
+				}
+			}
+			return false
+		}
+		x0, y0, x1, y1 := int(r.X+0.5), int(r.Y+0.5), int(r.X+r.W-0.5), int(r.Y+r.H-0.5)
+		missing := 0
+		for x := x0 + 6; x < x1-6; x++ {
+			if !ringed(x, y0, 0, 1) || !ringed(x, y1, 0, 1) {
+				missing++
+			}
+		}
+		for y := y0 + 6; y < y1-6; y++ {
+			if !ringed(x0, y, 1, 0) || !ringed(x1, y, 1, 0) {
+				missing++
+			}
+		}
+		if missing > 0 {
+			t.Errorf("%s: %d edge points of the chosen segment %+v show no accent ring", theme.ID, missing, r)
+		}
+	}
+}
+
+// A button's hover and press show on its face in every theme; solare's card
+// and muted are one colour.
+func TestSettingsButtonHoverShowsInEveryTheme(t *testing.T) {
+	for _, theme := range themes {
+		w, err := openWorkspace(t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		w.localePreference = "en"
+		w.appearance.Theme, w.appearance.Auto = theme.ID, "off"
+		tt := ui.NewTester((&settingsWindow{desktop: &Desktop{w: w}, tab: 1}).view, 640, 560)
+		// The label is centred in a wider button: its face shows left of it.
+		r, ok := tt.Find(displaySettingsShortcut(w.State().Capture.Shortcut))
+		if !ok {
+			t.Fatalf("%s: shortcut button not found: %q", theme.ID, tt.Texts())
+		}
+		face := func() ui.Color {
+			c := tt.Image().RGBAAt(int(r.X)-8, int(r.Y+r.H/2))
+			return ui.Color{R: c.R, G: c.G, B: c.B, A: 255}
+		}
+		rest := face()
+		tt.Move(r.X+r.W/2, r.Y+r.H/2)
+		hover := face()
+		tt.Press(r.X+r.W/2, r.Y+r.H/2)
+		pressed := face()
+		tt.Release(r.X+r.W/2, r.Y+r.H/2)
+		for _, pair := range []struct {
+			name string
+			a, b ui.Color
+		}{{"hover", hover, rest}, {"press", pressed, rest}, {"press after hover", pressed, hover}} {
+			if d := colourDistance(pair.a, pair.b); d < 4 {
+				t.Errorf("%s: %s changes the button's face by %.1f", theme.ID, pair.name, d)
+			}
+		}
+	}
+}
+
 func TestSettingsSystemThemeDoesNotFollowSelectedCardDarkness(t *testing.T) {
 	w, err := openWorkspace(t.TempDir())
 	if err != nil {
@@ -255,7 +467,7 @@ func TestSettingsSystemThemeDoesNotFollowSelectedCardDarkness(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		s.view(c)
 		displayed = c.Theme().Background
-	}, 720, 960)
+	}, 720, 1080)
 	if displayed != nativeThemes["moon"].Background {
 		t.Fatal("settings did not adopt the document's palette")
 	}

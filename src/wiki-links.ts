@@ -3,7 +3,7 @@ import {NodeProp,Tree,type SyntaxNode} from '@lezer/common';
 import MarkdownIt,{type PluginSimple} from 'markdown-it';
 import footnote from 'markdown-it-footnote';
 
-export interface WikiSyntaxMatch {target:string;end:number}
+interface WikiSyntaxMatch {target:string;end:number}
 const scheme='liubai-wiki:';
 function name(text:string):string|null {
  if(/[\p{Cc}\[\]|]/u.test(text))return null;
@@ -19,7 +19,9 @@ export function wikiAt(text:string,start:number):WikiSyntaxMatch|null {
   const ch=text[end];
   if(ch==='['||ch==='|'||/[\p{Cc}]/u.test(ch))return null;
   if(ch!==']')continue;
-  if(text[end+1]!==']'||text[end+2]===']')return null;
+  // An escaped first closing bracket is literal text, so there is no closer.
+  let escapes=0;for(let i=end-1;i>=start+2&&text[i]==='\\';i--)escapes++;
+  if(text[end+1]!==']'||text[end+2]===']'||escapes%2)return null;
   const target=name(text.slice(start+2,end));
   return target?{target,end:end+2}:null;
  }
@@ -31,8 +33,15 @@ export function wikiTarget(url:string):string|null {
  try{return name(decodeURIComponent(url.slice(scheme.length)))}catch{return null}
 }
 const excluded=/^(Link|Image|Autolink|URL|InlineCode|FencedCode|CodeBlock|InlineMath|MathBlock|MathFence|MermaidFence|HTMLTag|HTMLBlock|CommentBlock|ProcessingInstructionBlock)$/;
+// Lezer parses every bracket pair as a Link, but a shortcut or collapsed reference whose label holds "[[" can never be
+// defined (labels exclude unescaped brackets), so such a pair is prose like in markdown-it and Goldmark.
+function nativeLink(node:SyntaxNode):boolean {
+ if(node.name!=='Link'&&node.name!=='Image')return true;
+ const label=node.getChild('LinkLabel');
+ return node.getChildren('LinkMark').length>2||!!label&&label.to-label.from>2;
+}
 export function wikiNodeAllowed(node:SyntaxNode):boolean {
- for(let parent:SyntaxNode|null=node;parent;parent=parent.parent)if(excluded.test(parent.name))return false;
+ for(let parent:SyntaxNode|null=node;parent;parent=parent.parent)if(excluded.test(parent.name)&&nativeLink(parent))return false;
  return true;
 }
 // Only examine the current inline region. Invalid nested pairs suppress inner candidates,
@@ -110,8 +119,11 @@ export const WikiSyntax:MarkdownConfig={
  }}],
  parseInline:[{name:'WikiLink',before:'Link',parse(cx,next,pos){
   if(pos<(lezerBlocked.get(cx)||0))return -1;
-  if(next===91&&cx.char(pos+1)===91&&!wikiAt(cx.text,pos-cx.offset)){
-   lezerBlocked.set(cx,cx.offset+bracketRegionEnd(cx.text,pos-cx.offset));return -1;
+  // A rejected "[[" blocks the rest of its bracket region, unless its first bracket opens a native link or image.
+  const open=next===33&&cx.char(pos+1)===91?pos+1:pos;
+  if(cx.char(open)===91&&cx.char(open+1)===91&&!wikiAt(cx.text,open-cx.offset)){
+   if(!nativeWikiLabel(cx.text.slice(pos-cx.offset),undefined,cx.parser))lezerBlocked.set(cx,cx.offset+bracketRegionEnd(cx.text,open-cx.offset));
+   return -1;
   }
   if(next!==93||cx.char(pos+1)!==93)return -1;
   // Keep native opening delimiters until the final closing bracket. A following
@@ -134,6 +146,11 @@ export const WikiSyntax:MarkdownConfig={
   ]));
  }}],
 };
+type InlineState=Parameters<Parameters<MarkdownIt['inline']['ruler']['push']>[1]>[0];
+function closerOutsideTokens(state:InlineState,from:number,closer:number):boolean {
+ const pos=state.pos;state.pos=from;
+ try{while(state.pos<closer)state.md.inline.skipToken(state);return state.pos===closer}finally{state.pos=pos}
+}
 export const wikiPlugin:PluginSimple=md=>{
  // Markdown-it replaces NUL before parsing. Retain that control for the syntax predicate,
  // rather than accidentally turning an invalid name into a valid title containing U+FFFD.
@@ -166,6 +183,8 @@ export const wikiPlugin:PluginSimple=md=>{
   }
   const match=wikiAt(state.src,state.pos);
   if(!match||match.end>state.posMax){blocked.set(state,Math.min(state.posMax,bracketRegionEnd(state.src,state.pos)));return false}
+  // Code, math, raw HTML and autolinks bind tighter than the brackets: a closer inside one of them closes nothing.
+  if(!closerOutsideTokens(state,state.pos+2,match.end-2))return false;
   if((state.src[match.end]==='('||state.src[match.end]==='[')&&nativeWikiLabel(state.src.slice(state.pos),state.env.liubaiWikiReferences||{references:{}}))return false;
   const token=state.push('wiki_link','',0);token.content=state.src.slice(state.pos,match.end);token.meta={target:match.target};
   state.pos=match.end;return true;

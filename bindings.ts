@@ -177,7 +177,6 @@ export interface Position {
   anchor: number;
   head: number;
   scroll: number;
-  source: boolean;
 }
 
 export interface SearchHit {
@@ -260,6 +259,7 @@ export const Desktop = {
   activateSearch(id: string): Promise<WorkspaceState> {
     return call("Desktop.ActivateSearch", id);
   },
+  /** Appearance has no caller in the page (it sends UpdateAppearance); scripts/shoot-themes.py sets themes with it through /api. */
   appearance(p: Appearance): Promise<void> {
     return call("Desktop.Appearance", p);
   },
@@ -268,9 +268,6 @@ export const Desktop = {
   },
   backlinks(id: string): Promise<BacklinkResponse> {
     return call("Desktop.Backlinks", id);
-  },
-  capture(text: string): Promise<Summary> {
-    return call("Desktop.Capture", text);
   },
   checkForUpdates(): Promise<void> {
     return call("Desktop.CheckForUpdates");
@@ -341,6 +338,10 @@ export const Desktop = {
   resolveWikiLink(request: WikiResolveRequest): Promise<SearchResponse> {
     return call("Desktop.ResolveWikiLink", request);
   },
+  /**
+   * Reveal shows the quarantine folder State reported. It lies in the
+   * workspace, and nothing outside it is revealed for the page.
+   */
   reveal(path: string): Promise<void> {
     return call("Desktop.Reveal", path);
   },
@@ -359,6 +360,7 @@ export const Desktop = {
   savePosition(id: string, p: Position): Promise<void> {
     return call("Desktop.SavePosition", id, p);
   },
+  /** Search has no caller in the page (the sidebar filters); scripts/check-search.py tests it through /api. */
   search(query: string): Promise<SearchResponse> {
     return call("Desktop.Search", query);
   },

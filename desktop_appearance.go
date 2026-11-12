@@ -21,18 +21,18 @@ var themeTextKeys = map[string][3]string{
 	"indigo": {"fIndigo", "fIndigoCaption", "fNight"},
 	"github": {"fGithub", "fGithubCaption", "fStudioGithubTag"}, "solar": {"fSolar", "fSolarCaption", "fStudioSolarTag"},
 	"solare": {"fSolare", "fSolareCaption", "fStudioSolareTag"}, "monokai": {"fMonokai", "fMonokaiCaption", "fStudioMonokaiTag"},
-	"nord": {"fNord", "fNordCaption", "fStudioNordTag"},
+	"nord":    {"fNord", "fNordCaption", "fStudioNordTag"},
 	"onedark": {"fOnedark", "fOnedarkCaption", "fStudioOnedarkTag"}, "dracula": {"fDracula", "fDraculaCaption", "fStudioDraculaTag"},
 	"catppuccin": {"fCatppuccin", "fCatppuccinCaption", "fStudioCatppuccinTag"}, "gruvbox": {"fGruvbox", "fGruvboxCaption", "fStudioGruvboxTag"},
 	"rosepine": {"fRosepine", "fRosepineCaption", "fStudioRosepineTag"}, "onelight": {"fOnelight", "fOnelightCaption", "fStudioOnelightTag"},
-	"ghdark": {"fGhdark", "fGhdarkCaption", "fStudioGhdarkTag"},
+	"ghdark":   {"fGhdark", "fGhdarkCaption", "fStudioGhdarkTag"},
 	"catlight": {"fCatlight", "fCatlightCaption", "fStudioCatlightTag"}, "gruvlite": {"fGruvlite", "fGruvliteCaption", "fStudioGruvliteTag"},
 }
 
-func (s *settingsWindow) themeOptions(dark *bool) []settingsOption[string] {
+func (s *settingsWindow) themeOptions(dark bool) []settingsOption[string] {
 	var options []settingsOption[string]
 	for _, theme := range themes {
-		if dark == nil || theme.Dark == *dark {
+		if theme.Dark == dark {
 			options = append(options, settingsOption[string]{theme.ID, s.text(themeTextKeys[theme.ID][0])})
 		}
 	}
@@ -73,7 +73,7 @@ func (s *settingsWindow) appearanceView(c *ui.Context, m locales.Messages, p App
 			t := c.Theme()
 			segments := ui.SegmentedBase(c, &selected, len(options))
 			track := segments.Track.Label(m.FSwitchAutomatically()).Padding(3).Gap(2).
-				Radius(8).Background(t.SurfaceHover).Border(1, t.Border)
+				Radius(8).Background(nativeThemes[current].muted).Border(1, t.Border)
 			if width < 700*scale {
 				track.FillWidth()
 			}
@@ -88,7 +88,9 @@ func (s *settingsWindow) appearanceView(c *ui.Context, m locales.Messages, p App
 						b.Width((width - 48 - 6 - 2) / 2)
 					}
 					if i == selected {
-						b.Background(t.Background)
+						// The ring shows the choice where the theme gives the
+						// segment and the track one colour, as on the page.
+						b.Background(t.Background).InsetShadow(0, 0, 0, 1, t.Accent)
 					} else {
 						b.TextColor(t.TextMuted)
 					}
@@ -117,7 +119,7 @@ func (s *settingsWindow) appearanceView(c *ui.Context, m locales.Messages, p App
 					if pair.dark {
 						value = p.DarkTheme
 					}
-					if settingsSelect(c, &value, pair.label, s.themeOptions(&pair.dark)) {
+					if settingsSelect(c, &value, pair.label, s.themeOptions(pair.dark)) {
 						if pair.dark {
 							s.saveAppearance(AppearanceChange{DarkTheme: &value})
 						} else {
@@ -170,8 +172,10 @@ func (s *settingsWindow) themeCards(c *ui.Context, series, title, subtitle strin
 	width, _ := c.Size()
 	scale := c.Preferences().TextScale
 	columns := 6
-	if series == "seasons" || series == "studio" {
+	if series == "seasons" {
 		columns = 5
+	} else if series == "studio" {
+		columns = 4
 	}
 	if width < 640*scale {
 		columns = 3
@@ -198,7 +202,8 @@ func (s *settingsWindow) themeCards(c *ui.Context, series, title, subtitle strin
 				}
 				selected := *choice == theme.ID
 				if selected {
-					card.Border(2, t.Accent)
+					// Doubled inside the border, so the content stays put.
+					card.Border(1, t.Accent).InsetShadow(0, 0, 0, 1, t.Accent)
 				} else if card.Hovered() {
 					card.Border(1, t.Accent)
 				}
@@ -215,7 +220,16 @@ func (s *settingsWindow) themeCards(c *ui.Context, series, title, subtitle strin
 						}
 						ui.Column(c).Fill().Padding(16, 16).Gap(8).Children(func() {
 							ui.Text(c, name).Font(t.font).FontSize(titleSize * scale).Bold().Grow(1)
-							ui.Text(c, tag).Font(t.font).FontSize(12 * scale).TextColor(t.TextMuted)
+							// The name can reach the card's right edge (Catppuccin
+							// Latte), so the check sits beside the short tag.
+							ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(6).Children(func() {
+								ui.Text(c, tag).Font(t.font).FontSize(12 * scale).TextColor(t.TextMuted).Grow(1)
+								if selected {
+									ui.Icon(c, settingsCheck).Size(14, 14).TextColor(t.Accent)
+								} else {
+									ui.Box(c).Size(14, 14)
+								}
+							})
 						})
 					}
 				})
@@ -227,7 +241,7 @@ func (s *settingsWindow) themeCards(c *ui.Context, series, title, subtitle strin
 							p.Fill(ui.Rect{X: r.X + 1, Y: r.Y + 1, W: 4, H: r.H - 2}, t.Accent, 0)
 						})
 					}
-					if selected {
+					if selected && series == "hours" {
 						p.Icon(settingsCheck, ui.Rect{X: r.X + r.W - 22, Y: r.Y + 8, W: 14, H: 14}, t.Accent)
 					}
 				})

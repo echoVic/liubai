@@ -3,23 +3,29 @@ import TurndownService from 'turndown';
 import {gfm} from 'turndown-plugin-gfm';
 import type {EditorState,TransactionSpec} from '@codemirror/state';
 import {isolateHistory} from '@codemirror/commands';
+import {dataURLBytes} from './data-url';
 
 export function pasteText(state:EditorState,text:string):TransactionSpec{
  return {...state.replaceSelection(text),userEvent:'input.paste',annotations:isolateHistory.of('full'),scrollIntoView:true};
 }
-export function replacePasteImage(state:EditorState,placeholder:string,text:string):TransactionSpec{
- const from=state.doc.toString().indexOf(placeholder);if(from<0)return {};
+// Null when the placeholder is gone, as the writer may have deleted it while the image was imported.
+export function replacePasteImage(state:EditorState,placeholder:string,text:string):TransactionSpec|null{
+ const from=state.doc.toString().indexOf(placeholder);if(from<0)return null;
  // CodeMirror's compose event joins an asynchronous replacement to the original
  // input even past the history timeout. Image import locks editing until it ends.
  return {changes:{from,to:from+placeholder.length,insert:text},userEvent:'input.type.compose',annotations:isolateHistory.of('after')};
 }
 
 export interface PasteImage {placeholder:string;dataUrl:string;alt:string}
-// The page's CSP (connect-src 'self') blocks fetch() of data: URLs, so decode them here.
 export function dataUrlBlob(url:string):Blob{
- const match=/^data:([^;,]*)((?:;[^;,]*)*),(.*)$/s.exec(url);if(!match)throw Error(messages.fTheImageCouldNotBeRead());
- const bytes=/;base64/i.test(match[2])?Uint8Array.from(atob(match[3].replace(/\s/g,'')),char=>char.charCodeAt(0)):new TextEncoder().encode(decodeURIComponent(match[3]));
- return new Blob([bytes],{type:match[1]||'application/octet-stream'});
+ const data=dataURLBytes(url);if(!data)throw Error(messages.fTheImageCouldNotBeRead());
+ return new Blob([data.bytes],{type:data.type||'application/octet-stream'});
+}
+// Office apps put a picture of the copied cells or text next to their HTML. The picture is what was copied only
+// when the HTML holds nothing but one image.
+export function prefersHTML(html:string):boolean{
+ const body=new DOMParser().parseFromString(html,'text/html').body;
+ return !!body.textContent?.trim()||body.getElementsByTagName('img').length>1;
 }
 const block=/^(ADDRESS|ARTICLE|ASIDE|BLOCKQUOTE|BODY|DIV|H[1-6]|LI|OL|P|PRE|SECTION|TABLE|TD|TH|UL)$/;
 const punctuation=/[\p{P}\p{S}]/u;
@@ -31,7 +37,7 @@ const style=(node:Element,name:string)=>(node.getAttribute('style')||'').match(n
 const editorCode=(node:Element)=>/\bcm-(?:content|line)\b/.test(node.getAttribute('class')||'')||/\bpre(?:-wrap)?\b/.test(style(node,'white-space'))&&/monospace|menlo|consolas|courier/i.test(style(node,'font-family'))&&!Array.from(node.getElementsByTagName('*')).some(child=>block.test(child.nodeName));
 // The text of code, with its <br> and the ends of its lines (an empty line
 // holds a <br>) as line breaks, and indentation in plain spaces.
-const codeText=(node:Node):string=>node.nodeType===3?(node.nodeValue||'').replace(/ /g,' '):node.nodeName==='BR'?'\n':Array.from(node.childNodes).map(child=>{const text=codeText(child);return block.test(child.nodeName)&&!text.endsWith('\n')?text+'\n':text}).join('');
+const codeText=(node:Node):string=>node.nodeType===3?(node.nodeValue||'').replace(/\u00a0/g,' '):node.nodeName==='BR'?'\n':Array.from(node.childNodes).map(child=>{const text=codeText(child);return block.test(child.nodeName)&&!text.endsWith('\n')?text+'\n':text}).join('');
 function formats(node:HTMLElement):string[]{
  const weight=style(node,'font-weight'),result:string[]=[];
  if((['B','STRONG'].includes(node.nodeName)&&(!weight||weight==='bolder'))||weight==='bold'||Number.parseInt(weight,10)>=600)result.push('**');
@@ -98,6 +104,15 @@ export function htmlToMarkdown(html:string,plain:string):{markdown:string;images
    return '\n\n'+rows.join('\n')+'\n\n';
   }
  });
+ // As turndown-plugin-gfm's cell, with the cell's own pipes escaped and its line breaks kept inside the row.
+ service.addRule('tableCell',{
+  filter:['th','td'],
+  replacement:(content,node)=>(Array.prototype.indexOf.call(node.parentNode!.childNodes,node)?' ':'| ')+content.trim().replace(/[ \t]*\n+[ \t]*/g,'<br>').replace(/(\\*)\|/g,(pipe,slashes:string)=>slashes.length%2?pipe:slashes+'\\|')+' |'
+ });
+ // The editor writes these marks, so a copy from the reading view keeps them.
+ const wrap=(content:string,open:string,close:string)=>{const text=content.trim(),lead=content.length-content.trimStart().length;return text?content.slice(0,lead)+open+text+close+content.slice(lead+text.length):content};
+ service.addRule('highlight',{filter:'mark',replacement:content=>wrap(content,'==','==')});
+ service.addRule('htmlMarks',{filter:['u','sup','sub'],replacement:(content,node)=>{const tag=node.nodeName.toLowerCase();return wrap(content,'<'+tag+'>','</'+tag+'>')}});
  service.addRule('tableParagraph',{
   filter:node=>node.nodeName==='P'&&!!(node as HTMLElement).closest('td,th'),
   replacement:(content,node)=>content.trim().replace(/\n+/g,'<br>')+((node as HTMLElement).nextElementSibling?'<br>':'')
@@ -106,7 +121,8 @@ export function htmlToMarkdown(html:string,plain:string):{markdown:string;images
   filter:'li',replacement:(content,node)=>{
    const parent=node.parentNode as HTMLElement;
    const prefix=parent.nodeName==='OL'?String(Number(parent.getAttribute('start')||1)+Array.from(parent.children).indexOf(node as HTMLElement))+'. ':'- ';
-   return prefix+content.replace(/^\n+/,'').replace(/\n+$/,'\n').replace(/\n/g,'\n    ')+(node.nextSibling?'\n':'');
+   // The checkbox rule adds a space before the item's own.
+   return prefix+content.replace(/^\n+/,'').replace(/^(\[[ x]\]) +/,'$1 ').replace(/\n+$/,'\n').replace(/\n/g,'\n    ')+(node.nextSibling?'\n':'');
   }
  });
  service.addRule('wordList',{

@@ -23,9 +23,9 @@ import {MermaidWidget} from './mermaid-ui';
 import {MermaidSyntax} from './mermaid';
 import {extraRanges,extraMarkers,createDetailsFolding,mapExtraRanges} from './extras';
 import {CalloutWidget,DetailsWidget,FootnoteWidget,detailsExpanded,footnoteInteractions} from './extras-ui';
-import {indentList,safeLink,localDocumentLink,frontMatterRange} from './editing';
+import {indentList,safeLink,localDocumentLink,frontMatterRange,linkTarget} from './editing';
 import {WikiSyntax,wikiAt,wikiURL,wikiTarget,wikiNodeAllowed} from './wiki-links';
-import {htmlToMarkdown,pasteText,replacePasteImage,type PasteImage} from './paste';
+import {htmlToMarkdown,pasteText,prefersHTML,replacePasteImage,type PasteImage} from './paste';
 import {keyLabel} from './platform';
 // Links open on a click with ⌘ on macOS, Ctrl elsewhere.
 const linkModifier=keyLabel('Mod');
@@ -46,8 +46,9 @@ function docStart(view:EditorView,extend:boolean){
 export const mode=new Compartment();
 export const editorLocale=new Compartment();
 export function localizedEditor(){return [placeholder(messages.fStartWithASentence()),EditorView.contentAttributes.of({'aria-label':messages.fDocumentText(),'spellcheck':'false'}),EditorState.phrases.of({
- 'next':messages.fNext(),'previous':messages.fPrevious(),'all':messages.fAll(),'match case':messages.fMatchCase(),'regexp':messages.fRegexp(),'by word':messages.fWholeWord(),'replace':messages.fReplace(),'replace all':messages.fReplaceAll(),'Go to line':messages.fGoToLine(),'go':messages.fGo(),'current match':messages.fCurrentMatch(),'on line':messages.fOnLine(),'replaced match on line $':messages.fReplacedOnLine('$'),'replaced $ matches':messages.fReplacements('$'),
- 'Find':messages.fFind(),'Replace':messages.fReplace(),'Next':messages.fNext(),'Previous':messages.fPrevious(),'All':messages.fAll(),'Match case':messages.fMatchCase(),'Regular expression':messages.fRegexp(),'By word':messages.fWholeWord(),'Replace all':messages.fReplaceAll(),'close':messages.fClose(),'Find:':messages.fFindLabel(),'Replace:':messages.fReplaceLabel(),
+ // The search panel's own phrases are not here: document-find.ts draws its own panel.
+ 'Go to line':messages.fGoToLine(),'go':messages.fGo(),'close':messages.fClose(),'current match':messages.fCurrentMatch(),'on line':messages.fOnLine(),'replaced match on line $':messages.fReplacedOnLine('$'),'replaced $ matches':messages.fReplacements('$'),
+ 'folded code':messages.fFoldedContent(),'unfold':messages.fExpandDetails(),
 })]}
 export const setComposing=StateEffect.define<boolean>();
 export const composing=StateField.define<boolean>({create:()=>false,update:(v,tr)=>tr.effects.reduce((a,e)=>e.is(setComposing)?e.value:a,v)});
@@ -71,9 +72,10 @@ const focusDecorations=StateField.define<DecorationSet>({
 });
 class TaskWidget extends WidgetType {
  readonly locale=activeLocale;
- constructor(readonly from:number,readonly checked:boolean){super()}
- eq(o:TaskWidget){return o.locale===this.locale&&o.from===this.from&&o.checked===this.checked}
- toDOM(view:EditorView){const input=document.createElement('input');input.type='checkbox';input.checked=this.checked;input.className='task-check';input.setAttribute('aria-label',this.checked?messages.fMarkAsIncomplete():messages.fMarkAsComplete());input.onmousedown=e=>e.preventDefault();input.onchange=()=>{if(view.state.readOnly){input.checked=this.checked;return}view.dispatch({changes:{from:this.from,to:this.from+3,insert:input.checked?'[x]':'[ ]'},userEvent:'input.task'});view.focus()};return input}
+ // No position: a box that only moved keeps its DOM, and a change reads where it is from the DOM.
+ constructor(readonly checked:boolean){super()}
+ eq(o:TaskWidget){return o.locale===this.locale&&o.checked===this.checked}
+ toDOM(view:EditorView){const input=document.createElement('input');input.type='checkbox';input.checked=this.checked;input.className='task-check';input.setAttribute('aria-label',this.checked?messages.fMarkAsIncomplete():messages.fMarkAsComplete());input.onmousedown=e=>e.preventDefault();input.onchange=()=>{if(view.state.readOnly){input.checked=this.checked;return}const from=view.posAtDOM(input);view.dispatch({changes:{from,to:from+3,insert:input.checked?'[x]':'[ ]'},userEvent:'input.task'});view.focus()};return input}
  ignoreEvent(){return true}
 }
 
@@ -89,10 +91,6 @@ const colours=HighlightStyle.define([
 function selectedLines(state:EditorState){
  const lines=state.selection.ranges.map(sel=>({from:state.doc.lineAt(sel.from).from,to:state.doc.lineAt(sel.to).to}));
  return (from:number,to:number)=>lines.some(line=>from<=line.to&&to>=line.from);
-}
-function destination(state:EditorState,node:SyntaxNode){
- const url=node.getChild('URL');if(!url)return '';
- return state.sliceDoc(url.from,url.to).replace(/^<(.*)>$/s,'$1').replace(/\\([!-/:-@[-`{-~])/g,'$1');
 }
 export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promise<string>):DecorationSet{
  const decorations:{from:number;to:number;dec:Decoration}[]=[],touched=selectedLines(state),meta=frontMatterRange(state);
@@ -110,7 +108,7 @@ export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promis
  for(const formula of mathRanges(state)){
   const rest=restingAtEnd(formula.from,formula.to);
   if(meta&&formula.from<meta.to||touched(formula.from,formula.to)&&!rest)continue;
-  decorations.push({...formula,dec:Decoration.replace({widget:new MathWidget(formula.source,true,formula.from,composing),block:!rest})});
+  decorations.push({...formula,dec:Decoration.replace({widget:new MathWidget(formula.source,true,composing),block:!rest})});
  }
  for(const diagram of mermaidRanges(state)){
   const rest=restingAtEnd(diagram.from,diagram.to);
@@ -119,7 +117,8 @@ export function blockDecorations(state:EditorState,resolve:(dest:string)=>Promis
  }
  const builder=new RangeSetBuilder<Decoration>();for(const d of decorations.sort((a,b)=>a.from-b.from))builder.add(d.from,d.to,d.dec);return builder.finish();
 }
-// Ordinary single-line prose edits cannot change image, table, math or Mermaid widgets. Map their ranges rather than rebuilding every widget in a long document.
+// Ordinary single-line prose edits cannot change image, table, math or Mermaid widgets. Their ranges are mapped instead of found
+// again in the tree; the widgets are made anew, but one that only moved keeps its DOM.
 function proseEdit(tr:Transaction){
  if(!tr.docChanged||tr.reconfigured||tr.startState.field(composing)||tr.startState.readOnly!==tr.state.readOnly||tr.startState.field(imageSelection,false)!==tr.state.field(imageSelection,false)||syntaxTree(tr.startState).length!==tr.startState.doc.length||syntaxTree(tr.state).length!==tr.state.doc.length)return false;
  // A position at a paragraph's end only belongs to it looking left, and that is where most typing happens.
@@ -147,7 +146,7 @@ export function createBlockField(resolve:(dest:string)=>Promise<string>):StateFi
 }
 export function inlineDecorations(state:EditorState,ranges:readonly {from:number;to:number}[]):DecorationSet{
  const decorations:{from:number;to:number;dec:Decoration}[]=[],touched=selectedLines(state),marked=new Set<string>(),meta=frontMatterRange(state),images=imageRanges(state).filter(i=>ranges.some(range=>i.from<=range.to&&i.to>=range.from)&&(!touched(i.from,i.to)||imageSelected(state,i.from)));
- const diagrams=mermaidRanges(state).filter(d=>!touched(d.from,d.to));
+ const diagrams=mermaidRanges(state).filter(d=>ranges.some(range=>d.from<=range.to&&d.to>=range.from)&&!touched(d.from,d.to));
  const tables=tableRanges(state);
  const extras=extraRanges(state),numbers=new Map<string,number>();
  for(const ref of extras.references)if(extras.definitions.has(ref.label)&&!numbers.has(ref.label))numbers.set(ref.label,numbers.size+1);
@@ -161,6 +160,8 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
  for(const ref of extras.references)if(!extras.definitions.has(ref.label)&&!tables.some(t=>ref.from>=t.from&&ref.to<=t.to))literal.push([ref.from,ref.to]);
  for(const def of extras.definitions.values())if(!def.inline)literal.push([def.from,def.from+def.label.length+3]);
  const inLiteral=(from:number,to:number)=>literal.some(([a,b])=>from>=a&&to<=b);
+ // References without a definition, which keep their brackets.
+ const plain=new Set<number>();
  for(const range of ranges){
   const lineClass=(from:number,to:number,cls:string)=>{
    const first=state.doc.lineAt(Math.max(from,range.from)).number,last=state.doc.lineAt(Math.min(to,range.to)).number;
@@ -173,12 +174,12 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
    if(callout.markerFrom>=range.from&&callout.markerTo<=range.to&&!touched(callout.markerFrom,callout.markerTo)&&!marked.has(key)){marked.add(key);decorations.push({from:callout.markerFrom,to:callout.markerTo,dec:Decoration.replace({widget:new CalloutWidget(callout.kind)})})}
   }
   for(const detail of extras.details)if(detail.summary>=range.from&&detail.summary<=range.to&&!marked.has(detail.summary+':details')){
-   marked.add(detail.summary+':details');decorations.push({from:detail.summary,to:detail.summary,dec:Decoration.widget({widget:new DetailsWidget(detail,detailsExpanded(state,detail),composing),side:-1})});
+   marked.add(detail.summary+':details');decorations.push({from:detail.summary,to:detail.summary,dec:Decoration.widget({widget:new DetailsWidget(detailsExpanded(state,detail),composing),side:-1})});
   }
   for(const definition of extras.definitions.values())if(!definition.inline&&definition.from<=range.to&&definition.to>=range.from)lineClass(definition.from,definition.to,'md-footnote-definition');
   for(const ref of extras.references){
    const key=ref.from+':footnote';if(ref.from<range.from||ref.to>range.to||!numbers.has(ref.label)||active(ref.from,ref.to)||tables.some(t=>ref.from>=t.from&&ref.to<=t.to)||marked.has(key))continue;
-   marked.add(key);decorations.push({from:ref.from,to:ref.to,dec:Decoration.replace({widget:new FootnoteWidget(ref.label,numbers.get(ref.label)!,ref.from)})});
+   marked.add(key);decorations.push({from:ref.from,to:ref.to,dec:Decoration.replace({widget:new FootnoteWidget(ref.label,numbers.get(ref.label)!)})});
   }
   for(const [from,to] of literal){
    if(from>range.to||to<range.from)continue;
@@ -206,7 +207,7 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
    }
    if(name==='MathBlock'||name==='MathFence'||diagrams.some(d=>n.from>=d.from&&n.to<=d.to))return false;
    if(name==='InlineMath'){
-    if(!touched(n.from,n.to)&&!marked.has(n.from+':math')){marked.add(n.from+':math');decorations.push({from:n.from,to:n.to,dec:Decoration.replace({widget:new MathWidget(state.sliceDoc(n.from+1,n.to-1),false,n.from,composing)})})}
+    if(!touched(n.from,n.to)&&!marked.has(n.from+':math')){marked.add(n.from+':math');decorations.push({from:n.from,to:n.to,dec:Decoration.replace({widget:new MathWidget(state.sliceDoc(n.from+1,n.to-1),false,composing)})})}
     return false;
    }
    if(name==='Highlight'){
@@ -228,11 +229,16 @@ export function inlineDecorations(state:EditorState,ranges:readonly {from:number
     return false;
    }
    if((name==='Link'||name==='LinkReference')&&inLiteral(n.from,n.to))return false;
-   if(name==='Link')add(Decoration.mark({class:'md-link',attributes:{'data-href':destination(state,n.node),title:messages.fCtrlClickToOpenTheLink(linkModifier)}}));
+   const link=(href:string)=>add(Decoration.mark({class:'md-link',attributes:{'data-href':href,title:messages.fCtrlClickToOpenTheLink(linkModifier)}}));
+   if(name==='Link'){const href=linkTarget(state,n.node);if(href===null)plain.add(n.from);else link(href)}
+   // The reading view links autolinks and bare web addresses; a bare e-mail address stays text there.
+   if(name==='Autolink'){const url=n.node.getChild('URL'),text=url?state.sliceDoc(url.from,url.to):'';link(/^[a-z][a-z\d+.-]*:/i.test(text)?text:'mailto:'+text)}
+   if(name==='URL'&&!/^(?:Link|Image|Autolink|LinkReference)$/.test(n.node.parent?.name||'')){const text=state.sliceDoc(n.from,n.to),href=/^www\./i.test(text)?'http://'+text:/^[a-z][a-z\d+.-]*:/i.test(text)?text:'';if(href)link(href)}
    if(name==='InlineCode')add(Decoration.mark({class:'md-inline-code'}));
    if(!touched(n.from,n.to)){
-    if(name==='TaskMarker'){add(Decoration.replace({widget:new TaskWidget(n.from,state.sliceDoc(n.from,n.to).toLowerCase()==='[x]')}));return false}
-    if((n.node.parent?.name==='Link'&&['LinkMark','URL','LinkTitle'].includes(name))||['HeaderMark','EmphasisMark','CodeMark','QuoteMark','StrikethroughMark'].includes(name))add(Decoration.replace({}));
+    if(name==='TaskMarker'){add(Decoration.replace({widget:new TaskWidget(state.sliceDoc(n.from,n.to).toLowerCase()==='[x]')}));return false}
+    const parent=n.node.parent;
+    if(parent?.name==='Link'&&!plain.has(parent.from)&&['LinkMark','URL','LinkTitle','LinkLabel'].includes(name)||parent?.name==='Autolink'&&name==='LinkMark'||['HeaderMark','EmphasisMark','CodeMark','QuoteMark','StrikethroughMark'].includes(name))add(Decoration.replace({}));
    }
   }});
  }
@@ -258,7 +264,7 @@ export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>P
   EditorView.editorAttributes.of(view=>({class:view.state.field(focusField)?'cm-focus-on':''})),
   // ⌘U underlines and ⌘I italicizes like the toolbar, so CodeMirror's undo-selection and select-parent bindings are dropped.
   keymap.of([{key:'Mod-Home',run:v=>docStart(v,false),shift:v=>docStart(v,true)},{mac:'Cmd-ArrowUp',run:v=>docStart(v,false),shift:v=>docStart(v,true)},...(blocks?[{key:'Alt-Shift-ArrowUp',run:()=>{blocks.action('up');return true}},{key:'Alt-Shift-ArrowDown',run:()=>{blocks.action('down');return true}},{key:'Mod-/',run:()=>{blocks.action('menu');return true}}]:[]),...([1,-1] as const).map(direction=>({key:direction>0?'Tab':'Shift-Tab',run:(view:EditorView)=>{if(view.composing||view.state.field(composing)||view.state.readOnly)return false;const spec=indentList(view.state,direction);if(!spec)return false;view.dispatch(spec);return true}})),...markdownKeymap,...historyKeymap.filter(binding=>binding.key!=='Mod-u'),...searchKeymap.filter(binding=>binding.key==='Mod-Alt-g'),...defaultKeymap.filter(binding=>binding.key!=='Mod-i'),indentWithTab]),
-  mode.of(doc.position.source?[]:richExtensions(resolve)),EditorView.lineWrapping,editorLocale.of(localizedEditor()),
+  mode.of(richExtensions(resolve)),EditorView.lineWrapping,editorLocale.of(localizedEditor()),
   EditorView.updateListener.of(u=>{if(u.docChanged||u.selectionSet)onChange(u.docChanged)}),
   EditorView.domEventHandlers({
    compositionstart:(_e,v)=>{v.dispatch({effects:setComposing.of(true)});onCompose(true);return false},
@@ -266,17 +272,16 @@ export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>P
    click:(event,v)=>{if(v.composing||v.state.field(composing))return false;const a=(event.target as HTMLElement).closest<HTMLElement>('[data-href]');if(a&&(event.metaKey||event.ctrlKey)&&(wikiTarget(a.dataset.href||'')||safeLink(a.dataset.href||'')||localDocumentLink(a.dataset.href||''))){event.preventDefault();onLink(a.dataset.href!);return true}return false},
    paste:(event,view)=>{
     if(view.state.readOnly)return false;
-    const clipboard=event.clipboardData,files=Array.from(clipboard?.files||[]).filter(f=>f.type.startsWith('image/'));
-    if(files.length){event.preventDefault();onImage(files);return true}
-    const html=clipboard?.getData('text/html');if(!html)return false;
+    const clipboard=event.clipboardData,files=Array.from(clipboard?.files||[]).filter(f=>f.type.startsWith('image/')),html=clipboard?.getData('text/html');
+    if(files.length&&!(html&&prefersHTML(html))){event.preventDefault();onImage(files);return true}
+    if(!html)return false;
     try{
      const result=htmlToMarkdown(html,clipboard?.getData('text/plain')||'');
      event.preventDefault();view.dispatch(pasteText(view.state,result.markdown));
      void (async()=>{for(const image of result.images){
       let text:string;try{text=await onPasteImage(image)}catch(error){text=image.alt;onPasteError(error)}
       if(!view.dom.isConnected)break;
-      const from=view.state.doc.toString().indexOf(image.placeholder);if(from<0)continue;
-      view.dispatch(replacePasteImage(view.state,image.placeholder,text));
+      const spec=replacePasteImage(view.state,image.placeholder,text);if(spec)view.dispatch(spec);
      }})();return true;
     }catch(error){onPasteError(error);return false}
    },

@@ -160,14 +160,9 @@ func (d *Desktop) refreshLocale() {
 	if d.menuAction != nil {
 		mygo.App.SetMenu(mygo.NewMenu(menuTemplate(d.menuAction)))
 	}
-	if d.capture != nil {
-		d.capture.mu.Lock()
-		d.capture.errorText = errorIn(d.capture.lastError, "")
-		d.capture.mu.Unlock()
-	}
 }
 func (d Document) generatedTitle() bool {
-	return d.Path == "" && !d.CustomTitle && !hasInferredContentTitle(d.Content)
+	return d.Path == "" && !d.CustomTitle && !hasInferredContentTitle(d.ID, d.Content)
 }
 
 func generatedSuffixTitle(title, suffix, locale string) string {

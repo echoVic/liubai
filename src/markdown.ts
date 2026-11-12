@@ -29,7 +29,7 @@ export interface MarkdownRender {
 
 export const sanitizeStats={calls:0};
 
-const parser=new MarkdownIt({html:true,linkify:true,typographer:false});
+export const parser=new MarkdownIt({html:true,linkify:true,typographer:false});
 parser.linkify.set({fuzzyLink:false,fuzzyEmail:false,fuzzyIP:false});
 parser.linkify.add('www.',{
  validate(text,pos,self){
@@ -52,13 +52,6 @@ export function splitFrontMatter(content:string):{raw:string|null;body:string;li
  return {raw:null,body:content,lines:0};
 }
 
-export function headingSlug(text:string,used:Map<string,number>):string {
- const base=text.toLowerCase().replace(/[\p{P}\p{S}]/gu,'').trim().replace(/\s+/g,'-');
- const count=used.get(base)||0;
- used.set(base,count+1);
- return base+(count?`-${count}`:'');
-}
-
 // Keep author-HTML hooks private: Mermaid also uses DOMPurify with its own SVG policy.
 const authorPurifier=typeof window==='undefined'?DOMPurify:DOMPurify(window);
 const allowedTags='a abbr b blockquote br caption center code col colgroup dd del details div dl dt em figcaption figure h1 h2 h3 h4 h5 h6 hr i img input ins kbd li mark ol p pre q s samp section small span strike strong sub summary sup table tbody td tfoot th thead tr u ul var'.split(' ');
@@ -71,11 +64,16 @@ if(authorPurifier.addHook)authorPurifier.addHook('uponSanitizeAttribute',(node,d
 });
 // Blink compiles inline event-handler attributes while parsing HTML — even into a detached <template>, DOMPurify's parse substrate — and dispatches a script-src-attr CSP violation before DOMPurify gets to remove the attribute. Strip on* handlers from raw author HTML so the dirty attribute never reaches an HTML parser; the sanitizer stays the security boundary and drops these attributes either way. Only attribute positions inside tags are touched, never prose such as "once = 1" in a table cell.
 const tagPattern=/<!--[\s\S]*?-->|<\/?[a-zA-Z](?:"[^"]*"|'[^']*'|[^'">])*>/g;
-const htmlAttributePattern=/([\s/])([^\s"'<>/=]+)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/g;
-function stripEventHandlers(html:string):string {
+const htmlAttributePattern=/([\s/]?)([^\s"'<>/=]+)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/g;
+export function stripEventHandlers(html:string):string {
  // Consume whole attributes, including their values, before examining names.
- // Otherwise a path such as /online or words inside alt= could be erased.
- return html.replace(tagPattern,tag=>tag.startsWith('<!--')||tag.startsWith('</')?tag:tag.replace(htmlAttributePattern,(attribute,separator,name)=>/^on[a-z]+$/i.test(name)?separator:attribute));
+ // Otherwise a path such as /online or words inside alt= could be erased. After the tag name, an attribute may follow a
+ // closing quote with no space, as the HTML tokenizer allows.
+ return html.replace(tagPattern,tag=>{
+  if(tag.startsWith('<!--')||tag.startsWith('</'))return tag;
+  const name=/^<[^\s/>]+/.exec(tag)![0];
+  return name+tag.slice(name.length).replace(htmlAttributePattern,(attribute,separator,key)=>/^on[a-z]+$/i.test(key)?separator:attribute);
+ });
 }
 
 function lineAttributes(map:[number,number]|null):string {
@@ -88,7 +86,8 @@ const lineMapPlugin:PluginSimple=md=>{
   const offset=state.env.lineOffset||0;
   for(const token of state.tokens){
    if(token.map)token.map=[token.map[0]+offset,token.map[1]+offset];
-   if(!token.block||!token.map||token.hidden||token.type==='fence'||token.type==='code_block')continue;
+   // The fence renderer writes these attributes itself, except for a math fence, which the math plugin turns into a block that renders its own.
+   if(!token.block||!token.map||token.hidden||(token.type==='fence'&&token.info.trim()!=='math')||token.type==='code_block')continue;
    if(token.nesting===1||token.nesting===0){
     token.attrSet('data-line',String(token.map[0]));
     token.attrSet('data-line-end',String(Math.max(token.map[0],token.map[1]-1)));
@@ -142,7 +141,6 @@ const taskPlugin:PluginSimple=md=>{
     token.children?.unshift(checkbox);
     const item=state.tokens[items[items.length-1].index];
     item.attrJoin('class','md-task');
-    item.meta={...item.meta,liubaiTask:match[1].toLowerCase()==='x'};
     item.attrJoin('class','task-list-item');
     if(lists.length)state.tokens[lists[lists.length-1]].attrJoin('class','task-list');
    }
@@ -171,31 +169,32 @@ const semanticClassPlugin:PluginSimple=md=>{
 
 const githubAlerts:PluginSimple=md=>{
  md.core.ruler.after('inline','liubai_github_alerts',state=>{
-  const titles:Record<string,string>={note:messages.fNote(),tip:messages.fTip(),important:messages.fImportant(),warning:messages.fWarning(),caution:messages.fCaution()};
   for(let i=state.tokens.length-1;i>=0;i--){
    const open=state.tokens[i],paragraph=state.tokens[i+1],inline=state.tokens[i+2];
    if(open.type!=='blockquote_open'||paragraph?.type!=='paragraph_open'||inline?.type!=='inline')continue;
-   const first=inline.children?.[0];
-   const match=first?.type==='text'&&/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:[ \t]+|$)/i.exec(first.content);
-   if(!match||!first)continue;
+   // As on GitHub, the marker opens the quote's first line and ends it or is followed by whitespace, not by markup.
+   const [first,next]=inline.children||[];
+   const match=first?.type==='text'&&paragraph.map?.[0]===open.map?.[0]&&/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:[ \t]+|$)/i.exec(first.content);
+   if(!match||!first||!/[ \t]$/.test(match[0])&&next&&!/^(soft|hard)break$/.test(next.type))continue;
    const kind=match[1].toLowerCase();
    open.attrJoin('class',`markdown-alert markdown-alert-${kind}`);
    first.content=first.content.slice(match[0].length);
    if(!first.content){
     inline.children!.shift();
-    if(inline.children?.[0]?.type==='softbreak')inline.children.shift();
+    if(/^(soft|hard)break$/.test(inline.children?.[0]?.type||''))inline.children!.shift();
    }
    inline.content=inline.content.replace(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*\n?/i,'');
    const title=new state.Token('html_block','',0);
    title.meta={...title.meta,liubai:true};
-   title.content=`<p class="markdown-alert-title">${titles[kind]}</p>\n`;
+   // renderMarkdown fills in the icon and the title in the current language.
+   title.content='<p class="markdown-alert-title"></p>\n';
    state.tokens.splice(i+1,0,title);
   }
  });
 };
 
 parser.use(highlightPlugin).use(mathPlugin).use(wikiPlugin).use(footnote).use(lineMapPlugin).use(taskPlugin).use(semanticClassPlugin).use(githubAlerts);
-const imageRule:NonNullable<(typeof parser.renderer.rules)['image']>=(tokens,index,options,env,self)=>{
+const imageRule:NonNullable<(typeof parser.renderer.rules)['image']>=(tokens,index,_options,_env,self)=>{
  const token=tokens[index];
  const source=token.attrGet('src')||'';
  token.attrSet('alt',imageAltText(token.children||[]));
@@ -284,8 +283,7 @@ export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownR
   const mount=new MermaidMount(element,()=>{},()=>false,async(source,theme)=>{
    const result=await renderMermaid(source,theme);
    if(result.error&&active){
-    const code=document.createElement('div');code.innerHTML=diagram.fallback;
-    return {svg:code.innerHTML+'<div class="mermaid-error">'+parser.utils.escapeHtml(messages.fDiagramError(result.error.split('\n').filter(Boolean).slice(0,2).join(' ').slice(0,500)))+'</div>'};
+    return {svg:diagram.fallback+'<div class="mermaid-error">'+parser.utils.escapeHtml(messages.fDiagramError(result.error.split('\n').filter(Boolean).slice(0,2).join(' ').slice(0,500)))+'</div>'};
    }
    return result;
   },options.diagramTheme);

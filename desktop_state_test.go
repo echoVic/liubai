@@ -71,6 +71,84 @@ func TestDesktopWorkspaceActionsAreSafeWithoutNativeApp(t *testing.T) {
 	d.Close()
 }
 
+func docAtPath(t *testing.T, w *Workspace, path string) *Document {
+	t.Helper()
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range w.docs {
+		if d.Path == resolved {
+			return d
+		}
+	}
+	t.Fatalf("no document for %s", path)
+	return nil
+}
+
+// A file from Finder or a drop arrives while the page may still hold the
+// draft's first keystrokes; the draft must stay until the page has saved it.
+func TestOpenedFileKeepsTheDraftBeingTyped(t *testing.T) {
+	d := &Desktop{w: workspace(t)}
+	draft := d.State().Current
+	p := filepath.Join(t.TempDir(), "other.md")
+	if err := os.WriteFile(p, []byte("other\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	d.openPath(p)
+	if _, err := d.Update(Edit{ID: draft.ID, Revision: draft.Revision, Content: "typed before the file arrived\n"}); err != nil {
+		t.Fatalf("the draft on screen cannot be saved: %v", err)
+	}
+	if _, err := d.w.SaveRecovery(draft.ID, "typed before the file arrived\n", filepath.Join(t.TempDir(), "rescue.md")); err != nil {
+		t.Fatalf("the draft on screen cannot be rescued: %v", err)
+	}
+	// The page activates the opened file once its draft is saved.
+	s, err := d.Activate(docAtPath(t, d.w, p).ID)
+	if err != nil || s.Current.Content != "other\n" {
+		t.Fatalf("opened file not shown: %+v %v", s.Current, err)
+	}
+	if kept := d.w.docs[draft.ID]; kept == nil || kept.Content != "typed before the file arrived\n" {
+		t.Fatalf("draft lost: %+v", kept)
+	}
+	if m, _ := filepath.Glob(filepath.Join(d.w.root, "trash", "*-"+draft.ID)); len(m) != 0 {
+		t.Fatal("draft moved to the trash")
+	}
+}
+
+func TestOpenedFileCleansAnEmptyDraftOnceThePageSwitches(t *testing.T) {
+	d := &Desktop{w: workspace(t)}
+	draft := d.State().Current
+	p := filepath.Join(t.TempDir(), "other.md")
+	if err := os.WriteFile(p, []byte("other\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	d.openPath(p)
+	if d.w.docs[draft.ID] == nil {
+		t.Fatal("draft removed before the page saved it")
+	}
+	s, err := d.Activate(docAtPath(t, d.w, p).ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.w.docs[draft.ID] != nil || len(s.Recent) != 1 {
+		t.Fatalf("empty draft kept: %+v", s.Recent)
+	}
+}
+
+// Before the page has asked for a document it holds no input, so a file the
+// app was launched with replaces the empty draft at once.
+func TestFileOpenedAtLaunchReplacesTheEmptyDraft(t *testing.T) {
+	d := &Desktop{w: workspace(t)}
+	p := filepath.Join(t.TempDir(), "other.md")
+	if err := os.WriteFile(p, []byte("other\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	d.openPath(p)
+	if s := d.State(); s.Current.Content != "other\n" || len(s.Recent) != 1 {
+		t.Fatalf("launch file not shown alone: %+v %+v", s.Current, s.Recent)
+	}
+}
+
 func TestEditedIndicatorDelaysPendingAndClearsImmediately(t *testing.T) {
 	now := time.Unix(100, 0)
 	var s editedIndicator
@@ -133,5 +211,36 @@ func TestNativeSaveFailureUsesStatusCodeAcrossLanguages(t *testing.T) {
 	}
 	if (Document{StatusCode: "fileSaved", Status: "保存失败"}).saveFailed() {
 		t.Fatal("native state interpreted localized prose")
+	}
+}
+
+// The page asks to reveal the quarantine folder the backend reported; it
+// cannot point Finder or Explorer anywhere else.
+func TestRevealStaysInsideTheWorkspace(t *testing.T) {
+	root := t.TempDir()
+	for path, want := range map[string]bool{
+		root:                                       true,
+		filepath.Join(root, "quarantine"):          true,
+		filepath.Join(root, "..", "elsewhere"):     false,
+		filepath.Join(root+"-other", "quarantine"): false,
+		filepath.Dir(root):                         false,
+		"":                                         false,
+	} {
+		if got := revealable(root, path); got != want {
+			t.Errorf("revealable(%q) = %v, want %v", path, got, want)
+		}
+	}
+}
+
+// Autosave answers with what the page reads, not the text it just sent.
+func TestDesktopUpdateLeavesTheTextOut(t *testing.T) {
+	d := &Desktop{w: workspace(t)}
+	cur := d.State().Current
+	got, err := d.Update(Edit{ID: cur.ID, Revision: cur.Revision, Content: "# 你好\n\n正文\n"})
+	if err != nil || got.Content != "" || got.Title != "你好" || got.Revision != cur.Revision+1 || got.StatusCode != "draftSaved" {
+		t.Fatalf("update result: %+v %v", got, err)
+	}
+	if d.w.docs[cur.ID].Content != "# 你好\n\n正文\n" {
+		t.Fatal("text not saved")
 	}
 }

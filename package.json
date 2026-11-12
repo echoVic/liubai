@@ -6,10 +6,10 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "check:headless": "tsc --noEmit && tsc --noEmit -p scripts && node scripts/check-i18n.mjs && node scripts/check-themes.mjs && for check in scripts/check-*.ts; do [ $check = scripts/check-performance.ts ] || bun $check || exit 1; done"
   },
   "dependencies": {
-    "@codemirror/autocomplete": "^6.18.6",
     "@codemirror/commands": "^6.8.1",
     "@codemirror/lang-markdown": "^6.3.2",
     "@codemirror/language": "^6.11.0",
@@ -17,6 +17,7 @@
     "@codemirror/search": "^6.5.10",
     "@codemirror/state": "^6.5.2",
     "@codemirror/view": "^6.36.5",
+    "@lezer/common": "^1.5.3",
     "@lezer/highlight": "^1.2.1",
     "@lezer/markdown": "^1.4.3",
     "docx": "9.8.1",
@@ -33,6 +34,7 @@
     "@types/markdown-it": "^14.1.2",
     "@types/turndown": "5.0.5",
     "esbuild": "^0.25.0",
+    "jszip": "^3.10.2",
     "typescript": "^5.8.3"
   }
 }

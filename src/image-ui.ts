@@ -23,7 +23,9 @@ export class ImageWidget extends WidgetType{
  readonly locale=activeLocale;
  readonly dest:string;
  constructor(readonly raw:string,readonly from:number,readonly resolve:(dest:string)=>Promise<string>,readonly composing:StateField<boolean>,readonly selected=false,readonly readOnly=false,readonly quotes=0,readonly listEms=0){super();this.dest=parseImage(raw)!.src}
- eq(o:ImageWidget){return this.locale===o.locale&&this.raw===o.raw&&this.from===o.from&&this.selected===o.selected&&this.readOnly===o.readOnly&&this.quotes===o.quotes&&this.listEms===o.listEms}
+ // Everything but the position. An image that only moved keeps its DOM; updateDOM hands it the new position.
+ looksLike(o:ImageWidget){return this.locale===o.locale&&this.raw===o.raw&&this.selected===o.selected&&this.readOnly===o.readOnly&&this.quotes===o.quotes&&this.listEms===o.listEms}
+ eq(o:ImageWidget){return this.from===o.from&&this.looksLike(o)}
  toDOM(view:EditorView){const image=new ImageDOM(view,this.composing);images.set(image.dom,image);image.update(this);return image.dom}
  updateDOM(dom:HTMLElement){images.get(dom)!.update(this);return true}
  destroy(dom:HTMLElement){images.get(dom)?.destroy();images.delete(dom)}
@@ -83,9 +85,9 @@ class ImageDOM{
  }
  private blocked(){return this.widget?.readOnly||this.view.state.readOnly||this.view.composing||this.view.state.field(this.composing)||this.composingAlt}
  update(widget:ImageWidget){
-  const previous=this.widget;this.widget=widget;this.selected=widget.selected&&!widget.readOnly;const model=parseImage(widget.raw)!;
+  const previous=this.widget;this.widget=widget;if(previous?.looksLike(widget))return;this.selected=widget.selected&&!widget.readOnly;const model=parseImage(widget.raw)!;
   if(previous&&previous.raw!==widget.raw)this.cancel();
-  this.dom.dataset.from=String(widget.from);this.dom.classList.toggle('image-selected',this.selected);this.dom.tabIndex=widget.readOnly?-1:0;
+  this.dom.classList.toggle('image-selected',this.selected);this.dom.tabIndex=widget.readOnly?-1:0;
   this.dom.setAttribute('aria-label',model.alt||messages.fImage());this.dom.setAttribute('aria-selected',String(this.selected));this.dom.setAttribute('role','group');
   this.img.alt=model.alt;this.img.title=model.title||'';this.img.style.width=model.width!==undefined?model.width+'px':'';this.dom.style.textAlign=model.align;this.dom.style.paddingLeft='calc('+widget.quotes*14+'px + var(--editor-size) * '+widget.listEms+')'; // A quote's 2px rule and 12px padding (14px), a list's 1.7em, as in the reader.
   this.toolbar.hidden=!this.selected;this.handle.hidden=!this.selected;

@@ -34,12 +34,15 @@ func frontMatterEnd(s string) int {
 
 var summaryImage = regexp.MustCompile(`!\[[^\]]*\](?:\((?:[^()\n]|\([^()\n]*\))*\)|\[[^\]]*\])`)
 var summaryLink = regexp.MustCompile(`\[([^\]]+)\](?:\((?:[^()\n]|\([^()\n]*\))*\)|\[[^\]]*\])`)
-var summaryPrefix = regexp.MustCompile(`^(?:#+\s*|>\s*|[-+*]\s+|\d+[.)]\s+|\[[ xX]\]\s+)`)
+var summaryPrefix = regexp.MustCompile(`^(?:#+\s*|>\s*|[-+*]\s+|\d+[.)]\s+|\[[ xX]\](?:\s+|$))`)
 var summaryRule = regexp.MustCompile(`^(?:\*\s*){3,}$|^(?:-\s*){3,}$|^(?:_\s*){3,}$`)
 var summaryTable = regexp.MustCompile(`^\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?$`)
 
+// A link reference definition is never displayed; footnote definitions ([^1]: …) are prose.
+var summaryDefinition = regexp.MustCompile(`^\[[^\]^][^\]]*\]:\s*(?:<[^>]*>|\S+)(?:\s+(?:"[^"]*"|'[^']*'|\([^)]*\)))?$`)
+
 // GitHub 风格提示块标记 [!NOTE] / [!TIP] / [!WARNING] …，独占一行时不应成为标题。
-var summaryCallout = regexp.MustCompile(`(?i)^\s*\[!?[A-Z]+\]\s*[:：-]?\s*`)
+var summaryCallout = regexp.MustCompile(`(?i)^\s*\[![A-Z]+\]\s*[:：-]?\s*`)
 
 func inferredTitle(s string) string {
 	if title := inferredContentTitle(s); title != "" {
@@ -48,19 +51,47 @@ func inferredTitle(s string) string {
 	return locales.BUntitled()
 }
 
-func hasInferredContentTitle(s string) bool {
+// hasInferredContentTitle reads the front matter of document id through the
+// property cache.
+func hasInferredContentTitle(id, s string) bool {
 	// A leading letter survives every title transformation. Other Markdown
 	// starts still use the full parser, including images, fences and callouts.
 	r, _ := utf8.DecodeRuneInString(s)
-	return unicode.IsLetter(r) || inferredContentTitle(s) != ""
+	if unicode.IsLetter(r) {
+		return true
+	}
+	end := frontMatterEnd(s)
+	var meta frontMatter
+	if end > 0 {
+		meta = cachedFrontMatter(id, s, end)
+	}
+	return contentTitle(s, end, meta) != ""
 }
 
 func inferredContentTitle(s string) string {
-	if end := frontMatterEnd(s); end > 0 {
-		for line := range strings.Lines(s[:end]) {
-			if value, ok := strings.CutPrefix(strings.TrimSpace(line), "title:"); ok {
-				if value = strings.Trim(strings.TrimSpace(value), `"'`); value != "" {
-					return shortTitle(value)
+	end := frontMatterEnd(s)
+	var meta frontMatter
+	if end > 0 {
+		meta = parseFrontMatter(s, end)
+	}
+	return contentTitle(s, end, meta)
+}
+
+// contentTitle infers a title from s, whose front matter ends at end and was
+// parsed into meta.
+func contentTitle(s string, end int, meta frontMatter) string {
+	if end > 0 {
+		if meta.parsed {
+			if meta.title != "" {
+				return shortTitle(meta.title)
+			}
+		} else {
+			// Front matter that is not YAML is still read line by line.
+			for line := range strings.Lines(s[:end]) {
+				if value, ok := strings.CutPrefix(strings.TrimSpace(line), "title:"); ok {
+					if value = strings.Trim(strings.TrimSpace(value), `"'`); value != "" {
+						return shortTitle(value)
+					}
 				}
 			}
 		}
@@ -68,8 +99,18 @@ func inferredContentTitle(s string) string {
 	}
 	var fence byte
 	fenceLength := 0
+	math := false
 	for line := range strings.Lines(s) {
 		line = strings.TrimSpace(line)
+		if math {
+			// Display math is a paragraph that opens with $$; it ends at $$ or a blank line.
+			math = line != "" && !strings.HasSuffix(line, "$$")
+			continue
+		}
+		if fence == 0 && strings.HasPrefix(line, "$$") {
+			math = len(line) < 4 || !strings.HasSuffix(line, "$$")
+			continue
+		}
 		if strings.HasPrefix(line, "```") || strings.HasPrefix(line, "~~~") {
 			n := 0
 			for n < len(line) && line[n] == line[0] {
@@ -82,7 +123,7 @@ func inferredContentTitle(s string) string {
 			}
 			continue
 		}
-		if fence != 0 || line == "" || strings.HasPrefix(line, "<!--") || summaryRule.MatchString(line) || summaryTable.MatchString(line) {
+		if fence != 0 || line == "" || strings.HasPrefix(line, "<!--") || summaryRule.MatchString(line) || summaryTable.MatchString(line) || summaryDefinition.MatchString(line) {
 			continue
 		}
 		for {

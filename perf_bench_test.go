@@ -76,7 +76,7 @@ func openFixture(b *testing.B) (*Workspace, Document) {
 	return w, w.State().Current
 }
 
-// What the window does every 2 seconds while idle.
+// What the window does while idle: every 10 seconds on the desktop, every 2 in the browser.
 func BenchmarkIdlePoll(b *testing.B) {
 	w, cur := openFixture(b)
 	b.ResetTimer()

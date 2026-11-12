@@ -34,9 +34,7 @@ async function save(){
  clearTimeout(hideTimer);saving=true;field.readOnly=true;button.disabled=true;target.disabled=true;template.disabled=true;tags.readOnly=true;
  try{
   const labels=parseCaptureTags(tags.value);
-  let result:Summary;
-  if(!target.value&&!labels.length)result=await call<Summary>('Capture',field.value);
-  else result=await call<Summary>('SaveCapture',{text:field.value,tags:labels,targetID:target.value,revision:-1});
+  const result=await call<Summary>('SaveCapture',{text:field.value,tags:labels,targetID:target.value,revision:-1});
   field.value='';tags.value='';template.value='';templateText='';message(result.warning||(target.value?messages.fCaptureAppended():messages.fSavedAsDraft()),!!result.warning);
   if(!result.warning)hideTimer=setTimeout(()=>{if(!field.value&&!tags.value&&!composing)void hide()},600);
  }catch(e){message(e instanceof Error?e.message:String(e),true)}
@@ -45,7 +43,7 @@ async function save(){
 document.addEventListener('compositionstart',()=>{composing=true;clearTimeout(hideTimer)});
 document.addEventListener('compositionend',()=>{composing=false});
 document.addEventListener('input',()=>{clearTimeout(hideTimer);message(hint())});
-target.onchange=()=>{clearTimeout(hideTimer);button.textContent=target.value?messages.fCaptureAppend():messages.fSaveAsDraft();message(hint())};
+target.onchange=()=>{clearTimeout(hideTimer);localize()};
 template.onchange=()=>{
  clearTimeout(hideTimer);
  const next=template.value==='task'?'- [ ] ':template.value==='meeting'?messages.fCaptureMeetingBody():template.value==='idea'?messages.fCaptureIdeaBody():'';
@@ -64,6 +62,8 @@ watchTheme(()=>theme());
 window.addEventListener('storage',e=>{if(e.key==='liubai-appearance'&&e.newValue){try{theme(JSON.parse(e.newValue))}catch{}}});
 window.mygo?.on<Appearance>('liubai:capture-appearance',theme);
 document.documentElement.classList.toggle('windows',windows);
-localizePage();onPageLocaleChange(()=>{button.textContent=target.value?messages.fCaptureAppend():messages.fSaveAsDraft();message(hint());void refreshTargets()});
+// The button and status show live state, so they carry no data-i18n and get their text here.
+function localize(){button.textContent=target.value?messages.fCaptureAppend():messages.fSaveAsDraft();message(hint())}
+localizePage();localize();onPageLocaleChange(()=>{localize();void refreshTargets()});
 await refreshTargets();
 field.focus();

@@ -1510,24 +1510,6 @@ func (msgs Messages) FPressAShortcut() string {
 	return Catalog.Format(msgs.locale, "fPressAShortcut", nil)
 }
 
-// FSaveAsDraftEscClose says "{shortcut} 存为草稿 · Esc 关闭"
-// in the language the app shows.
-//
-// Quick note hint: the shortcut saves the note as a draft, Esc closes the
-// panel.
-func FSaveAsDraftEscClose(shortcut string) string {
-	return In(i18n.Locale()).FSaveAsDraftEscClose(shortcut)
-}
-
-// FSaveAsDraftEscClose says "{shortcut} 存为草稿 · Esc 关闭"
-// in the language of msgs.
-//
-// Quick note hint: the shortcut saves the note as a draft, Esc closes the
-// panel.
-func (msgs Messages) FSaveAsDraftEscClose(shortcut string) string {
-	return Catalog.Format(msgs.locale, "fSaveAsDraftEscClose", map[string]any{"shortcut": shortcut})
-}
-
 // FSavedAsDraft says "已存为草稿"
 // in the language the app shows.
 //
@@ -2108,20 +2090,20 @@ func (msgs Messages) FLaunchAtLogin() string {
 	return Catalog.Format(msgs.locale, "fLaunchAtLogin", nil)
 }
 
-// FExportPDFHTMLZIPOrCopyRichText says "导出 PDF、HTML、ZIP 或复制富文本"
+// FExportPDFWordHTMLZIPOrCopyRichText says "导出 PDF、Word、HTML、ZIP 或复制富文本"
 // in the language the app shows.
 //
-// Interface text for Export PDF, HTML, ZIP, or copy rich text.
-func FExportPDFHTMLZIPOrCopyRichText() string {
-	return In(i18n.Locale()).FExportPDFHTMLZIPOrCopyRichText()
+// Interface text for Export PDF, Word, HTML, ZIP, or copy rich text.
+func FExportPDFWordHTMLZIPOrCopyRichText() string {
+	return In(i18n.Locale()).FExportPDFWordHTMLZIPOrCopyRichText()
 }
 
-// FExportPDFHTMLZIPOrCopyRichText says "导出 PDF、HTML、ZIP 或复制富文本"
+// FExportPDFWordHTMLZIPOrCopyRichText says "导出 PDF、Word、HTML、ZIP 或复制富文本"
 // in the language of msgs.
 //
-// Interface text for Export PDF, HTML, ZIP, or copy rich text.
-func (msgs Messages) FExportPDFHTMLZIPOrCopyRichText() string {
-	return Catalog.Format(msgs.locale, "fExportPDFHTMLZIPOrCopyRichText", nil)
+// Interface text for Export PDF, Word, HTML, ZIP, or copy rich text.
+func (msgs Messages) FExportPDFWordHTMLZIPOrCopyRichText() string {
+	return Catalog.Format(msgs.locale, "fExportPDFWordHTMLZIPOrCopyRichText", nil)
 }
 
 // FExport2 says "导出"
@@ -2206,6 +2188,22 @@ func FViewDiskVersion() string { return In(i18n.Locale()).FViewDiskVersion() }
 // Interface text for View Disk Version.
 func (msgs Messages) FViewDiskVersion() string {
 	return Catalog.Format(msgs.locale, "fViewDiskVersion", nil)
+}
+
+// FReload says "重新载入"
+// in the language the app shows.
+//
+// Banner button that loads the document's latest saved version after a save
+// failed because the document changed.
+func FReload() string { return In(i18n.Locale()).FReload() }
+
+// FReload says "重新载入"
+// in the language of msgs.
+//
+// Banner button that loads the document's latest saved version after a save
+// failed because the document changed.
+func (msgs Messages) FReload() string {
+	return Catalog.Format(msgs.locale, "fReload", nil)
 }
 
 // FOverwriteWithCurrentVersion says "用当前版本覆盖"
@@ -2350,20 +2348,6 @@ func (msgs Messages) FReadOnly() string {
 	return Catalog.Format(msgs.locale, "fReadOnly", nil)
 }
 
-// FL says "白"
-// in the language the app shows.
-//
-// Interface text for L.
-func FL() string { return In(i18n.Locale()).FL() }
-
-// FL says "白"
-// in the language of msgs.
-//
-// Interface text for L.
-func (msgs Messages) FL() string {
-	return Catalog.Format(msgs.locale, "fL", nil)
-}
-
 // FCloseSidebar says "关闭侧栏"
 // in the language the app shows.
 //
@@ -2376,34 +2360,6 @@ func FCloseSidebar() string { return In(i18n.Locale()).FCloseSidebar() }
 // Interface text for Close Sidebar.
 func (msgs Messages) FCloseSidebar() string {
 	return Catalog.Format(msgs.locale, "fCloseSidebar", nil)
-}
-
-// FFindADocument says "找一篇文稿…"
-// in the language the app shows.
-//
-// Interface text for Find a document….
-func FFindADocument() string { return In(i18n.Locale()).FFindADocument() }
-
-// FFindADocument says "找一篇文稿…"
-// in the language of msgs.
-//
-// Interface text for Find a document….
-func (msgs Messages) FFindADocument() string {
-	return Catalog.Format(msgs.locale, "fFindADocument", nil)
-}
-
-// FSearchRecentDocuments says "搜索最近文稿"
-// in the language the app shows.
-//
-// Interface text for Search Recent Documents.
-func FSearchRecentDocuments() string { return In(i18n.Locale()).FSearchRecentDocuments() }
-
-// FSearchRecentDocuments says "搜索最近文稿"
-// in the language of msgs.
-//
-// Interface text for Search Recent Documents.
-func (msgs Messages) FSearchRecentDocuments() string {
-	return Catalog.Format(msgs.locale, "fSearchRecentDocuments", nil)
 }
 
 // FOpenLocalMarkdown says "打开本地 Markdown"
@@ -3370,34 +3326,6 @@ func (msgs Messages) FLanguage() string {
 	return Catalog.Format(msgs.locale, "fLanguage", nil)
 }
 
-// FSimplifiedChinese says "简体中文"
-// in the language the app shows.
-//
-// Interface text for 简体中文.
-func FSimplifiedChinese() string { return In(i18n.Locale()).FSimplifiedChinese() }
-
-// FSimplifiedChinese says "简体中文"
-// in the language of msgs.
-//
-// Interface text for 简体中文.
-func (msgs Messages) FSimplifiedChinese() string {
-	return Catalog.Format(msgs.locale, "fSimplifiedChinese", nil)
-}
-
-// FEnglish says "English"
-// in the language the app shows.
-//
-// Interface text for English.
-func FEnglish() string { return In(i18n.Locale()).FEnglish() }
-
-// FEnglish says "English"
-// in the language of msgs.
-//
-// Interface text for English.
-func (msgs Messages) FEnglish() string {
-	return Catalog.Format(msgs.locale, "fEnglish", nil)
-}
-
 // BStatusDraftSaved says "草稿已保存"
 // in the language the app shows.
 //
@@ -4080,6 +4008,22 @@ func (msgs Messages) BExternalConflict() string {
 	return Catalog.Format(msgs.locale, "bExternalConflict", nil)
 }
 
+// BFileOpenInAnotherDocument says "这个文件已在另一篇文稿中打开，请选择新文件名"
+// in the language the app shows.
+//
+// Backend interface: Save As chose the file of another open document.
+// Choose a new filename
+func BFileOpenInAnotherDocument() string { return In(i18n.Locale()).BFileOpenInAnotherDocument() }
+
+// BFileOpenInAnotherDocument says "这个文件已在另一篇文稿中打开，请选择新文件名"
+// in the language of msgs.
+//
+// Backend interface: Save As chose the file of another open document.
+// Choose a new filename
+func (msgs Messages) BFileOpenInAnotherDocument() string {
+	return Catalog.Format(msgs.locale, "bFileOpenInAnotherDocument", nil)
+}
+
 // BUnsupportedImageSyntax says "存在无法转换的图片语法，请将图片引用单独放在一行后再保存"
 // in the language the app shows.
 //
@@ -4530,20 +4474,6 @@ func (msgs Messages) BMenuFocus() string {
 	return Catalog.Format(msgs.locale, "bMenuFocus", nil)
 }
 
-// BMenuAppearance says "外观与排版…"
-// in the language the app shows.
-//
-// Native menu label: Appearance
-func BMenuAppearance() string { return In(i18n.Locale()).BMenuAppearance() }
-
-// BMenuAppearance says "外观与排版…"
-// in the language of msgs.
-//
-// Native menu label: Appearance
-func (msgs Messages) BMenuAppearance() string {
-	return Catalog.Format(msgs.locale, "bMenuAppearance", nil)
-}
-
 // BMenuLayout says "切换分栏"
 // in the language the app shows.
 //
@@ -4668,62 +4598,6 @@ func BMenuFront() string { return In(i18n.Locale()).BMenuFront() }
 // Native menu label: Front
 func (msgs Messages) BMenuFront() string {
 	return Catalog.Format(msgs.locale, "bMenuFront", nil)
-}
-
-// BMenuLanguage says "语言"
-// in the language the app shows.
-//
-// Native menu label: Language
-func BMenuLanguage() string { return In(i18n.Locale()).BMenuLanguage() }
-
-// BMenuLanguage says "语言"
-// in the language of msgs.
-//
-// Native menu label: Language
-func (msgs Messages) BMenuLanguage() string {
-	return Catalog.Format(msgs.locale, "bMenuLanguage", nil)
-}
-
-// BMenuFollowSystem says "跟随系统"
-// in the language the app shows.
-//
-// Native menu label: FollowSystem
-func BMenuFollowSystem() string { return In(i18n.Locale()).BMenuFollowSystem() }
-
-// BMenuFollowSystem says "跟随系统"
-// in the language of msgs.
-//
-// Native menu label: FollowSystem
-func (msgs Messages) BMenuFollowSystem() string {
-	return Catalog.Format(msgs.locale, "bMenuFollowSystem", nil)
-}
-
-// BMenuChinese says "简体中文"
-// in the language the app shows.
-//
-// Native menu label: Chinese
-func BMenuChinese() string { return In(i18n.Locale()).BMenuChinese() }
-
-// BMenuChinese says "简体中文"
-// in the language of msgs.
-//
-// Native menu label: Chinese
-func (msgs Messages) BMenuChinese() string {
-	return Catalog.Format(msgs.locale, "bMenuChinese", nil)
-}
-
-// BMenuEnglish says "English"
-// in the language the app shows.
-//
-// Native menu label: English
-func BMenuEnglish() string { return In(i18n.Locale()).BMenuEnglish() }
-
-// BMenuEnglish says "English"
-// in the language of msgs.
-//
-// Native menu label: English
-func (msgs Messages) BMenuEnglish() string {
-	return Catalog.Format(msgs.locale, "bMenuEnglish", nil)
 }
 
 // BOpenMarkdown says "打开 Markdown 文稿"
@@ -5024,20 +4898,6 @@ func BOpenFailed(name string, error string) string { return In(i18n.Locale()).BO
 // Open document failure notice
 func (msgs Messages) BOpenFailed(name string, error string) string {
 	return Catalog.Format(msgs.locale, "bOpenFailed", map[string]any{"name": name, "error": error})
-}
-
-// FAppName says "留白"
-// in the language the app shows.
-//
-// Interface message: AppName.
-func FAppName() string { return In(i18n.Locale()).FAppName() }
-
-// FAppName says "留白"
-// in the language of msgs.
-//
-// Interface message: AppName.
-func (msgs Messages) FAppName() string {
-	return Catalog.Format(msgs.locale, "fAppName", nil)
 }
 
 // FHeading says "标题 {level}"
@@ -5472,20 +5332,6 @@ func (msgs Messages) FPrevious() string {
 	return Catalog.Format(msgs.locale, "fPrevious", nil)
 }
 
-// FAll says "全部"
-// in the language the app shows.
-//
-// Interface message: All.
-func FAll() string { return In(i18n.Locale()).FAll() }
-
-// FAll says "全部"
-// in the language of msgs.
-//
-// Interface message: All.
-func (msgs Messages) FAll() string {
-	return Catalog.Format(msgs.locale, "fAll", nil)
-}
-
 // FMatchCase says "区分大小写"
 // in the language the app shows.
 //
@@ -5554,34 +5400,6 @@ func FClose() string { return In(i18n.Locale()).FClose() }
 // Interface message: Close.
 func (msgs Messages) FClose() string {
 	return Catalog.Format(msgs.locale, "fClose", nil)
-}
-
-// FFindLabel says "查找："
-// in the language the app shows.
-//
-// Interface message: FindLabel.
-func FFindLabel() string { return In(i18n.Locale()).FFindLabel() }
-
-// FFindLabel says "查找："
-// in the language of msgs.
-//
-// Interface message: FindLabel.
-func (msgs Messages) FFindLabel() string {
-	return Catalog.Format(msgs.locale, "fFindLabel", nil)
-}
-
-// FReplaceLabel says "替换："
-// in the language the app shows.
-//
-// Interface message: ReplaceLabel.
-func FReplaceLabel() string { return In(i18n.Locale()).FReplaceLabel() }
-
-// FReplaceLabel says "替换："
-// in the language of msgs.
-//
-// Interface message: ReplaceLabel.
-func (msgs Messages) FReplaceLabel() string {
-	return Catalog.Format(msgs.locale, "fReplaceLabel", nil)
 }
 
 // BImageFormatUnsupported says "图片格式不受支持"
@@ -6214,20 +6032,6 @@ func (msgs Messages) FInsert() string {
 	return Catalog.Format(msgs.locale, "fInsert", nil)
 }
 
-// FFindReplace says "查找替换"
-// in the language the app shows.
-//
-// Format toolbar: Find and Replace.
-func FFindReplace() string { return In(i18n.Locale()).FFindReplace() }
-
-// FFindReplace says "查找替换"
-// in the language of msgs.
-//
-// Format toolbar: Find and Replace.
-func (msgs Messages) FFindReplace() string {
-	return Catalog.Format(msgs.locale, "fFindReplace", nil)
-}
-
 // FHeading4 says "标题 4"
 // in the language the app shows.
 //
@@ -6562,6 +6366,22 @@ func FExpandDetails() string { return In(i18n.Locale()).FExpandDetails() }
 // Button to show details content in this editor.
 func (msgs Messages) FExpandDetails() string {
 	return Catalog.Format(msgs.locale, "fExpandDetails", nil)
+}
+
+// FFoldedContent says "已折叠的内容"
+// in the language the app shows.
+//
+// Accessible name of the marker that stands for folded details content in
+// this editor.
+func FFoldedContent() string { return In(i18n.Locale()).FFoldedContent() }
+
+// FFoldedContent says "已折叠的内容"
+// in the language of msgs.
+//
+// Accessible name of the marker that stands for folded details content in
+// this editor.
+func (msgs Messages) FFoldedContent() string {
+	return Catalog.Format(msgs.locale, "fFoldedContent", nil)
 }
 
 // FWordDocument says "Word 文稿（.docx）"
@@ -7379,13 +7199,13 @@ func (msgs Messages) FOnelightCaption() string {
 // FStudioOnelightTag says "笺"
 // in the language the app shows.
 //
-// Interface text for Dawn.
+// Interface text for Letter.
 func FStudioOnelightTag() string { return In(i18n.Locale()).FStudioOnelightTag() }
 
 // FStudioOnelightTag says "笺"
 // in the language of msgs.
 //
-// Interface text for Dawn.
+// Interface text for Letter.
 func (msgs Messages) FStudioOnelightTag() string {
 	return Catalog.Format(msgs.locale, "fStudioOnelightTag", nil)
 }

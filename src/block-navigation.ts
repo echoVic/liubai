@@ -5,8 +5,8 @@ import type {SyntaxNode} from '@lezer/common';
 import {frontMatterRange} from './editing';
 import {imageRanges} from './images';
 
-// Blocks the caret can land in when it leaves a table or image.
-const leafBlock=/^(?:Paragraph|Task|ATXHeading\d|SetextHeading\d|FencedCode|CodeBlock|HTMLBlock|CommentBlock|ProcessingInstructionBlock|HorizontalRule|LinkReference|Table)$/;
+// Blocks that can sit beside a table or image. Tables, formulas and diagrams are widgets: the caret never lands in them.
+const leafBlock=/^(?:Paragraph|Task|ATXHeading\d|SetextHeading\d|FencedCode|CodeBlock|HTMLBlock|CommentBlock|ProcessingInstructionBlock|HorizontalRule|LinkReference|Table|MathBlock|MathFence|MermaidFence)$/;
 const blank=(text:string)=>!text.trim();
 function skipSpace(state:EditorState,pos:number){const end=state.doc.lineAt(pos).to;while(pos<end&&/[ \t]/.test(state.sliceDoc(pos,pos+1)))pos++;return pos}
 // The text next to the widget: the end of the block above, or the start of the block below.
@@ -21,7 +21,7 @@ function caretIn(state:EditorState,node:SyntaxNode,above:boolean){
  if(/^SetextHeading/.test(node.name)&&above){const mark=node.getChild('HeaderMark');if(mark)return Math.max(node.from,state.doc.lineAt(mark.from).from-1)}
  return above?node.to:node.from;
 }
-// Null when there is no block to type in: the document edge, front matter, or another table or image.
+// Null when there is no block to type in: the document edge, front matter, or another table, image, formula or diagram.
 function neighbour(state:EditorState,range:{from:number;to:number},above:boolean):number|null{
  const doc=state.doc,meta=frontMatterRange(state),step=above?-1:1;
  for(let n=doc.lineAt(above?range.from:range.to).number+step,seen=0;n>=1&&n<=doc.lines&&seen<100;n+=step,seen++){
@@ -30,7 +30,7 @@ function neighbour(state:EditorState,range:{from:number;to:number},above:boolean
   let node:SyntaxNode|null=tree.resolveInner(line.from+line.text.trimEnd().length,-1);
   while(node&&!leafBlock.test(node.name))node=node.parent;
   if(!node)continue; // A container line without text, such as a bare '>'.
-  return (node.name==='Table'||imageRanges(state).some(image=>image.from>=node!.from&&image.to<=node!.to))||(meta&&node.from<meta.to)?null:caretIn(state,node,above);
+  return (/^(?:Table|MathBlock|MathFence|MermaidFence)$/.test(node.name)||imageRanges(state).some(image=>image.from>=node!.from&&image.to<=node!.to))||(meta&&node.from<meta.to)?null:caretIn(state,node,above);
  }
  return null;
 }

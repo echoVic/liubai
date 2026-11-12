@@ -1,11 +1,12 @@
-import type {MarkdownConfig} from '@lezer/markdown';
+import type {BlockParser,MarkdownConfig} from '@lezer/markdown';
 import type {PluginSimple} from 'markdown-it';
 import katex from 'katex';
 import {messages} from './i18n';
+import {escapeHtml as escapeHTML} from 'markdown-it/lib/common/utils.mjs';
 
 const escaped=(text:string,pos:number)=>{let n=0;while(pos>0&&text[--pos]==='\\')n++;return n%2===1};
 // Both adapters call these predicates on their paragraph's raw source. Native Markdown parsers own code, HTML tags and blocks, and link destinations.
-export function inlineMathEnd(text:string,start:number):number{
+function inlineMathEnd(text:string,start:number):number{
  if(text[start]!=='$'||text[start+1]==='$'||!text[start+1]||/\s/.test(text[start+1])||escaped(text,start))return -1;
  for(let end=start+1;end<text.length&&text[end]!=='\n'&&text[end]!=='\r';end++){
   if(text[end]!=='$'||escaped(text,end))continue;
@@ -14,10 +15,28 @@ export function inlineMathEnd(text:string,start:number):number{
  }
  return -1;
 }
-export function displayMathBody(text:string):string|null{
+function displayMathBody(text:string):string|null{
  const raw=text.trimEnd();return raw.startsWith('$$')&&raw.length>=4&&raw.endsWith('$$')&&!escaped(raw,raw.length-2)?raw.slice(2,-2).trim():null;
 }
-export const mathFence=(text:string)=>/^(`{3,}|~{3,})[ \t]*math[ \t]*$/.exec(text);
+// A fence whose info string is the one word, parsed like FencedCode: the enclosing quote or list owns depth and
+// indentation. Mermaid diagrams use it too.
+export function infoFence(name:string,text:string,info:string):BlockParser{
+ const opening=new RegExp('^(`{3,}|~{3,})[ \\t]*'+info+'[ \\t]*$');
+ return {name,before:'FencedCode',parse(cx,line){
+  if(line.indent-line.baseIndent>=4)return false;
+  const open=opening.exec(line.text.slice(line.pos));if(!open)return false;
+  const from=cx.lineStart+line.pos,parts=[],depth=cx.depth,fence=open[1],indent=line.indent-line.baseIndent,close=new RegExp('^'+fence[0]+'{'+fence.length+',}[ \\t]*$');let end=cx.lineStart+line.text.length;
+  while(cx.nextLine()){
+   // Parent quote/list boundaries terminate a fence just as they terminate native fenced code.
+   if((line as unknown as {depth:number}).depth<depth)break;
+   const raw=line.text.slice(line.pos);
+   end=cx.lineStart+line.text.length;
+   if(line.indent-line.baseIndent<4&&close.test(raw)){cx.nextLine();break}
+   const start=cx.lineStart+Math.min(line.pos,line.findColumn(line.baseIndent+indent));parts.push(cx.elt(text,start,end));
+  }
+  cx.addElement(cx.elt(name,from,end,parts));return true;
+ }};
+}
 export const MathSyntax:MarkdownConfig={
  defineNodes:['InlineMath','MathMark',{name:'MathBlock',block:true},{name:'MathFence',block:true},'MathText'],
  parseInline:[{name:'InlineMath',before:'Escape',parse(cx,next,pos){
@@ -39,20 +58,7 @@ export const MathSyntax:MarkdownConfig={
    }
    cx.addLeafElement(leaf,cx.elt('MathBlock',leaf.start,end,parts));return true;
   }};
- }},{name:'MathFence',before:'FencedCode',parse(cx,line){
-  if(line.indent-line.baseIndent>=4)return false;
-  const open=mathFence(line.text.slice(line.pos));if(!open)return false;
-  const from=cx.lineStart+line.pos,parts=[],depth=cx.depth,fence=open[1],indent=line.indent-line.baseIndent;let end=cx.lineStart+line.text.length;
-  while(cx.nextLine()){
-   // Parent quote/list boundaries terminate a fence just as they terminate native fenced code.
-   if((line as unknown as {depth:number}).depth<depth)break;
-   const raw=line.text.slice(line.pos),close=new RegExp('^'+fence[0]+'{'+fence.length+',}[ \\t]*$');
-   end=cx.lineStart+line.text.length;
-   if(line.indent-line.baseIndent<4&&close.test(raw)){cx.nextLine();break}
-   const start=cx.lineStart+Math.min(line.pos,line.findColumn(line.baseIndent+indent));parts.push(cx.elt('MathText',start,end));
-  }
-  cx.addElement(cx.elt('MathFence',from,end,parts));return true;
- }}],
+ }},infoFence('MathFence','MathText','math')],
 };
 export const mathPlugin:PluginSimple=md=>{
  // Code spans, HTML tags, escapes and destinations are consumed by their own rules before a dollar is seen.
@@ -85,7 +91,7 @@ export type MathOutput='htmlAndMathml'|'mathml';
 export interface MathResult {html:string;error?:string}
 const errorColor='liubai-math-error-'+Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-');
 // Least recently used, sized for every formula of a long document: split preview renders all of them again after each pause.
-const cache=new Map<string,MathResult>(),escapeHTML=(s:string)=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const cache=new Map<string,MathResult>();
 export const mathRenderStats={calls:0,hits:0};
 export function renderMath(source:string,display:boolean,output:MathOutput='htmlAndMathml'):MathResult{
  const key=JSON.stringify([source,display,output]),cached=cache.get(key);if(cached){cache.delete(key);cache.set(key,cached);mathRenderStats.hits++;return cached}

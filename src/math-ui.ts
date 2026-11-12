@@ -5,8 +5,9 @@ import {fillMath} from './math';
 const pending=new WeakMap<HTMLElement,ReturnType<typeof setTimeout>>();
 
 export class MathWidget extends WidgetType{
- constructor(readonly source:string,readonly display:boolean,readonly from:number,readonly composing:StateField<boolean>){super()}
- eq(other:MathWidget){return other.source===this.source&&other.display===this.display&&other.from===this.from}
+ // No position: a formula that only moved keeps its DOM, and a click reads where it is from the DOM.
+ constructor(readonly source:string,readonly display:boolean,readonly composing:StateField<boolean>){super()}
+ eq(other:MathWidget){return other.source===this.source&&other.display===this.display}
  toDOM(view:EditorView){
   const dom=document.createElement(this.display?'div':'span');dom.className='rendered-math';dom.contentEditable='false';
   // CodeMirror only mounts visible widgets. Building or mapping offscreen decorations never invokes KaTeX.
@@ -19,7 +20,7 @@ export class MathWidget extends WidgetType{
   }
   dom.addEventListener('mousedown',event=>{
    if(view.composing||view.state.field(this.composing)||view.state.readOnly)return;
-   event.preventDefault();view.dispatch({selection:{anchor:this.from+(this.display?0:1)},scrollIntoView:true});view.focus();
+   event.preventDefault();view.dispatch({selection:{anchor:view.posAtDOM(dom)+(this.display?0:1)},scrollIntoView:true});view.focus();
   });return dom;
  }
  destroy(dom:HTMLElement){clearTimeout(pending.get(dom));pending.delete(dom)}

@@ -7,16 +7,16 @@ body:has(#document-find:not([hidden])) .preview-pill{visibility:hidden}
 .preview-scroll{height:calc(100% - 48px);overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--input) transparent}
 .markdown-document{width:min(var(--paper-width),100%);margin:0 auto;padding:42px var(--page-gutter) 72px;color:var(--foreground);font:var(--editor-size)/1.9 var(--font-body);overflow-wrap:anywhere}
 .markdown-document h1,.markdown-document h2,.markdown-document h3,.markdown-document h4,.markdown-document h5,.markdown-document h6{font-family:var(--font-body);line-height:1.45;margin:1.5em 0 .65em}
-.markdown-document h1{font-size:1.9em}.markdown-document h2{font-size:1.5em}.markdown-document h3{font-size:1.2em}
+.markdown-document h1{font-size:1.9em}.markdown-document h2{font-size:1.5em}.markdown-document h3{font-size:1.2em}.markdown-document h4{font-size:1.1em}.markdown-document h5,.markdown-document h6{font-size:1em}
 .markdown-document p{margin:0 0 1em}.markdown-document a{color:var(--link);text-decoration:underline;text-underline-offset:3px}
 .markdown-document a:focus-visible,.markdown-document summary:focus-visible,.markdown-document [tabindex="-1"]:focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:2px}
 .markdown-document blockquote{margin:1.2em 0;padding:.1em 0 .1em 16px;border-left:2px solid var(--quote);color:var(--quote)}
-.markdown-document pre{max-width:100%;overflow:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:var(--muted-foreground) var(--code);padding:16px;border-radius:6px;background:var(--code);font:13px/1.75 'SFMono-Regular',Consolas,monospace;white-space:pre}
+.markdown-document pre{max-width:100%;overflow:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:var(--muted-foreground) var(--code);padding:16px;border-radius:6px;background:var(--code);font:13px/1.75 var(--font-mono);white-space:pre}
 .markdown-document pre[tabindex="0"]:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .markdown-document pre::-webkit-scrollbar{height:8px;width:8px}
 .markdown-document pre::-webkit-scrollbar-track{background:var(--code)}
 .markdown-document pre::-webkit-scrollbar-thumb{background:var(--muted-foreground);border:2px solid var(--code);border-radius:4px}
-.markdown-document :not(pre)>code{padding:4px;border-radius:4px;background:var(--code);font:.84em/1.6 'SFMono-Regular',Consolas,monospace}
+.markdown-document :not(pre)>code{padding:4px;border-radius:4px;background:var(--code);font:.84em/1.6 var(--font-mono)}
 .markdown-document img{display:inline-block;max-width:100%;height:auto;margin:0;border-radius:6px;vertical-align:bottom}
 /* Standalone reader images open a full-size viewer; linked images keep their link affordance. */
 .markdown-document img.md-image[data-zoomable]{cursor:zoom-in}
@@ -31,14 +31,14 @@ body:has(#document-find:not([hidden])) .preview-pill{visibility:hidden}
    left/top edges. Original-size images scroll from the actual image origin. */
 .reader-image-stage:has(.is-actual){display:block}
 .reader-image-stage:focus-within{outline:2px solid #fff;outline-offset:2px;border-radius:6px}
-.reader-image-full{display:block;max-width:92vw;max-height:80vh;border-radius:6px;cursor:zoom-in;user-select:none}
+.reader-image-full{display:block;max-width:92vw;max-height:80vh;border-radius:6px;cursor:zoom-in;-webkit-user-select:none;user-select:none}
 .reader-image-full:focus{outline:none}/* The bounded stage owns the visible keyboard ring. */
 .reader-image-full.is-actual{max-width:none;max-height:none;cursor:zoom-out}
 .reader-image-close{position:fixed;top:16px;right:16px;z-index:1;width:44px;height:44px;display:grid;place-items:center;border:0;border-radius:10px;background:rgba(0,0,0,.45);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);color:#fff;cursor:pointer}
 .reader-image-close:hover{background:rgba(0,0,0,.65)}
 .reader-image-close:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .reader-image-close svg{width:20px;height:20px}
-.reader-image-caption{margin:0;max-width:92vw;font:13px/1.6 -apple-system,'PingFang SC','Microsoft YaHei',sans-serif;color:rgba(255,255,255,.82);text-align:center}
+.reader-image-caption{margin:0;max-width:92vw;font:13px/1.6 var(--font-ui);color:rgba(255,255,255,.82);text-align:center}
 .markdown-document .md-table-scroll{max-width:100%;margin:1.3em 0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:var(--muted-foreground) var(--muted)}
 .markdown-document .md-table-scroll:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .markdown-document .md-table-scroll::-webkit-scrollbar{height:8px}
@@ -47,14 +47,14 @@ body:has(#document-find:not([hidden])) .preview-pill{visibility:hidden}
 /* Wide reader tables keep a readable measure in each column; only the table scrolls. */
 .markdown-document table{margin:0;font-size:.9em;table-layout:fixed;min-width:calc(var(--md-table-columns,1)*10em);font-variant-numeric:tabular-nums}.markdown-document th,.markdown-document td{overflow-wrap:anywhere;vertical-align:top}.markdown-document ul,.markdown-document ol{padding-left:1.7em}
 .markdown-document input[type=checkbox]{accent-color:var(--primary);margin:0 8px 0 0}.markdown-document .task-list{list-style:none;padding-left:.2em}
-.markdown-image-note{display:block;padding:12px 16px;border:1px dashed var(--border);border-radius:6px;color:var(--muted-foreground);font:12px/1.7 -apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif}
+.markdown-image-note{display:block;padding:12px 16px;border:1px dashed var(--border);border-radius:6px;color:var(--muted-foreground);font:12px/1.7 var(--font-ui)}
 @media(max-width:819px) and (max-height:600px){
  .preview-head{height:34px;padding:0 16px}.preview-scroll{height:calc(100% - 34px)}
  .markdown-document{padding:16px var(--page-gutter) 40px}.markdown-document>:first-child{margin-top:0}
 }
-.markdown-document .md-front-matter{margin:0 0 24px;color:var(--muted-foreground);font:12px/1.8 -apple-system,'Segoe UI','Microsoft YaHei UI',sans-serif}.markdown-document .md-front-matter summary{cursor:pointer;padding:6px 8px;border-radius:4px;-webkit-tap-highlight-color:transparent}.markdown-document .md-front-matter summary:hover,.markdown-document .md-front-matter summary:active{background:var(--accent);color:var(--foreground)}.markdown-document .md-front-matter pre{margin:8px 0;font-size:12px}
+.markdown-document .md-front-matter{margin:0 0 24px;color:var(--muted-foreground);font:12px/1.8 var(--font-ui)}.markdown-document .md-front-matter summary{cursor:pointer;padding:6px 8px;border-radius:4px;-webkit-tap-highlight-color:transparent}.markdown-document .md-front-matter summary:hover,.markdown-document .md-front-matter summary:active{background:var(--accent);color:var(--foreground)}.markdown-document .md-front-matter pre{margin:8px 0;font-size:12px}
 .markdown-document .markdown-alert{border-left:3px solid var(--alert-color);background:color-mix(in srgb,var(--alert-color) 9%,var(--card));color:var(--foreground);padding:12px 16px;border-radius:4px;font-style:normal}.markdown-document .markdown-alert-title{font-weight:700;margin:0 0 8px}.markdown-document .markdown-alert>:last-child{margin-bottom:0}
-.markdown-document kbd{border:1px solid var(--border);border-radius:4px;padding:4px 6px;background:var(--code);font:.85em 'SFMono-Regular',Consolas,monospace}.markdown-document hr{height:0;margin:2em 0;border:0;border-top:1px solid var(--border)}.markdown-document hr.footnotes-sep{margin:24px 0 12px}.markdown-document section.footnotes{font-size:.85em}
+.markdown-document kbd{border:1px solid var(--border);border-radius:4px;padding:4px 6px;background:var(--code);font:.85em var(--font-mono)}.markdown-document hr{height:0;margin:2em 0;border:0;border-top:1px solid var(--border)}.markdown-document hr.footnotes-sep{margin:24px 0 12px}.markdown-document section.footnotes{font-size:.85em}
 #preview-content .tok-keyword,#preview-content .tok-bool,#preview-content .tok-atom,#preview-content .tok-number{color:var(--syntax-keyword)}
 #preview-content .tok-string,#preview-content .tok-regexp{color:var(--syntax-string)}
 #preview-content .tok-comment,#preview-content .tok-meta{color:var(--muted-foreground);font-style:italic}

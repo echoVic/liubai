@@ -3,7 +3,7 @@ import type {Appearance} from './types';
 export const themeIDs=['dawn','paper','warm','lamp','ink','moon','mist','lotus','autumn','moonwhite','indigo','github','solar','solare','monokai','nord','onedark','dracula','catppuccin','gruvbox','rosepine','onelight','ghdark','catlight','gruvlite'] as const;
 export type ThemeID=typeof themeIDs[number];
 export type AutoSwitch='off'|'system'|'hours'|'seasons';
-export interface ThemeSpec {id:ThemeID;series:'hours'|'seasons'|'studio';dark:boolean;hours?:[number,number];season?:'spring'|'summer'|'autumn'|'winter'|'night'}
+interface ThemeSpec {id:ThemeID;series:'hours'|'seasons'|'studio';dark:boolean;hours?:[number,number];season?:'spring'|'summer'|'autumn'|'winter'|'night'}
 export const themes=list as ThemeSpec[];
 const known=(id:unknown):id is ThemeID=>themes.some(t=>t.id===id);
 export const isDark=(id:string)=>themes.some(t=>t.id===id&&t.dark);
@@ -26,4 +26,4 @@ export function resolveTheme(p:ThemeChoice,now:Date,systemDark:boolean):ThemeID{
 }
 export function paintTheme(root:HTMLElement,id:ThemeID){const scheme=isDark(id)?'dark':'light';root.dataset.liubaiTheme=id;root.dataset.liubaiScheme=scheme;root.style.colorScheme=scheme}
 // Calls update on the minute, when the window comes back and when the system appearance changes.
-export function watchTheme(update:()=>void){const mq=matchMedia('(prefers-color-scheme:dark)');mq.addEventListener('change',update);addEventListener('focus',update);document.addEventListener('visibilitychange',()=>{if(!document.hidden)update()});setInterval(update,60000);return mq}
+export function watchTheme(update:()=>void){const mq=matchMedia('(prefers-color-scheme:dark)');mq.addEventListener('change',update);addEventListener('focus',update);document.addEventListener('visibilitychange',()=>{if(!document.hidden)update()});setInterval(update,60000)}

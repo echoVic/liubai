@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestThemeList(t *testing.T) {
 	dark := 0
@@ -32,5 +36,26 @@ func TestHoursTheme(t *testing.T) {
 		if got := hoursTheme(hour); got != want {
 			t.Errorf("hoursTheme(%d) = %q, want %q", hour, got, want)
 		}
+	}
+}
+
+// The window is painted before the page loads: in the background of the
+// theme the page will show, resolved as everywhere else.
+func TestWindowBackgroundIsTheResolvedThemesPage(t *testing.T) {
+	noon := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.Local)
+	for _, th := range themes {
+		_, block, _ := strings.Cut(themeCSS, "[data-liubai-theme="+th.ID+"]{")
+		_, rest, _ := strings.Cut(block, "--background:")
+		want, _, _ := strings.Cut(rest, ";")
+		if got := windowBackground(Appearance{Theme: th.ID, Auto: "off"}, noon, false); got != want || want == "" {
+			t.Errorf("%s: window %q, page %q", th.ID, got, want)
+		}
+	}
+	p := Appearance{Theme: "paper", Auto: "system", LightTheme: "github", DarkTheme: "nord"}
+	if light, dark := windowBackground(p, noon, false), windowBackground(p, noon, true); light != nativeThemes["github"].page || dark != nativeThemes["nord"].page {
+		t.Errorf("follow system: light %q dark %q", light, dark)
+	}
+	if got := windowBackground(Appearance{Theme: "paper", Auto: "hours"}, time.Date(2026, time.July, 1, 23, 0, 0, 0, time.Local), false); got != nativeThemes[hoursTheme(23)].page {
+		t.Errorf("hours at 23: %q", got)
 	}
 }

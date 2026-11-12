@@ -42,7 +42,7 @@ function selected(state:EditorState,range:Range){
  if(!first)return [];
  return all.filter(b=>b.depth===first.depth&&b.parent===first.parent&&b.from>=first.from&&b.from<=end);
 }
-function transaction(state:EditorState,from:number,to:number,insert:string,selection:Range,userEvent:string):TransactionSpec{
+function transaction(from:number,to:number,insert:string,selection:Range,userEvent:string):TransactionSpec{
  return {changes:{from,to,insert},selection:{anchor:selection.from,head:selection.to},userEvent,annotations:isolateHistory.of('full'),scrollIntoView:true};
 }
 function siblings(state:EditorState,b:Block){return blocksOf(state).filter(other=>sameBlockLevel(b,other))}
@@ -96,7 +96,7 @@ export function moveBlocksTo(state:EditorState,range:Range,target:Block,place:'b
   if(order[i]===chosen[0])selection.from=peers[lo].from+insert.length;
   insert+=text;if(order[i]===chosen.at(-1))selection.to=peers[lo].from+insert.length;
  }
- return transaction(state,peers[lo].from,peers[hi].to,insert,selection,'move.block');
+ return transaction(peers[lo].from,peers[hi].to,insert,selection,'move.block');
 }
 function bodyOf(text:string,b:Block){
  if(b.kind==='heading')return text.replace(/^ {0,3}#{1,6}(?:[ \t]+|$)/,'').replace(/[ \t]+#+[ \t]*$/,'').replace(/\n {0,3}(?:=+|-+)[ \t]*$/,'');
@@ -118,7 +118,7 @@ function format(text:string,to:BlockConversion,number:number){
   const spec=codeBlock(s),result=s.update(spec).state.doc.toString();return result.endsWith('\n')?result.slice(0,-1):result;
  }
  if(/^h[123]$/.test(to))return s.update(setHeading(s,Number(to[1]),true)).state.doc.toString();
- let result=s.update(blockFormat(s,to as 'bullet'|'ordered'|'task'|'quote',true)).state.doc.toString();
+ let result=s.update(blockFormat(s,to as 'bullet'|'ordered'|'task',true)).state.doc.toString();
  if(to==='ordered')result=result.replace(/^(\s*)\d+\./,(_,indent)=>indent+number+'.');return result;
 }
 export function convertBlocks(state:EditorState,range:Range,to:BlockConversion):TransactionSpec{
@@ -149,7 +149,7 @@ export function duplicateBlocks(state:EditorState,range:Range):TransactionSpec{
  const separator=after?state.sliceDoc(last.to,after.from):before?state.sliceDoc(before.to,first.from):'';
  const gap=separator&&!separator.trim()?separator:first.kind==='listItem'?'\n':'\n\n';
  const text=state.sliceDoc(first.from,last.to),from=last.to+gap.length;
- return transaction(state,last.to,last.to,gap+text,{from,to:from+text.length},'input.block');
+ return transaction(last.to,last.to,gap+text,{from,to:from+text.length},'input.block');
 }
 export function deleteBlocks(state:EditorState,range:Range):TransactionSpec{
  const chosen=selected(state,range);if(!chosen.length)return {};
@@ -159,11 +159,11 @@ export function deleteBlocks(state:EditorState,range:Range):TransactionSpec{
  const before=previous&&!state.sliceDoc(previous.to,first.from).trim()?previous:null,after=following&&!state.sliceDoc(last.to,following.from).trim()?following:null;
  let from=after||!before?first.from:before.to,to=after?after.from:last.to;
  if(!before&&!after&&first.depth>0){if(state.sliceDoc(to,to+1)==='\n')to++;else if(state.sliceDoc(from-1,from)==='\n')from--}
- return transaction(state,from,to,'',{from,to:from},'delete.block');
+ return transaction(from,to,'',{from,to:from},'delete.block');
 }
 
 export function insertParagraphBelow(state:EditorState,range:Range):TransactionSpec{
  const chosen=selected(state,range),last=chosen.at(-1);if(!last)return {};
  const from=last.to,tail=state.sliceDoc(from,Math.min(state.doc.length,from+2)),insert='\n\n'+(tail&&tail!=='\n\n'?'\n':'');
- return transaction(state,from,from,insert,{from:from+2,to:from+2},'input.block');
+ return transaction(from,from,insert,{from:from+2,to:from+2},'input.block');
 }

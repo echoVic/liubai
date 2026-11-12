@@ -293,7 +293,7 @@ func shortcutKeyName(key ui.Key) string {
 
 func displaySettingsShortcut(shortcut string) string {
 	if runtime.GOOS == "darwin" {
-		return strings.NewReplacer("CmdOrCtrl", "⌘", "Ctrl", "⌃", "Alt", "⌥", "Cmd", "⌘", "Shift", "⇧", "Enter", "↵", "Space", "Space", "+", "").Replace(shortcut)
+		return strings.NewReplacer("CmdOrCtrl", "⌘", "Ctrl", "⌃", "Alt", "⌥", "Cmd", "⌘", "Shift", "⇧", "Enter", "↵", "+", "").Replace(shortcut)
 	}
 	return strings.ReplaceAll(strings.ReplaceAll(shortcut, "CmdOrCtrl", "Ctrl"), "Cmd", "Win")
 }

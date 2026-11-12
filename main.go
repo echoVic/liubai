@@ -48,9 +48,24 @@ type Desktop struct {
 	pageReady    atomic.Bool
 }
 
+// openPath opens a file from Finder, a drop or a second launch. Once the page
+// has a document it may hold input not yet sent, so the file is only listed
+// and the page activates it after saving (liubai:opened); before that the
+// file replaces an empty draft at once.
 func (d *Desktop) openPath(path string) {
 	defer d.syncNative("")
-	state, err := d.w.Open(path)
+	var opened Document
+	var err error
+	// Open With in Finder offers any file; only what a drop accepts opens.
+	if !markdownPath(path) {
+		err = messageError("bMarkdownOnly", nil)
+	} else if d.pageReady.Load() {
+		opened, err = d.w.Load(path)
+	} else {
+		var state WorkspaceState
+		state, err = d.w.Open(path)
+		opened = state.Current
+	}
 	if err != nil {
 		if !d.pageReady.Load() || d.native == nil {
 			d.w.notifyMessage(localeMessage{Key: "bOpenFailed", Args: map[string]any{"name": filepath.Base(path), "error": err.Error()}})
@@ -58,9 +73,10 @@ func (d *Desktop) openPath(path string) {
 			_ = openFailed.Broadcast(OpenFailure{Path: path, Error: err.Error()})
 		}
 	} else {
-		d.syncNative(state.Current.Path)
+		d.syncNative(opened.Path)
 		if d.native != nil {
-			_ = documentOpened.Broadcast(state)
+			// The page reads only the id; every window receives the event.
+			_ = documentOpened.Broadcast(WorkspaceState{Current: Document{ID: opened.ID}})
 		}
 	}
 	if d.win != nil {
@@ -77,9 +93,15 @@ func (d *Desktop) State() WorkspaceState {
 func (d *Desktop) Update(e Edit) (Document, error) {
 	doc, err := d.w.Update(e)
 	d.savedNative(e.ID, err)
-	return documentIn(doc, i18n.Locale()), err
+	doc = documentIn(doc, i18n.Locale())
+	// The page keeps its own text; sending it back on every autosave would
+	// copy the whole document each time.
+	doc.Content = ""
+	return doc, err
 }
 func (d *Desktop) SavePosition(id string, p Position) error { return d.w.SavePosition(id, p) }
+
+// Search has no caller in the page (the sidebar filters); scripts/check-search.py tests it through /api.
 func (d *Desktop) Search(query string) (SearchResponse, error) {
 	return d.w.Search(query, i18n.Locale())
 }
@@ -118,6 +140,8 @@ func (d *Desktop) Overwrite(id string) (WorkspaceState, error) {
 	d.savedNative(id, err)
 	return d.currentResult(s, err, false)
 }
+
+// Appearance has no caller in the page (it sends UpdateAppearance); scripts/shoot-themes.py sets themes with it through /api.
 func (d *Desktop) Appearance(p Appearance) error {
 	if err := d.w.Appearance(p); err != nil {
 		return err
@@ -144,6 +168,12 @@ func themeSourceFor(p Appearance, now time.Time) mygo.ThemeSource {
 		return mygo.ThemeDark
 	}
 	return mygo.ThemeLight
+}
+
+// windowBackground paints the window before the page loads, in the
+// background of the theme the page is about to show.
+func windowBackground(p Appearance, now time.Time, systemDark bool) string {
+	return nativeThemes[resolveAppearanceTheme(p, now, systemDark)].page
 }
 
 // syncWindowTheme has Windows draw the window buttons, which sit on the page,
@@ -176,20 +206,27 @@ func (d *Desktop) OpenLinked(id, href string) (WorkspaceState, error) {
 }
 func (d *Desktop) Open(ctx context.Context) (WorkspaceState, error) {
 	defer d.syncNative("")
-	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: locales.BOpenMarkdown(), Filters: []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md", "markdown", "txt"}}}})
+	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: mygo.CallerWindow(ctx), Title: locales.BOpenMarkdown(), Filters: []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md", "markdown", "mdown", "mkd", "txt"}}}})
 	if err != nil {
 		return WorkspaceState{}, err
 	}
 	if len(paths) == 0 {
-		return d.w.State(), nil
+		return valueIn(d.w.State(), i18n.Locale()).(WorkspaceState), nil
 	}
 	s, err := d.w.Open(paths[0])
 	return d.currentResult(s, err, true)
 }
 func (d *Desktop) SaveAs(ctx context.Context, id string) (ExportResult, error) {
 	defer d.syncNative("")
-	state := d.w.State()
-	name := documentFilename(documentIn(state.Current, i18n.Locale()).Title, ".md")
+	// Name the document being saved, without State's side effects (draining notices, checking the disk).
+	d.w.mu.Lock()
+	doc := d.w.docs[id]
+	if doc == nil {
+		d.w.mu.Unlock()
+		return ExportResult{}, messageError("bDocumentMissing", nil)
+	}
+	name := documentFilename(documentIn(*doc, i18n.Locale()).Title, ".md")
+	d.w.mu.Unlock()
 	path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: mygo.CallerWindow(ctx), Title: locales.BSaveMarkdown(), DefaultPath: name, Filters: []mygo.FileFilter{{Name: "Markdown", Extensions: []string{"md"}}}})
 	if err != nil {
 		return ExportResult{}, err
@@ -223,9 +260,14 @@ func (d *Desktop) Export(ctx context.Context, id string, allowMissing bool) (Exp
 	if path == "" {
 		return ExportResult{Cancelled: true}, nil
 	}
-	return d.w.Export(id, path, allowMissing)
+	r, err := d.w.Export(id, path, allowMissing)
+	r.Document = Document{} // the page reads the path and the image counts only
+	return r, err
 }
-func (d *Desktop) Delivery(id string) (Delivery, error) { return d.w.Delivery(id) }
+func (d *Desktop) Delivery(id string) (Delivery, error) {
+	r, err := d.w.Delivery(id)
+	return deliveryIn(r, i18n.Locale()), err
+}
 func (d *Desktop) CopyRich(html, text string) error {
 	if len(html)+len(text) > 64<<20 {
 		return messageError("bCopyTooLarge", nil)
@@ -329,10 +371,27 @@ func (d *Desktop) SetPending(pending bool) {
 		d.native.signal()
 	}
 }
-func (d *Desktop) Reveal(path string) { mygo.Shell.ShowItemInFolder(path) }
-func (d *Desktop) CheckForUpdates()   { updater.CheckForUpdates() }
-func (d *Desktop) About()             { showAbout(locales.In(i18n.Locale())) }
-func (d *Desktop) requestClose()      { _ = desktopAction.Broadcast("close") }
+
+// Reveal shows the quarantine folder State reported. It lies in the
+// workspace, and nothing outside it is revealed for the page.
+func (d *Desktop) Reveal(path string) {
+	if revealable(d.w.root, path) {
+		mygo.Shell.ShowItemInFolder(path)
+	}
+}
+func (d *Desktop) CheckForUpdates() { updater.CheckForUpdates() }
+func (d *Desktop) About()           { showAbout(locales.In(i18n.Locale())) }
+func (d *Desktop) requestClose()    { _ = desktopAction.Broadcast("close") }
+
+func revealable(root, path string) bool {
+	if path == "" {
+		return false
+	}
+	root, e1 := filepath.Abs(root)
+	p, e2 := filepath.Abs(path)
+	rel, e3 := filepath.Rel(root, p)
+	return e1 == nil && e2 == nil && e3 == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
 
 func quitAllowed(allowClose, pending bool) bool { return allowClose || !pending }
 
@@ -353,13 +412,71 @@ func showAbout(msgs locales.Messages) {
 // and on Windows the WebView2 profile. Windows also keeps the chosen language
 // in PathUserData, and a second launch finds the first by the lock, so there
 // the name is mygo.json's in every language and only the window title is
-// localized. macOS keeps the language in the app's defaults and hands
-// documents to the running app.
+// localized. macOS keeps the language in the app's defaults, hands
+// documents to the running app, and gets PathUserData from pinUserData.
 func appNameFor(goos string, msgs locales.Messages) string {
 	if goos == "darwin" {
 		return msgs.BMenuAppName()
 	}
 	return "Liubai"
+}
+
+// pinUserData returns config/Liubai for PathUserData. MyGo would put its
+// state under App.Name(), which on macOS follows the language, so switching
+// language started window positions, Open Recent and the update choices
+// afresh. Each file there comes over from a localized folder when that copy
+// was written last, and the copy it displaces takes its place, so nothing is
+// deleted and a launch in an older version still finds its own.
+func pinUserData(config string, names []string) (string, error) {
+	dir := filepath.Join(config, "Liubai")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	for _, name := range names {
+		if name == "Liubai" || name == "" || filepath.Base(name) != name {
+			continue
+		}
+		for _, file := range []string{"window-state.json", "recent-documents.json", "updater.json"} {
+			adoptUserFile(filepath.Join(config, name, file), filepath.Join(dir, file))
+		}
+	}
+	return dir, nil
+}
+
+// adoptUserFile swaps src and dst when src is newer, in three renames
+// through src+".moving"; a launch cut short between them is completed or
+// undone by the next.
+func adoptUserFile(src, dst string) {
+	held := src + ".moving"
+	if _, err := os.Stat(held); err == nil {
+		if _, err := os.Stat(dst); os.IsNotExist(err) {
+			_ = os.Rename(held, dst)
+		} else if _, err := os.Stat(src); os.IsNotExist(err) {
+			_ = os.Rename(held, src)
+		}
+	}
+	from, err := os.Stat(src)
+	if err != nil || !from.Mode().IsRegular() {
+		return
+	}
+	to, err := os.Stat(dst)
+	exists := err == nil
+	if exists && !from.ModTime().After(to.ModTime()) || !exists && !os.IsNotExist(err) {
+		return
+	}
+	if os.Rename(src, held) != nil {
+		return
+	}
+	if exists && os.Rename(dst, src) != nil {
+		_ = os.Rename(held, src)
+		return
+	}
+	if os.Rename(held, dst) != nil {
+		if exists {
+			_ = os.Rename(src, dst)
+		}
+		_ = os.Rename(held, src)
+	}
 }
 
 // menuTemplateFor follows the habits of each system. macOS has the app menu
@@ -418,6 +535,17 @@ func main() {
 	if *webAddr == "" {
 		if !mygo.App.RequestSingleInstanceLock() {
 			return
+		}
+		if runtime.GOOS == "darwin" {
+			var names []string
+			for _, l := range locales.Catalog.Languages() {
+				names = append(names, appNameFor(runtime.GOOS, locales.In(l)))
+			}
+			if config, err := os.UserConfigDir(); err == nil {
+				if dir, err := pinUserData(config, names); err == nil {
+					mygo.App.SetPath(mygo.PathUserData, dir)
+				}
+			}
 		}
 	}
 	root := *dataDir
@@ -487,17 +615,7 @@ func main() {
 				}
 			}()
 		}
-		dark := darkTheme(appearance.Theme)
-		switch appearance.Auto {
-		case "system", "seasons":
-			dark = mygo.Theme.IsDark()
-		case "hours":
-			dark = darkTheme(hoursTheme(time.Now().Hour()))
-		}
-		bg := "#e9e9e7"
-		if dark {
-			bg = "#191b1a"
-		}
+		bg := windowBackground(appearance, time.Now(), mygo.Theme.IsDark())
 		// On Windows the window buttons are as tall as the 64px top bar; macOS ignores TitleBarHeight.
 		d.win = mygo.NewWindow(mygo.WindowOptions{Title: locales.BMenuAppName(), URL: "/", Width: 1120, Height: 820, MinWidth: 680, MinHeight: 540, Hidden: true, TitleBarStyle: mygo.TitleBarHidden, TitleBarHeight: 64, BackgroundColor: bg, StateKey: "liubai-editor"})
 		go d.native.run(d.win)
@@ -685,12 +803,6 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			if e == nil {
 				e = d.SetLocale(tag)
 			}
-		case "Capture":
-			var text string
-			e = arg(0, &text)
-			if e == nil {
-				value, e = d.Capture(text)
-			}
 		case "SaveCapture", "AppendCapture":
 			var note CaptureRequest
 			e = arg(0, &note)
@@ -724,7 +836,8 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			var x Edit
 			e = arg(0, &x)
 			if e == nil {
-				value, e = d.Update(x)
+				// valueIn below titles the document from its text, so it stays in.
+				value, e = d.w.Update(x)
 			}
 		case "SavePosition":
 			var id string
@@ -810,7 +923,9 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			var id string
 			e = arg(0, &id)
 			if e == nil {
-				value, e = d.Delivery(id)
+				var r Delivery
+				r, e = d.w.Delivery(id)
+				value = deliveryIn(r, req.Locale)
 			}
 		case "ExportBrowser":
 			var id string

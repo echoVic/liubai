@@ -1,4 +1,5 @@
-import {Document,Paragraph,TextRun,Tab,ExternalHyperlink,InternalHyperlink,Bookmark,ImageRun,Table,TableRow,TableCell,FootnoteReferenceRun,Packer,HeadingLevel,AlignmentType,LevelFormat,BorderStyle,WidthType,Math as WordMath,MathRun,MathFraction,MathSuperScript,MathSubScript,MathSubSuperScript,MathRadical,MathLimitLower,MathLimitUpper,BuilderElement,StringContainer,type MathComponent,type ParagraphChild,type IRunOptions,type IParagraphOptions,type INumberingOptions} from 'docx';
+import {Document,Paragraph,TextRun,Tab,ExternalHyperlink,InternalHyperlink,Bookmark,ImageRun,Table,TableRow,TableCell,FootnoteReferenceRun,Packer,HeadingLevel,AlignmentType,LevelFormat,BorderStyle,WidthType,Math as WordMath,MathRun,MathFraction,MathSuperScript,MathSubScript,MathSubSuperScript,MathRadical,MathLimitLower,MathLimitUpper,BuilderElement,StringContainer,type MathComponent,type MathRunOptions,type ParagraphChild,type IRunOptions,type IParagraphOptions,type INumberingOptions} from 'docx';
+import {dataURLBytes} from './data-url';
 
 // A4, one-inch (Word Normal) margins. Word uses twips; drawings use pixels at 96 dpi.
 const pageWidth=11906,pageHeight=16838,margin=1440,textWidth=pageWidth-margin*2;
@@ -12,12 +13,17 @@ interface Context {level:number;indent?:number;box?:boolean;fill?:string;borderC
 // docx's public Math union omits extensible OMML elements (matrix/accent/limits). Its XML builder
 // supplies those schema elements inside the same native Math tree; no raw XML or HTML is injected.
 const mathElement=(name:string,children:readonly MathComponent[]=[],values:Record<string,string>={}):MathComponent=>new BuilderElement({name,children,attributes:Object.fromEntries(Object.entries(values).map(([key,value])=>[key,{key,value}]))}) as MathComponent;
+const variants:Record<string,Pick<MathRunOptions,'style'|'script'>>={normal:{style:'plain'},bold:{style:'bold'},italic:{style:'italic'},'bold-italic':{style:'boldItalic'},'double-struck':{script:'doubleStruck'},script:{script:'script'},'bold-script':{script:'script',style:'bold'},fraktur:{script:'fraktur'},'bold-fraktur':{script:'fraktur',style:'bold'},'sans-serif':{script:'sansSerif'},'bold-sans-serif':{script:'sansSerif',style:'bold'},'sans-serif-italic':{script:'sansSerif',style:'italic'},'sans-serif-bold-italic':{script:'sansSerif',style:'boldItalic'},monospace:{script:'monospace'}};
 function mathML(node:Element):MathComponent[]{
  const children=[...node.children],parts=(n:Element)=>mathML(n),child=(i:number)=>{if(!children[i])throw Error('math arity');return parts(children[i])};
  switch(node.localName){
   case 'math':case 'mrow':case 'mstyle':case 'mtd':return children.flatMap(parts);
   case 'semantics':return child(0);
-  case 'mi':case 'mn':case 'mo':case 'mtext':return [new MathRun({text:node.textContent||'',style:node.localName==='mi'?'italic':'plain'})];
+  case 'mi':case 'mn':case 'mo':case 'mtext':{
+   // MathML draws a one-letter identifier in italic and everything else upright unless mathvariant says otherwise.
+   const text=node.textContent||'',variant=node.getAttribute('mathvariant');
+   return [new MathRun({text,...(variant&&variants[variant]||{style:node.localName==='mi'&&[...text].length===1?'italic':'plain'})})];
+  }
   case 'mspace':return [new MathRun(' ')];
   case 'mfrac':return [new MathFraction({numerator:child(0),denominator:child(1),...(node.getAttribute('linethickness')==='0px'?{type:'noBar' as const}:{})})];
   case 'msup':return [new MathSuperScript({children:child(0),superScript:child(1)})];
@@ -43,18 +49,15 @@ function formula(element:Element):ParagraphChild{
  const math=element.querySelector('math'),tex=element.querySelector('annotation[encoding="application/x-tex"]')?.textContent||element.textContent||'';
  try{if(!math)throw Error('missing MathML');return new WordMath({children:mathML(math)})}catch{return new TextRun({text:tex,font:codeFont,size:20})}
 }
-function bytesFromURL(src:string):Uint8Array{
- const comma=src.indexOf(','),body=src.slice(comma+1),binary=/;base64/i.test(src.slice(0,comma))?atob(body):decodeURIComponent(body);
- return /;base64/i.test(src.slice(0,comma))?Uint8Array.from(binary,c=>c.charCodeAt(0)):new TextEncoder().encode(binary);
-}
+function bytesFromURL(src:string):Uint8Array{const data=dataURLBytes(src);if(!data)throw Error('Unreadable image');return data.bytes}
 async function decoded(src:string):Promise<HTMLImageElement>{
  return new Promise((resolve,reject)=>{const image=new Image(),timer=setTimeout(()=>reject(Error('Image decode timeout')),10000);image.onload=()=>{clearTimeout(timer);resolve(image)};image.onerror=()=>{clearTimeout(timer);reject(Error('Image decode failed'))};image.src=src});
 }
 async function imageRun(element:Element,width:number):Promise<ImageRun>{
  const svg=element.localName==='svg',view=svg?(element.getAttribute('viewBox')||'').trim().split(/[ ,]+/).map(Number):[],source=element.getAttribute('src')||'';
  // Percent encoding avoids both btoa's Latin-1 restriction and argument limits on large diagrams.
- let src=svg?'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(element)):source;
- if(!src.startsWith('data:'))throw Error('Unresolved image');
+ let src=source;
+ if(!svg&&!src.startsWith('data:'))throw Error('Unresolved image');
  let naturalWidth=0,naturalHeight=0;
  if(svg){
   naturalWidth=parseFloat(element.getAttribute('width')||'')||view[2]||640;naturalHeight=parseFloat(element.getAttribute('height')||'')||view[3]||320;
@@ -65,7 +68,7 @@ async function imageRun(element:Element,width:number):Promise<ImageRun>{
  }
  const image=await decoded(src);naturalWidth ||= image.naturalWidth;naturalHeight ||= image.naturalHeight;
  const explicit=svg?naturalWidth:Number(element.getAttribute('width'))||naturalWidth,displayWidth=Math.min(explicit,width/15),displayHeight=naturalHeight*displayWidth/naturalWidth;
- const mime=/^data:image\/([^;,]+)/i.exec(src)?.[1]?.toLowerCase(),type=mime==='jpeg'||mime==='jpg'?'jpg':mime==='gif'?'gif':mime==='png'?'png':'png';
+ const mime=/^data:image\/([^;,]+)/i.exec(src)?.[1]?.toLowerCase(),type=mime==='jpeg'||mime==='jpg'?'jpg':mime==='gif'?'gif':'png';
  let data:Uint8Array;
  if(!svg&&['png','jpeg','jpg','gif'].includes(mime||''))data=bytesFromURL(src);
  else{

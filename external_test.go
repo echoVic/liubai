@@ -323,3 +323,86 @@ func TestExternalMethodsRejectUnknownOrPathlessDocuments(t *testing.T) {
 		}
 	}
 }
+
+// A file is one document however its path is spelt: in another letter case
+// on a case-insensitive volume, or through another link to the same file.
+func TestOpenFindsTheDocumentUnderAnotherSpelling(t *testing.T) {
+	w := workspace(t)
+	p, d := openFile(t, w, "README.md", "x\n")
+	dir := filepath.Dir(p)
+	from := filepath.Join(dir, "from.md")
+	if err := os.WriteFile(from, []byte("[r](readme.md)\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	spellings := map[string]func() (WorkspaceState, error){}
+	if lower := filepath.Join(dir, "readme.md"); regularFile(lower) {
+		spellings["other case"] = func() (WorkspaceState, error) { return w.Open(lower) }
+		spellings["link in other case"] = func() (WorkspaceState, error) {
+			s, err := w.Open(from)
+			if err != nil {
+				return s, err
+			}
+			return w.OpenLinked(s.Current.ID, "readme.md")
+		}
+	}
+	if info, err := os.Stat(p); err == nil && fileIdentity(info) != 0 {
+		if err := os.Link(p, filepath.Join(dir, "alias.md")); err == nil {
+			spellings["hard link"] = func() (WorkspaceState, error) { return w.Open(filepath.Join(dir, "alias.md")) }
+		}
+	}
+	if len(spellings) == 0 {
+		t.Skip("case-sensitive volume without hard links")
+	}
+	for name, open := range spellings {
+		s, err := open()
+		if err != nil || s.Current.ID != d.ID {
+			t.Errorf("%s: opened %q as another document: %v", name, s.Current.Path, err)
+		}
+	}
+	for _, other := range w.docs {
+		if other.ID != d.ID && filepath.Base(other.Path) != "from.md" {
+			t.Errorf("extra document %q", other.Path)
+		}
+	}
+}
+
+// Each failed Overwrite would otherwise add another disk-version copy.
+func TestFailedOverwriteLeavesNoBackup(t *testing.T) {
+	for _, failure := range []string{"picture", "folder"} {
+		t.Run(failure, func(t *testing.T) {
+			if failure == "folder" {
+				requireUnreadableMode(t)
+				requirePermissionChecks(t)
+			}
+			w := workspace(t)
+			p, d := openFile(t, w, "a.md", "one\n")
+			rewrite(t, p, "theirs\n")
+			content := "mine\n"
+			if failure == "picture" {
+				content = "mine ![x](liubai-asset:missing.png)\n"
+			}
+			if got, _ := w.Update(Edit{ID: d.ID, Revision: d.Revision, Content: content}); !got.Conflict {
+				t.Fatal("expected conflict")
+			}
+			if failure == "folder" {
+				if err := os.Chmod(filepath.Dir(p), 0555); err != nil {
+					t.Fatal(err)
+				}
+				defer os.Chmod(filepath.Dir(p), 0755)
+			}
+			drafts, _ := filepath.Glob(filepath.Join(w.root, "drafts", "*.json"))
+			for range 3 {
+				if _, err := w.Overwrite(d.ID); err == nil {
+					t.Fatal("overwrite succeeded")
+				}
+			}
+			after, _ := filepath.Glob(filepath.Join(w.root, "drafts", "*.json"))
+			if len(w.docs) != 1 || len(after) != len(drafts) {
+				t.Fatalf("documents %d, drafts %d -> %d", len(w.docs), len(drafts), len(after))
+			}
+			if b, _ := os.ReadFile(p); string(b) != "theirs\n" {
+				t.Fatalf("disk version lost: %q", b)
+			}
+		})
+	}
+}

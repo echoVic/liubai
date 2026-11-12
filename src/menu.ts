@@ -15,7 +15,7 @@ export function attachMenu(button:HTMLElement,menu:HTMLElement,onSelect:(id:stri
  button.addEventListener('keydown',e=>{if(['Enter',' ','ArrowDown'].includes(e.key)&&!(e.key==='ArrowDown'&&button.closest('[role=menu]'))){e.preventDefault();e.stopPropagation();open()}},{signal});
  menu.addEventListener('keydown',e=>{
   const all=items(),index=all.indexOf(document.activeElement as HTMLElement);let next=-1;
-  if(e.key==='ArrowDown')next=(index+1)%all.length;if(e.key==='ArrowUp')next=(index+all.length-1)%all.length;if(e.key==='Home')next=0;if(e.key==='End')next=all.length-1;
+  if(e.key==='ArrowDown')next=(index+1)%all.length;if(e.key==='ArrowUp')next=index<0?all.length-1:(index+all.length-1)%all.length;if(e.key==='Home')next=0;if(e.key==='End')next=all.length-1;
   if(next>=0){e.preventDefault();e.stopPropagation();all[next]?.focus()}
   if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();all[index]?.click()}
   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close(true)}

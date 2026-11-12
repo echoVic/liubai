@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
+	"image"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -89,6 +92,88 @@ func TestImportImageUsesReadableDestination(t *testing.T) {
 	}
 	if _, err := w.ReadImage(d.ID, "%E6%88%91%E7%9A%84%20%E7%AC%94%E8%AE%B0.assets/"+im.Name); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func otherPNG() []byte {
+	var b bytes.Buffer
+	_ = png.Encode(&b, image.NewNRGBA(image.Rect(0, 0, 5, 7)))
+	return b.Bytes()
+}
+
+// A picture pasted into a saved document lives beside it, where another
+// program may edit it: saving the text leaves that file as it is.
+func TestExternallyEditedPastedImageKeepsSaving(t *testing.T) {
+	w := workspace(t)
+	p, d := openFile(t, w, "note.md", "text\n")
+	im, err := w.ImportImage(d.ID, "a.png", base64.StdEncoding.EncodeToString(tinyPNG()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := w.Update(Edit{ID: d.ID, Revision: d.Revision, Content: "text\n\n![a](" + im.Destination + ")\n"})
+	if err != nil || got.StatusCode != "fileSaved" {
+		t.Fatalf("first save: %s %v", got.StatusCode, err)
+	}
+	onDisk := filepath.Join(filepath.Dir(p), filepath.FromSlash(im.Destination))
+	if err := os.WriteFile(onDisk, otherPNG(), 0644); err != nil {
+		t.Fatal(err)
+	}
+	got, err = w.Update(Edit{ID: d.ID, Revision: got.Revision, Content: got.Content + "more\n"})
+	if err != nil || got.StatusCode != "fileSaved" {
+		t.Fatalf("save after the picture changed: %s %v", got.StatusCode, err)
+	}
+	if b, _ := os.ReadFile(p); !strings.Contains(string(b), "more") || !strings.Contains(string(b), im.Destination) {
+		t.Fatalf("text not saved: %q", b)
+	}
+	if b, _ := os.ReadFile(onDisk); !bytes.Equal(b, otherPNG()) {
+		t.Fatal("edited picture overwritten")
+	}
+	if r, err := w.ReadImage(d.ID, im.Destination); err != nil || r.URL != "data:image/png;base64,"+base64.StdEncoding.EncodeToString(otherPNG()) {
+		t.Fatalf("editor does not show the picture on disk: %v", err)
+	}
+	// Pasting the original again gives it a file of its own.
+	again, err := w.ImportImage(d.ID, "a.png", base64.StdEncoding.EncodeToString(tinyPNG()))
+	if err != nil || again.Destination == im.Destination {
+		t.Fatalf("paste again: %+v %v", again, err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(filepath.Dir(p), filepath.FromSlash(again.Destination))); !bytes.Equal(b, tinyPNG()) {
+		t.Fatal("pasted picture not written")
+	}
+	got, err = w.Update(Edit{ID: d.ID, Revision: got.Revision, Content: got.Content + "![b](" + again.Destination + ")\n"})
+	if err != nil || got.StatusCode != "fileSaved" {
+		t.Fatalf("save with both pictures: %s %v", got.StatusCode, err)
+	}
+	if r, err := w.ReadImage(d.ID, again.Destination); err != nil || r.URL != "data:image/png;base64,"+base64.StdEncoding.EncodeToString(tinyPNG()) {
+		t.Fatalf("second paste shows another picture: %v", err)
+	}
+}
+
+// Autosave must not read every pasted picture again once it is beside the
+// file: with the cached copies gone, saving still succeeds.
+func TestAutosaveSkipsPicturesAlreadyBesideTheFile(t *testing.T) {
+	w := workspace(t)
+	d := w.State().Current
+	im, err := w.ImportImage(d.ID, "a.png", base64.StdEncoding.EncodeToString(tinyPNG()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	edit(t, w, "![a]("+im.Destination+")\n")
+	p := filepath.Join(t.TempDir(), "note.md")
+	if _, err := w.SaveAs(d.ID, p); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(w.root, "assets", d.ID)); err != nil {
+		t.Fatal(err)
+	}
+	// The draft destination, as undo brings it back, and the saved one.
+	for _, content := range []string{"![a](" + im.Destination + ")\nmore\n", "![a](note.assets/" + im.Name + ")\nagain\n"} {
+		got, err := w.Update(Edit{ID: d.ID, Revision: w.docs[d.ID].Revision, Content: content})
+		if err != nil || got.StatusCode != "fileSaved" {
+			t.Fatalf("%q: %s %v", content, got.StatusCode, err)
+		}
+		if b, _ := os.ReadFile(p); strings.Contains(string(b), "liubai-asset:") || !strings.Contains(string(b), "note.assets/"+im.Name) {
+			t.Fatalf("saved %q", b)
+		}
 	}
 }
 

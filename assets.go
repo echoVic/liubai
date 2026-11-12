@@ -117,7 +117,30 @@ func external(dest string) bool {
 	u, e := url.Parse(dest)
 	return e == nil && (u.Scheme == "https" || u.Scheme == "http" || strings.HasPrefix(dest, "//"))
 }
+
+// ownAssetFile is the file dest names when it sits in the <name>.assets
+// folder beside the document at docPath. The app puts pasted pictures there,
+// and from then on the file on disk, perhaps edited by another program, is
+// the picture.
+func ownAssetFile(docPath, dest string) string {
+	if docPath == "" {
+		return ""
+	}
+	assetDir := strings.TrimSuffix(filepath.Base(docPath), filepath.Ext(docPath)) + ".assets"
+	name, ok := strings.CutPrefix(canonicalDestination(dest), assetDir+"/")
+	if !ok || name == "" || name == "." || name == ".." || strings.ContainsAny(name, "/\\") {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(docPath), assetDir, name)
+}
+func regularFile(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.Mode().IsRegular()
+}
 func (w *Workspace) imagePath(d *Document, dest string) (string, error) {
+	if own := ownAssetFile(d.Path, dest); own != "" && regularFile(own) {
+		return own, nil
+	}
 	if alias, ok := d.ImageAliases[dest]; ok {
 		dest = alias
 	} else {
@@ -174,7 +197,10 @@ func picture(path string) ([]byte, imageInfo, error) {
 	}
 	return b, info, nil
 }
-func (w *Workspace) ImportImage(id, name, encoded string) (ImageResult, error) {
+
+// ImportImage stores a pasted or dropped picture under a name taken from its
+// content; the page's file name for it (the second argument) is not used.
+func (w *Workspace) ImportImage(id, _, encoded string) (ImageResult, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	d := w.docs[id]
@@ -192,30 +218,37 @@ func (w *Workspace) ImportImage(id, name, encoded string) (ImageResult, error) {
 	if err != nil {
 		return ImageResult{}, messageError("bUnsupportedImage", nil)
 	}
-	name = digest(b)[:24] + "." + info.Format
+	cacheName := digest(b)[:24] + "." + info.Format
+	name := cacheName
 	dir := filepath.Join(w.root, "assets", id)
 	if err = os.MkdirAll(dir, 0700); err != nil {
 		return ImageResult{}, err
 	}
-	if err = atomicWrite(filepath.Join(dir, name), b, 0600); err != nil {
+	if err = atomicWrite(filepath.Join(dir, cacheName), b, 0600); err != nil {
 		return ImageResult{}, err
 	}
-	dest := "liubai-asset:" + name
+	dest := "liubai-asset:" + cacheName
 	if d.Path != "" {
 		assetDir := strings.TrimSuffix(filepath.Base(d.Path), filepath.Ext(d.Path)) + ".assets"
 		diskDir := filepath.Join(filepath.Dir(d.Path), assetDir)
 		if err = os.MkdirAll(diskDir, 0755); err != nil {
 			return ImageResult{}, err
 		}
-		if err = writeImageExclusive(filepath.Join(diskDir, name), b); err != nil {
+		// An earlier paste of this picture may have been edited on disk since; it stays.
+		diskName, err := uniqueAssetName(diskDir, cacheName, b)
+		if err != nil {
 			return ImageResult{}, err
 		}
-		dest = assetDir + "/" + name
+		if err = writeImageExclusive(filepath.Join(diskDir, diskName), b); err != nil {
+			return ImageResult{}, err
+		}
+		name = diskName
+		dest = assetDir + "/" + diskName
 		d.ImageAliases = maps.Clone(d.ImageAliases)
 		if d.ImageAliases == nil {
 			d.ImageAliases = map[string]string{}
 		}
-		d.ImageAliases[dest] = "liubai-asset:" + name
+		d.ImageAliases[dest] = "liubai-asset:" + cacheName
 		if err = w.persist(d); err != nil {
 			return ImageResult{}, err
 		}
@@ -255,37 +288,61 @@ func (w *Workspace) ReadImage(id, dest string) (ImageResult, error) {
 // Rewrites destination tokens only, preserving Markdown and fenced/inline code.
 // Targets come from the Markdown parser, including reference-style images.
 func rewriteImages(source string, targets map[string]string) string {
-	for _, r := range imageReplacements(source, targets) {
+	return applyReplacements(source, imageReplacements(source, targets))
+}
+
+// applyReplacements takes them in imageReplacements' order, last first.
+func applyReplacements(source string, reps []replacement) string {
+	for _, r := range reps {
 		source = source[:r.start] + r.value + source[r.end:]
 	}
 	return source
 }
+
+// codeLines holds the start of every line inside a code block. The parser
+// decides, not the indentation: a line of a list item indented four spaces
+// is text, and a fence inside a list item or quote is code.
+func codeLines(source string) map[int]bool {
+	lines := map[int]bool{}
+	mark := func(at int) { lines[strings.LastIndexByte(source[:at], '\n')+1] = true }
+	doc := goldmark.DefaultParser().Parse(text.NewReader([]byte(source)))
+	_ = ast.Walk(doc, func(n ast.Node, enter bool) (ast.WalkStatus, error) {
+		if !enter {
+			return ast.WalkContinue, nil
+		}
+		switch node := n.(type) {
+		case *ast.FencedCodeBlock:
+			if node.Info != nil {
+				mark(node.Info.Segment.Start)
+			}
+		case *ast.CodeBlock:
+		default:
+			return ast.WalkContinue, nil
+		}
+		for i := 0; i < n.Lines().Len(); i++ {
+			mark(n.Lines().At(i).Start)
+		}
+		return ast.WalkSkipChildren, nil
+	})
+	return lines
+}
+
+var linkDefinition = regexp.MustCompile(`^[ \t>]*\[[^\]]+\]:[ \t]*`)
+
 func imageReplacements(source string, targets map[string]string) []replacement {
 	if len(targets) == 0 {
 		return nil
 	}
 	reps := []replacement{}
-	inFence := ""
+	code := codeLines(source)
 	offset := 0
-	definition := regexp.MustCompile(`^ {0,3}\[[^\]]+\]:[ \t]*`)
 	for _, line := range strings.SplitAfter(source, "\n") {
-		trimmed := strings.TrimLeft(line, " ")
-		if len(line)-len(trimmed) <= 3 && (strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~")) {
-			ch := string(trimmed[0])
-			if inFence == "" {
-				inFence = ch
-			} else if inFence == ch {
-				inFence = ""
-			}
-			offset += len(line)
-			continue
-		}
-		if inFence != "" || strings.HasPrefix(line, "    ") || strings.HasPrefix(line, "\t") {
+		if code[offset] {
 			offset += len(line)
 			continue
 		}
 		starts := []int{}
-		if m := definition.FindStringIndex(line); m != nil {
+		if m := linkDefinition.FindStringIndex(line); m != nil {
 			starts = append(starts, m[1])
 		}
 		tick := 0
@@ -470,6 +527,15 @@ func (w *Workspace) materialize(d *Document, path string, all bool) (string, err
 		if !all && !strings.HasPrefix(dest, "liubai-asset:") && d.ImageAliases[dest] == "" {
 			continue
 		}
+		// A picture already beside the file is left as it is, even when another
+		// program has edited it, and is not read again on every save.
+		if own := ownAssetFile(path, dest); own != "" && regularFile(own) {
+			continue
+		}
+		if name, ok := strings.CutPrefix(dest, "liubai-asset:"); ok && name != "" && name != ".." && !strings.ContainsAny(name, "/\\") && regularFile(filepath.Join(filepath.Dir(path), assetDir, name)) {
+			targets[dest] = assetDir + "/" + name
+			continue
+		}
 		source, err := w.imagePath(d, dest)
 		if err != nil {
 			return "", err
@@ -487,6 +553,10 @@ func (w *Workspace) materialize(d *Document, path string, all bool) (string, err
 			return "", err
 		}
 		targets[dest] = assetDir + "/" + name
+	}
+	if len(targets) == 0 {
+		// Nothing to convert: the text stays as it is, and the pass above met no draft image in it.
+		return d.Content, nil
 	}
 	out := rewriteImages(d.Content, targets)
 	if err := validateRewrittenImages(out, targets); err != nil {
@@ -535,20 +605,26 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 	if filepath.Ext(p) == "" {
 		p += ".md"
 	}
+	if err = os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+		return ExportResult{}, err
+	}
+	if p, err = resolvedTarget(p); err != nil {
+		return ExportResult{}, err
+	}
 	if info, e := os.Lstat(p); e == nil && info.Mode()&os.ModeSymlink != 0 {
 		return ExportResult{}, messageError("bRegularFilePathRequired", nil)
 	}
 	if err := checkWriteTarget(p); err != nil {
 		return ExportResult{}, err
 	}
-	if p == d.Path {
+	if owner := w.docFor(p); owner == d {
+		p = d.Path
 		w.check(d, false)
 		if d.Conflict {
 			return ExportResult{}, messageError("bExternalConflict", nil)
 		}
-	}
-	if err = os.MkdirAll(filepath.Dir(p), 0755); err != nil {
-		return ExportResult{}, err
+	} else if owner != nil {
+		return ExportResult{}, messageError("bFileOpenInAnotherDocument", nil)
 	}
 	sameDir := false
 	if d.Path != "" {
@@ -644,12 +720,13 @@ func (w *Workspace) SaveAs(id, path string) (ExportResult, error) {
 		aliases[targets[dest]] = "liubai-asset:" + cacheName
 	}
 	clone := *d
-	clone.Content = rewriteImages(d.Content, targets)
+	reps := imageReplacements(d.Content, targets)
+	clone.Content = applyReplacements(d.Content, reps)
 	if err := validateRewrittenImages(clone.Content, targets); err != nil {
 		return ExportResult{}, err
 	}
 	changes := []TextChange{}
-	for _, change := range imageReplacements(d.Content, targets) {
+	for _, change := range reps {
 		changes = append(changes, TextChange{len(utf16.Encode([]rune(d.Content[:change.start]))), len(utf16.Encode([]rune(d.Content[:change.end]))), change.value})
 	}
 	clone.Path = p

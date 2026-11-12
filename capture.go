@@ -155,7 +155,6 @@ type captureController struct {
 	loginApplied   bool
 	toggle         func()
 	setOpenAtLogin func(bool) error
-	errorText      string
 	lastError      error
 }
 
@@ -187,9 +186,5 @@ func (c *captureController) apply(p CaptureSettings) error {
 	}
 	err := errors.Join(shortcutErr, loginErr)
 	c.lastError = err
-	c.errorText = ""
-	if err != nil {
-		c.errorText = err.Error()
-	}
 	return err
 }

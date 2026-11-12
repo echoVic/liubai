@@ -16,6 +16,10 @@ var themeCSS string
 type nativeTheme struct {
 	ui.Theme
 	font string
+	// page is the page's own background, for the window before it loads.
+	page string
+	// muted is the track of a segmented control, as on the page.
+	muted ui.Color
 }
 
 func (t nativeTheme) withPreferences(p ui.Preferences) nativeTheme {
@@ -57,7 +61,10 @@ var nativeThemes = func() map[string]nativeTheme {
 			t = ui.DarkTheme()
 		}
 		t.Background, t.Surface = colour("popover"), colour("card")
-		t.SurfaceHover, t.SurfacePressed = colour("muted"), colour("accent")
+		// Hover and press show on Surface and on Background alike: muted is
+		// popover in nord or card in solare, accent is neither in any theme.
+		t.SurfaceHover = colour("accent")
+		t.SurfacePressed = t.SurfaceHover.Mix(colour("foreground"), 0.1)
 		t.Border, t.Text, t.TextMuted = colour("border"), colour("foreground"), colour("muted-foreground")
 		t.Accent, t.AccentText = colour("primary"), colour("primary-foreground")
 		t.AccentHover, t.AccentPressed = t.Accent, t.Accent
@@ -70,7 +77,8 @@ var nativeThemes = func() map[string]nativeTheme {
 				font = "Georgia"
 			}
 		}
-		result[spec.ID] = nativeTheme{Theme: *t, font: font}
+		colour("background") // panics, as for the other roles, when a theme lacks it
+		result[spec.ID] = nativeTheme{Theme: *t, font: font, page: roles["--background"], muted: colour("muted")}
 	}
 	return result
 }()

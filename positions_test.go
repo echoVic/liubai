@@ -39,10 +39,10 @@ func TestSavePositionClampsAndFlushRetries(t *testing.T) {
 	if err := os.Mkdir(path, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.SavePosition(d.ID, Position{Anchor: -1, Head: 99, Scroll: math.Inf(1), Source: true}); err == nil {
+	if err := w.SavePosition(d.ID, Position{Anchor: -1, Head: 99, Scroll: math.Inf(1)}); err == nil {
 		t.Fatal("expected position write failure")
 	}
-	if got := w.State().Current; got.Position != (Position{Head: 3, Source: true}) || got.Revision != d.Revision || got.Updated != d.Updated {
+	if got := w.State().Current; got.Position != (Position{Head: 3}) || got.Revision != d.Revision || got.Updated != d.Updated {
 		t.Fatalf("position not clamped or content metadata changed: %+v", got)
 	}
 	if err := os.Remove(path); err != nil {
@@ -52,7 +52,7 @@ func TestSavePositionClampsAndFlushRetries(t *testing.T) {
 		t.Fatal(err)
 	}
 	reopened, err := openWorkspace(w.root)
-	if err != nil || reopened.State().Current.Position != (Position{Head: 3, Source: true}) {
+	if err != nil || reopened.State().Current.Position != (Position{Head: 3}) {
 		t.Fatalf("flush did not restore position: %v", err)
 	}
 	for _, scroll := range []float64{-1, math.NaN(), math.Inf(-1)} {

@@ -6,13 +6,13 @@ import {isolateHistory} from '@codemirror/commands';
 import {syntaxTree} from '@codemirror/language';
 import type {Tree} from '@lezer/common';
 import {blockAt,deleteBlocks} from './blocks';
+import {containerPrefix} from './editing';
 
 export interface ImageModel {src:string;alt:string;title?:string;width?:number;height?:number;align:'left'|'center'|'right'}
 export type ImageAction='resize'|'left'|'center'|'right'|'original'|'alt'|'delete';
 export interface MathRange {from:number;to:number;source:string}
-export interface ImageRange {from:number;to:number;raw:string;image:ImageModel;quotes:number;listEms:number}
-const parser=new MarkdownIt(),decode=parser.utils.unescapeAll;
-const escapeHTML=(s:string)=>s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+export interface ImageRange {from:number;to:number;raw:string;quotes:number;listEms:number}
+const parser=new MarkdownIt(),decode=parser.utils.unescapeAll,escapeHTML=parser.utils.escapeHtml;
 const escapeMarkdown=(s:string)=>s.replace(/\\/g,'\\\\').replace(/[\[\]*_`!~]/g,'\\$&').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\r\n]/g,' ');
 export function imageAltText(tokens:Token[]):string{return tokens.map(token=>token.type==='image'?imageAltText(token.children||[]):token.type==='math_inline'?'$'+token.content+'$':['text','text_special','code_inline','html_inline'].includes(token.type)?token.content:['softbreak','hardbreak'].includes(token.type)?'\n':'').join('')}
 const parsed=new Map<string,ImageModel|null>();
@@ -22,12 +22,12 @@ export function parseImage(raw:string):ImageModel|null{
  const image=readImage(raw);if(parsed.size>=512)parsed.clear();parsed.set(raw,image);return image;
 }
 function readImage(raw:string):ImageModel|null{
- if(!/^\s*(?:!\[|<img\b|<p\b)/i.test(raw))return null;
  let text=raw.trim(),align:ImageModel['align']='left';
- const wrapper=/^<p\s+align\s*=\s*["'](left|center|right)["']\s*>\s*([\s\S]*?)\s*<\/p>$/i.exec(text);
- if(wrapper){align=wrapper[1].toLowerCase() as ImageModel['align'];text=wrapper[2]}
+ // Each whitespace run below can be matched only one way, so a tag that never closes is rejected in linear time.
+ const wrapper=/^<p\s+align\s*=\s*["'](left|center|right)["']\s*>([\s\S]*)<\/p>$/i.exec(text);
+ if(wrapper){align=wrapper[1].toLowerCase() as ImageModel['align'];text=wrapper[2].trim()}
  if(/^<img\b/i.test(text)){
-  const tag=/^<img\s+((?:[^"'<>]|"[^"]*"|'[^']*')*)\/?\s*>$/i.exec(text);if(!tag)return null;
+  const tag=/^<img(\s(?:[^"'<>]|"[^"]*"|'[^']*')*)>$/i.exec(text);if(!tag)return null;
   const attrs:Record<string,string>={};let rest=tag[1].replace(/\/\s*$/,'');
   while(rest.trim()){
    const attr=/^\s*([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))\s*/.exec(rest);if(!attr)return null;
@@ -78,10 +78,10 @@ export function imageRanges(state:EditorState):ImageRange[]{
   if(!candidates)return false;
   for(const i of candidates){
    const line=state.doc.line(i),start=n.name==='Task'&&line.from<=n.from?node.getChild('TaskMarker')!.to:Math.max(n.from,line.from);
-   const text=state.sliceDoc(start,line.to),prefix=/^(?:[ \t]*>[ \t]?)*[ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+(?:\[[ xX]\][ \t]+)?)?[ \t]*/.exec(text)![0];
-   const raw=text.slice(prefix.length).trimEnd(),image=parseImage(raw);if(!image)continue;
+   const text=state.sliceDoc(start,line.to),container=containerPrefix.exec(text)!,prefix=container[0]+(container[1]?/^(?:\[[ xX]\][ \t]+)?[ \t]*/:/^[ \t]*/).exec(text.slice(container[0].length))![0];
+   const raw=text.slice(prefix.length).trimEnd();if(!parseImage(raw))continue;
    let quotes=0,listEms=0;for(let parent=node.parent;parent;parent=parent.parent){if(parent.name==='Blockquote')quotes++;else if(parent.name==='BulletList'||parent.name==='OrderedList')listEms+=parent.getChildren('ListItem').some(item=>item.getChild('Task'))?0.2:1.7}
-   out.push({from:start+prefix.length,to:line.to-(text.length-prefix.length-raw.length),raw,image,quotes,listEms});
+   out.push({from:start+prefix.length,to:line.to-(text.length-prefix.length-raw.length),raw,quotes,listEms});
   }
   return false;
  }});ranges.set(state.doc,{tree,images:out,tables,math,mermaid});return out;

@@ -8,6 +8,7 @@ import (
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
 	"strings"
 
 	_ "golang.org/x/image/bmp"
@@ -55,11 +56,17 @@ func sniffImage(b []byte) (imageInfo, error) {
 
 func svgImage(b []byte) bool {
 	b = bytes.TrimPrefix(b, []byte{0xef, 0xbb, 0xbf})
-	if len(b) > 4096 {
-		b = b[:4096]
+	// The root must start within 4 KiB, but its start tag may carry long inline styles or namespaces.
+	if len(b) > 64<<10 {
+		b = b[:64<<10]
 	}
 	d := xml.NewDecoder(bytes.NewReader(b))
+	// Only the ASCII name of the root element is read, so a declared encoding other than UTF-8 needs no conversion.
+	d.CharsetReader = func(_ string, input io.Reader) (io.Reader, error) { return input, nil }
 	for {
+		if d.InputOffset() >= 4096 {
+			return false
+		}
 		token, err := d.Token()
 		if err != nil {
 			return false

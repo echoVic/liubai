@@ -8,6 +8,8 @@ import (
 	"unicode/utf8"
 
 	"liubai/locales"
+
+	"github.com/egoist/mygo/i18n"
 )
 
 type Delivery struct {
@@ -16,6 +18,20 @@ type Delivery struct {
 	Images   map[string]string `json:"images"`
 	Missing  []string          `json:"missing"`
 	External int               `json:"external"`
+	// source titles the snapshot in the caller's language (deliveryIn).
+	source Document
+}
+
+// deliveryIn gives the snapshot the title the document list shows in locale.
+func deliveryIn(v Delivery, locale string) Delivery {
+	if v.source.ID == "" {
+		return v
+	}
+	if locale == "" {
+		locale = i18n.Locale()
+	}
+	v.Title = documentIn(v.source, locale).Title
+	return v
 }
 
 // Freeze content and image bytes together, so printing never depends on the
@@ -27,7 +43,7 @@ func (w *Workspace) Delivery(id string) (Delivery, error) {
 	if d == nil {
 		return Delivery{}, messageError("bDocumentMissing", nil)
 	}
-	result := Delivery{Title: d.Title, Content: d.Content, Images: map[string]string{}, Missing: []string{}}
+	result := Delivery{Title: d.Title, Content: d.Content, Images: map[string]string{}, Missing: []string{}, source: *d}
 	total := len(d.Content)
 	for _, dest := range imageTargets(d.Content) {
 		if external(dest) {
@@ -52,8 +68,14 @@ func (w *Workspace) Delivery(id string) (Delivery, error) {
 	}
 	return result, nil
 }
+
+// A title is free text, so only a Markdown extension counts as a file extension
+// ("Release 0.7.0 plan" keeps its dots), and a slash becomes a dash below.
 func documentFilename(title, ext string) string {
-	name := strings.TrimSuffix(filepath.Base(title), filepath.Ext(title))
+	name := title
+	if markdownPath(name) {
+		name = strings.TrimSuffix(name, filepath.Ext(name))
+	}
 	name = strings.Map(func(r rune) rune {
 		if r < ' ' || strings.ContainsRune(`<>:"/\|?*`, r) {
 			return '-'
@@ -77,11 +99,13 @@ func (w *Workspace) SaveRecovery(id, content, path string) (ExportResult, error)
 	if len(content) > maxDocument || !utf8.ValidString(content) {
 		return ExportResult{}, messageError("bInvalidRecoveryDocument", nil)
 	}
-	p, e := filepath.Abs(path)
+	p, e := resolvedTarget(path)
 	if e != nil {
 		return ExportResult{}, e
 	}
-	if p == d.Path {
+	// Never onto the original, nor onto the file of another open document.
+	owner := w.docFor(p)
+	if owner == d {
 		return ExportResult{}, messageError("bRecoveryNeedsNewName", nil)
 	}
 	if info, e := os.Lstat(p); e == nil && info.Mode()&os.ModeSymlink != 0 {
@@ -90,14 +114,22 @@ func (w *Workspace) SaveRecovery(id, content, path string) (ExportResult, error)
 	if err := checkWriteTarget(p); err != nil {
 		return ExportResult{}, err
 	}
+	if owner != nil {
+		return ExportResult{}, messageError("bRecoveryNeedsNewName", nil)
+	}
 	clone := *d
 	clone.Content = content
-	portable, e := w.materialize(&clone, p, true)
-	if e != nil {
-		return ExportResult{}, e
+	// The recovery copy is the last resort: pictures that cannot be converted
+	// must not cost the text, which is then written as it is.
+	if portable, e := w.materialize(&clone, p, true); e == nil {
+		clone.Content = portable
 	}
-	clone.Content = portable
-	if e = atomicWrite(p, diskBytes(&clone), 0600); e != nil {
+	if info, err := os.Stat(p); err == nil {
+		e = replaceFile(p, diskBytes(&clone), info.Mode().Perm())
+	} else {
+		e = atomicWrite(p, diskBytes(&clone), 0644)
+	}
+	if e != nil {
 		return ExportResult{}, e
 	}
 	return ExportResult{Path: p}, nil

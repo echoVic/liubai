@@ -13,6 +13,7 @@ import {attachMenu} from './menu';
 import {icon} from './icons';
 import {wikiAt,wikiURL,wikiNodeAllowed} from './wiki-links';
 import {keyLabel} from './platform';
+import {shortcutAction} from './shortcuts';
 
 // The editor clears its IME guard, commits the cell, then resumes saves and queued actions.
 export const tableComposition=Facet.define<(view:EditorView,active:boolean,commit?:()=>void)=>void>();
@@ -44,8 +45,7 @@ export function tableWikiLinkAt(state:EditorState,from:number,row:number,column:
  }
  return null;
 }
-export {leaveBlock as leaveTable} from './block-navigation';
-import {leaveBlock as leaveTable} from './block-navigation';
+import {leaveBlock} from './block-navigation';
 // The table whose source contains pos, if any.
 export function tableAround(state:EditorState,pos:number):{from:number;to:number}|null{
  for(let node:SyntaxNode|null=syntaxTree(state).resolveInner(pos,-1);node;node=node.parent)if(node.name==='Table')return {from:node.from,to:node.to};
@@ -102,6 +102,7 @@ class TableDOM{
  private readOnly=false;
  raw='';
  from=0;
+ private locale='';
  constructor(private view:EditorView,private composing:StateField<boolean>){
   this.dom.className='rendered-table';this.dom.contentEditable='false';
   this.scroller.className='table-scroll';
@@ -136,7 +137,9 @@ class TableDOM{
   }
  }
  update(widget:TableWidget){
-  this.raw=widget.raw;this.from=widget.from;this.readOnly=widget.readOnly;this.dom.dataset.from=String(this.from);
+  // A table that only moved looks the same: its handlers read the position from this.from.
+  if(widget.raw===this.raw&&widget.readOnly===this.readOnly&&widget.locale===this.locale){this.from=widget.from;return}
+  this.raw=widget.raw;this.from=widget.from;this.readOnly=widget.readOnly;this.locale=widget.locale;
   this.button.disabled=this.blocked();this.button.setAttribute('aria-label',messages.fTableActions());this.popup.setAttribute('aria-label',messages.fTableActions());
   const {rows,aligns}=parseTable(this.raw),count=rows[0].length;
   const labels:Partial<Record<TableAction,string>>={
@@ -238,7 +241,7 @@ class TableDOM{
   cell.focus();const range=document.createRange();range.selectNodeContents(cell);range.collapse(false);const selection=window.getSelection();selection?.removeAllRanges();selection?.addRange(range);
  }
  private leave(above=false){
-  this.view.dispatch(leaveTable(this.view.state,{from:this.from,to:this.from+this.raw.length},above));this.view.focus();
+  this.view.dispatch(leaveBlock(this.view.state,{from:this.from,to:this.from+this.raw.length},above));this.view.focus();
   // Focus can drop the caret at the editor's start before CodeMirror has seen the cell's selection, and it then keeps it there; place it from the state.
   const {node,offset}=this.view.domAtPos(this.view.state.selection.main.head);getSelection()?.collapse(node,offset);
  }
@@ -280,8 +283,8 @@ class TableDOM{
    // Browsers select the whole editor for ⌘A inside a nested editable cell; keep it to the cell.
    if(k==='a'){e.preventDefault();e.stopPropagation();getSelection()?.selectAllChildren(cell);return}
    // Format shortcuts apply to the cell's text, never to the document behind the table.
-   const action=({b:'bold',i:'italic',u:'underline',l:'link'} as Record<string,string>)[k];
-   if(action){e.preventDefault();e.stopPropagation();this.format(cell,action);return}
+   const action=shortcutAction(e);
+   if(action&&['bold','italic','underline','link'].includes(action)){e.preventDefault();e.stopPropagation();this.format(cell,action);return}
   }
   if(e.altKey||e.metaKey||e.ctrlKey)return;
   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();this.leave();return}

@@ -64,14 +64,23 @@ func TestPreviewAppearanceDefaultsAndLegacyPosition(t *testing.T) {
 		t.Fatalf("unexpected initial preview preferences: %#v", values)
 	}
 
-	d := w.State().Current
-	if _, err := w.Update(Edit{
-		ID: d.ID, Revision: d.Revision, Content: d.Content,
-		Position: Position{Source: true},
-	}); err != nil {
+	// Positions saved while source mode was per document carry "source"; they still load, and the flag is ignored.
+	d := edit(t, w, "正文内容")
+	legacy, err := json.Marshal(map[string]any{d.ID: map[string]any{"anchor": 1, "head": 3, "scroll": 40, "source": true}})
+	if err != nil {
 		t.Fatal(err)
 	}
-	values = appearanceValues(t, w)
+	if err := os.WriteFile(filepath.Join(w.root, "positions.json"), legacy, 0600); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := openWorkspace(w.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reopened.State().Current.Position; got != (Position{Anchor: 1, Head: 3, Scroll: 40}) {
+		t.Fatalf("legacy position did not load: %+v", got)
+	}
+	values = appearanceValues(t, reopened)
 	if values["layout"] != "single" || values["source"] != false {
 		t.Fatalf("legacy document source changed global preferences: %#v", values)
 	}
@@ -79,8 +88,7 @@ func TestPreviewAppearanceDefaultsAndLegacyPosition(t *testing.T) {
 
 func TestPreviewAppearanceNormalizesStoredValues(t *testing.T) {
 	root := t.TempDir()
-	w, err := openWorkspace(root)
-	if err != nil {
+	if _, err := openWorkspace(root); err != nil {
 		t.Fatal(err)
 	}
 	indexPath := filepath.Join(root, "workspace.json")
@@ -102,7 +110,7 @@ func TestPreviewAppearanceNormalizesStoredValues(t *testing.T) {
 	if err := os.WriteFile(indexPath, data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	w, err = openWorkspace(root)
+	w, err := openWorkspace(root)
 	if err != nil {
 		t.Fatal(err)
 	}

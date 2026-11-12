@@ -109,6 +109,8 @@ func TestSniffImagePreamblesBrandsAndLimits(t *testing.T) {
 		{"doctype subset", []byte("<!DOCTYPE svg [<!ENTITY logo 'a>b'>]><svg/>"), imageInfo{"svg", "image/svg+xml", 0, 0}},
 		{"doctype whitespace", []byte("<!DOCTYPE\nsvg><svg/>"), imageInfo{"svg", "image/svg+xml", 0, 0}},
 		{"svg boundary", []byte(strings.Repeat(" ", 4090) + "<svg/>"), imageInfo{"svg", "image/svg+xml", 0, 0}},
+		{"long svg root tag", []byte(`<svg xmlns="http://www.w3.org/2000/svg" style="` + strings.Repeat("fill:red;", 4000) + `"><path/></svg>`), imageInfo{"svg", "image/svg+xml", 0, 0}},
+		{"svg starts at boundary", []byte(strings.Repeat(" ", 4095) + "<svg/>"), imageInfo{"svg", "image/svg+xml", 0, 0}},
 		{"compatible avif", avif("mif1\x00\x00\x00\x00miafavif", 16, 9), imageInfo{"avif", "image/avif", 16, 9}},
 		{"avis", avif("avis\x00\x00\x00\x00mif1", 1, 2), imageInfo{"avif", "image/avif", 1, 2}},
 		{"avif unknown size", box("ftyp", []byte("avif\x00\x00\x00\x00mif1")), imageInfo{"avif", "image/avif", 0, 0}},
@@ -133,6 +135,9 @@ func TestSniffImagePreamblesBrandsAndLimits(t *testing.T) {
 		{"html", []byte("<html><svg/></html>"), "图片格式不受支持"},
 		{"svg name boundary", []byte("<svgfoo/>"), "图片格式不受支持"},
 		{"svg past limit", []byte(strings.Repeat(" ", 4096) + "<svg/>"), "图片格式不受支持"},
+		{"long html root tag", []byte(`<html style="` + strings.Repeat("fill:red;", 4000) + `"><svg/></html>`), "图片格式不受支持"},
+		{"svg root tag past limit", []byte(`<svg style="` + strings.Repeat("x", 64<<10) + `"/>`), "图片格式不受支持"},
+		{"comment past limit", []byte("<!--" + strings.Repeat("x", 4096) + "--><svg/>"), "图片格式不受支持"},
 		{"heic", box("ftyp", []byte("heic\x00\x00\x00\x00mif1")), "图片格式不受支持"},
 		{"minor version is not brand", box("ftyp", []byte("mif1avifmif1")), "图片格式不受支持"},
 		{"unaligned brand", box("ftyp", []byte("mif1\x00\x00\x00\x00xavifxxx")), "图片格式不受支持"},
@@ -252,6 +257,20 @@ func TestImportImageRejectsUnsupportedAndOversized(t *testing.T) {
 		_, err := w.ImportImage(w.State().Current.ID, "fake.svg", base64.StdEncoding.EncodeToString(data))
 		if err == nil || err.Error() != "请选择 PNG、JPEG、GIF、WebP、SVG、AVIF 或 BMP 图片，最长边不超过 16000 像素" {
 			t.Fatalf("import error: %v", err)
+		}
+	}
+}
+
+func TestSniffImageAcceptsSVGDeclaringAnotherEncoding(t *testing.T) {
+	for _, encoding := range []string{"ISO-8859-1", "windows-1252", "US-ASCII", "UTF-8"} {
+		svg := `<?xml version="1.0" encoding="` + encoding + `"?><svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>`
+		info, err := sniffImage([]byte(svg))
+		if err != nil || info.Format != "svg" {
+			t.Errorf("%s: format %q, err %v", encoding, info.Format, err)
+		}
+		html := `<?xml version="1.0" encoding="` + encoding + `"?><html xmlns="http://www.w3.org/1999/xhtml"/>`
+		if _, err := sniffImage([]byte(html)); err == nil {
+			t.Errorf("%s: a non-SVG root passed as an image", encoding)
 		}
 	}
 }

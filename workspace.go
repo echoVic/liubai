@@ -44,7 +44,6 @@ type Position struct {
 	Anchor int     `json:"anchor"`
 	Head   int     `json:"head"`
 	Scroll float64 `json:"scroll"`
-	Source bool    `json:"source"`
 }
 type Document struct {
 	ID                   string            `json:"id"`
@@ -395,6 +394,14 @@ func (w *Workspace) trash(d *Document) error {
 	w.positionsDirty = true
 	return nil
 }
+
+// discard removes a document that was never shown, with its pictures; unlike
+// trash it keeps nothing.
+func (w *Workspace) discard(d *Document) {
+	_ = os.Remove(filepath.Join(w.root, "drafts", d.ID+".json"))
+	_ = os.RemoveAll(filepath.Join(w.root, "assets", d.ID))
+	delete(w.docs, d.ID)
+}
 func (w *Workspace) activate(d *Document) (WorkspaceState, error) {
 	if current := w.docs[w.current]; current != nil && current.ID != d.ID && disposable(current) {
 		_ = w.trash(current) // best effort: an empty draft that cannot move stays listed
@@ -560,7 +567,6 @@ func (w *Workspace) check(d *Document, reload bool) {
 			return
 		}
 		d.Content, d.BOM, d.CRLF = content, bom, crlf
-		d.Excerpt = excerptOf(content)
 		d.DiskHash = hash
 		d.DiskContentHash = digest([]byte(content))
 		d.recordDiskInfo(info)
@@ -593,13 +599,11 @@ func (w *Workspace) snapshot() WorkspaceState {
 		}
 		list = append(list, summaryOf(d))
 	}
-	sort.Slice(list, func(i, j int) bool { return list[i].Updated > list[j].Updated })
+	// Equal times fall back to the ID, as in latest(), so the list keeps one order.
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].Updated > list[j].Updated || list[i].Updated == list[j].Updated && list[i].ID < list[j].ID
+	})
 	return WorkspaceState{GeneratedTitleSuffixes: generatedTitleSuffixes, GeneratedTitles: generatedTitles, Current: *w.docs[w.current], Recent: list, Appearance: w.appearance, Capture: w.capture}
-}
-func (w *Workspace) Notify(message string) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.notices = append(w.notices, localeMessage{Text: message})
 }
 func (w *Workspace) State() WorkspaceState {
 	w.mu.Lock()
@@ -641,12 +645,17 @@ func (w *Workspace) Delete(id string) (WorkspaceState, error) {
 	if d == nil {
 		return WorkspaceState{}, messageError("bDocumentMissing", nil)
 	}
+	var replacement *Document
 	if len(w.docs) == 1 {
-		if _, err := w.newLocked(""); err != nil {
+		var err error
+		if replacement, err = w.newLocked(""); err != nil {
 			return WorkspaceState{}, err
 		}
 	}
 	if err := w.trash(d); err != nil {
+		if replacement != nil {
+			w.discard(replacement)
+		}
 		return WorkspaceState{}, err
 	}
 	if w.current == id {
@@ -751,13 +760,13 @@ func (w *Workspace) updateLocked(e Edit) (Document, error) {
 		d.Title = inferredTitle(e.Content)
 		d.GeneratedTitleSuffix = ""
 	}
-	d.Excerpt = excerptOf(e.Content)
 	d.setStatus("draftSaved")
 	savedFile := false
 	if d.Path != "" {
 		w.check(d, false)
 		if !d.Conflict {
-			if digest([]byte(d.Content)) == d.DiskContentHash {
+			contentHash := digest([]byte(d.Content))
+			if contentHash == d.DiskContentHash {
 				d.setStatus("fileSaved")
 			} else if portable, err := w.materialize(d, d.Path, false); err != nil {
 				d.setStatus("imageSaveFailed")
@@ -765,9 +774,9 @@ func (w *Workspace) updateLocked(e Edit) (Document, error) {
 				clone := *d
 				clone.Content = portable
 				b := diskBytes(&clone)
-				if digest(b) == d.DiskHash {
+				if hash := digest(b); hash == d.DiskHash {
 					d.setStatus("fileSaved")
-				} else if err := w.writeOriginal(d, b); err != nil {
+				} else if err := w.writeOriginal(d, b, hash, contentHash); err != nil {
 					if e, ok := err.(*catalogError); ok && e.Key == "bReadOnlyTarget" {
 						d.setStatus("fileReadOnly")
 					} else {
@@ -794,7 +803,7 @@ func (w *Workspace) updateLocked(e Edit) (Document, error) {
 	}
 	return *d, nil
 }
-func (w *Workspace) writeOriginal(d *Document, b []byte) error {
+func (w *Workspace) writeOriginal(d *Document, b []byte, hash, contentHash string) error {
 	if err := checkWriteTarget(d.Path); err != nil {
 		return err
 	}
@@ -813,8 +822,8 @@ func (w *Workspace) writeOriginal(d *Document, b []byte) error {
 	if err = replaceFile(d.Path, b, info.Mode().Perm()); err != nil {
 		return err
 	}
-	d.DiskHash = digest(b)
-	d.DiskContentHash = digest([]byte(d.Content))
+	d.DiskHash = hash
+	d.DiskContentHash = contentHash
 	info, _ = os.Stat(d.Path)
 	d.recordDiskInfo(info)
 	d.Conflict = false
@@ -878,35 +887,96 @@ func (w *Workspace) OpenLinked(fromID, href string) (WorkspaceState, error) {
 func (w *Workspace) Open(path string) (WorkspaceState, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	p, err := filepath.Abs(path)
+	d, err := w.load(path)
 	if err != nil {
 		return WorkspaceState{}, err
+	}
+	return w.activate(d)
+}
+
+// Load lists the document for path without switching to it. A file from
+// Finder or a drop can arrive while the page still holds the draft's latest
+// input; the page activates the file once that input is saved, so an empty
+// draft is only ever judged by what it really contains.
+func (w *Workspace) Load(path string) (Document, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	d, err := w.load(path)
+	if err != nil {
+		return Document{}, err
+	}
+	return *d, nil
+}
+
+// docFor is the open document of the file at p. macOS and Windows volumes
+// usually ignore letter case, and a file can have other names (hard links,
+// Unicode forms), so a different path still names the same file when the
+// system says so. Only documents with a case-insensitively equal path or the
+// same recorded inode are asked, so files on absent volumes cost nothing.
+func (w *Workspace) docFor(p string) *Document {
+	for _, d := range w.docs {
+		if d.Path == p {
+			return d
+		}
+	}
+	info, err := os.Stat(p)
+	if err != nil {
+		return nil
+	}
+	inode := fileIdentity(info)
+	for _, d := range w.docs {
+		if d.Path == "" || !strings.EqualFold(d.Path, p) && (inode == 0 || d.DiskInode != inode) {
+			continue
+		}
+		if other, err := os.Stat(d.Path); err == nil && os.SameFile(info, other) {
+			return d
+		}
+	}
+	return nil
+}
+
+// resolvedTarget is a path to write as Open would store it: absolute, with
+// the links in its folder resolved, so the file stays one document however
+// it is reached later. The folder must exist.
+func resolvedTarget(path string) (string, error) {
+	p, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	dir, err := filepath.EvalSymlinks(filepath.Dir(p))
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, filepath.Base(p)), nil
+}
+func (w *Workspace) load(path string) (*Document, error) {
+	p, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
 	}
 	p, err = filepath.EvalSymlinks(p)
 	if err != nil {
-		return WorkspaceState{}, err
+		return nil, err
 	}
-	for _, d := range w.docs {
-		if d.Path == p {
-			return w.activate(d)
-		}
+	if d := w.docFor(p); d != nil {
+		return d, nil
 	}
 	b, err := readLimited(p, maxDocument)
 	if err != nil {
-		return WorkspaceState{}, err
+		return nil, err
 	}
 	s, bom, crlf, err := decodeFile(b)
 	if err != nil {
-		return WorkspaceState{}, err
+		return nil, err
 	}
 	d := &Document{ID: uid(), Title: filepath.Base(p), Content: s, Path: p, Updated: time.Now().UnixMilli(), DiskHash: digest(b), DiskContentHash: digest([]byte(s)), BOM: bom, CRLF: crlf, StatusCode: "fileSaved", Status: locales.In("zh-Hans").BStatusFileSaved()}
 	info, _ := os.Stat(p)
 	d.recordDiskInfo(info)
 	if err = w.persist(d); err != nil {
-		return WorkspaceState{}, err
+		return nil, err
 	}
 	w.docs[d.ID] = d
-	return w.activate(d)
+	return d, nil
 }
 func (w *Workspace) Appearance(p Appearance) error {
 	w.mu.Lock()
@@ -1003,28 +1073,33 @@ func (w *Workspace) Overwrite(id string) (WorkspaceState, error) {
 		return WorkspaceState{}, err
 	}
 	b, err := readLimited(d.Path, maxDocument)
+	var disk string
 	if err == nil {
-		content, _, _, e := decodeFile(b)
-		if e != nil {
-			return WorkspaceState{}, e
-		}
-		if digest(b) != d.DiskHash {
-			disk := Document{Path: d.Path, Content: content}
-			backup := Document{ID: uid(), Title: d.Title + locales.BDiskVersionSuffix(), GeneratedTitleSuffix: "diskVersion", Content: content, Updated: time.Now().UnixMilli(), StatusCode: "draftSaved", Status: locales.In("zh-Hans").BStatusDraftSaved()}
-			if err = w.copyAssets(&disk, &backup); err != nil {
-				return WorkspaceState{}, err
-			}
-			if err = w.persist(&backup); err != nil {
-				return WorkspaceState{}, err
-			}
-			w.docs[backup.ID] = &backup
+		if disk, _, _, err = decodeFile(b); err != nil {
+			return WorkspaceState{}, err
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return WorkspaceState{}, err
 	}
+	keep := err == nil && digest(b) != d.DiskHash
+	// Convert the pictures before keeping the disk version, so that a failure
+	// here leaves no copy behind.
 	content, err := w.materialize(d, d.Path, false)
 	if err != nil {
 		return WorkspaceState{}, err
+	}
+	var backup *Document
+	if keep {
+		backup = &Document{ID: uid(), Title: d.Title + locales.BDiskVersionSuffix(), GeneratedTitleSuffix: "diskVersion", Content: disk, Updated: time.Now().UnixMilli(), StatusCode: "draftSaved", Status: locales.In("zh-Hans").BStatusDraftSaved()}
+		if err = w.copyAssets(&Document{Path: d.Path, Content: disk}, backup); err != nil {
+			w.discard(backup)
+			return WorkspaceState{}, err
+		}
+		if err = w.persist(backup); err != nil {
+			w.discard(backup)
+			return WorkspaceState{}, err
+		}
+		w.docs[backup.ID] = backup
 	}
 	clone := *d
 	clone.Content = content
@@ -1037,6 +1112,10 @@ func (w *Workspace) Overwrite(id string) (WorkspaceState, error) {
 		err = e
 	}
 	if err != nil {
+		// The disk version is still on disk, so its copy goes again.
+		if backup != nil {
+			w.discard(backup)
+		}
 		return WorkspaceState{}, err
 	}
 	d.DiskHash = digest(b)

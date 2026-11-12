@@ -170,7 +170,7 @@ func TestStartupLocalePreferenceValidation(t *testing.T) {
 
 func TestOnlyStateDeliversPendingNotices(t *testing.T) {
 	w := workspace(t)
-	w.Notify("打开失败")
+	w.notifyMessage(localeMessage{Text: "打开失败"})
 	s, err := w.New()
 	if err != nil || len(s.Notices) != 0 || s.QuarantineDir != "" {
 		t.Fatalf("New delivered notices: %+v %v", s, err)
@@ -179,7 +179,7 @@ func TestOnlyStateDeliversPendingNotices(t *testing.T) {
 	if len(first.Notices) != 1 || first.Notices[0] != "打开失败" || first.QuarantineDir != "" {
 		t.Fatalf("notice lost: %+v", first)
 	}
-	w.Notify("另一次失败")
+	w.notifyMessage(localeMessage{Text: "另一次失败"})
 	second := w.State()
 	if len(second.Notices) != 1 || second.Notices[0] != "另一次失败" || first.Notices[0] != "打开失败" {
 		t.Fatal("notices were not copied")
@@ -223,6 +223,20 @@ func TestOpenFailureBeforePageReadyIsDeliveredWithState(t *testing.T) {
 	}
 	if !d.pageReady.Load() || len(d.State().Notices) != 0 {
 		t.Fatal("page readiness or notice delivery failed")
+	}
+}
+
+// Finder's Open With hands over any file; like a drop, only Markdown and text open.
+func TestOpenedFileMustBeMarkdown(t *testing.T) {
+	d := &Desktop{w: workspace(t)}
+	p := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(p, []byte("{}\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	d.openPath(p)
+	s := d.State()
+	if len(s.Recent) != 1 || len(s.Notices) != 1 || !strings.HasPrefix(s.Notices[0], "无法打开「settings.json」：") {
+		t.Fatalf("other file type opened as a document: %d documents, notices %v", len(s.Recent), s.Notices)
 	}
 }
 

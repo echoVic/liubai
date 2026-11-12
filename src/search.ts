@@ -42,6 +42,8 @@ export function createSearchQueue(options:{
   input(value:string){query=value.trim();schedule()},
   filter(value:string){tag=value;schedule()},
   invalidate(ready=true){accepted=ready;schedule()},
+  // Unsaved typing holds searches back. Without a query or tag the list shows nothing that typing changes.
+  hold(){accepted=false;if(query||tag)schedule()},
   visible(next:boolean){if(next===visible)return;visible=next;schedule()},
   composition(next:boolean){composing=next;schedule()},
   retry:schedule,
@@ -185,15 +187,12 @@ export function createSidebarSearch(options:{
   if(next<0)options.input.focus();else all[Math.min(next,all.length-1)]?.focus();
  });
  return {
-  get active(){return !!(options.input.value.trim()||current.tag)},
-  filter:queue.filter,
   chooseTag,
   visible:queue.visible,
   refresh(){queue.invalidate(saveState!=='pending')},
-  contentPending(){saveState='pending';queue.invalidate(false)},
+  contentPending(){saveState='pending';queue.hold()},
   contentAccepted(pending=false){saveState=pending?'pending':'saved';queue.invalidate(!pending)},
   contentFailed(){saveState='failed';queue.invalidate()},
-  localize(){queue.invalidate(saveState!=='pending')},
   renderRecent(){if(!options.input.value.trim()&&!current.tag){options.recent(undefined,current.tag);if(current.kind==='error')appendRetry()}},
  };
 }

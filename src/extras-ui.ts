@@ -14,25 +14,26 @@ export class CalloutWidget extends WidgetType{
 }
 export class DetailsWidget extends WidgetType{
  readonly locale=activeLocale;
- constructor(readonly range:DetailsRange,readonly expanded:boolean,readonly composing:StateField<boolean>){super()}
- eq(other:DetailsWidget){return this.locale===other.locale&&this.range.from===other.range.from&&this.range.to===other.range.to&&this.expanded===other.expanded}
+ // No position: a toggle that only moved keeps its DOM, and a click reads where it is from the DOM.
+ constructor(readonly expanded:boolean,readonly composing:StateField<boolean>){super()}
+ eq(other:DetailsWidget){return this.locale===other.locale&&this.expanded===other.expanded}
  toDOM(view:EditorView){
-  const button=document.createElement('button');button.type='button';button.className='md-details-toggle';button.contentEditable='false';button.dataset.details=String(this.range.from);
+  const button=document.createElement('button');button.type='button';button.className='md-details-toggle';button.contentEditable='false';
   button.title=this.expanded?messages.fCollapseDetails():messages.fExpandDetails();button.setAttribute('aria-label',button.title);button.setAttribute('aria-expanded',String(this.expanded));button.append(icon('chevron-down'));
   button.onmousedown=e=>e.preventDefault();button.onclick=()=>{
    if(view.composing||view.state.field(this.composing))return;
-   const range=extraRanges(view.state).details.find(r=>r.from===this.range.from&&r.to===this.range.to);if(!range)return;
+   const summary=view.posAtDOM(button),range=extraRanges(view.state).details.find(r=>r.summary===summary);if(!range)return;
    const focused=document.activeElement===button;
    view.dispatch({effects:(this.expanded?foldEffect:unfoldEffect).of(range),...this.expanded?{selection:{anchor:range.from}}:{}});
-   if(focused)view.dom.querySelector<HTMLButtonElement>('[data-details="'+range.from+'"]')?.focus();
+   if(focused)Array.from(view.dom.querySelectorAll<HTMLButtonElement>('.md-details-toggle')).find(toggle=>view.posAtDOM(toggle)===range.summary)?.focus();
    view.requestMeasure();
   };return button;
  }
  ignoreEvent(){return true}
 }
 export class FootnoteWidget extends WidgetType{
- constructor(readonly label:string,readonly number:number,readonly from:number){super()}
- eq(other:FootnoteWidget){return this.label===other.label&&this.number===other.number&&this.from===other.from}
+ constructor(readonly label:string,readonly number:number){super()}
+ eq(other:FootnoteWidget){return this.label===other.label&&this.number===other.number}
  toDOM(){const marker=document.createElement('sup');marker.className='md-footnote-ref';marker.dataset.footnote=this.label;marker.textContent='['+this.number+']';return marker}
  ignoreEvent(){return false}
 }

@@ -43,6 +43,10 @@ jobs:
       # tsc, check-i18n, check-themes and every scripts/check-*.ts except check-performance (run above).
       - name: Headless checks
         run: bun run check:headless
+        env:
+          # Shared runners are slower and noisier; check-extras.ts scales its one
+          # wall-clock budget by this factor, as the performance step above does.
+          PERF_BUDGET_SCALE: 4
       # web/ is committed build output; a source change committed without a rebuild fails here.
       - name: Check web/ matches src/
         run: |

@@ -7,6 +7,11 @@ import {GFM} from '@lezer/markdown';
 import {composing,setComposing,inlineDecorations,createBlockField,EditorView} from '../src/editor';
 import {applySlashItem,insertToolbarItem,filterSlashItems} from '../src/slash';
 
+// Shared runners are slower and noisier than a developer machine; scale the one
+// wall-clock budget here the same way check-performance.ts scales its own.
+const budgetScale=Number(process.env.PERF_BUDGET_SCALE??1);
+assert.ok(Number.isFinite(budgetScale)&&budgetScale>0,'PERF_BUDGET_SCALE 必须是正的有限数字');
+
 assert.ok(filterSlashItems('zdk').some(i=>i.id==='details'),'details insertion is available');
 const {extraRanges,insertFootnote,createDetailsFolding}=await import('../src/extras');
 const create=(doc:string,pos=0,extra:any[]=[])=>EditorState.create({doc,selection:{anchor:pos},extensions:[history(),markdown({base:markdownLanguage,extensions:GFM}),composing,...extra]});
@@ -158,8 +163,8 @@ for(let i=0;i<3;i++){
  state=state.update({changes:{from:0,insert:'x'},selection:{anchor:1}}).state;ensureSyntaxTree(state,state.doc.length,60_000);
  const start=performance.now();inlineDecorations(state,[{from:0,to:6000}]);best=Math.min(best,performance.now()-start);
 }
-console.log('Long footnote document visible decorations: '+best.toFixed(2)+' ms');
-assert.ok(best<15,'footnote-heavy visible decorations stay within the unchanged 300k budget');
+console.log('Long footnote document visible decorations: '+best.toFixed(2)+' ms (budget '+(15*budgetScale)+' ms)');
+assert.ok(best<15*budgetScale,'footnote-heavy visible decorations stay within the unchanged 300k budget');
 
 // The marker that stands for folded details is named in the interface language.
 {

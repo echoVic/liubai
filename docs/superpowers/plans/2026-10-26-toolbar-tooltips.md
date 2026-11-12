@@ -18,7 +18,7 @@
 - 代码风格跟随周围代码：TS 和 CSS 是紧凑的单行写法，注释少而且用英文，命名沿用现有习惯。
 - 文案：`locales/zh-Hans.json` 是模板，每条带 `@key` 描述；`locales/en.json` 只有译文。改完运行 `go tool mygo generate`，再跑 `go tool mygo i18n check` 和 `node scripts/check-i18n.mjs`。
 - 只读颜色角色（`var(--popover)`、`var(--border)` 等），不写主题的十六进制色值。悬停即时，不加任何过渡或淡入淡出（DESIGN.md）。
-- 仓库是公开的：不写本机路径、内部域名；公开文字里不提语雀、飞书文档。
+- 仓库是公开的：不写本机路径、内部域名；公开文字里不点名用户要求回避的在线文档产品。
 - 平台：macOS 的 Mod 是 ⌘（`metaKey`），Windows 是 Ctrl（`ctrlKey`）；Windows 上 Ctrl+Alt 等于 AltGr。
 - 浏览器回归用 `scripts/e2e.sh <check>`，每次都会编译并用新的数据目录起服务；跑之前先 `node scripts/build.mjs`。这台机器负载常在 15–25：偶发超时先单独重跑一次；仍失败时，到干净的 `main` 上跑同一个检查对比，再判断是不是这次的回归。
 - 已知和这次无关的失败：`check-mermaid` 最后一条断言（Chrome 156 起 CSP 报 `script-src-attr`）；负载高时 `check-windows` 的随手记一步和 `check-images` 的图片工具条一步偶发失败。

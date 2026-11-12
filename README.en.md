@@ -53,7 +53,7 @@ There are no ads, telemetry or cloud sync. Checking for updates only contacts Gi
 
 ## Development
 
-You need Go 1.27.1 (it can download the toolchain itself), Node 24 and Bun. Running Liubai needs none of them.
+You need Go 1.27.3 (it can download the toolchain itself), Node (22 and 24 both build it; CI uses 24, the version in `.nvmrc`) and Bun. Running Liubai needs none of them.
 
 ```sh
 bun install --frozen-lockfile                              # frontend dependencies
@@ -68,21 +68,24 @@ Checks:
 
 ```sh
 go test ./... && go vet ./...
+npx --yes bun@1.4.4 run check:headless         # the next five lines in one go, except check-performance
 node_modules/.bin/tsc --noEmit
-node scripts/check-i18n.mjs && node scripts/check-editor.mjs
-node scripts/check-themes.mjs                  # contrast floors and the theme list
-npx --yes bun@1.4.3 scripts/check-<name>.ts   # editing, rendering, performance, search, paste, capture-input, platform, blocks, slash, tables, images, marks, math, mermaid, extras, docx, theme
-scripts/e2e.sh check-<name>                    # regressions in Chrome: search, split-preview, reader, toolbar, capture, english, windows, blocks, tables, images, math, mermaid, extras, docx, themes, outline, word-count
+node_modules/.bin/tsc --noEmit -p scripts      # type-checks scripts/
+node scripts/check-i18n.mjs
+node scripts/check-themes.mjs                  # contrast floors, distinct colours where one is drawn on another, and the theme list
+npx --yes bun@1.4.4 scripts/check-<name>.ts   # editing, editor, rendering, performance, search, tag-filter, wiki-links, backlinks, paste, capture-input, capture-notes, platform, shortcuts, blocks, slash, tables, images, marks, math, mermaid, extras, docx, theme
+scripts/e2e.sh check-<name>                    # regressions in Chrome: search, tag-filter, wiki-links, document-find, navigation-cancel, view-navigation, split-preview, reader, reader-state, reader-code, reader-images, reader-tables, toolbar, capture, capture-notes, dialogs, dialog-focus, layout-states, typography, english, windows, blocks, tables, images, math, mermaid, extras, docx, themes, outline, word-count
 scripts/e2e.sh check-blocks-webkit             # blocks, images, math, diagrams and Word conversion in WebKit, the desktop app's engine
 scripts/e2e.sh shoot-themes                    # screenshots of every theme in the edit, split and read views, in /tmp/liubai-theme-shots/
 python3 scripts/check-preview.py               # rendering and export
-python3 scripts/check-pdf.py                   # PDF pagination, Chinese text layer and rendering
+python3 scripts/check-pdf.py                   # PDF: A4 pagination and heading placement
+python3 scripts/check-rich-clipboard.py        # rich copy in WebKit, and pasting AppKit's conversion back
 ROUNDS=3 scripts/bench/run.sh <base>          # compare performance with another version: editor, preview, storage and WebKit end to end, into docs/performance/raw/<date>/
 ```
 
-`scripts/e2e.sh` builds the app each time, starts a web server with a fresh data directory, and stops it afterwards. The Python checks use the installed Chrome. The WebKit check runs in an off-screen window and never takes focus; WebKit stops drawing while the screen is locked or the display is asleep, and the check then stops and says why.
+`scripts/e2e.sh` builds the app each time, starts a web server with a fresh data directory, and stops it afterwards; a check can also run against a web server you started, given its address: `python3 scripts/check-<name>.py http://127.0.0.1:<port>`. The Python checks use the installed Chrome (`PLAYWRIGHT_CHANNEL` picks another channel), and dialog-focus, reader-code and reader-state also run in Playwright's WebKit (first `python3 -m playwright install webkit`). A check's screenshots and records go to a temporary directory, which is removed when the check passes and kept, with its path printed, when it fails. Every `scripts/check-*.ts` is a Bun check that needs no browser; the `*-fixture.ts` files are page code that the browser and WebKit checks bundle. The WebKit check runs in an off-screen window and never takes focus; WebKit stops drawing while the screen is locked or the display is asleep, and the check then stops and says why.
 
-On pushes to `main`, GitHub Actions runs `go vet` and `go test` on Windows. On macOS it checks the editor's performance budgets (`check-performance`) and the size of the code loaded at start-up (`TestStartupBundleStaysSmall`). Shared CI machines are slower than a developer's Mac, so CI doubles the budgets (`PERF_BUDGET_SCALE=2`), which still catches regressions that multiply the cost.
+On pushes to `main` and `feat/**` and on pull requests, GitHub Actions runs `go vet` and `go test` on Windows. On macOS it first checks the editor's performance budgets (`check-performance`) and the size of the code loaded at start-up (`TestStartupBundleStaysSmall`), then runs `go vet`, `go test ./...` and `check:headless`, and finally rebuilds the frontend and fails if `web/` differs from what was committed. Shared CI machines are slower than a developer's Mac, so CI doubles the budgets (`PERF_BUDGET_SCALE=2`), which still catches regressions that multiply the cost.
 
 To build the universal app, run `go tool mygo build -platform darwin/universal .`; the output is in `build/darwin-universal/`. The Windows version (a beta) cross-builds on macOS with `go tool mygo build -platform windows/amd64,windows/arm64 .` into `build/windows-amd64/` and `build/windows-arm64/`; the installers need NSIS (`brew install makensis`). `check-windows` checks shortcuts, fonts and the title bar in Chrome with a Windows platform, and GitHub Actions runs `go test` on Windows. Release steps (signing, notarization and update packages) are in [docs/RELEASING.md](docs/RELEASING.md), in Chinese.
 
@@ -91,10 +94,11 @@ To build the universal app, run `go tool mygo build -platform darwin/universal .
 The documents below are in Chinese.
 
 - [Changelog](CHANGELOG.md): the changes in each version
-- [Validation record](docs/superpowers/validation/2026-10-15-reader-foundation.md): trade-offs, tests, native app checks and release checks for each version
+- [Validation records](docs/superpowers/validation/): trade-offs, tests, native app checks and release checks for each version; 0.1.0 to 0.5.0 are in [the first record](docs/superpowers/validation/2026-10-15-reader-foundation.md)
 - Designs: [reader and reliability](docs/superpowers/specs/2026-10-15-reader-foundation-design.md), [split preview](docs/superpowers/specs/2026-10-15-split-preview-design.md) and [block editing](docs/superpowers/specs/2026-10-17-block-editing-design.md); implementation plans are in `docs/superpowers/plans/`
 - Performance reports: [reader foundation (2026-10-15)](docs/performance/2026-10-15-reader-foundation.md), [0.6.3 against 0.1.0 and the fixes that followed (2026-10-24)](docs/performance/2026-10-24-0.6.3.md)
 - [Full-text search implementation and validation](docs/superpowers/plans/2026-10-28-full-text-search.md): scope, navigation safeguards and measured performance.
+- [Tag filter implementation and validation](docs/superpowers/plans/2026-10-28-tag-filter.md): tag rules, intersection with search and asynchronous refresh.
 - [Wiki links and backlinks implementation and validation](docs/superpowers/plans/2026-10-28-wiki-links.md): title resolution, Markdown semantics and safe navigation.
 
 ## License

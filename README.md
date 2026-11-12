@@ -27,7 +27,7 @@ Windows 内测版在同一个 Release 里：大多数电脑下载 `amd64` 安装
 - **导出**：PDF、Word（.docx）、内嵌图片的 HTML、Markdown 加图片的 ZIP，以及富文本复制。PDF 里的中文可以正常复制和搜索；Word 保留标题样式、列表编号、表格、公式和脚注，可以交给用 Word、Pages 或 WPS 的人继续改。
 - **粘贴**：网页、文档和 Word 的内容粘贴后转为 Markdown，图片一并保存；`⇧⌘V` 粘贴为纯文本。
 - **随手记**：在任何应用里按 `⌃⌥⌘N`（Windows 上是 `Ctrl+Alt+N`）记下想法，`⌘↩`（`Ctrl+Enter`）存为一篇新草稿，也可以追加到已有文稿；快捷键在设置里修改。
-- **设置**：外观与排版、随手记和语言集中在独立窗口中，修改立即生效；当前文稿查找使用浮动面板，阅读模式也能查找正文。
+- **设置与查找**：外观与排版、随手记和语言集中在独立窗口中，修改立即生效；当前文稿的查找和替换使用浮动面板，阅读模式也能查找正文。
 - 简体中文和英文界面，默认跟随系统语言。
 
 常用快捷键：`⌘N` 新建、`⌘O` 打开、`⌘S` 保存、`⌘⇧S` 另存、`⌘K` 所有操作、`⌘F` 查找、`⌘\` 切换分栏、`⌘⇧R` 阅读模式、`⌘⇧M` 显示 Markdown 源码、`⌘/` 块菜单、`⌘L` 编辑链接、`⌘⇧F` 专注模式、`⌘P` 导出 PDF。格式：`⌘1`–`⌘6` 标题 1–6、`⌘0` 正文、`⌘B` 加粗、`⌘I` 斜体、`⌘U` 下划线、`⌘⇧X` 删除线、`⌘⇧H` 高亮、`⌘E` 行内代码、`⌘⇧7` 有序列表、`⌘⇧8` 无序列表、`⌘⇧9` 任务列表；鼠标停在工具栏按钮上会显示它的名称和快捷键。Windows 上 ⌘ 换成 Ctrl、⇧ 即 Shift；专注模式是 F8，重做是 Ctrl+Y。
@@ -53,7 +53,7 @@ Windows 内测版在同一个 Release 里：大多数电脑下载 `amd64` 安装
 
 ## 开发
 
-需要 Go 1.27.1（可自动下载工具链）、Node 24 和 Bun；运行留白本身不需要它们。
+需要 Go 1.27.3（可自动下载工具链）、Node（22 和 24 都能构建，CI 用 `.nvmrc` 里的 24）和 Bun；运行留白本身不需要它们。
 
 ```sh
 bun install --frozen-lockfile                              # 前端依赖
@@ -68,28 +68,31 @@ go run . --web 127.0.0.1:4193 --data-dir /tmp/liubai-dev   # 在浏览器里运�
 
 ```sh
 go test ./... && go vet ./...
+npx --yes bun@1.4.4 run check:headless         # 一次跑完下面五行（check-performance 除外）
 node_modules/.bin/tsc --noEmit
-node scripts/check-i18n.mjs && node scripts/check-editor.mjs
-node scripts/check-themes.mjs                  # 各套主题的对比度门槛与清单
-npx --yes bun@1.4.3 scripts/check-<名称>.ts   # editing、rendering、performance、search、paste、capture-input、platform、blocks、slash、tables、images、marks、math、mermaid、extras、docx、theme
-scripts/e2e.sh check-<名称>                    # Chrome 中的回归：search、split-preview、reader、toolbar、capture、english、windows、blocks、tables、images、math、mermaid、extras、docx、themes、outline、word-count
+node_modules/.bin/tsc --noEmit -p scripts      # scripts/ 的类型检查
+node scripts/check-i18n.mjs
+node scripts/check-themes.mjs                  # 各套主题的对比度门槛、叠放颜色的区分度与清单
+npx --yes bun@1.4.4 scripts/check-<名称>.ts   # editing、editor、rendering、performance、search、tag-filter、wiki-links、backlinks、paste、capture-input、capture-notes、platform、shortcuts、blocks、slash、tables、images、marks、math、mermaid、extras、docx、theme
+scripts/e2e.sh check-<名称>                    # Chrome 中的回归：search、tag-filter、wiki-links、document-find、navigation-cancel、view-navigation、split-preview、reader、reader-state、reader-code、reader-images、reader-tables、toolbar、capture、capture-notes、dialogs、dialog-focus、layout-states、typography、english、windows、blocks、tables、images、math、mermaid、extras、docx、themes、outline、word-count
 scripts/e2e.sh check-blocks-webkit             # 桌面版引擎 WebKit 中的块操作、图片、公式、图表与 Word 转换
 scripts/e2e.sh shoot-themes                    # 每套主题在编辑、分栏、阅读三种视图下的截图，存到 /tmp/liubai-theme-shots/
 python3 scripts/check-preview.py               # 渲染与导出
 python3 scripts/check-pdf.py                   # PDF 的 A4 分页与标题位置
+python3 scripts/check-rich-clipboard.py        # WebKit 中的富文本复制，以及经 AppKit 转换后的反向粘贴
 ROUNDS=3 scripts/bench/run.sh <基准版本>       # 与某个版本对比性能：编辑器、预览、存储和 WebKit 端到端，结果写入 docs/performance/raw/<日期>/
 ```
 
-`scripts/e2e.sh` 每次编译程序，用新的数据目录启动网页服务，跑完关闭；Python 检查使用已安装的 Chrome。WebKit 检查在屏幕外的窗口里运行，不抢焦点；锁屏或显示器休眠时 WebKit 不绘制，检查会说明原因后停止。
+`scripts/e2e.sh` 每次编译程序，用新的数据目录启动网页服务，跑完关闭；也可以把自己启动的网页服务地址交给检查：`python3 scripts/check-<名称>.py http://127.0.0.1:<端口>`。Python 检查使用已安装的 Chrome（`PLAYWRIGHT_CHANNEL` 可换通道），dialog-focus、reader-code 和 reader-state 也在 Playwright 的 WebKit 里运行（先 `python3 -m playwright install webkit`）。检查的截图和记录放在临时目录里，通过就删除，失败时保留并打印路径。`scripts/check-*.ts` 都是无需浏览器的 Bun 检查；`*-fixture.ts` 是浏览器和 WebKit 检查打包进页面的代码。WebKit 检查在屏幕外的窗口里运行，不抢焦点；锁屏或显示器休眠时 WebKit 不绘制，检查会说明原因后停止。
 
-推送到 `main` 时，GitHub Actions 在 Windows 上运行 `go vet` 和 `go test`，在 macOS 上检查即时排版的性能预算（`check-performance`）和启动时加载的代码大小（`TestStartupBundleStaysSmall`）。共享的 CI 机器比开发用的 Mac 慢，所以 CI 中预算放宽一倍（`PERF_BUDGET_SCALE=2`），仍然能抓住成倍的退化。
+推送到 `main`、`feat/**` 分支或提交 PR 时，GitHub Actions 在 Windows 上运行 `go vet` 和 `go test`；在 macOS 上先检查即时排版的性能预算（`check-performance`）和启动时加载的代码大小（`TestStartupBundleStaysSmall`），再运行 `go vet`、`go test ./...` 和 `check:headless`，最后重新构建前端，`web/` 与提交的不一致就失败。共享的 CI 机器比开发用的 Mac 慢，所以 CI 中预算放宽一倍（`PERF_BUDGET_SCALE=2`），仍然能抓住成倍的退化。
 
 构建通用安装包：`go tool mygo build -platform darwin/universal .`，产物在 `build/darwin-universal/`。Windows 版（内测）在 macOS 上交叉构建：`go tool mygo build -platform windows/amd64,windows/arm64 .`，产物在 `build/windows-amd64/`、`build/windows-arm64/`，装了 NSIS（`brew install makensis`）才会生成安装包；`check-windows` 在 Chrome 里模拟 Windows 检查快捷键、字体和标题栏，Windows 上的 `go test` 由 GitHub Actions 运行。正式发版（签名、公证、更新包）见 [docs/RELEASING.md](docs/RELEASING.md)。
 
 ## 文档
 
 - [CHANGELOG](CHANGELOG.md)：各版本的变化
-- [验证记录](docs/superpowers/validation/2026-10-15-reader-foundation.md)：每个版本的实现取舍、测试、原生应用实测和发布核对
+- [验证记录](docs/superpowers/validation/)：各版本的实现取舍、测试、原生应用实测和发布核对；0.1.0–0.5.0 在[第一份记录](docs/superpowers/validation/2026-10-15-reader-foundation.md)里
 - 设计：[阅读器与可靠性](docs/superpowers/specs/2026-10-15-reader-foundation-design.md)、[分栏预览](docs/superpowers/specs/2026-10-15-split-preview-design.md)、[块编辑](docs/superpowers/specs/2026-10-17-block-editing-design.md)；实施计划在 `docs/superpowers/plans/`
 - 性能报告：[阅读器基础（2026-10-15）](docs/performance/2026-10-15-reader-foundation.md)、[0.6.3 对比 0.1.0 及随后的修复（2026-10-24）](docs/performance/2026-10-24-0.6.3.md)
 - [全文搜索实施与验收](docs/superpowers/plans/2026-10-28-full-text-search.md)：范围、导航保护和实测性能。

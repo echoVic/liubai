@@ -1,53 +1,18 @@
 """Browser regression for the approved toolbar. Use an isolated --data-dir.
 
-python3 scripts/check-toolbar.py http://127.0.0.1:4197
+python3 scripts/check-toolbar.py http://127.0.0.1:<port>
 Requires Python Playwright and Chrome (or PLAYWRIGHT_CHANNEL).
 """
-import json
-import os
-from pathlib import Path
 import re
-import sys
-import tempfile
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import THEMES, api, appearance_change, base_url, evidence, launch, more_action, save_failure, saved_position, set_theme
 
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4197"
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-toolbar-qa-"))
-THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
+BASE = base_url()
+ARTIFACTS = evidence("liubai-toolbar-qa-")
 TEXT = "# 一\n\n第一段。\n\n## 二\n\n第二段。"
 
-
-def api(page, method, *args):
-    response = page.request.post(BASE + "/api", data={"method": method, "args": list(args)}, headers={"Origin": BASE})
-    assert response.ok, response.text()
-    body = response.json()
-    assert not body.get("error"), body
-    return body["value"]
-
-
-def set_theme(page, theme):
-    """Paint a theme the way the app does, both root attributes. Assert right after: the app repaints the stored theme on its next minute tick or window focus."""
-    scheme = "dark" if next(t["dark"] for t in THEMES if t["id"] == theme) else "light"
-    page.evaluate("([theme, scheme]) => { const root = document.documentElement; root.dataset.liubaiTheme = theme; root.dataset.liubaiScheme = scheme }", [theme, scheme])
-
-
-def saved_position(page, check, timeout=7000):
-    """Poll the persisted position; Playwright treats an async wait_for_function predicate as already true."""
-    for _ in range(timeout // 100):
-        current = api(page, "State")["current"]
-        if check(current):
-            return current
-        page.wait_for_timeout(100)
-    raise AssertionError(api(page, "State")["current"]["position"])
-
-
-
-def appearance_change(page, operation):
-    with page.expect_response(lambda r: r.url.endswith("/api") and '"UpdateAppearance"' in (r.request.post_data or "")) as pending:
-        operation()
-    assert not pending.value.json().get("error"), pending.value.text()
 
 
 def select_view(page, view):
@@ -60,11 +25,6 @@ def assert_view(page, view):
     expect(page.locator(f'[data-view="{view}"]')).to_have_attribute("aria-checked", "true")
     assert page.locator('.view-switch button').evaluate_all("els => els.filter(el => el.tabIndex === 0).map(el => el.dataset.view)") == [view]
     assert api(page, "State")["appearance"]["layout"] == view
-
-
-def more_action(page, action):
-    page.locator("#more-button").click()
-    page.locator(f'#more-menu [data-menu-action="{action}"]').click()
 
 
 def accessible_buttons(page):
@@ -1046,7 +1006,7 @@ def run(page):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
+    browser = launch(playwright.chromium)
     page = browser.new_page(locale="zh-CN", viewport={"width": 1120, "height": 820})
     page.set_default_timeout(7000)
     errors = []
@@ -1055,9 +1015,7 @@ with sync_playwright() as playwright:
         run(page)
         assert not errors, errors
     except Exception:
-        page.screenshot(path=str(ARTIFACTS / "failure.png"))
-        (ARTIFACTS / "errors.json").write_text(json.dumps(errors, ensure_ascii=False))
+        save_failure(ARTIFACTS, page, errors)
         raise
     finally:
-        print(f"Evidence: {ARTIFACTS}")
         browser.close()

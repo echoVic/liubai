@@ -1,18 +1,15 @@
 """English/Chinese interface regression. Run against -web with an isolated data dir.
 
-python3 scripts/check-english.py http://127.0.0.1:4199
+python3 scripts/check-english.py http://127.0.0.1:<port>
 Requires Python Playwright and Chrome (or PLAYWRIGHT_CHANNEL).
 """
 import json
-import os
-from pathlib import Path
-import sys
-import tempfile
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import base_url, evidence, launch, palette
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4199"
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-english-qa-"))
+BASE = base_url()
+ARTIFACTS = evidence("liubai-english-qa-")
 
 
 def chrome_is_english(page):
@@ -31,12 +28,6 @@ def chrome_is_english(page):
         return found;
     }""")
     assert not offending, offending
-
-
-def palette(page, text):
-    page.keyboard.press("Meta+k")
-    page.locator("#command-search").fill(text)
-    page.locator("#command-list button").filter(has_text=text).first.click()
 
 
 def english(context):
@@ -209,6 +200,23 @@ def english(context):
     chrome_is_english(page)
     page.set_viewport_size({"width": 1120, "height": 820})
 
+    # A language change during composition leaves the live texts alone; they follow once composition ends.
+    page.keyboard.press("Meta+ArrowUp")
+    expect(page.locator("#save-status")).to_have_text("Draft saved")
+    expect(page.locator("#heading-label")).to_have_text("Heading 1")
+    live = {k: page.locator(k).inner_text() for k in ("#doc-title", "#save-status", "#word-count", "#heading-label")}
+    page.locator(".cm-content").dispatch_event("compositionstart")
+    page.evaluate("()=>{localStorage.setItem('mygo:locale','zh-Hans');window.dispatchEvent(new Event('mygo:locale'))}")
+    expect(page.locator('[data-view="single"]')).to_have_text("编辑")
+    for k, text in live.items():
+        expect(page.locator(k)).to_have_text(text)
+    page.locator(".cm-content").dispatch_event("compositionend")
+    expect(page.locator("#heading-label")).to_have_text("标题 1")
+    expect(page.locator("#word-count")).to_have_text(live["#word-count"].replace(" words", " 字"))
+    expect(page.locator("#doc-title")).to_have_text(live["#doc-title"])
+    page.evaluate("()=>{localStorage.removeItem('mygo:locale');window.dispatchEvent(new Event('mygo:locale'))}")
+    expect(page.locator("#heading-label")).to_have_text("Heading 1")
+
     capture = context.new_page()
     capture.goto(BASE + "/capture.html")
     expect(capture.locator("#capture-text")).to_have_attribute("placeholder", "Capture this moment…")
@@ -236,7 +244,7 @@ def chinese(context):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
+    browser = launch(playwright.chromium)
     try:
         with browser.new_context(locale="en-US", viewport={"width": 1120, "height": 820}) as context:
             context.set_default_timeout(7000)
@@ -250,5 +258,4 @@ with sync_playwright() as playwright:
             chinese(context)
         print("PASS: English chrome, dialogs/full width option, capture, save status, word plurals, live/persisted language switching, undo, Chinese browser matching")
     finally:
-        print(f"Evidence: {ARTIFACTS}")
         browser.close()

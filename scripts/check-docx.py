@@ -1,16 +1,13 @@
 """Word export regression. Run via scripts/e2e.sh check-docx (fresh server/data)."""
-import json
-import os
 from pathlib import Path
 import re
-import sys
-import tempfile
 import zipfile
 from xml.etree import ElementTree as ET
 from playwright.sync_api import expect, sync_playwright
+from checklib import base_url, evidence, launch, save_failure
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:4196'
-ARTIFACTS = Path(tempfile.mkdtemp(prefix='liubai-docx-qa-'))
+BASE = base_url()
+ARTIFACTS = evidence('liubai-docx-qa-')
 TEXT = '# 中文 Word\n\n正文 **bold** 与 $\\frac{1}{x}$。\n\n3. 三\n4. 四\n\n脚注[^1]\n\n[^1]: 注释 English\n'
 NS = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'm': 'http://schemas.openxmlformats.org/officeDocument/2006/math'}
 
@@ -99,12 +96,22 @@ def run(page):
     page.locator('#command-search').fill('Export Word Document')
     expect(page.locator('#command-list button')).to_have_count(1)
     page.keyboard.press('Escape')
+    # The HTML export escapes the title rather than dropping & < >, and names the file after it.
+    replace(page, '# R&D <笔记>\n\n正文\n')
+    page.locator('.export-button').click()
+    page.locator('[data-deliver="html"]').click()
+    expect(page.locator('#ready-dialog')).to_be_visible()
+    with page.expect_download() as pending:
+        page.locator('#ready-go').click()
+    html = Path(pending.value.path()).read_text(encoding='utf-8')
+    assert '<title>R&amp;D &lt;笔记&gt;</title>' in html, html[:300]
+    assert pending.value.suggested_filename.startswith('R&D'), pending.value.suggested_filename
     assert not violations, violations
     print('PASS: Word lazy chunk, dialog/palette/download, missing image confirmation, OOXML, English and CSP')
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get('PLAYWRIGHT_CHANNEL', 'chrome'))
+    browser = launch(playwright.chromium)
     page = browser.new_page(locale='zh-CN', viewport={'width': 1120, 'height': 820})
     page.set_default_timeout(15000)
     errors = []
@@ -113,9 +120,7 @@ with sync_playwright() as playwright:
         run(page)
         assert not errors, errors
     except Exception:
-        page.screenshot(path=str(ARTIFACTS / 'failure.png'))
-        (ARTIFACTS / 'errors.json').write_text(json.dumps(errors, ensure_ascii=False))
+        save_failure(ARTIFACTS, page, errors)
         raise
     finally:
-        print(f'Evidence: {ARTIFACTS}')
         browser.close()

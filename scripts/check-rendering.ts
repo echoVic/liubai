@@ -18,6 +18,12 @@ const taskLine=state.doc.line(5);
 const visible=collect(inlineDecorations(state,[{from:taskLine.from,to:taskLine.to}]));
 assert.ok(visible.some(x=>x.value.spec.widget?.constructor.name==='TaskWidget'));
 assert.ok(visible.every(x=>x.from>=taskLine.from&&x.to<=taskLine.to),'offscreen nodes have no decorations');
+// A task box below an edit keeps an equal widget, so CodeMirror keeps its DOM; a change reads the position from the DOM.
+{
+ const task=(s:EditorState)=>{let found:any;inlineDecorations(s,[{from:0,to:s.doc.length}]).between(0,s.doc.length,(from,_to,value)=>{if(value.spec.widget?.constructor.name==='TaskWidget')found={from,widget:value.spec.widget}});return found};
+ const before=task(state),after=task(state.update({changes:{from:0,insert:'续'}}).state);
+ assert.equal(after.from,before.from+1);assert.ok(after.widget.eq(before.widget),'a task box that only moved keeps its DOM');
+}
 const before=state.field(field);state=state.update({}).state;
 assert.equal(state.field(field),before,'idle transactions reuse block decorations');
 state=state.update({effects:setComposing.of(true)}).state;
@@ -68,3 +74,38 @@ for(const doc of ['<u></u>','<sup></sup>','<sub></sub>']){
  const decorations=collect(inlineDecorations(state,[{from:0,to:state.doc.length}]));
  assert.ok(decorations.every(x=>x.from<x.to),'empty HTML wrappers never create empty mark decorations');
 }
+// Reference links open their definition and hide their label, autolinks and bare URLs open as the reading view links
+// them, and a reference without a definition stays text, as it does there.
+{
+ const line='[text][ref] <https://a.example> https://b.example [inline](https://c.example) [Col][] [REF] [none][x] www.d.example a@b.example';
+ const doc=line+'\n\n[ref]: https://d.example "T"\n[col]: https://e.example\n\n[ref]: https://ignored.example\n\n光标';
+ state=EditorState.create({doc,selection:{anchor:doc.length},extensions:[markdown({base:markdownLanguage,extensions:GFM}),composing]});
+ ensureSyntaxTree(state,doc.length,5000);
+ const found=collect(inlineDecorations(state,[{from:0,to:doc.length}])).filter(x=>x.to<=line.length).sort((a,b)=>a.from-b.from);
+ const links=found.filter(x=>x.value.spec.class==='md-link').map(x=>[doc.slice(x.from,x.to),x.value.spec.attributes['data-href']]);
+ assert.deepEqual(links,[['[text][ref]','https://d.example'],['<https://a.example>','https://a.example'],['https://b.example','https://b.example'],['[inline](https://c.example)','https://c.example'],['[Col][]','https://e.example'],['[REF]','https://d.example'],['www.d.example','http://www.d.example']]);
+ const shown=found.filter(x=>!x.value.spec.class&&!x.value.spec.widget).reduce((text,x)=>text.slice(0,x.from)+'\0'.repeat(x.to-x.from)+text.slice(x.to),line).replaceAll('\0','');
+ assert.equal(shown,'text https://a.example https://b.example inline Col REF [none][x] www.d.example a@b.example');
+}
+console.log('引用式链接、自动链接和裸网址在编辑器中可以打开');
+// The reading view highlights a code block once for its language and text; the next render reuses the result.
+{
+ const page=(await import('./headless-dom')).headlessDOM();
+ const {highlightCodeBlocks}=await import('../src/highlight'),{LanguageDescription}=await import('@codemirror/language'),{languages}=await import('@codemirror/language-data');
+ const parser=(await LanguageDescription.matchLanguageName(languages,'js',true)!.load()).language.parser as any,parse=parser.parse.bind(parser);let parses=0;
+ parser.parse=(...args:any[])=>{parses++;return parse(...args)};
+ const block=(text:string)=>{const root=page.createElement('div');root.innerHTML=`<pre><code class="language-js">${text}</code></pre>`;return root};
+ const first=block('const x=1 &lt; 2'),second=block('const x=1 &lt; 2');
+ await highlightCodeBlocks(first,()=>true);await highlightCodeBlocks(second,()=>true);
+ assert.equal(parses,1,'an unchanged block is not parsed again');assert.equal(second.innerHTML,first.innerHTML);
+ assert.ok(first.querySelector('span.tok-keyword'));assert.equal(first.textContent,'const x=1 < 2');
+ await highlightCodeBlocks(block('let y=2'),()=>true);assert.equal(parses,2);
+}
+console.log('阅读视图的代码高亮按语言和文字缓存');
+// Event-handler attributes leave author HTML before any HTML parser sees them, also when glued to a closing quote;
+// names that only look like handlers stay.
+{
+ const {stripEventHandlers}=await import('../src/markdown');
+ for(const [html,expected] of [['<img src="x" onerror=alert(1)>','<img src="x" >'],['<img src=x onerror=alert(1)>','<img src=x >'],['<img src="x"onerror=alert(1)>','<img src="x">'],["<img alt='a'onload='b' src=x>","<img alt='a' src=x>"],['<img alt="a onclick=b" src=/online>','<img alt="a onclick=b" src=/online>'],['<one data-on="1">','<one data-on="1">'],['<p>once = 1</p>','<p>once = 1</p>']])assert.equal(stripEventHandlers(html),expected,html);
+}
+console.log('事件属性在解析前移除');

@@ -4,17 +4,20 @@ The app's PrintToPDF (MyGo) also restores the Chinese characters that WebKit's t
 layer names as radicals; this check prints with WebKit alone, so it leaves the text be.
 
 Usage: python3 scripts/check-pdf.py
-Requires local esbuild, Go and the macOS Swift toolchain; no browser downloads.
+Requires local esbuild and the macOS Swift toolchain; no browser downloads.
 """
+import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
 import tempfile
+from checklib import evidence
 
 
 PROJECT = Path(__file__).resolve().parent.parent
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-pdf-qa-"))
+ARTIFACTS = evidence("liubai-pdf-qa-")
 
 
 def run(*args, env=None, timeout=120):
@@ -31,10 +34,9 @@ def read_json(helper, command, *paths):
 
 
 def main():
-    print(f"Evidence: {ARTIFACTS}", flush=True)
     esbuild = str(PROJECT / "node_modules/.bin/esbuild")
     run(esbuild, "scripts/pdf-fixture.ts", "--bundle", "--platform=browser", "--format=iife", f"--outfile={ARTIFACTS / 'fixture.js'}")
-    # The stylesheet bundles KaTeX, whose fonts need the same loaders as scripts/build.mjs.
+    # The stylesheet bundles KaTeX, whose font files need a loader each.
     run(esbuild, "src/style.css", "--bundle", "--loader:.woff2=file", "--loader:.woff=file", "--loader:.ttf=file", "--asset-names=fonts/[name]", f"--outfile={ARTIFACTS / 'style.css'}")
     html = ARTIFACTS / "page.html"
     html.write_text(
@@ -43,11 +45,16 @@ def main():
         '<body><div id="print-document"></div><script src="fixture.js"></script></body></html>',
         encoding="utf-8",
     )
-    helper = ARTIFACTS / "check-pdf"
-    # A shared module cache: building AppKit/WebKit modules from scratch takes minutes on a busy machine.
+    # Compiled once per source version, beside a shared module cache: building the helper and the
+    # AppKit/WebKit modules takes minutes on a busy machine. The rename keeps a broken build out of the cache.
     cache = Path(tempfile.gettempdir()) / "liubai-check-pdf-module-cache"
-    run("swiftc", "-O", "-module-cache-path", str(cache),
-        str(PROJECT / "scripts/check-pdf.swift"), "-o", str(helper), timeout=900)
+    cache.mkdir(exist_ok=True)
+    source = PROJECT / "scripts/check-pdf.swift"
+    helper = cache / ("check-pdf-" + hashlib.sha256(source.read_bytes()).hexdigest()[:12])
+    if not helper.exists():
+        partial = ARTIFACTS / "check-pdf"
+        run("swiftc", "-O", "-module-cache-path", str(cache), str(source), "-o", str(partial), timeout=900)
+        os.replace(partial, helper)
     pdf = ARTIFACTS / "page.pdf"
     run(str(helper), "print", str(html), str(pdf), timeout=60)
     info = read_json(helper, "inspect", pdf)

@@ -1,6 +1,6 @@
 """Browser regression for the 0.4 reader foundation. Use an isolated --data-dir.
 
-python3 scripts/check-reader.py http://127.0.0.1:4194
+python3 scripts/check-reader.py http://127.0.0.1:<port>
 Requires Python Playwright and Chrome (or PLAYWRIGHT_CHANNEL).
 Covers: reader rendering of a README, reading mode, focus mode, position-only
 saves and word count, status-driven reload and conflict actions, empty-draft
@@ -9,16 +9,13 @@ Also covers rich paste/undo in both editor modes, embedded-image import and
 fallback, and plain paste through the browser shortcut and command palette.
 """
 import json
-import os
-from pathlib import Path
-import sys
-import tempfile
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import api, base_url, evidence, launch, more_action, save_failure
 
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4194"
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-reader-qa-"))
+BASE = base_url()
+ARTIFACTS = evidence("liubai-reader-qa-")
 README = "\n".join([
     "---", "title: 示例项目", "tags: [reader]", "---", "",
     '<p align="center"><img src="https://example.invalid/logo.png" width="120" onerror="window.__xss=1"></p>', "",
@@ -31,14 +28,6 @@ README = "\n".join([
 ])
 
 
-def api(page, method, *args):
-    response = page.request.post(BASE + "/api", data={"method": method, "args": list(args)}, headers={"Origin": BASE})
-    assert response.ok, response.text()
-    data = response.json()
-    assert not data.get("error"), data
-    return data["value"]
-
-
 def new_document(page, text):
     # Wait for the New round-trip itself: the previous draft may also be titled 未命名文稿,
     # and typing while the request is in flight lands in a read-only editor.
@@ -49,11 +38,6 @@ def new_document(page, text):
     page.locator(".cm-content").click()
     page.keyboard.insert_text(text)
     expect(page.locator("#save-status")).to_have_text("草稿已保存")
-
-
-def more_action(page, action):
-    page.locator("#more-button").click()
-    page.locator(f'#more-menu [data-menu-action="{action}"]').click()
 
 
 
@@ -163,7 +147,7 @@ def run(page):
     expect(preview.locator('a[href="https://github.com/egoist/mygo"]')).to_have_count(1)
     expect(preview.locator('a[href*="README.md"]')).to_have_count(0)
     expect(preview.locator("blockquote.markdown-alert-note .markdown-alert-title")).to_have_text("说明")
-    expect(preview.locator("#fn1")).to_have_count(1)
+    expect(preview.locator("#user-content-fn1")).to_have_count(1)
     expect(preview.locator("pre code .tok-keyword").first).to_be_visible()
     assert not page.evaluate("Boolean(window.__xss) || Boolean(document.querySelector('#preview-content [onerror], #preview-content script'))")
     assert api(page, "State")["appearance"]["layout"] == "read"
@@ -175,6 +159,31 @@ def run(page):
     page.keyboard.press("Meta+Shift+R")
     expect(page.locator(".editor-pane")).to_be_visible()
     assert api(page, "State")["appearance"]["layout"] == "single"
+
+    # Headings named like the app's own elements keep their ids out of its way in reading and split view.
+    filler = "\n\n".join(f"第 {i} 段，把末尾的链接推到下一屏。" for i in range(40))
+    new_document(page, "# Toast\n\n" + filler + "\n\n## Drawer\n\n## Commands\n\n[回到开头](#toast) [指南](docs/guide.md)")
+    for layout in ("read", "split"):
+        page.locator(f'[data-view="{layout}"]').click()
+        heading = preview.locator("h1", has_text="Toast")
+        expect(heading).to_have_attribute("id", "user-content-toast")
+        assert page.evaluate("['toast', 'drawer', 'commands'].every(id => document.querySelectorAll('#' + id).length === 1 && !document.getElementById(id).closest('#preview-content'))")
+        page.locator(".preview-scroll").evaluate("el => { el.scrollTop = el.scrollHeight }")
+        expect(heading).not_to_be_in_viewport()
+        preview.locator('a[href="#toast"]').click()
+        expect(heading).to_be_in_viewport()
+        preview.locator("a", has_text="指南").click()
+        expect(page.locator("#toast")).to_contain_text("草稿还没有保存位置")
+        expect(heading).to_have_text("Toast")
+        page.locator("#sidebar-button").click()
+        expect(page.locator("#drawer")).to_be_visible()
+        page.keyboard.press("Escape")
+        expect(page.locator("#drawer")).to_be_hidden()
+        page.keyboard.press("Meta+k")
+        expect(page.locator("#commands")).to_be_visible()
+        page.keyboard.press("Escape")
+        expect(page.locator("#commands")).to_be_hidden()
+    page.locator('[data-view="single"]').click()
 
     # Focus mode dims every line except the active block.
     new_document(page, "第一段文字。\n\n第二段文字。\n\n第三段文字。")
@@ -254,6 +263,29 @@ def run(page):
     page.unroute(BASE + "/api", conflict_route)
     page.reload()
 
+    # A save against an old revision (the file was reloaded underneath) cannot be retried; Reload works without a save.
+    expect(page.locator(".cm-content")).to_be_visible()
+    stored = api(page, "State")["current"]["content"]
+
+    def changed_route(route):
+        if route.request.post_data_json.get("method") == "Update":
+            route.fulfill(status=200, content_type="application/json", body=json.dumps({"error": "文稿已变化，请重新载入，当前输入尚未保存", "errorCode": "bDocumentChanged"}))
+        else:
+            route.continue_()
+
+    page.route(BASE + "/api", changed_route)
+    page.locator(".cm-content").focus()
+    page.keyboard.insert_text("旧版本上的输入")
+    expect(page.locator("#reload-changed")).to_be_visible(timeout=10000)
+    expect(page.locator("#reload-changed")).to_have_text("重新载入")
+    expect(page.locator("#retry-save")).to_be_hidden()
+    expect(page.locator("#banner-save-as")).to_be_visible()
+    page.locator("#reload-changed").click()
+    expect(page.locator("#banner")).to_be_hidden()
+    expect(page.locator(".cm-content")).not_to_contain_text("旧版本上的输入")
+    assert api(page, "State")["current"]["content"] == stored
+    page.unroute(BASE + "/api", changed_route)
+
     # Empty drafts are cleaned when switching away; removal needs two clicks.
     new_document(page, "# 要移除的文稿\n\n内容")
     more_action(page, "new")
@@ -291,11 +323,11 @@ def run(page):
     page.locator(".cm-content .md-link").click(modifiers=["Meta"])
     expect(page.locator("#toast")).to_contain_text("草稿还没有保存位置")
 
-    print("PASS: rich/plain paste and undo, embedded images/fallback, notice banner, reader rendering, reading mode, focus mode, position saves/word count, status reload/conflict, draft cleanup/removal, drop to open, relative links")
+    print("PASS: rich/plain paste and undo, embedded images/fallback, notice banner, reader rendering, reading mode, heading ids beside app ids, focus mode, position saves/word count, status reload/conflict, draft cleanup/removal, drop to open, relative links")
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
+    browser = launch(playwright.chromium)
     page = browser.new_page(locale="zh-CN", viewport={"width": 1120, "height": 820})
     page.route("https://example.invalid/**", lambda route: route.abort())
     page.set_default_timeout(7000)
@@ -305,9 +337,7 @@ with sync_playwright() as playwright:
         run(page)
         assert not errors, errors
     except Exception:
-        page.screenshot(path=str(ARTIFACTS / "failure.png"))
-        (ARTIFACTS / "errors.json").write_text(json.dumps(errors, ensure_ascii=False))
+        save_failure(ARTIFACTS, page, errors)
         raise
     finally:
-        print(f"Evidence: {ARTIFACTS}")
         browser.close()

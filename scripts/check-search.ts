@@ -8,7 +8,7 @@ let now=0,nextID=0;
 const timers=new Map<number,{at:number;fn:()=>void}>();
 const clock={
  set(fn:()=>void,ms:number){const id=++nextID;timers.set(id,{at:now+ms,fn});return id},
- clear(id:number){timers.delete(id)},
+ clear(id:unknown){timers.delete(id as number)},
 };
 function advance(ms:number){now+=ms;for(const [id,t] of timers)if(t.at<=now){timers.delete(id);t.fn()}}
 const flush=async()=>{for(let i=0;i<6;i++)await Promise.resolve()};
@@ -46,6 +46,20 @@ queue.invalidate();advance(180);flights[5].reject(Error('current error'));await 
 assert.equal(states.at(-1)?.kind,'error');queue.retry();advance(180);
 assert.equal(flights.length,7);
 queue.dispose();
+{
+ // Typing in the document holds searches back; an unfiltered list has nothing to redraw on each keystroke.
+ const shown:SearchState[]=[],asked:string[]=[];
+ // The fake clock hands out numbers where SearchClock expects timer handles.
+ const held=createSearchQueue({request:query=>{asked.push(query);return Promise.resolve(empty)},show:state=>shown.push(state),clock});
+ held.visible(true);advance(180);await flush();const before=shown.length;
+ for(let i=0;i<10;i++)held.hold();
+ assert.equal(shown.length,before,'keystrokes redraw the unfiltered list');
+ held.input('词');assert.equal(shown.at(-1)?.kind,'paused','a query typed before the save waits for it');
+ advance(500);assert(!asked.includes('词'),'pending content was searched');
+ held.hold();assert.equal(shown.at(-1)?.kind,'paused','a held query stays paused');
+ held.invalidate(true);advance(180);assert.equal(asked.at(-1),'词');
+ held.dispose();
+}
 
 const content='中😀AKſ尾';
 const item:SearchItem={id:'a',title:'Title',path:'',updated:0,revision:4,titleMatch:null,hits:[],moreHits:false};
@@ -79,7 +93,7 @@ console.log('PASS: 180ms debounce, one flight/latest pending, stale success/erro
  // the browser APIs the controller uses without replacing its jump logic.
  const host={closest:()=>({hidden:true}),replaceChildren:(block:Block)=>{blocks=[block]},querySelectorAll:()=>[]};
  mock.module('../src/markdown',()=>({
-  headingSlug:()=>'',renderMarkdown:()=>{
+  renderMarkdown:()=>{
    const job={y:100,complete:()=>{}};
    const ready=new Promise<void>(resolve=>{job.complete=resolve});
    jobs.push(job);
@@ -144,7 +158,7 @@ console.log('PASS: 180ms debounce, one flight/latest pending, stale success/erro
   return {navigateSearch,openWikiLink,composition,current:()=>doc.id,text:()=>view.state.doc.toString()};
  `);
  function harness(hold:string,total=1){
-  const origin={id:'origin',revision:1,content:'[[Title]]',position:{anchor:0,head:0,scroll:0,source:false}};
+  const origin={id:'origin',revision:1,content:'[[Title]]',position:{anchor:0,head:0,scroll:0}};
   const target={...origin,id:item.id,revision:item.revision,content:doc.content};
   const calls:string[]=[],toasts:string[]=[],loads:string[]=[];
   let held=false,holding=true,release:()=>void=()=>assert.fail('no held callback');

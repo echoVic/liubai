@@ -3,42 +3,20 @@
 scripts/e2e.sh check-outline
 Requires Python Playwright and Chrome (or PLAYWRIGHT_CHANNEL).
 """
-import os
 import re
-import sys
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import api, appearance_change, base_url, launch, saved_position
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4196"
+BASE = base_url()
 TEXT = "# 留白\n\n第一段。\n\n## 一、先写结尾\n\n正文。\n\n## 二、每天一页\n\n正文。\n\n### 晚上读一遍\n\n结尾。\n"
 
 
-def api(page, method, *args):
-    response = page.request.post(BASE + "/api", data={"method": method, "args": list(args)}, headers={"Origin": BASE})
-    assert response.ok, response.text()
-    body = response.json()
-    assert not body.get("error"), body
-    return body["value"]
-
-
-def appearance_change(page, operation):
-    with page.expect_response(lambda r: r.url.endswith("/api") and r.request.post_data_json.get("method") == "UpdateAppearance") as pending:
-        operation()
-    assert not pending.value.json().get("error"), pending.value.text()
-
-
-def saved_position(page, check, timeout=7000):
-    for _ in range(timeout // 100):
-        current = api(page, "State")["current"]
-        if check(current):
-            return current
-        page.wait_for_timeout(100)
-    raise AssertionError(api(page, "State")["current"]["position"])
-
-
 with sync_playwright() as p:
-    browser = p.chromium.launch(channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
+    browser = launch(p.chromium)
     page = browser.new_page(viewport={"width": 1512, "height": 900}, locale="zh-CN")
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
     page.goto(BASE)
     content = page.locator('.cm-content[contenteditable="true"]')
     content.focus(); page.keyboard.press("Meta+a"); page.keyboard.insert_text(TEXT)
@@ -112,7 +90,7 @@ with sync_playwright() as p:
     long_text = "".join(f"## 第 {i} 节\n\n" + "正文。" * 300 + "\n\n" for i in range(1, 301))
     page.goto("about:blank")
     current = api(page, "State")["current"]
-    api(page, "Update", {"id": current["id"], "revision": current["revision"], "content": long_text, "position": {"anchor": 0, "head": 0, "scroll": 0, "source": False}})
+    api(page, "Update", {"id": current["id"], "revision": current["revision"], "content": long_text, "position": {"anchor": 0, "head": 0, "scroll": 0}})
     page.goto(BASE); expect(page.locator(".cm-content")).to_be_visible()
     items = outline.locator(".outline-item")
     expect(items).to_have_count(300, timeout=15000); expect(items.last).to_have_text("第 300 节")
@@ -127,4 +105,5 @@ with sync_playwright() as p:
     page.keyboard.press("Meta+ArrowUp"); page.keyboard.insert_text("## 新的一节\n\n")
     expect(items).to_have_count(301); expect(items.first).to_have_text("新的一节")
     browser.close()
+    assert not errors, errors
 print("PASS: 大纲只在一处，长文稿打开即列出全部标题")

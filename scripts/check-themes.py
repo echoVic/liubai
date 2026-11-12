@@ -4,29 +4,11 @@ scripts/e2e.sh check-themes
 Requires Python Playwright and Chrome (or PLAYWRIGHT_CHANNEL).
 """
 import datetime as dt
-import json
-import os
-from pathlib import Path
-import sys
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import THEMES, api, appearance_change, base_url, launch
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4196"
-THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
-
-
-def api(page, method, *args):
-    response = page.request.post(BASE + "/api", data={"method": method, "args": list(args)}, headers={"Origin": BASE})
-    assert response.ok, response.text()
-    body = response.json()
-    assert not body.get("error"), body
-    return body["value"]
-
-
-def appearance_change(page, operation):
-    with page.expect_response(lambda r: r.url.endswith("/api") and '"UpdateAppearance"' in (r.request.post_data or "")) as pending:
-        operation()
-    assert not pending.value.json().get("error"), pending.value.text()
+BASE = base_url()
 
 
 def painted(page):
@@ -70,9 +52,11 @@ def palette_theme(page, name, how):
 
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
+    browser = launch(p.chromium)
     context = browser.new_context(viewport={"width": 1440, "height": 1100}, color_scheme="light", locale="zh-CN")
     page = context.new_page()
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
     page.clock.install(time=dt.datetime(2026, 10, 22, 16, 0))
     # What the boot script painted, before the app module ran.
     page.add_init_script("document.addEventListener('DOMContentLoaded', () => { window.bootTheme = document.documentElement.dataset.liubaiTheme }, {once: true})")
@@ -216,4 +200,5 @@ with sync_playwright() as p:
         palette_theme(page, name, "arrow" if i % 2 else "click")
         assert painted(page) == [t["id"], "dark" if t["dark"] else "light"], t["id"]
     browser.close()
+    assert not errors, errors
 print("PASS: 主题面板、自动切换与启动绘制")

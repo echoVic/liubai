@@ -4,22 +4,14 @@ Run against an isolated workspace: sh scripts/e2e.sh check-typography
 Desktop coverage invokes the registered frontend event; it does not test
 the native settings window itself.
 """
-import sys
 from playwright.sync_api import expect, sync_playwright
+from checklib import BRIDGE, base_url, launch
 
-BASE = sys.argv[1]
+BASE = base_url()
 TEXT = "\n\n".join(
     f"段落{i:03d} " + "改变字号与行宽后，应继续停留在当前正文位置。" * 6
     for i in range(60)
 )
-BRIDGE = """window.__settingsEvents={};window.mygo={
- locale:'zh-CN',on:(name,fn)=>window.__settingsEvents[name]=fn,
- call:async(method,...args)=>{
-  const r=await fetch('/api',{method:'POST',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({method:method.replace(/^Desktop\\./,''),args,locale:'zh-CN'})}).then(r=>r.json());
-  if(r.error)throw Error(r.error);return r.value;
- }
-}"""
 
 
 def workspace(page):
@@ -69,7 +61,7 @@ def change(page, size, width):
 
 
 with sync_playwright() as pw:
-    browser = pw.chromium.launch(headless=True)
+    browser = launch(pw.chromium)
     page = browser.new_page(viewport={"width": 1440, "height": 900}, locale="zh-CN")
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
@@ -98,9 +90,14 @@ with sync_playwright() as pw:
     # Reload applies the same preferences. Touch controls have usable targets.
     page.reload(wait_until="networkidle")
     expect(page.locator("#preview-content .markdown-document")).to_have_css("font-size", "22px")
+    # The select offers every size the backend and the native settings window accept.
+    sizes = page.locator("#font-size option").evaluate_all("options=>options.map(o=>o.value)")
+    assert sizes == [str(size) for size in range(15, 23)], sizes
     touch = browser.new_context(has_touch=True, is_mobile=True, viewport={"width": 360, "height": 640}, locale="zh-CN")
     mobile = touch.new_page()
     mobile.goto(BASE, wait_until="networkidle")
+    # A first load fills the cache boot.ts paints from, so the next start shows the saved theme at once.
+    mobile.wait_for_function("()=>JSON.parse(localStorage.getItem('liubai-appearance')||'{}').fontSize===22", timeout=5000)
     mobile.locator('[data-action="settings"]').tap()
     mobile.locator("#font-size").scroll_into_view_if_needed()
     assert all(mobile.locator(s).bounding_box()["height"] >= 44 for s in ["#font-size", "#line-width"])

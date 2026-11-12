@@ -7,14 +7,13 @@ import json
 import os
 import re
 import sys
-import tempfile
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
+from checklib import CONTRAST, THEMES, base_url, evidence, launch
 
-BASE = sys.argv[1]
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-reader-code-"))
+BASE = base_url()
+ARTIFACTS = evidence("liubai-reader-code-")
 FAILURES = []
-THEMES = json.loads((Path(__file__).resolve().parents[1] / "src/themes.json").read_text())
 TEXT = """---
 title: Keyboard reading
 description: """ + "属性需要完整阅读。" * 100 + """
@@ -88,7 +87,7 @@ def keyboard_pan(page, target, before, label):
 
 
 def run(pw, engine):
-    browser = getattr(pw, engine).launch(headless=True)
+    browser = launch(getattr(pw, engine))
     page = browser.new_page(viewport={"width": 1440, "height": 900}, locale="zh-CN")
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
@@ -162,11 +161,7 @@ def run(pw, engine):
         page.locator(f'#themes [data-theme="{theme["id"]}"]').click()
         page.keyboard.press("Escape")
         code.focus()
-        ratios = code.evaluate("""e=>{
-          const rgb=c=>{const n=document.createElement('span');n.style.color=c;e.append(n);const s=getComputedStyle(n).color;n.remove();return s.match(/[\\d.]+/g).slice(0,3).map(Number)};
-          const lum=c=>rgb(c).map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4}).reduce((s,n,i)=>s+n*[.2126,.7152,.0722][i],0);
-          const contrast=(a,b)=>{a=lum(a);b=lum(b);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05)};
-          const s=getComputedStyle(e),paper=s.getPropertyValue('--card'),bg=s.backgroundColor;
+        ratios = code.evaluate(CONTRAST + """          const s=getComputedStyle(e),paper=s.getPropertyValue('--card'),bg=s.backgroundColor;
           return {text:contrast(s.color,bg),focus:Math.min(contrast(s.getPropertyValue('--ring'),paper),contrast(s.getPropertyValue('--ring'),bg)),
             thumb:contrast(s.getPropertyValue('--muted-foreground'),bg)};
         }""")
@@ -211,5 +206,5 @@ with sync_playwright() as pw:
     else:
         check("WebKit available when required", not os.environ.get("REQUIRE_WEBKIT"))
         print("SKIP WebKit not installed", flush=True)
-print(f"RESULT failures={len(FAILURES)} artifacts={ARTIFACTS}", flush=True)
+print(f"RESULT failures={len(FAILURES)}", flush=True)
 sys.exit(bool(FAILURES))

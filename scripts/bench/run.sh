@@ -6,7 +6,7 @@
 #   load changes on a busy machine hit both trees, and the summary keeps the best result.
 #   SUITES (default "editor preview go webkit") picks the suites. webkit opens each tree's own
 #   app in an off-screen WKWebView and needs the screen unlocked and the display awake.
-# Requires Go, Bun 1.4.x (via npx), Python Playwright + Chrome, swiftc, and installed node_modules.
+# Requires Go, Bun (via npx, the version in .bun-version), Python Playwright + Chrome, swiftc, and installed node_modules.
 set -eu
 repo=$(cd "$(dirname "$0")/../.." && pwd)
 base_ref=${1:-29925c3}
@@ -15,7 +15,7 @@ rounds=${ROUNDS:-2}
 suites=${SUITES:-editor preview go webkit}
 work=$(mktemp -d /tmp/liubai-bench.XXXXXX)
 mkdir -p "$out"
-bun="npx --yes bun@1.4.3"
+bun="npx --yes bun@$(cat "$repo/.bun-version")"
 
 mkdir -p "$work/base"
 git -C "$repo" archive "$base_ref" | tar -x -C "$work/base"

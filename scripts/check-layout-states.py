@@ -5,15 +5,13 @@ Synthesized touch gestures require Chromium's CDP input API.
 """
 import json
 import os
-from pathlib import Path
-import sys
-import tempfile
 
 from playwright.sync_api import sync_playwright, expect
+from checklib import api, base_url, evidence, launch
 
-BASE = sys.argv[1]
+BASE = base_url()
 ENGINE = os.environ.get("PLAYWRIGHT_ENGINE", "chromium")
-OUT = Path(tempfile.mkdtemp(prefix="liubai-layout-states-qa-"))
+OUT = evidence("liubai-layout-states-qa-")
 FAILURES = []
 RECORDS = []
 TEXT = "\n\n".join([
@@ -36,14 +34,6 @@ def check(name, ok, data=None):
         FAILURES.append(name)
 
 
-def api(page, method, *args):
-    r = page.request.post(BASE + "/api", data={"method": method, "args": list(args)})
-    assert r.ok, r.text()
-    body = r.json()
-    assert not body.get("error"), body
-    return body["value"]
-
-
 def settle(page):
     page.evaluate("""()=>new Promise(resolve=>{
       let count=0;function frame(){if(++count>=5)resolve();else requestAnimationFrame(frame)}
@@ -63,11 +53,11 @@ def bounds(page, name, selector, allow_scroll=False):
 
 
 with sync_playwright() as pw:
-    browser = getattr(pw, ENGINE).launch(headless=True)
+    browser = launch(getattr(pw, ENGINE))
     setup = browser.new_page(locale="zh-CN")
     d = api(setup, "State")["current"]
     api(setup, "Update", {"id": d["id"], "revision": d["revision"], "content": TEXT,
-        "position": {"anchor": 0, "head": 0, "scroll": 0, "source": False}})
+        "position": {"anchor": 0, "head": 0, "scroll": 0}})
     setup.close()
     for locale in ["zh-CN", "en-US"]:
         ctx = browser.new_context(locale=locale, reduced_motion="reduce",
@@ -223,6 +213,5 @@ with sync_playwright() as pw:
     browser.close()
     (OUT / "results.json").write_text(json.dumps(RECORDS, indent=2, ensure_ascii=False))
     print(f"RESULT {len(RECORDS)} checks, {len(FAILURES)} failures", flush=True)
-    print(f"Evidence: {OUT}", flush=True)
     if FAILURES:
         raise SystemExit(1)

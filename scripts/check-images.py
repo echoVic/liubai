@@ -1,35 +1,16 @@
 """Inline images. Run via scripts/e2e.sh check-images (fresh server/data)."""
-import json
 import base64
 import html
-import os
-from pathlib import Path
 import re
 import struct
-import sys
-import tempfile
 import zlib
 from urllib.parse import unquote
 from playwright.sync_api import expect, sync_playwright
+from checklib import THEMES, api, base_url, evidence, launch, save_failure, saved_position, set_theme
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:4196'
-ARTIFACTS = Path(tempfile.mkdtemp(prefix='liubai-images-qa-'))
-THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
+BASE = base_url()
+ARTIFACTS = evidence('liubai-images-qa-')
 PREFIX, SUFFIX = '前文  \n\n', '\n\n尾文\t '
-
-
-def api(page, method, *args):
-    response = page.request.post(BASE + '/api', data={'method': method, 'args': list(args)}, headers={'Origin': BASE})
-    assert response.ok, response.text()
-    data = response.json()
-    assert not data.get('error'), data
-    return data['value']
-
-
-def set_theme(page, theme):
-    """Paint a theme the way the app does, both root attributes. Assert right after: the app repaints the stored theme on its next minute tick or window focus."""
-    scheme = 'dark' if next(t['dark'] for t in THEMES if t['id'] == theme) else 'light'
-    page.evaluate("([theme, scheme]) => { const root = document.documentElement; root.dataset.liubaiTheme = theme; root.dataset.liubaiScheme = scheme }", [theme, scheme])
 
 
 def saved(page, expected=None):
@@ -38,16 +19,6 @@ def saved(page, expected=None):
     if expected is not None:
         assert current == expected, (current, expected)
     return current
-
-
-def saved_position(page, check, timeout=7000):
-    """Poll the persisted position; Playwright treats an async wait_for_function predicate as already true."""
-    for _ in range(timeout // 100):
-        current = api(page, 'State')['current']
-        if check(current):
-            return current
-        page.wait_for_timeout(100)
-    raise AssertionError(api(page, 'State')['current']['position'])
 
 
 def source(page, value):
@@ -222,6 +193,18 @@ def run(page):
         page.keyboard.insert_text('续')
         saved(page, text.replace('尾文', '续尾文'))
         undo(page, text)
+    # Typing above an image only moves it: its DOM is left alone, and its toolbar still edits the image where it now is.
+    text = PREFIX + md + SUFFIX
+    source(page, text)
+    page.locator('.inline-image').evaluate("el => { window.imageMutations = []; new MutationObserver(records => window.imageMutations.push(...records.map(r => r.type + ' ' + r.target.nodeName + ' ' + (r.attributeName || '')))).observe(el, {subtree: true, childList: true, attributes: true, characterData: true}) }")
+    page.locator('.cm-line').filter(has_text='前文').click()
+    page.keyboard.press('End')
+    page.keyboard.insert_text('续')
+    moved = text.replace('前文  ', '前文  续')
+    saved(page, moved)
+    assert page.evaluate('window.imageMutations') == [], page.evaluate('window.imageMutations')
+    action(page, 'center')
+    saved(page, moved.replace(md, '<p align="center">' + img() + '</p>'))
     # Container prefixes, block handles, source mode and escaped paths.
     for container in ('> ', '- ', '> - '):
         text = PREFIX + container + md + SUFFIX
@@ -328,7 +311,7 @@ def run(page):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get('PLAYWRIGHT_CHANNEL', 'chrome'))
+    browser = launch(playwright.chromium)
     page = browser.new_page(locale='zh-CN', viewport={'width': 1120, 'height': 820})
     page.set_default_timeout(7000)
     errors = []
@@ -337,9 +320,7 @@ with sync_playwright() as playwright:
         run(page)
         assert not errors, errors
     except Exception:
-        page.screenshot(path=str(ARTIFACTS / 'failure.png'))
-        (ARTIFACTS / 'errors.json').write_text(json.dumps(errors, ensure_ascii=False))
+        save_failure(ARTIFACTS, page, errors)
         raise
     finally:
-        print(f'Evidence: {ARTIFACTS}')
         browser.close()

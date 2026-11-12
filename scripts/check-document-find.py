@@ -1,18 +1,11 @@
-"""Document find/replace and reader search. Run against an isolated -web server.
-
-For reader-only RED/GREEN without a server, pass --reader-module PATH to a private
-IIFE bundle exporting createReaderFind and SearchQuery as readerFixture.
-"""
+"""Document find/replace and reader search. Run against an isolated -web server."""
 import json
-import os
-import sys
-import tempfile
-from pathlib import Path
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import api, base_url, evidence, launch
 
-BASE = sys.argv[1].rstrip("/")
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-find-"))
+BASE = base_url()
+ARTIFACTS = evidence("liubai-find-")
 WHITESPACE = (
     '<section id="find-whitespace-fixture">'
     '<p data-find="soft">📝 softalpha\nsoftbeta suffix</p>'
@@ -36,12 +29,6 @@ CONTENT = (
     + "\n\n".join(f"第 {i} 段：阅读时自由滚动。" for i in range(50))
     + "\n\n远处的命中\n"
 )
-
-
-def api(page, method, *args):
-    result = page.request.post(BASE + "/api", data={"method": method, "args": list(args)}, headers={"Origin": BASE}).json()
-    assert not result.get("error"), result
-    return result["value"]
 
 
 def check_reader_whitespace(page):
@@ -144,34 +131,10 @@ def check_reader_whitespace(page):
 
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"), headless=True)
+    browser = launch(p.chromium)
     page = browser.new_page(locale="zh-CN", viewport={"width": 1120, "height": 820})
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
-    if BASE == "--reader-module":
-        page.set_content("""<style>
-          .preview-scroll{position:relative;height:650px;overflow:auto}
-          #preview-content{padding:20px;font:18px/1.6 sans-serif}
-          .reader-find-highlights{position:absolute;inset:0;pointer-events:none}
-          .reader-find-match{position:absolute;background:#ffd96680}
-        </style><input id="find-query"><button id="find-regexp" aria-pressed="false">.*</button>
-        <span id="find-count"></span><div class="preview-scroll"><div id="preview-content"></div></div>""")
-        page.add_script_tag(path=sys.argv[2])
-        page.evaluate("""() => {
-          const {createReaderFind, SearchQuery} = readerFixture;
-          const input = document.querySelector('#find-query'), toggle = document.querySelector('#find-regexp');
-          const reader = createReaderFind(document.querySelector('#preview-content'), document.querySelector('.preview-scroll'),
-            () => {document.querySelector('#find-count').textContent = reader.result.matches.length ? '1 / ' + reader.result.matches.length : '未找到'});
-          input.oninput = () => reader.set(new SearchQuery({search:input.value, literal:true,
-            regexp:toggle.getAttribute('aria-pressed') === 'true'}), true, true);
-          toggle.onclick = () => {toggle.setAttribute('aria-pressed', String(toggle.getAttribute('aria-pressed') !== 'true')); input.oninput()};
-        }""")
-        check_reader_whitespace(page)
-        assert not errors, errors
-        browser.close()
-        print("PASS: isolated real-browser reader whitespace, UTF-16 Range mapping and overlay geometry")
-        print("Evidence:", ARTIFACTS)
-        sys.exit(0)
     page.goto(BASE)
     current = api(page, "New")["current"]
     api(page, "UpdateAppearance", {"layout": "single", "source": False})
@@ -315,4 +278,3 @@ with sync_playwright() as p:
     assert not errors, errors
     browser.close()
     print("PASS: floating layout, find entry, shortcuts, navigation, replacement undo, reading highlights, inline/table/code text, collapsed content, options, invalid regex, scroll, mode/document changes, responsive layout, English and dark theme")
-    print("Evidence:", ARTIFACTS)

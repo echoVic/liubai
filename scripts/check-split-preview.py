@@ -1,24 +1,21 @@
 """Browser regression for the real Go workspace. Use an isolated --data-dir.
 
-python3 scripts/check-split-preview.py http://127.0.0.1:4194
+python3 scripts/check-split-preview.py http://127.0.0.1:<port>
 Requires Python Playwright and Chrome (or PLAYWRIGHT_CHANNEL).
-Screenshots and failure evidence are written to a temporary directory.
+Screenshots and failure evidence go to a temporary directory, kept only when the check fails.
 """
 import base64
 import json
-import os
 from pathlib import Path
 import re
-import sys
-import tempfile
 import time
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import THEMES, appearance_change, base_url, evidence, launch, more_action, save_failure
 
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4194"
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-preview-qa-"))
-THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
+BASE = base_url()
+ARTIFACTS = evidence("liubai-preview-qa-")
 TEXT = "# 分栏验收\n\n一句**强调**，一个[链接](https://example.com)。\n\n"
 TEXT += "- [ ] 未完成\n- [x] 已完成\n\n"
 TEXT += "| 项目 | 说明 |\n| --- | --- |\n| 留白 | 阅读与编辑 |\n\n"
@@ -36,15 +33,6 @@ def workspace(page):
     data = response.json()
     assert not data.get("error"), data
     return data["value"]
-
-
-def appearance_change(page, operation):
-    with page.expect_response(
-        lambda response: response.url.endswith("/api")
-        and '"UpdateAppearance"' in (response.request.post_data or "")
-    ) as pending:
-        operation()
-    assert not pending.value.json().get("error"), pending.value.text()
 
 
 def import_text(page, text, name):
@@ -120,11 +108,6 @@ def stability_sample(page):
       }
       requestAnimationFrame(sample);
     })""")
-
-
-def more_action(page, action):
-    page.locator("#more-button").click()
-    page.locator(f'#more-menu [data-menu-action="{action}"]').click()
 
 
 def run(page):
@@ -524,9 +507,7 @@ def run(page):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(
-        headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome")
-    )
+    browser = launch(playwright.chromium)
     page = browser.new_page(locale="zh-CN", viewport={"width": 1120, "height": 820})
     page.add_init_script("""(() => {
       window.__liubaiPreviewRenders = 0;
@@ -543,9 +524,7 @@ with sync_playwright() as playwright:
         run(page)
         assert not errors, errors
     except Exception:
-        page.screenshot(path=str(ARTIFACTS / "failure.png"))
-        (ARTIFACTS / "errors.json").write_text(json.dumps(errors, ensure_ascii=False))
+        save_failure(ARTIFACTS, page, errors)
         raise
     finally:
-        print(f"Evidence: {ARTIFACTS}")
         browser.close()

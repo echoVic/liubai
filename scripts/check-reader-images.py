@@ -1,13 +1,10 @@
 """Reader image viewer: keyboard zoom, full-image panning and live locale."""
-import json
-from pathlib import Path
 import re
-import sys
-import tempfile
 from playwright.sync_api import sync_playwright, expect
+from checklib import base_url, evidence, launch
 
-BASE = sys.argv[1]
-OUT = Path(tempfile.mkdtemp(prefix="liubai-reader-images-qa-"))
+BASE = base_url()
+OUT = evidence("liubai-reader-images-qa-")
 FAILURES = []
 SVG = b'<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1000"><rect width="1800" height="1000" fill="#eee"/><rect width="100" height="1000" fill="#b22"/><rect x="1700" width="100" height="1000" fill="#26a"/><text x="180" y="300" font-size="100">1800 pixel image</text></svg>'
 
@@ -17,7 +14,7 @@ def check(label, ok, evidence=None):
         FAILURES.append(label)
 
 with sync_playwright() as pw:
-    browser = pw.chromium.launch(headless=True)
+    browser = launch(pw.chromium)
     page = browser.new_page(viewport={"width": 900, "height": 700}, locale="zh-CN",
                             reduced_motion="reduce")
     page.add_init_script("window.__imageLinks=[];window.open=u=>{window.__imageLinks.push(u);return null}")
@@ -130,5 +127,4 @@ with sync_playwright() as pw:
     check("viewer leaves Markdown unchanged", saved == text)
     browser.close()
 print(f"RESULT failures={len(FAILURES)}", flush=True)
-print(f"Evidence: {OUT}", flush=True)
 raise SystemExit(1 if FAILURES else 0)

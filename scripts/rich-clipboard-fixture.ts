@@ -1,3 +1,4 @@
+// WebKit fixture: check-rich-clipboard.py bundles it for check-rich-clipboard.swift, which calls its exported checks.
 import {copyRich,prepareRichClipboard,renderDelivery} from '../src/delivery';
 import {htmlToMarkdown} from '../src/paste';
 
@@ -31,9 +32,9 @@ export async function runRichClipboardChecks(){
   readonly types:string[];
   constructor(private data:Record<string,Blob>){this.types=Object.keys(data)}
   async getType(type:string){return this.data[type]}
- } as typeof ClipboardItem;
+ } as unknown as typeof ClipboardItem;
  try{await copyRich(await prepareRichClipboard(root))}finally{
-  if(descriptor)Object.defineProperty(navigator,'clipboard',descriptor);else delete (navigator as Partial<Navigator>).clipboard;
+  if(descriptor)Object.defineProperty(navigator,'clipboard',descriptor);else delete (navigator as {clipboard?:Clipboard}).clipboard;
   globalThis.ClipboardItem=originalItem;
  }
  const html=await copied['text/html'].text(),text=await copied['text/plain'].text();

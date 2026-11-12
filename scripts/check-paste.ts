@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import MarkdownIt from 'markdown-it';
-import {htmlToMarkdown,pasteText,replacePasteImage,dataUrlBlob} from '../src/paste';
+import {htmlToMarkdown,pasteText,replacePasteImage,dataUrlBlob,prefersHTML} from '../src/paste';
 import {EditorState} from '@codemirror/state';
 import {history,undo,redo} from '@codemirror/commands';
 import {createRequire} from 'node:module';
@@ -17,14 +17,15 @@ const command=(fn:typeof undo)=>fn({state,dispatch:tr=>state=tr.state});
 assert.ok(command(undo));assert.equal(state.doc.toString(),'保留原文');
 assert.ok(command(redo));assert.equal(state.doc.toString(),'保留# 标题\n\n- 列表');
 state=state.update(pasteText(state,'占位符')).state;
-state=state.update(replacePasteImage(state,'占位符','![图](image.png)')).state;
+state=state.update(replacePasteImage(state,'占位符','![图](image.png)')!).state;
 assert.ok(command(undo));assert.equal(state.doc.toString(),'保留# 标题\n\n- 列表');
 assert.ok(command(undo));assert.equal(state.doc.toString(),'保留原文');
 
 state=state.update({selection:{anchor:2}}).state;
 state=state.update(pasteText(state,'前图一中图二后')).state;
-state=state.update(replacePasteImage(state,'图一','![一](one.png)')).state;
-state=state.update(replacePasteImage(state,'图二','导入失败的说明')).state;
+state=state.update(replacePasteImage(state,'图一','![一](one.png)')!).state;
+state=state.update(replacePasteImage(state,'图二','导入失败的说明')!).state;
+assert.equal(replacePasteImage(state,'图二','again'),null,'a placeholder the writer deleted is skipped');
 assert.equal(state.doc.toString(),'保留前![一](one.png)中导入失败的说明后原文');
 assert.ok(command(undo));assert.equal(state.doc.toString(),'保留原文');
 assert.ok(command(redo));assert.equal(state.doc.toString(),'保留前![一](one.png)中导入失败的说明后原文');
@@ -97,4 +98,16 @@ const percent=dataUrlBlob('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.or
 assert.equal(percent.type,'image/svg+xml');
 assert.equal(await percent.text(),'<svg xmlns="http://www.w3.org/2000/svg"/>');
 assert.throws(()=>dataUrlBlob('javascript:alert(1)'));
+// Cells keep their pipes and line breaks inside one row, and marks the editor writes survive a copy from the reading view.
+assert.equal(htmlToMarkdown('<table><tr><th>a|b</th><th>c</th></tr><tr><td>1</td><td>x | y<br>z \\| w</td></tr></table>','').markdown,'| a\\|b | c |\n| --- | --- |\n| 1 | x \\| y<br>z \\\\\\| w |');
+const reading='<p class="md-p" data-line="0" data-line-end="1">a <mark>hl</mark> <u>ul</u> x<sup>2</sup> H<sub>2</sub>O <s>gone</s></p><table class="md-table" data-line="2" data-line-end="5"><thead><tr><th scope="col">a|b</th><th scope="col">c</th></tr></thead><tbody><tr><td>1</td><td>x<br>y</td></tr></tbody></table><ul class="md-ul task-list" data-line="6" data-line-end="8"><li class="md-task task-list-item" data-line="6"><input type="checkbox" disabled checked aria-label="已完成"> done</li><li class="md-task task-list-item" data-line="7"><input type="checkbox" disabled aria-label="未完成"> todo</li></ul>';
+const source='a ==hl== <u>ul</u> x<sup>2</sup> H<sub>2</sub>O ~~gone~~\n\n| a\\|b | c |\n| --- | --- |\n| 1 | x<br>y |\n\n- [x] done\n- [ ] todo';
+assert.equal(htmlToMarkdown(reading,'a hl ul x2 H2O gone\na|b\tc\n1\tx\ny\ndone\ntodo').markdown,source);
+assert.equal(htmlToMarkdown('<p>前<mark> 重点 </mark>后</p>','').markdown,'前 ==重点== 后');
+// Office apps put a picture of copied cells or text next to their HTML; the picture is what was copied only when the HTML holds nothing else.
+assert.equal(prefersHTML('<table><tr><td>1</td><td>2</td></tr></table>'),true);
+assert.equal(prefersHTML('<p>正文</p><img src="file:///a.png">'),true);
+assert.equal(prefersHTML('<img src="a.png"><img src="b.png">'),true);
+assert.equal(prefersHTML('<meta charset="utf-8"><img src="https://example.com/a.png">'),false);
+assert.equal(prefersHTML(''),false);
 console.log('网页、Word、Google Docs、CJK 强调、代码与纯文本、图片转换检查通过');

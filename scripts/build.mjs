@@ -34,7 +34,6 @@ await build({entryPoints:['src/boot.ts'],bundle:true,format:'iife',target:['safa
 // A classic worker script, which every WebView here can start.
 await build({entryPoints:['src/stats-worker.ts'],bundle:true,format:'iife',target:['safari16','chrome110'],outfile:'web/stats-worker.js',minify:true});
 const scripts=Object.keys(app.metafile.outputs).filter(name=>name.endsWith('.js'));
-for(const name of scripts)await writeFile(name,(await readFile(name,'utf8')).replace(/[ \t]+$/gm,''));
 // Keep the prior chunk available until the new app bundle has been written.
 for(const name of await readdir('web'))if(/^(mermaid-runtime|docx-export)-[a-f0-9]+\.js$/.test(name)&&name!==chunk&&name!==docxChunk)await rm('web/'+name);
 for(const name of await readdir('web/chunks'))if(!scripts.includes('web/chunks/'+name))await rm('web/chunks/'+name);

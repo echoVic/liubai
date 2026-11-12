@@ -1,3 +1,4 @@
+// Browser fixture: check-preview.py bundles it into a page and calls its exported checks.
 import {renderDelivery} from '../src/delivery';
 import {renderMarkdown,sanitizeStats,splitFrontMatter} from '../src/markdown';
 import {EditorState} from '@codemirror/state';
@@ -209,6 +210,14 @@ export async function runPreviewChecks(): Promise<string> {
  assert(!delivery.querySelector('.md-h1, .md-h2, .md-h3, .md-h4, .md-h5, .md-h6, .md-p, .md-quote, .md-pre, .md-inline-code, .md-table, .md-ul, .md-ol, .md-task, .md-link, .md-image'),'preview semantic classes leaked into delivery');
  equal(delivery.querySelector('h1')?.getAttribute('style'),'font-size:30px;line-height:1.5;margin:24px 0 18px;','delivery heading print styles changed');
  assert(delivery.style.fontFamily.includes('PingFang SC'),'delivery root print styles changed');
+ // Exported callouts take the light theme's alert colours (--alert-* in src/themes.css).
+ const alertColours={note:'rgb(45, 100, 170)',tip:'rgb(48, 111, 70)',important:'rgb(125, 75, 176)',warning:'rgb(134, 91, 15)',caution:'rgb(173, 61, 61)'};
+ const alerts=renderDelivery({title:'t',content:Object.keys(alertColours).map(kind=>`> [!${kind.toUpperCase()}]\n> ${kind}`).join('\n\n'),images:{},missing:[],external:0});
+ for(const [kind,colour] of Object.entries(alertColours)){
+  const alert=alerts.querySelector<HTMLElement>('.markdown-alert-'+kind);assert(alert,kind+' callout was not exported');
+  equal(alert.style.borderLeftColor,colour,kind+' callout border does not use the theme colour');
+  equal(alert.querySelector<HTMLElement>('.markdown-alert-title')?.style.color,colour,kind+' callout title does not use the theme colour');
+ }
  const reader=renderMarkdown([
   '---','title: 周报','tags: [a]','---','',
   '<p align="center"><img src="logo.png" width="120" onerror="window.__xss=2"></p>','',
@@ -221,7 +230,7 @@ export async function runPreviewChecks(): Promise<string> {
  ].join('\n'),{resolve:destination=>destination==='logo.png'?localURL:undefined,external:'load'});
  const meta=reader.root.querySelector<HTMLElement>('details.md-front-matter');
  assert(meta?.textContent?.includes('title: 周报'),'front matter is not shown as document properties');
- equal(meta.dataset.line,'0','front matter start line');
+ equal(meta?.dataset.line,'0','front matter start line');
  const logo=reader.root.querySelector<HTMLImageElement>('p[align="center"] img');
  equal(logo?.getAttribute('src'),localURL,'HTML image did not go through the image resolver');
  equal(logo?.getAttribute('width'),'120','HTML image width was dropped');

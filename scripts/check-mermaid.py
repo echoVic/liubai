@@ -1,23 +1,13 @@
 """Mermaid regression. Run via scripts/e2e.sh check-mermaid (fresh server/data)."""
-import json
-import os
 from pathlib import Path
 import re
-import sys
-import tempfile
 from playwright.sync_api import expect, sync_playwright
+from checklib import THEMES, base_url, evidence, launch, save_failure, set_theme
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:4196'
-ARTIFACTS = Path(tempfile.mkdtemp(prefix='liubai-mermaid-qa-'))
-THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
+BASE = base_url()
+ARTIFACTS = evidence('liubai-mermaid-qa-')
 TEMPLATE = '```mermaid\nflowchart LR\n  A[开始] --> B[结束]\n```'
 TEXT = '前文\n\n' + TEMPLATE + '\n\n' + TEMPLATE + '\n\n尾文'
-
-
-def set_theme(page, theme):
-    """Paint a theme the way the app does, both root attributes. Assert right after: the app repaints the stored theme on its next minute tick or window focus."""
-    scheme = 'dark' if next(t['dark'] for t in THEMES if t['id'] == theme) else 'light'
-    page.evaluate("([theme, scheme]) => { const root = document.documentElement; root.dataset.liubaiTheme = theme; root.dataset.liubaiScheme = scheme }", [theme, scheme])
 
 
 def saved(page, text):
@@ -174,7 +164,7 @@ def first_frame(browser):
     page.add_init_script("(()=>{const look=()=>{if(document.querySelector('.cm-content .cm-line')){window.__textFrame=performance.now();return}requestAnimationFrame(look)};requestAnimationFrame(look)})()")
     api = lambda method, *args: page.request.post(BASE + '/api', data={'method': method, 'args': list(args)}, headers={'Origin': BASE}).json()
     current, text = api('State')['value']['current'], TEMPLATE + '\n\n正文。\n\n尾文'
-    assert not api('Update', {'id': current['id'], 'revision': current['revision'], 'content': text, 'position': {'anchor': len(text), 'head': len(text), 'scroll': 0, 'source': False}}).get('error')
+    assert not api('Update', {'id': current['id'], 'revision': current['revision'], 'content': text, 'position': {'anchor': len(text), 'head': len(text), 'scroll': 0}}).get('error')
     page.goto(BASE)
     expect(page.locator('.cm-content .rendered-mermaid svg')).to_be_visible()
     frame, runtime = page.evaluate("[window.__textFrame, performance.getEntriesByType('resource').find(e => /mermaid-runtime-/.test(e.name))?.startTime]")
@@ -182,12 +172,12 @@ def first_frame(browser):
     # The checks below start from an empty document, as on a fresh server.
     page.goto('about:blank')
     current = api('State')['value']['current']
-    assert not api('Update', {'id': current['id'], 'revision': current['revision'], 'content': '', 'position': {'anchor': 0, 'head': 0, 'scroll': 0, 'source': False}}).get('error')
+    assert not api('Update', {'id': current['id'], 'revision': current['revision'], 'content': '', 'position': {'anchor': 0, 'head': 0, 'scroll': 0}}).get('error')
     page.close()
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get('PLAYWRIGHT_CHANNEL', 'chrome'))
+    browser = launch(playwright.chromium)
     first_frame(browser)
     page = browser.new_page(locale='zh-CN', viewport={'width': 1120, 'height': 820})
     page.set_default_timeout(15000)
@@ -197,9 +187,7 @@ with sync_playwright() as playwright:
         run(page)
         assert not errors, errors
     except Exception:
-        page.screenshot(path=str(ARTIFACTS / 'failure.png'))
-        (ARTIFACTS / 'errors.json').write_text(json.dumps(errors, ensure_ascii=False))
+        save_failure(ARTIFACTS, page, errors)
         raise
     finally:
-        print(f'Evidence: {ARTIFACTS}')
         browser.close()

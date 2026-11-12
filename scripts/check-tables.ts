@@ -5,6 +5,7 @@ import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
 import {GFM} from '@lezer/markdown';
 import * as editing from '../src/editing';
 import * as tableUI from '../src/table-ui';
+import {leaveBlock} from '../src/block-navigation';
 import {syntaxTree} from '@codemirror/language';
 
 assert.equal(typeof editing.editTable,'function','table edits must be available without the dialog');
@@ -70,7 +71,7 @@ for(const source of ['| old |\n| --- |\n| row |\n','| old |\n| --- |\n| row |\n\
 const t='| a |\n| --- |\n| b |';
 function leave(doc:string,above:boolean,from=doc.indexOf(t),to=from+t.length){
  let s=EditorState.create({doc,extensions:[history(),markdown({base:markdownLanguage,extensions:GFM})]});
- s=s.update(tableUI.leaveTable(s,{from,to},above)).state;return s;
+ s=s.update(leaveBlock(s,{from,to},above)).state;return s;
 }
 const tables=(s:EditorState)=>{let n=0;syntaxTree(s).iterate({enter:node=>{if(node.name==='Table')n++}});return n};
 for(const [doc,above,expected,head,label] of [
@@ -101,6 +102,16 @@ for(const [doc,above,expected,head,label] of [
  let node:ReturnType<typeof syntaxTree>['topNode']|null=syntaxTree(typed).resolveInner(head+1,1);while(node&&!['Paragraph','Table'].includes(node.name))node=node.parent;
  assert.equal(node?.name,'Paragraph',label+': typed text is a paragraph');
  if(expected!==doc){let u=s;assert.ok(undo({state:u,dispatch:tr=>u=tr.state}));assert.equal(u.doc.toString(),doc,label+': one undo')}
+}
+// A formula, math fence or diagram beside the table is a block of its own, not text to land in: an empty paragraph opens.
+{
+ const {MathSyntax}=await import('../src/math'),{MermaidSyntax}=await import('../src/mermaid');
+ for(const block of ['$$\nx\n$$','```math\nx\n```','```mermaid\ngraph TD\nA-->B\n```'])for(const above of [false,true]){
+  const doc=above?'前文\n\n'+block+'\n\n'+t:t+'\n\n'+block+'\n\n尾文',from=doc.indexOf(t);
+  let s=EditorState.create({doc,extensions:[history(),markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,MermaidSyntax]})]});
+  s=s.update(leaveBlock(s,{from,to:from+t.length},above)).state;
+  assert.equal(s.doc.toString(),above?'前文\n\n'+block+'\n\n\n\n'+t:t+'\n\n\n\n'+block+'\n\n尾文',block+(above?' above':' below'));
+ }
 }
 const quoted='> | a |\n> | --- |\n> | b |';
 assert.equal(leave(quoted,false,2,quoted.length).doc.toString(),quoted+'\n\n','a nested table at the end opens a paragraph after its container');

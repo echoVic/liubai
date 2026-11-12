@@ -1,0 +1,3 @@
+// Type-checks the scripts, which the root tsconfig.json leaves out: node_modules/.bin/tsc --noEmit -p scripts
+// Every script is an ES module (package.json "type": "module"); allowJs types the .mjs helpers they import.
+{"extends":"../tsconfig.json","compilerOptions":{"allowJs":true,"moduleDetection":"force"},"include":["**/*.ts","../src/*.d.ts"]}

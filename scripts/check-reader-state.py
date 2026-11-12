@@ -1,17 +1,18 @@
 """Reader state follows unchanged blocks through edits, without leaking to replacements.
 
-Run with sh scripts/e2e.sh check-reader-state. Requires Chromium and WebKit.
+Run with sh scripts/e2e.sh check-reader-state, in Chrome and WebKit.
+WebKit is optional locally; REQUIRE_WEBKIT=1 makes its absence a failure.
 """
 import json
+import os
 import re
-import sys
-import tempfile
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
+from checklib import base_url, evidence, launch
 
-BASE = sys.argv[1]
+BASE = base_url()
 FAILURES = []
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-reader-state-"))
+ARTIFACTS = evidence("liubai-reader-state-")
 CODE = "```\n" + "keep_code_" * 100 + "\n```"
 TABLE = "| " + " | ".join("Keep column " + str(i) for i in range(12)) + " |\n"
 TABLE += "| " + " | ".join("---" for _ in range(12)) + " |\n"
@@ -71,7 +72,11 @@ def state(page, label):
 
 with sync_playwright() as pw:
     for engine in ["chromium", "webkit"]:
-        browser = getattr(pw, engine).launch(headless=True)
+        if engine == "webkit" and not Path(pw.webkit.executable_path).exists():
+            check("WebKit available when required", not os.environ.get("REQUIRE_WEBKIT"))
+            print("SKIP WebKit not installed", flush=True)
+            continue
+        browser = launch(getattr(pw, engine))
         page = browser.new_page(viewport={"width": 900, "height": 700}, locale="zh-CN")
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
@@ -158,5 +163,5 @@ with sync_playwright() as pw:
         check(engine + " source unchanged by restoration", value == changed)
         check(engine + " no client errors", not errors, errors)
         browser.close()
-print(json.dumps({"failures": FAILURES, "artifacts": str(ARTIFACTS)}))
+print(json.dumps({"failures": FAILURES}))
 raise SystemExit(bool(FAILURES))

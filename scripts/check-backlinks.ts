@@ -4,7 +4,7 @@ import type {BacklinkResponse} from '../src/types';
 
 let next=0;
 const timers=new Map<number,()=>void>();
-const clock={set(fn:()=>void){const id=++next;timers.set(id,fn);return id},clear(id:number){timers.delete(id)}};
+const clock={set(fn:()=>void){const id=++next;timers.set(id,fn);return id},clear(id:unknown){timers.delete(id as number)}};
 const advance=()=>{const jobs=[...timers.values()];timers.clear();for(const fn of jobs)fn()};
 const flush=async()=>{for(let i=0;i<8;i++)await Promise.resolve()};
 const flights:{id:string;resolve:(r:BacklinkResponse)=>void;reject:(e:Error)=>void}[]=[];

@@ -5,26 +5,15 @@ uses the registered frontend event and does not verify macOS UI or quitting.
 """
 import json
 import sys
-from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
+import checklib
+from checklib import BRIDGE, THEMES, base_url, evidence, launch
 
-BASE = sys.argv[1]
+BASE = base_url()
 FAILURES = []
+ARTIFACTS = evidence("liubai-dialogs-qa-")
 MISSING = [f"图片/{i:02d}-" + "需要恢复的截图文件" * 8 + ".png" for i in range(45)]
-THEMES = json.loads((Path(__file__).resolve().parents[1] / "src/themes.json").read_text())
-BRIDGE = """window.__settingsEvents={};window.mygo={
- locale:'zh-CN',on:(name,fn)=>window.__settingsEvents[name]=fn,
- call:async(method,...args)=>{
-  const r=await fetch('/api',{method:'POST',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({method:method.replace(/^Desktop\\./,''),args,locale:'zh-CN'})}).then(r=>r.json());
-  if(r.error)throw Error(r.error);return r.value;
- }
-}"""
-CONTRAST = """e=>{
- const rgb=c=>{const n=document.createElement('span');n.style.color=c;e.append(n);const s=getComputedStyle(n).color;n.remove();return s.match(/[\\d.]+/g).slice(0,3).map(Number)};
- const lum=c=>rgb(c).map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4}).reduce((s,n,i)=>s+n*[.2126,.7152,.0722][i],0);
- const contrast=(a,b)=>{a=lum(a);b=lum(b);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05)};
- const css=getComputedStyle(e),text=getComputedStyle(e.querySelector('p')),button=getComputedStyle(e.querySelector('button.primary,button.danger')),
+CONTRAST = checklib.CONTRAST + """ const css=getComputedStyle(e),text=getComputedStyle(e.querySelector('p')),button=getComputedStyle(e.querySelector('button.primary,button.danger')),
   paper=css.backgroundColor;
  return {body:contrast(css.color,paper),note:contrast(text.color,paper),action:contrast(button.color,button.backgroundColor),
  focus:contrast(css.getPropertyValue('--ring'),paper)};
@@ -61,7 +50,7 @@ def look(page, id, state):
         # chrome; headless Chrome reports BODY during that browser focus stop.
         stops.append(d.evaluate("e=>e.contains(document.activeElement)||document.activeElement===document.body"))
     check(f"{state} Tab stays in dialog or browser chrome", all(stops), stops if not all(stops) else None)
-    page.screenshot(path=f"/tmp/r190-{state}.png")
+    page.screenshot(path=str(ARTIFACTS / f"{state}.png"))
     return d
 
 def close(page, id):
@@ -69,7 +58,7 @@ def close(page, id):
     expect(page.locator("#" + id)).to_be_hidden()
 
 with sync_playwright() as pw:
-    browser = pw.chromium.launch(headless=True)
+    browser = launch(pw.chromium)
     page = browser.new_page(viewport={"width": 1440, "height": 900}, locale="zh-CN")
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
@@ -149,7 +138,7 @@ with sync_playwright() as pw:
         page.wait_for_timeout(120)
         check(f'{theme["id"]} keyboard reaches last missing path', listing.evaluate("e=>e.scrollTop>0"))
         if theme["id"] in ["paper", "nord"]:
-            page.screenshot(path=f'/tmp/r190-missing-{theme["id"]}.png')
+            page.screenshot(path=str(ARTIFACTS / f'missing-{theme["id"]}.png'))
         close(page, "missing-dialog")
     page.unroute(BASE + "/api", missing_route)
 
@@ -169,7 +158,7 @@ with sync_playwright() as pw:
     mobile.wait_for_timeout(150)
     check("real touch missing-list scroll", listing.evaluate("e=>e.scrollTop") > 0)
     check("touch recovery targets", mobile.locator("#missing-dialog button").evaluate_all("els=>els.every(e=>e.getBoundingClientRect().height>=44)"))
-    mobile.screenshot(path="/tmp/r190-missing-touch.png")
+    mobile.screenshot(path=str(ARTIFACTS / "missing-touch.png"))
     mobile.locator('[data-close="missing-dialog"]').tap()
     mobile.locator("#doc-title").tap()
     check("touch naming targets", mobile.locator("#rename-dialog button,#rename-input").evaluate_all("els=>els.every(e=>e.getBoundingClientRect().height>=44)"))
@@ -205,9 +194,17 @@ with sync_playwright() as pw:
     expect(native.locator(".cm-content")).to_contain_text("尚未保存的内容")
     check("failed-close keep editing preserves text", True)
     native.unroute(BASE + "/api", failed_save)
-    native.keyboard.press("Meta+s")
+    # On desktop Save comes from the native menu, not from the page's key handler.
+    native.evaluate("()=>window.__settingsEvents['liubai:action']('save')")
     expect(native.locator("#save-status")).to_have_text("草稿已保存")
     check("failed save can recover", "尚未保存的内容" in native.request.post(BASE + "/api", data={"method": "State", "args": []}).json()["value"]["current"]["content"])
+    # Print pressed while another operation holds the editor (a Quick Note append here) does nothing, and leaves no printing state behind.
+    native.evaluate("()=>window.__settingsEvents['liubai:action']('pdf')")
+    expect(native.locator("#ready-go")).to_be_enabled()
+    native.evaluate("()=>{const call=window.mygo.call;window.mygo.call=(m,...a)=>m==='Desktop.AppendCapture'?new Promise(()=>{}):call(m,...a);void window.liubaiAppendCapture({text:'速记',tags:[],targetID:''})}")
+    expect(native.locator(".cm-content")).to_have_attribute("aria-readonly", "true")
+    native.locator("#ready-go").click()
+    check("busy print leaves no printing class", not native.evaluate("()=>document.body.classList.contains('printing')"))
     native_ctx.close()
 
     # Open the same field in English and inspect the actual native validation

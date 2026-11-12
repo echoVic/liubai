@@ -3,7 +3,9 @@ import {dirname,resolve,join} from 'node:path';
 const exists=async file=>{try{await access(file);return true}catch{return false}};
 
 export async function writeMermaidNotices(inputs){
- const packages=new Map(),embedded=new Set();
+ const packages=new Map(),embedded=new Map();
+ // Records each embedded package with the versions its pnpm source paths name, if any.
+ const embed=(name,version)=>{if(!embedded.has(name))embedded.set(name,new Set());if(version)embedded.get(name).add(version)};
  async function collect(file){
   let directory=dirname(resolve(file));
   while(directory!==dirname(directory)){
@@ -17,14 +19,14 @@ export async function writeMermaidNotices(inputs){
   await collect(input);
   // Mermaid publishes js-yaml and fastdom already bundled. Its source maps identify those inputs.
   for(const match of (await readFile(input,'utf8')).matchAll(/node_modules\/\.pnpm\/([^/]+?)@([0-9][^/_]*)[^/]*\/node_modules\//g)){
-   const name=match[1].replace('+','/');if(!packages.has(name+' '+match[2])&&!await exists('node_modules/'+name+'/package.json'))embedded.add(name);
+   const name=match[1].replace('+','/');if(!packages.has(name+' '+match[2])&&!await exists('node_modules/'+name+'/package.json'))embed(name,match[2]);
   }
   try{
    const map=JSON.parse(await readFile(input+'.map','utf8'));
    for(const source of map.sources||[]){
     if(!source.includes('node_modules/'))continue;
     const tail=source.split('node_modules/').at(-1),name=tail.startsWith('@')?tail.split('/').slice(0,2).join('/'):tail.split('/')[0];
-    try{await readFile('node_modules/'+name+'/package.json');await collect('node_modules/'+name+'/package.json')}catch(error){if(error.code!=='ENOENT')throw error;embedded.add(name)}
+    try{await readFile('node_modules/'+name+'/package.json');await collect('node_modules/'+name+'/package.json')}catch(error){if(error.code!=='ENOENT')throw error;const pnpm=[...source.matchAll(/\.pnpm\/([^/]+?)@([0-9][^/_]*)[^/]*\/node_modules\//g)].at(-1);embed(name,pnpm&&pnpm[1].replace('+','/')===name?pnpm[2]:'')}
    }
   }catch(error){if(error.code!=='ENOENT')throw error}
  }
@@ -47,7 +49,8 @@ export async function writeMermaidNotices(inputs){
   text+='\n\n'+name+'\n'+licence.replace(/\r\n/g,'\n').replace(/[ \t]+$/gm,'');
  }
  // These packages ship inside upstream bundles, rather than as separate npm directories.
- // Versions are preserved in their pnpm source paths; MIT attribution is preserved in source-map headers.
+ // Versions are preserved in their pnpm source paths and must match this table, so an upgrade cannot
+ // ship stale entries; MIT attribution is preserved in source-map headers.
  const embeddedMIT={
   'js-yaml':['4.3.0','Copyright (C) 2011-2015 by Vitaly Puzrin'],
   fastdom:['1.0.12','Copyright (c) 2015 Wilson Page'],
@@ -62,12 +65,14 @@ export async function writeMermaidNotices(inputs){
   'path-browserify':['1.0.1','Copyright (c) 2013 James Halliday\nCopyright Joyent, Inc. and other Node contributors.'],
  };
  const mermaidLicence=await readFile('node_modules/mermaid/LICENSE','utf8'),mit=mermaidLicence.slice(mermaidLicence.indexOf('Permission is hereby granted'));
- for(const name of [...embedded].sort()){
+ for(const name of [...embedded.keys()].sort()){
   if(!embeddedMIT[name])throw Error('Missing embedded licence for '+name);
-  const [version,copyright]=embeddedMIT[name];text+='\n\n'+name+' '+version+'\nMIT License\n\n'+copyright+'\n\n'+mit;
+  const [version,copyright]=embeddedMIT[name];
+  for(const found of embedded.get(name))if(found!==version)throw Error('Embedded '+name+' is now '+found+', the licence table says '+version+'; review its entry');
+  text+='\n\n'+name+' '+version+'\nMIT License\n\n'+copyright+'\n\n'+mit;
  }
  const file='web/THIRD_PARTY_NOTICES.txt',marker='\n\nMermaid and Word lazy chunk dependencies (generated from bundled inputs)\n';
- const existing=(await readFile(file,'utf8')).split('\n\nMermaid lazy chunk dependencies (generated from bundled inputs)\n')[0].split(marker)[0].trimEnd();
+ const existing=(await readFile(file,'utf8')).split(marker)[0].trimEnd();
  // Packages already licensed above are listed once, including shared DOMPurify versions.
  const sections=text.split(/\n\n(?=(?:@[^\s]+|[\w.-]+) [0-9][^\n]*\n)/).filter(Boolean).filter(section=>!existing.split('\n').includes(section.split('\n')[0]));
  await writeFile(file,existing+marker+sections.join('\n\n').trimEnd()+'\n');

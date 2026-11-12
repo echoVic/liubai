@@ -1,17 +1,15 @@
 """Screenshots of every theme in the edit, split and read views, in Chrome and (if installed) Playwright WebKit.
 
 scripts/e2e.sh shoot-themes   → /tmp/liubai-theme-shots/<engine>-<theme>-<view>.png and index.html
-11 themes x 3 views = 33 shots per engine. The edit and split shots start at the title, with the first line selected.
+Every theme in src/themes.json x 3 views per engine. The edit and split shots start at the title, with the first line selected.
 """
-import json
 from pathlib import Path
 import re
-import sys
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import THEMES, api, base_url
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4196"
-THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
+BASE = base_url()
 OUT = Path("/tmp/liubai-theme-shots"); OUT.mkdir(exist_ok=True)
 expect.set_options(timeout=15000)  # reloads are slow when the machine is busy
 TEXT = ("# 留白\n\n写作的人都知道，最难的不是第一句，而是第一句之前那片空白。留白让每一句话都有地方落下。\n\n"
@@ -19,12 +17,6 @@ TEXT = ("# 留白\n\n写作的人都知道，最难的不是第一句，而是�
         "> 文章本天成，妙手偶得之。\n\n- 每天写满一页\n- 晚上用 `⌘⇧R` 读一遍\n\n```js\nconst draft = '先写，再改'; // 一页就够\n```\n\n> [!NOTE]\n> 提示块也跟着主题变。\n")
 # What each view must show before it is photographed.
 LAYOUT = {"single": r"^(?!.*(split|read)-layout)", "split": r"split-layout", "read": r"read-layout"}
-
-
-def api(page, method, *args):
-    response = page.request.post(BASE + "/api", data={"method": method, "args": list(args)}, headers={"Origin": BASE})
-    assert response.ok and not response.json().get("error"), response.text()
-    return response.json()["value"]
 
 
 with sync_playwright() as p:

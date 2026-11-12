@@ -1,26 +1,15 @@
 """Wiki references against the real Go API and an isolated workspace."""
 import json
 import os
-from pathlib import Path
-import sys
-import tempfile
-import time
 from playwright.sync_api import expect, sync_playwright
+from checklib import base_url, evidence, launch, localized_api as api, palette, save_failure, wait_callback
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4206"
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-wiki-qa-"))
+BASE = base_url()
+ARTIFACTS = evidence("liubai-wiki-qa-")
 TARGET = "目标😀"
 SOURCE = "# 来源\n\n正文 [[目标😀]] [[同名]] [[不存在]]\n\n"
 SOURCE += "\n\n".join("这是用于检查正文定位的段落。" * 30 for _ in range(25))
 SOURCE += "\n\n中😀 [[目标😀]]\n[[目标😀]]\n[[目标😀]]\n[[目标😀]]"
-
-
-def api(page, method, *args, locale="zh-Hans"):
-    response = page.request.post(BASE + "/api", data={"method": method, "args": args, "locale": locale}, headers={"Origin": BASE})
-    assert response.ok, response.text()
-    result = response.json()
-    assert not result.get("error"), result
-    return result["value"]
 
 
 def create(page, title, body):
@@ -35,13 +24,6 @@ def load(page, doc):
     api(page, "Activate", doc["id"])
     page.reload()
     expect(page.locator("#doc-title")).to_have_text(doc["title"])
-
-
-def wait_callback(page, predicate):
-    deadline = time.monotonic() + 7
-    while not predicate() and time.monotonic() < deadline:
-        page.wait_for_timeout(10)
-    assert predicate(), "callback condition did not arrive"
 
 
 def ready(page, doc_id=None):
@@ -61,12 +43,6 @@ def click_wiki(page, title, mode="single"):
         page.locator(".cm-content .md-wiki-link").filter(has_text=title).first.click(modifiers=["Meta"])
     else:
         page.locator("#preview .md-wiki-link").filter(has_text=title).first.click()
-
-
-def palette(page, text):
-    page.keyboard.press("Meta+k")
-    page.locator("#command-search").fill(text)
-    page.locator("#command-list button").filter(has_text=text).first.click()
 
 
 def table_navigation(page):
@@ -440,9 +416,13 @@ def run(page):
     expect(page.locator("#drawer-list")).to_have_attribute("data-search-state", "ready")
     expect(page.locator("#backlink-list .search-title").filter(has_text="来源")).to_have_count(1)
     page.locator('[data-action="settings"]').click()
-    for theme in ("Dawn", "Paper", "Warm", "Lamplight", "Ink", "Moonlight", "Mist", "Lotus", "Harvest", "Moon White", "Indigo"):
+    # Walk every shipped theme, and resolve --popover through a probe: the raw custom property is not in rgb() form.
+    radios = page.locator('#themes [role="radio"]')
+    theme_names = radios.evaluate_all("els => els.map(el => el.getAttribute('aria-label'))")
+    assert theme_names and len(set(theme_names)) == radios.count(), theme_names
+    for theme in theme_names:
         page.get_by_role("radio", name=theme, exact=True).click()
-        assert page.locator("#backlinks summary").evaluate("(el)=>getComputedStyle(el).color!==getComputedStyle(document.documentElement).getPropertyValue('--popover')")
+        assert page.locator("#backlinks summary").evaluate("(el)=>{const probe=document.createElement('i');probe.style.color='var(--popover)';document.body.append(probe);const popover=getComputedStyle(probe).color;probe.remove();return getComputedStyle(el).color!==popover}"), theme
     page.locator('[data-close="appearance"]').click()
     for width in (1440, 800, 680):
         page.set_viewport_size({"width": width, "height": 850})
@@ -501,7 +481,7 @@ def performance(page):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
+    browser = launch(playwright.chromium)
     page = browser.new_page(locale="zh-CN", viewport={"width": 1440, "height": 850})
     page.set_default_timeout(7000)
     errors = []
@@ -510,9 +490,7 @@ with sync_playwright() as playwright:
         performance(page) if os.environ.get("LIUBAI_WIKI_PERF") == "1" else run(page)
         assert not errors, errors
     except Exception:
-        page.screenshot(path=str(ARTIFACTS / "failure.png"))
-        (ARTIFACTS / "errors.json").write_text(json.dumps(errors, ensure_ascii=False))
+        save_failure(ARTIFACTS, page, errors)
         raise
     finally:
-        print(f"Evidence: {ARTIFACTS}")
         browser.close()

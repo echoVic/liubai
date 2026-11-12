@@ -1,4 +1,4 @@
-// Fast OOXML checks without a browser; full delivery DOM/image coverage lives in check-preview.ts.
+// Fast OOXML checks without a browser; full delivery DOM/image coverage lives in preview-fixture.ts (run by check-preview.py).
 import assert from 'node:assert/strict';
 import JSZip from 'jszip';
 const module=await import('../src/docx-export');
@@ -31,6 +31,13 @@ for(const [i,formula] of cases.entries()){
  const math=el('math',formula),wrapper=el('span',math);wrapper.classList.contains=(s:string)=>s==='math-inline';wrapper.querySelector=(s:string)=>s==='math'?math:null;
  const out=await JSZip.loadAsync(await module.exportDOCX(el('article',el('p',wrapper)),'math'));
  assert.match(await out.file('word/document.xml')!.async('string'),[ /<m:f>/,/<m:sSup>/,/<m:m>/ ][i]);
+}
+// MathML draws a one-letter <mi> in italic, longer names and mathvariant="normal" upright, and keeps the other variants' alphabets.
+const tokens:[any,string][]=[[el('mi',text('x')),'<m:sty m:val="i"/>'],[el('mi',text('sin')),'<m:sty m:val="p"/>'],[attr(el('mi',text('d')),{mathvariant:'normal'}),'<m:sty m:val="p"/>'],[attr(el('mi',text('v')),{mathvariant:'bold'}),'<m:sty m:val="b"/>'],[attr(el('mi',text('R')),{mathvariant:'double-struck'}),'<m:scr m:val="double-struck"/><m:sty m:val="p"/>'],[attr(el('mi',text('A')),{mathvariant:'script'}),'<m:scr m:val="script"/><m:sty m:val="p"/>'],[attr(el('mi',text('g')),{mathvariant:'bold-fraktur'}),'<m:scr m:val="fraktur"/><m:sty m:val="b"/>'],[el('mn',text('2')),'<m:sty m:val="p"/>']];
+for(const [token,expected] of tokens){
+ const out=await JSZip.loadAsync(await module.exportDOCX(el('article',el('p',attr(el('span',el('math',token)),{class:'math-inline'}))),'math'));
+ const run=(await out.file('word/document.xml')!.async('string')).match(/<m:r>.*?<\/m:r>/)?.[0]||'';
+ assert.ok(run.includes('<m:rPr>'+expected+'</m:rPr>'),`${token.localName} ${token.textContent} ${token.getAttribute('mathvariant')}: ${run}`);
 }
 // Numbering is real OOXML, starts/restarts survive, continuations are not renumbered.
 const nested=attr(el('ol',el('li',text('seven')),el('li',text('eight'))),{start:'7'});

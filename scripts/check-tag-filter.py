@@ -1,24 +1,12 @@
 """Tag filtering against the real Go API, using an isolated workspace."""
 import json
-import os
-from pathlib import Path
 import re
-import sys
-import tempfile
-import time
 from playwright.sync_api import expect, sync_playwright
+from checklib import base_url, evidence, launch, localized_api as api, palette, save_failure, wait_callback
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4206"
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-tags-qa-"))
+BASE = base_url()
+ARTIFACTS = evidence("liubai-tags-qa-")
 TAIL = "中文😀 独特文尾"
-
-
-def api(page, method, *args, locale="zh-Hans"):
-    response = page.request.post(BASE + "/api", data={"method": method, "args": args, "locale": locale}, headers={"Origin": BASE})
-    assert response.ok, response.text()
-    result = response.json()
-    assert not result.get("error"), result
-    return result["value"]
 
 
 def create(page, title, metadata, body=TAIL):
@@ -26,13 +14,6 @@ def create(page, title, metadata, body=TAIL):
     content = "---\n" + metadata + "\n---\n\n# " + title + "\n\n" + body
     api(page, "Update", {"id": doc["id"], "revision": doc["revision"], "content": content, "position": doc["position"]})
     return doc["id"]
-
-
-def wait_callback(page, predicate):
-    deadline = time.monotonic() + 7
-    while not predicate() and time.monotonic() < deadline:
-        page.wait_for_timeout(10)
-    assert predicate(), "callback condition did not arrive"
 
 
 def ready(page, query=None, tag=None):
@@ -53,12 +34,6 @@ def recent(page):
         page.locator("#tag-filter").select_option("")
     expect(page.locator("#drawer-list")).to_have_attribute("data-search-state", "recent")
     page.wait_for_load_state("networkidle")
-
-
-def palette(page, text):
-    page.keyboard.press("Meta+k")
-    page.locator("#command-search").fill(text)
-    page.locator("#command-list button").filter(has_text=text).first.click()
 
 
 def run(page):
@@ -208,11 +183,17 @@ def run(page):
     expect(page.locator(".recent-item")).to_have_count(5)
     # Accepted source edits refresh the directory without an index or reload.
     ready(page, tag="工作")
-    page.locator(".search-title").click()
+    # Opening the hit replaces the editor; wait for it before typing.
+    with page.expect_response(lambda r: r.url.endswith("/api") and '"ActivateSearch"' in (r.request.post_data or "")):
+        page.locator(".search-title").click()
+    expect(page.locator(".cm-content")).not_to_have_attribute("aria-readonly", "true")
+    expect(page.locator(".cm-content")).to_be_focused()
     page.locator('[data-view="split"]').click()
     page.locator('#format-bar [data-action="source"]').click()
     expect(page.locator(".paper")).to_have_class(re.compile("source-mode"))
-    page.locator(".cm-content").fill("---\ntags: [新标签]\n---\n\n# 工作文稿\n\n编辑后 " + TAIL)
+    # Not fill(): it selects only the lines the editor has drawn, and the hit is scrolled past the top of the document.
+    page.keyboard.press("Meta+a")
+    page.keyboard.insert_text("---\ntags: [新标签]\n---\n\n# 工作文稿\n\n编辑后 " + TAIL)
     expect(page.locator("#search-consistency")).to_contain_text("自动保存")
     expect(page.locator("#save-status")).to_have_text("草稿已保存")
     expect(select.locator("option:checked")).to_have_text("工作 · 0")
@@ -238,10 +219,13 @@ def run(page):
     page.keyboard.press("Escape")
     expect(field).to_be_focused()
     page.locator('[data-action="settings"]').click()
-    themes = ["Dawn", "Paper", "Warm", "Lamplight", "Ink", "Moonlight", "Mist", "Lotus", "Harvest", "Moon White", "Indigo"]
+    # Walk every shipped theme rather than a fixed list of names.
+    radios = page.locator('#themes [role="radio"]')
+    themes = radios.evaluate_all("els => els.map(el => el.getAttribute('aria-label'))")
+    assert themes and len(set(themes)) == radios.count(), themes
     for name in themes:
         page.get_by_role("radio", name=name, exact=True).click()
-        assert select.evaluate("(el)=>getComputedStyle(el).color!==getComputedStyle(el).backgroundColor")
+        assert select.evaluate("(el)=>getComputedStyle(el).color!==getComputedStyle(el).backgroundColor"), name
     page.locator('[data-close="appearance"]').click()
     for width in (1440, 800, 680):
         page.set_viewport_size({"width": width, "height": 850})
@@ -273,7 +257,7 @@ def run(page):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
+    browser = launch(playwright.chromium)
     page = browser.new_page(locale="zh-CN", viewport={"width": 1440, "height": 850})
     page.set_default_timeout(7000)
     errors = []
@@ -282,9 +266,7 @@ with sync_playwright() as playwright:
         run(page)
         assert not errors, errors
     except Exception:
-        page.screenshot(path=str(ARTIFACTS / "failure.png"))
-        (ARTIFACTS / "errors.json").write_text(json.dumps(errors, ensure_ascii=False))
+        save_failure(ARTIFACTS, page, errors)
         raise
     finally:
-        print(f"Evidence: {ARTIFACTS}")
         browser.close()

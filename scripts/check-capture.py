@@ -1,26 +1,15 @@
 """Quick capture browser regression. Run against -web with its own data directory.
 
-python3 scripts/check-capture.py http://127.0.0.1:4198
+python3 scripts/check-capture.py http://127.0.0.1:<port>
 Requires Python Playwright and Chrome (or PLAYWRIGHT_CHANNEL).
 """
-import os
-from pathlib import Path
-import sys
-import tempfile
 import uuid
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import api, base_url, evidence, launch
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4198"
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-capture-qa-"))
-
-
-def api(page, method, *args):
-    response = page.request.post(BASE + "/api", data={"method": method, "args": list(args)}, headers={"Origin": BASE})
-    assert response.ok, response.text()
-    result = response.json()
-    assert not result.get("error"), result
-    return result["value"]
+BASE = base_url()
+ARTIFACTS = evidence("liubai-capture-qa-")
 
 
 def run(context):
@@ -41,17 +30,19 @@ def run(context):
     capture.on("request", lambda r: calls.append(r.post_data_json.get("method")) if r.url.endswith("/api") and r.method == "POST" else None)
     field.press("Meta+Enter")
     capture.wait_for_timeout(150)
-    assert "Capture" not in calls
+    assert "Capture" not in calls and "SaveCapture" not in calls, calls
     assert len(api(capture, "State")["recent"]) == len(before["recent"])
     field.fill(" \n\t")
     field.press("Meta+Enter")
     capture.wait_for_timeout(150)
-    assert "Capture" not in calls
+    assert "Capture" not in calls and "SaveCapture" not in calls, calls
     title = "随手记回归 " + uuid.uuid4().hex[:8]
     field.fill(title + "\n第二行想法")
     field.press("Meta+Enter")
     expect(field).to_have_value("")
     expect(capture.locator("#capture-status")).to_have_text("已存为草稿")
+    # A plain note (no target, no tags) takes the same SaveCapture call as any other.
+    assert "SaveCapture" in calls and "Capture" not in calls, calls
     saved = api(capture, "State")
     assert saved["current"] == current, (saved["current"], current)
     assert saved["recent"][0]["title"] == title
@@ -77,7 +68,7 @@ def run(context):
         el.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',isComposing:true,bubbles:true,cancelable:true}));
     }""")
     capture.wait_for_timeout(150)
-    assert "Capture" not in calls and "HideCapture" not in calls, calls
+    assert "Capture" not in calls and "SaveCapture" not in calls and "HideCapture" not in calls, calls
     expect(field).to_have_value("输入法尚未确认")
     field.evaluate("el => el.dispatchEvent(new CompositionEvent('compositionend', {bubbles:true}))")
     field.press("Escape")
@@ -107,10 +98,12 @@ def run(context):
 
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"), headless=True)
+    browser = launch(p.chromium)
     context = browser.new_context(locale="zh-CN", viewport={"width": 1120, "height": 820})
+    errors = []
+    context.on("page", lambda page: page.on("pageerror", lambda error: errors.append(str(error))))
     try:
         run(context)
-        print("Evidence:", ARTIFACTS)
+        assert not errors, errors
     finally:
         browser.close()

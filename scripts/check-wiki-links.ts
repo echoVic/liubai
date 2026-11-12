@@ -6,9 +6,11 @@ import {parser,GFM} from '@lezer/markdown';
 import {EditorState} from '@codemirror/state';
 import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
 import {ensureSyntaxTree} from '@codemirror/language';
-import {MathSyntax,mathPlugin} from '../src/math';
-import {WikiSyntax,wikiPlugin,wikiAt,wikiURL,wikiTarget,wikiNodeAllowed} from '../src/wiki-links';
-import {splitFrontMatter} from '../src/markdown';
+import {MathSyntax} from '../src/math';
+import {Highlight} from '../src/marks';
+import {MermaidSyntax} from '../src/mermaid';
+import {WikiSyntax,wikiAt,wikiURL,wikiTarget,wikiNodeAllowed} from '../src/wiki-links';
+import {splitFrontMatter,parser as md} from '../src/markdown';
 import {frontMatterRange,safeLink} from '../src/editing';
 import {inlineDecorations,composing} from '../src/editor';
 import {extraRanges} from '../src/extras';
@@ -37,8 +39,9 @@ const basic:WikiCase[]=[
 ];
 const fixturePath=new URL('../testdata/wiki-links.json',import.meta.url);
 const cases:WikiCase[]=existsSync(fixturePath)?JSON.parse(readFileSync(fixturePath,'utf8')):basic;
-const lezer=parser.configure([GFM,MathSyntax,WikiSyntax]);
-const md=new MarkdownIt({html:true,linkify:true}).use(mathPlugin).use(wikiPlugin).use(footnote);
+// The editor's Lezer extensions (src/editor.ts) and the reader's markdown-it parser (src/markdown.ts).
+const syntax=[GFM,Highlight,MathSyntax,MermaidSyntax,WikiSyntax];
+const lezer=parser.configure(syntax);
 function referencesIn(tokens:ReturnType<MarkdownIt['parse']>):Reference[]{
  return tokens.flatMap(token=>token.type==='wiki_link'?[{target:token.meta.target,raw:token.content}]:
   token.type==='image'?[]:referencesIn(token.children||[]));
@@ -70,23 +73,33 @@ for(const test of [...basic,...cases]){
 }
 const native=md.render('[[Hidden]](https://example.test) ![[Hidden]](image.png) [[Hidden]][ref]\n\n[ref]: https://example.test',{wikiLinks:'interactive'});
 assert.equal((native.match(/href="https:\/\/example.test"/g)||[]).length,2,'native wiki-shaped link labels stay ordinary links');
-assert(native.includes('<img src="image.png"'),'native wiki-shaped image label stays an image');
+// The reader's image rule keeps the destination in data-image-source and installs src itself.
+assert(/<img [^>]*data-image-source="image.png"/.test(native),'native wiki-shaped image label stays an image');
 assert(!native.includes('liubai-wiki:'),'native labels never render an internal URL');
 const nested=md.render('[[Outer `[[Code]]` $[[Math]]$ [[Inner]] tail]] [[Visible]]',{wikiLinks:'interactive'});
-assert(nested.includes('<code>[[Code]]</code>'),'invalid nested region retains native code');
+assert(nested.includes('<code class="md-inline-code">[[Code]]</code>'),'invalid nested region retains native code');
 assert(nested.includes('class="md-math '),'invalid nested region retains native math');
 assert.equal((nested.match(/class="md-link md-wiki-link"/g)||[]).length,1,'only the link after a balanced invalid region renders');
 assert(!md.render('[[\uD800]] [[\uDC00]]',{wikiLinks:'interactive'}).includes('liubai-wiki:'),'invalid scalar names render safely');
 const doc='前\n\n[[目标]]\n\n[正常](https://example.test)\n\n尾';
-const state=EditorState.create({doc,extensions:[composing,markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+const state=EditorState.create({doc,extensions:[composing,markdown({base:markdownLanguage,extensions:syntax})]});
 const hrefs:string[]=[];inlineDecorations(state,[{from:0,to:doc.length}]).between(0,doc.length,(_a,_b,dec)=>{
  if(dec.spec.attributes?.['data-href'])hrefs.push(dec.spec.attributes['data-href']);
 });
 assert(hrefs.includes(wikiURL('目标')),'rich editor decorates Wiki link');
 assert(hrefs.includes('https://example.test'),'ordinary link retained');
 {
+ // Brackets without a definition are prose, as in the reading view: only the wiki link inside them is a link.
+ const doc='[注 [[A]]，第 3 节] [c [[B]] d][]';
+ const state=EditorState.create({doc,extensions:[composing,markdown({base:markdownLanguage,extensions:syntax})]});
+ const links:string[]=[];inlineDecorations(state,[{from:0,to:doc.length}]).between(0,doc.length,(from,to,dec)=>{
+  if(String(dec.spec.class||'').includes('md-link'))links.push(doc.slice(from,to)+' '+dec.spec.attributes?.['data-href']);
+ });
+ assert.deepEqual(links,['[[A]] '+wikiURL('A'),'[[B]] '+wikiURL('B')],'undefined bracketed span stays text around its wiki link');
+}
+{
  const source='before\n\n| Head [[First]] then [[Second]] | Other |\n| --- | --- |\n| | x\\| 😀 [[Body]] |\n\nafter';
- const editor=EditorState.create({doc:source,extensions:[composing,markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+ const editor=EditorState.create({doc:source,extensions:[composing,markdown({base:markdownLanguage,extensions:syntax})]});
  const from=source.indexOf('|'),header='Head [[First]] then [[Second]]',body='x\\| 😀 [[Body]]';
  const hit=(row:number,column:number,text:string,offset:number,state=editor,start=from)=>
   tableUI.tableWikiLinkAt?.(state,start,row,column,text,offset);
@@ -99,14 +112,14 @@ assert(hrefs.includes('https://example.test'),'ordinary link retained');
  assert.deepEqual(hit(1,1,body,body.indexOf('Body')),{from:7,to:15,url:wikiURL('Body')},'empty preceding columns, escaped pipes and emoji preserve UTF-16 positions');
  for(const text of ['`[[Code]]`','$[[Math]]$','<span title="[[HTML]]">text</span>','[text [[Label]]](url)','![text [[Alt]]](image.png)','[text](dest/[[Destination]])','[[Native]](url)','[[Native]][ref]','\\[[Escaped]]']){
   const source='| '+text+' |\n| --- |\n| row |\n\n[ref]: https://example.test';
-  const state=EditorState.create({doc:source,extensions:[composing,markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+  const state=EditorState.create({doc:source,extensions:[composing,markdown({base:markdownLanguage,extensions:syntax})]});
   for(let offset=0;offset<=text.length;offset++)assert.equal(hit(0,0,text,offset,state,0),null,'native Markdown exclusion '+text+' at '+offset);
  }
  for(const source of ['> | [[Nested]] |\n> | --- |\n> | row |','> - | [[Nested]] |\n>   | --- |\n>   | row |']){
-  const state=EditorState.create({doc:source,extensions:[composing,markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+  const state=EditorState.create({doc:source,extensions:[composing,markdown({base:markdownLanguage,extensions:syntax})]});
   assert.deepEqual(hit(0,0,'[[Nested]]',4,state,source.indexOf('|')),{from:0,to:10,url:wikiURL('Nested')},'nested table uses original source positions');
  }
- let state=EditorState.create({doc:'| [[Native]][ref] |\n| --- |\n| row |\n\n[ref]: https://example.test',extensions:[composing,markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+ let state=EditorState.create({doc:'| [[Native]][ref] |\n| --- |\n| row |\n\n[ref]: https://example.test',extensions:[composing,markdown({base:markdownLanguage,extensions:syntax})]});
  assert.equal(hit(0,0,'[[Native]][ref]',4,state,0),null,'full-document reference definition excludes a native label');
  const end=state.doc.toString().indexOf('\n\n');
  state=state.update({changes:{from:end,to:state.doc.length,insert:''}}).state;
@@ -114,7 +127,7 @@ assert(hrefs.includes('https://example.test'),'ordinary link retained');
  assert.equal(editor.doc.toString(),source,'table hit testing never edits source');
 }
 {
- let state=EditorState.create({doc:'[[Alpha]][ref] '+ 'plain prose '.repeat(100)+'\n\n'+'middle prose '.repeat(600)+'\n\n[ref]: https://example.test',extensions:[composing,markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+ let state=EditorState.create({doc:'[[Alpha]][ref] '+ 'plain prose '.repeat(100)+'\n\n'+'middle prose '.repeat(600)+'\n\n[ref]: https://example.test',extensions:[composing,markdown({base:markdownLanguage,extensions:syntax})]});
  const count=()=>{
   ensureSyntaxTree(state,state.doc.length,5000);
   let found=0;inlineDecorations(state,[{from:0,to:state.doc.length}]).between(0,state.doc.length,(_a,_b,dec)=>{if(wikiTarget(dec.spec.attributes?.['data-href']||''))found++});
@@ -128,7 +141,7 @@ assert(hrefs.includes('https://example.test'),'ordinary link retained');
  assert.equal(count(),0,'restoring a definition invalidates reused Wiki nodes');
 }
 for(const content of cases.filter(test=>test.name.startsWith('footnote-continuation'))){
- const editor=EditorState.create({doc:content.content,extensions:[composing,markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+ const editor=EditorState.create({doc:content.content,extensions:[composing,markdown({base:markdownLanguage,extensions:syntax})]});
  const decorated:Reference[]=[];
  inlineDecorations(editor,[{from:0,to:content.content.length}]).between(0,content.content.length,(from,to,dec)=>{
   const href=dec.spec.attributes?.['data-href'],target=href&&wikiTarget(href);
@@ -139,7 +152,7 @@ for(const content of cases.filter(test=>test.name.startsWith('footnote-continuat
 {
  // Pandoc-style inline footnotes ^[...] must number, hover and jump in the editor like [^n] references.
  const source='行内 ^[内联甲] 与引用[^a]，再来 ^[内联 含 [括号] 与 `code]`] 和重复[^a]。\n\n[^a]: 引用定义';
- const editor=EditorState.create({doc:source,extensions:[composing,markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+ const editor=EditorState.create({doc:source,extensions:[composing,markdown({base:markdownLanguage,extensions:syntax})]});
  ensureSyntaxTree(editor,editor.doc.length,5000);
  const extras=extraRanges(editor);
  assert.deepEqual([...extras.labels],['a'],'synthetic inline labels never enter the numbered label set');
@@ -165,14 +178,14 @@ for(const content of cases.filter(test=>test.name.startsWith('footnote-continuat
  probe.parse(source,{});
  assert.deepEqual(refIds,widgets,'editor numbering matches markdown-it');
  for(const excluded of ['`^[code]`',String.raw`\^[x]`,'^[unclosed','^[first\n\nsecond]','![alt ^[x]](img.png)']){
-  const state=EditorState.create({doc:excluded,extensions:[markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+  const state=EditorState.create({doc:excluded,extensions:[markdown({base:markdownLanguage,extensions:syntax})]});
   ensureSyntaxTree(state,state.doc.length,5000);
   assert.equal(extraRanges(state).references.filter(r=>r.inline).length,0,'excluded inline note: '+excluded);
  }
  // Footnote_inline runs before the link/wiki rules and link labels tokenize recursively, so its own bracket opener
  // and notes nested inside link labels are both accepted; only destinations, code and escapes are inert.
  for(const [doc,body] of [['见^[[x]]终','[x]'],['前 ^[no-space-label] 后','no-space-label'],['[label ^[x]](u)','x']] as const){
-  const state=EditorState.create({doc,extensions:[markdown({base:markdownLanguage,extensions:[GFM,MathSyntax,WikiSyntax]})]});
+  const state=EditorState.create({doc,extensions:[markdown({base:markdownLanguage,extensions:syntax})]});
   ensureSyntaxTree(state,state.doc.length,5000);
   const refs=extraRanges(state).references.filter(r=>r.inline);
   assert.equal(refs.length,1,'inline note recognized: '+doc);

@@ -8,14 +8,12 @@ import {MathSyntax} from '../src/math';
 import {MermaidSyntax} from '../src/mermaid';
 import {WikiSyntax} from '../src/wiki-links';
 import {createBlockField,inlineDecorations,composing,richExtensions} from '../src/editor';
+import {block} from './bench/documents.mjs';
 
 const scale=Number(process.env.PERF_BUDGET_SCALE??1);
 assert.ok(Number.isFinite(scale)&&scale>0,'PERF_BUDGET_SCALE 必须是正的有限数字');
 if(scale!==1)console.log(`性能预算倍率：${scale}`);
 
-const block='这是一段普通的中文正文，用来模拟长篇写作。偶尔会有**加粗**、一个[链接](https://example.com/a)和`代码`。\n\n'
- +'另一段没有任何格式的正文内容，写作者在这里连续地输入文字，句子很长很长。\n\n'.repeat(3)
- +'## 一个小标题\n\n- 列表项一\n- [ ] 待办\n\n| 列一 | 列二 |\n| --- | --- |\n| 甲 | 乙 |\n\n![图](images/a.png)\n\n';
 // Best of several batches: the budget measures intrinsic cost, not other load on the machine.
 // At 30 万字 incremental parsing alone is about 4 ms, so that size gets a looser budget.
 const best=(batches:number,run:()=>number)=>{let min=Infinity;for(let i=0;i<batches;i++)min=Math.min(min,run());return min};

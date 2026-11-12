@@ -42,8 +42,8 @@ for(const [doc,pos,indented] of [
  ['10. parent\n11. item\n    - child',16,'10. parent\n    11. item\n        - child'],
 ] as [string,number,string][]){
  let s=create(doc,pos,pos);assert.equal(editing.inList(s),true);
- s=s.update(editing.indentList(s,1)).state;assert.equal(s.doc.toString(),indented);
- s=s.update(editing.indentList(s,-1)).state;assert.equal(s.doc.toString(),doc);
+ s=s.update(editing.indentList(s,1)!).state;assert.equal(s.doc.toString(),indented);
+ s=s.update(editing.indentList(s,-1)!).state;assert.equal(s.doc.toString(),doc);
 }
 let s=create('paragraph',4,4);assert.equal(editing.inList(s),false);assert.equal(editing.indentList(s,1),null);
 for(const doc of ['- item','1. item','- [ ] task']){

@@ -1,22 +1,12 @@
 """Callouts, details and footnotes. Run via scripts/e2e.sh check-extras (fresh server/data)."""
-import json
-import os
 from pathlib import Path
 import re
-import sys
-import tempfile
 from playwright.sync_api import expect, sync_playwright
+from checklib import THEMES, base_url, evidence, launch, save_failure, set_theme
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:4196'
-ARTIFACTS = Path(tempfile.mkdtemp(prefix='liubai-extras-qa-'))
-THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
+BASE = base_url()
+ARTIFACTS = evidence('liubai-extras-qa-')
 DETAILS = '<details>\n<summary>标题</summary>\n\n内容\n\n</details>'
-
-
-def set_theme(page, theme):
-    """Paint a theme the way the app does, both root attributes. Assert right after: the app repaints the stored theme on its next minute tick or window focus."""
-    scheme = 'dark' if next(t['dark'] for t in THEMES if t['id'] == theme) else 'light'
-    page.evaluate("([theme, scheme]) => { const root = document.documentElement; root.dataset.liubaiTheme = theme; root.dataset.liubaiScheme = scheme }", [theme, scheme])
 
 
 def current(page):
@@ -72,15 +62,16 @@ def insert(page, kind, method):
         page.locator(f'#insert-menu [data-menu-action="{kind}"]').click()
 
 
-def footnotes(root):
+# Inside the app the document's ids carry a prefix; the reading view resolves plain #fn1 links itself, the export copy's links carry it too.
+def footnotes(root, links=''):
     expect(root.locator('sup.footnote-ref')).to_have_count(3)
     expect(root.locator('sup.footnote-ref a')).to_have_text(['[1]', '[2]', '[1:1]'])
     expect(root.locator('.footnote-item')).to_have_count(2)
     expect(root.locator('.footnote-backref')).to_have_count(3)
-    expect(root.locator('#fn1')).to_contain_text('first definition')
-    expect(root.locator('#fn2')).to_contain_text('second definition')
-    assert root.locator('#fnref1').get_attribute('href') == '#fn1'
-    assert root.locator('[id="fnref1:1"]').get_attribute('href') == '#fn1'
+    expect(root.locator('#user-content-fn1')).to_contain_text('first definition')
+    expect(root.locator('#user-content-fn2')).to_contain_text('second definition')
+    assert root.locator('#user-content-fnref1').get_attribute('href') == '#' + links + 'fn1'
+    assert root.locator('[id="user-content-fnref1:1"]').get_attribute('href') == '#' + links + 'fn1'
 
 
 def run(page):
@@ -200,7 +191,7 @@ def run(page):
         page.locator('.export-button').click()
         page.locator(f'[data-deliver="{kind}"]').click()
         expect(page.locator('#ready-dialog')).to_be_visible()
-        footnotes(page.locator('#print-document'))
+        footnotes(page.locator('#print-document'), 'user-content-')
         if kind == 'html':
             with page.expect_download() as pending:
                 page.locator('#ready-go').click()
@@ -227,7 +218,7 @@ def run(page):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get('PLAYWRIGHT_CHANNEL', 'chrome'))
+    browser = launch(playwright.chromium)
     page = browser.new_page(locale='zh-CN', viewport={'width': 1120, 'height': 820})
     page.set_default_timeout(7000)
     errors = []
@@ -236,9 +227,7 @@ with sync_playwright() as playwright:
         run(page)
         assert not errors, errors
     except Exception:
-        page.screenshot(path=str(ARTIFACTS / 'failure.png'))
-        (ARTIFACTS / 'errors.json').write_text(json.dumps(errors, ensure_ascii=False))
+        save_failure(ARTIFACTS, page, errors)
         raise
     finally:
-        print(f'Evidence: {ARTIFACTS}')
         browser.close()

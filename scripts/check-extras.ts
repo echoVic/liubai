@@ -22,12 +22,18 @@ for(const [doc,types] of [
  assert.equal(extraRanges(state.update({selection:{anchor:2}}).state),found,'a caret move reuses the collected ranges');
  assert.notEqual(extraRanges(state.update({changes:{from:0,insert:'新'}}).state),found,'an edit collects again');
 }
-const decorations=(state:EditorState)=>{const out:any[]=[];inlineDecorations(state,[{from:0,to:state.doc.length}]).between(0,state.doc.length,(from,to,d)=>out.push({from,to,...d.spec}));return out};
+const decorations=(state:EditorState)=>{const out:any[]=[];inlineDecorations(state,[{from:0,to:state.doc.length}]).between(0,state.doc.length,(from,to,d)=>{out.push({from,to,...d.spec})});return out};
 let doc='> [!NOTE]\n> body\n\ntail',state=create(doc,doc.length);
 assert.equal(decorations(state).filter(d=>d.class==='md-callout markdown-alert-note').length,2);
 assert.ok(decorations(state).some(d=>d.widget?.constructor.name==='CalloutWidget'));
 assert.ok(!decorations(state.update({selection:{anchor:3}}).state).some(d=>d.widget?.constructor.name==='CalloutWidget'));
 assert.ok(!decorations(create('> ordinary\n\ntail',16)).some(d=>d.class?.includes('md-callout')));
+// A details toggle below an edit keeps an equal widget, so CodeMirror keeps its DOM; a click reads the position from the DOM.
+{
+ const toggle=(state:EditorState)=>decorations(state).find(d=>d.widget?.constructor.name==='DetailsWidget');
+ const text='正文\n\n<details>\n<summary>标题</summary>\n\n内容\n\n</details>\n\n尾',before=toggle(create(text,text.length)),after=toggle(create(text,text.length).update({changes:{from:0,insert:'续'}}).state);
+ assert.equal(after.from,before.from+1);assert.ok(after.widget.eq(before.widget),'a details toggle that only moved keeps its DOM');
+}
 
 for(const [text,count] of [
  ['<details>\n<summary>T</summary>\n\nbody\n\n</details>',1],
@@ -97,7 +103,7 @@ assert.ok(undo({state,dispatch:tr=>state=tr.state}));assert.equal(state.doc.toSt
 // An offscreen marker must not create a replacement above the requested viewport.
 doc='> [!NOTE]\n> body\n> second body\n\ntail';state=create(doc,doc.length);
 const viewport=state.doc.line(2),visible:any[]=[];
-inlineDecorations(state,[{from:viewport.from,to:viewport.to}]).between(0,doc.length,(from,to,d)=>visible.push({from,to,...d.spec}));
+inlineDecorations(state,[{from:viewport.from,to:viewport.to}]).between(0,doc.length,(from,to,d)=>{visible.push({from,to,...d.spec})});
 assert.ok(visible.every(d=>d.from>=viewport.from&&d.to<=viewport.to),'callout decorations stay in viewport');
 
 // Definitions can contain multiple paragraphs, as markdown-it-footnote exports do.
@@ -154,5 +160,26 @@ for(let i=0;i<3;i++){
 }
 console.log('Long footnote document visible decorations: '+best.toFixed(2)+' ms');
 assert.ok(best<15,'footnote-heavy visible decorations stay within the unchanged 300k budget');
+
+// The marker that stands for folded details is named in the interface language.
+{
+ const {localizedEditor}=await import('../src/editor'),{messages}=await import('../src/i18n');
+ const state=EditorState.create({extensions:localizedEditor()});
+ assert.equal(state.phrase('folded code'),messages.fFoldedContent());assert.equal(state.phrase('unfold'),messages.fExpandDetails());
+}
+
+// The editor and the reading view find the same callouts, as GitHub does: the marker opens the quote and ends its line
+// or is followed by whitespace.
+{
+ (await import('./headless-dom')).headlessDOM();
+ const {renderMarkdown}=await import('../src/markdown');
+ for(const [doc,kind,body] of [['> [!NOTE]*x*\n> body',null,''],['>\n> [!NOTE]\n> body',null,''],['> [!NOTE] title\n> body','note','title\nbody'],['> [!note]\n> body','note','body'],['> [!TIP]  \n> body','tip','body'],['> [!NOTE]oops',null,'']] as [string,string|null,string][]){
+  const view=renderMarkdown(doc,{resolve:()=>undefined,external:'link'}),alert=view.root.querySelector('blockquote')!;
+  assert.equal(/markdown-alert-(\w+)/.exec(alert.className)?.[1]??null,kind,doc);
+  if(kind)assert.equal(alert.querySelector('p:not(.markdown-alert-title)')!.innerHTML,body,doc);
+  assert.deepEqual(extraRanges(create(doc)).callouts.map(c=>c.kind),kind?[kind]:[],doc);
+  view.dispose();
+ }
+}
 
 console.log('PASS: callouts/viewport, details ranges/fold lifecycle, footnote labels/insertion/caret/undo/cells/images/multiline/performance, templates, prose mapping and mapped extras');

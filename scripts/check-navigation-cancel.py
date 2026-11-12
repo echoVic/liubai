@@ -1,24 +1,18 @@
 """Cancel search activation after the real backend switched from an empty draft."""
 import json
-import os
-import sys
 import time
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import api, base_url, launch, wait_state
 
-BASE = sys.argv[1].rstrip("/")
-
-
-def api(page, method, *args):
-    response = page.request.post(BASE + "/api", data={"method": method, "args": list(args)}, headers={"Origin": BASE})
-    result = response.json()
-    assert response.ok and not result.get("error"), result
-    return result["value"]
+BASE = base_url()
 
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"), headless=True)
+    browser = launch(p.chromium)
     page = browser.new_page(locale="zh-CN", viewport={"width": 1440, "height": 850})
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
     page.goto(BASE)
     target = api(page, "State")["current"]
     api(page, "Update", {"id": target["id"], "revision": target["revision"], "content": "# 搜索目的地\n\n取消跳转命中", "position": {}})
@@ -50,10 +44,7 @@ with sync_playwright() as p:
     held[0][0].fulfill(response=held[0][1])
     expect(page.locator("#toast")).to_contain_text("输入")
     expect(page.locator("#doc-title")).to_have_text(origin["title"])
-    page.wait_for_function("""async id => {
-      const r=await fetch('/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'State',args:[]})});
-      return (await r.json()).value.current.id===id;
-    }""", arg=origin["id"])
+    wait_state(page, lambda state: state["current"]["id"] == origin["id"])
     page.unroute(BASE + "/api", hold_activation)
     page.locator(".cm-content").dispatch_event("compositionend")
     page.locator(".cm-content").focus()
@@ -65,4 +56,5 @@ with sync_playwright() as p:
     page.reload()
     expect(page.locator(".cm-content")).to_contain_text("取消之后仍能保存")
     browser.close()
+    assert not errors, errors
     print("PASS: real backend cancellation restores authoritative current, retains empty origin and saves subsequent input")

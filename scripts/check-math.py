@@ -1,29 +1,11 @@
 """Math regression. Run via scripts/e2e.sh check-math (fresh server/data)."""
-import json
-import os
 from pathlib import Path
-import sys
-import tempfile
 from playwright.sync_api import expect, sync_playwright
+from checklib import THEMES, api, base_url, evidence, launch, save_failure, set_theme
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:4196'
-ARTIFACTS = Path(tempfile.mkdtemp(prefix='liubai-math-qa-'))
-THEMES = json.loads((Path(__file__).resolve().parent.parent / "src" / "themes.json").read_text())
+BASE = base_url()
+ARTIFACTS = evidence('liubai-math-qa-')
 TEXT = '前文\n\n中文$x^2$中文\n\n$$\n\\int_0^1 x\\,dx\n$$\n\n```math\ny^2\n```\n\n$\\frac{$\n\n$5 和 $10\n\n尾文'
-
-
-def api(page, method, *args):
-    response = page.request.post(BASE + '/api', data={'method': method, 'args': list(args)}, headers={'Origin': BASE})
-    assert response.ok, response.text()
-    data = response.json()
-    assert not data.get('error'), data
-    return data['value']
-
-
-def set_theme(page, theme):
-    """Paint a theme the way the app does, both root attributes. Assert right after: the app repaints the stored theme on its next minute tick or window focus."""
-    scheme = 'dark' if next(t['dark'] for t in THEMES if t['id'] == theme) else 'light'
-    page.evaluate("([theme, scheme]) => { const root = document.documentElement; root.dataset.liubaiTheme = theme; root.dataset.liubaiScheme = scheme }", [theme, scheme])
 
 
 def saved(page, expected):
@@ -206,7 +188,7 @@ def run(page):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get('PLAYWRIGHT_CHANNEL', 'chrome'))
+    browser = launch(playwright.chromium)
     page = browser.new_page(locale='zh-CN', viewport={'width': 1120, 'height': 820})
     page.set_default_timeout(7000)
     errors = []
@@ -215,9 +197,7 @@ with sync_playwright() as playwright:
         run(page)
         assert not errors, errors
     except Exception:
-        page.screenshot(path=str(ARTIFACTS / 'failure.png'))
-        (ARTIFACTS / 'errors.json').write_text(json.dumps(errors, ensure_ascii=False))
+        save_failure(ARTIFACTS, page, errors)
         raise
     finally:
-        print(f'Evidence: {ARTIFACTS}')
         browser.close()

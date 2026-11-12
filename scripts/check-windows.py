@@ -3,31 +3,20 @@ fonts, scrollbars and title bar room, with navigator.platform reporting Win32,
 and the same page on macOS for comparison. Run against -web with its own data
 directory:
 
-python3 scripts/check-windows.py http://127.0.0.1:4196
+python3 scripts/check-windows.py http://127.0.0.1:<port>
 Requires Python Playwright and Chrome (or PLAYWRIGHT_CHANNEL).
 """
-import os
-from pathlib import Path
 import re
-import sys
-import tempfile
 import uuid
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import api, base_url, evidence, launch
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4196"
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-windows-qa-"))
+BASE = base_url()
+ARTIFACTS = evidence("liubai-windows-qa-")
 WIN32 = "Object.defineProperty(Navigator.prototype, 'platform', {get: () => 'Win32'})"
 MAC_SYMBOLS = "⌘⇧⌥⌃↩"
 FIXTURE = "[示例](https://example.com)\n\n正文\n"
-
-
-def api(page, method, *args):
-    response = page.request.post(BASE + "/api", data={"method": method, "args": list(args)}, headers={"Origin": BASE})
-    assert response.ok, response.text()
-    result = response.json()
-    assert not result.get("error"), result
-    return result["value"]
 
 
 def open_editor(context):
@@ -36,7 +25,7 @@ def open_editor(context):
     page.on("pageerror", lambda error: errors.append(str(error)))
     # Write the fixture before the page loads, so no save of the page races it.
     current = api(page, "State")["current"]
-    api(page, "Update", {"id": current["id"], "revision": current["revision"], "content": FIXTURE, "position": {"anchor": 0, "head": 0, "scroll": 0, "source": False}})
+    api(page, "Update", {"id": current["id"], "revision": current["revision"], "content": FIXTURE, "position": {"anchor": 0, "head": 0, "scroll": 0}})
     page.goto(BASE)
     expect(page.locator(".cm-content")).to_be_visible()
     expect(page.locator(".cm-content .md-link").first).to_be_visible()
@@ -133,6 +122,9 @@ def windows(context):
     expect(page.locator("body")).to_have_class(re.compile(r"\bfocus-mode\b"))
     page.keyboard.press("Escape")
     expect(page.locator("body")).not_to_have_class(re.compile(r"\bfocus-mode\b"))
+    # Ctrl+Shift+F stays with the input method (Microsoft Pinyin and Sogou switch scripts with it).
+    page.keyboard.press("Control+Shift+F")
+    expect(page.locator("body")).not_to_have_class(re.compile(r"\bfocus-mode\b"))
 
     # Ctrl+Z undoes; both Ctrl+Y and Ctrl+Shift+Z redo. Keys, not a click, place
     # the caret: click-then-type races CodeMirror's selection handling under load.
@@ -205,6 +197,14 @@ def mac(context):
     expect(page.locator(".cm-content .md-link").first).to_have_attribute("title", "⌘ 点击打开链接")
     keys = palette_keys(page, "Meta")
     assert "⌘ N" in keys and "⌘ ⇧ F" in keys and "⌘ 1" in keys and "⌘ ⇧ 7" in keys, keys
+    # The app keys take Command alone: Control+K and Command+Shift+K outside the editor open nothing.
+    page.locator("#doc-title").focus()
+    for chord in ("Control+k", "Meta+Shift+K"):
+        page.keyboard.press(chord)
+        expect(page.locator("#commands")).to_be_hidden()
+    page.keyboard.press("Meta+k")
+    expect(page.locator("#commands")).to_be_visible()
+    page.keyboard.press("Escape")
     assert style(page, ".cm-scroller", "scrollbarWidth") == "auto"
     for inset, padding in [("76px", "88px"), ("0px", "24px"), (None, "88px")]:
         actual = topbar_padding(page, inset)
@@ -215,7 +215,7 @@ def mac(context):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
+    browser = launch(playwright.chromium)
     try:
         for name, run, script in [("windows", windows, WIN32), ("mac", mac, None)]:
             with browser.new_context(locale="zh-CN", viewport={"width": 1120, "height": 820}) as context:
@@ -230,5 +230,4 @@ with sync_playwright() as playwright:
                     raise
         print("PASS: Windows shortcut names, menu hints, palette, F8, redo, quick note keys, fonts, scrollbars and title bar room; macOS unchanged")
     finally:
-        print(f"Evidence: {ARTIFACTS}")
         browser.close()

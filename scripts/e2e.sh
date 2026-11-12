@@ -3,7 +3,7 @@
 # Usage: scripts/e2e.sh <check> [port]   e.g. scripts/e2e.sh check-reader
 # Without a port the OS assigns a free one, so an app already using the default
 # port cannot make the check run against the wrong server. Requires Go and
-# Python Playwright with an installed Chrome.
+# Python Playwright; the checks drive the installed Chrome, a few also Playwright's WebKit (see the README).
 set -eu
 repo=$(cd "$(dirname "$0")/.." && pwd)
 check=${1:?usage: scripts/e2e.sh <check> [port]}
@@ -28,9 +28,11 @@ then
 fi
 work=$(mktemp -d /tmp/liubai-e2e.XXXXXX)
 go build -C "$repo" -o "$work/liubai" .
-"$work/liubai" -web "127.0.0.1:$port" -data-dir "$work/data" > "$work/server.log" 2>&1 &
+# An unpackaged server reads web/ from its working directory, so start it in the repository.
+(cd "$repo" && exec "$work/liubai" -web "127.0.0.1:$port" -data-dir "$work/data" > "$work/server.log" 2>&1) &
 server=$!
-trap 'kill $server 2>/dev/null || true; wait $server 2>/dev/null || true' EXIT
+# Keep the work directory (binary, data and server log) only when the check fails.
+trap 'status=$?; kill $server 2>/dev/null || true; wait $server 2>/dev/null || true; [ "$status" -ne 0 ] || rm -rf "$work"' EXIT
 i=0
 while true; do
   if curl -s -o /dev/null "http://127.0.0.1:$port/"; then

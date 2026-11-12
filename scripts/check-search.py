@@ -1,34 +1,16 @@
 """Full-text search regression against the real Go API and an isolated data dir."""
 import json
 import os
-from pathlib import Path
 import re
-import sys
-import tempfile
-import time
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import base_url, evidence, launch, localized_api as api, palette, save_failure, wait_callback
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:4196"
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-search-qa-"))
+BASE = base_url()
+ARTIFACTS = evidence("liubai-search-qa-")
 TAIL = "中😀AKſ尾 独特文尾"
 TEXT = "# 全文验收\n\n" + "\n\n".join(f"第 {i} 段 " + "正文内容。" * 20 for i in range(50)) + "\n\n" + TAIL
 TEXT += "\n\n<details>\n<summary>折叠块</summary>\n\n折叠命中\n\n</details>"
-
-
-def api(page, method, *args, locale="zh-Hans"):
-    response = page.request.post(BASE + "/api", data={"method": method, "args": args, "locale": locale}, headers={"Origin": BASE})
-    assert response.ok, response.text()
-    result = response.json()
-    assert not result.get("error"), result
-    return result["value"]
-
-
-def wait_callback(page, predicate):
-    deadline = time.monotonic() + 7
-    while not predicate() and time.monotonic() < deadline:
-        page.wait_for_timeout(10)
-    assert predicate(), "callback condition did not arrive"
 
 
 def query(page, text):
@@ -57,12 +39,6 @@ def stable_reader(page):
         if(performance.now()-at>400)resolve(moved);else requestAnimationFrame(sample)}
       requestAnimationFrame(sample);
     })""")
-
-
-def palette(page, text):
-    page.keyboard.press("Meta+k")
-    page.locator("#command-search").fill(text)
-    page.locator("#command-list button").filter(has_text=text).first.click()
 
 
 def run(page):
@@ -196,10 +172,8 @@ def run(page):
     expect(page.locator("#toast")).to_contain_text("输入")
     expect(page.locator("#toast")).to_be_visible()
     expect(page.locator("#doc-title")).to_have_text("另一篇")
-    page.wait_for_function("""async id => {
-      const r=await fetch('/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'State',args:[]})});
-      return (await r.json()).value.current.id===id;
-    }""", arg=other["id"])
+    # An async wait_for_function predicate counts as already true, so poll from here.
+    wait_callback(page, lambda: api(page, "State")["current"]["id"] == other["id"])
     page.locator(".cm-content").dispatch_event("compositionend")
     page.unroute(BASE + "/api", hold_activate)
     query(page, "独特文尾")
@@ -381,7 +355,8 @@ def run(page):
     assert theme_names and len(set(theme_names)) == radios.count(), theme_names
     for name in theme_names:
         page.get_by_role("radio", name=name, exact=True).click()
-        assert page.locator(".search-hit mark").first.evaluate("(el)=>getComputedStyle(el).color===getComputedStyle(document.documentElement).getPropertyValue('--foreground').trim()") or page.locator(".search-hit mark").first.evaluate("(el)=>getComputedStyle(el).color!==getComputedStyle(el).backgroundColor")
+        # Resolve --foreground through a probe: the raw custom property is not in rgb() form.
+        assert page.locator(".search-hit mark").first.evaluate("(el)=>{const probe=document.createElement('i');probe.style.color='var(--foreground)';document.body.append(probe);const foreground=getComputedStyle(probe).color;probe.remove();const style=getComputedStyle(el);return style.color===foreground||style.color!==style.backgroundColor}"), name
     page.locator('[data-close="appearance"]').click()
     for width in [1440, 800, 680]:
         page.set_viewport_size({"width": width, "height": 850})
@@ -468,7 +443,7 @@ def performance(page):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
+    browser = launch(playwright.chromium)
     page = browser.new_page(locale="zh-CN", viewport={"width": 1440, "height": 850})
     page.set_default_timeout(7000)
     errors = []
@@ -480,9 +455,7 @@ with sync_playwright() as playwright:
             performance(page)
         assert not errors, errors
     except Exception:
-        page.screenshot(path=str(ARTIFACTS / "failure.png"))
-        (ARTIFACTS / "errors.json").write_text(json.dumps(errors, ensure_ascii=False))
+        save_failure(ARTIFACTS, page, errors)
         raise
     finally:
-        print(f"Evidence: {ARTIFACTS}")
         browser.close()

@@ -4,12 +4,12 @@ Run via sh scripts/e2e.sh check-reader-tables against a fresh data directory.
 """
 import json
 import sys
-from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
+from checklib import CONTRAST, THEMES, base_url, evidence, launch
 
-BASE = sys.argv[1]
-PREFIX = sys.argv[2] if len(sys.argv) > 2 else "r189"
+BASE = base_url()
 FAILURES = []
+ARTIFACTS = evidence("liubai-reader-tables-qa-")
 
 def check(name, ok, value=None):
     print(("PASS " if ok else "FAIL ") + name, json.dumps(value, ensure_ascii=False) if value is not None else "", flush=True)
@@ -49,7 +49,7 @@ METRICS = """e=>{
 }"""
 
 with sync_playwright() as pw:
-    browser = pw.chromium.launch(headless=True)
+    browser = launch(pw.chromium)
     page = browser.new_page(viewport={"width": 1440, "height": 900}, locale="zh-CN")
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
@@ -84,7 +84,7 @@ with sync_playwright() as pw:
             check(f"{width}x{height} {cols} readable columns", data["cellWidth"] >= 90, data)
             check(f"{width}x{height} {cols} no document overflow", data["scrollWidth"] <= data["width"] + 1)
             if cols == 12:
-                page.screenshot(path=f"/tmp/{PREFIX}-table-{width}.png")
+                page.screenshot(path=str(ARTIFACTS / f"table-{width}.png"))
     page.set_viewport_size({"width": 360, "height": 640})
     scrollers = page.locator("#preview-content .md-table-scroll")
     check("local table scroll regions", scrollers.count() == 4, scrollers.count())
@@ -101,7 +101,7 @@ with sync_playwright() as pw:
         expect(last).to_be_focused()
         check("last column link revealed by Tab", last.evaluate("e=>{const s=e.closest('.md-table-scroll'),a=e.getBoundingClientRect(),b=s.getBoundingClientRect();return a.left>=b.left&&a.right<=b.right}"))
         page.keyboard.press("Enter")
-        expect(page.locator('#末尾')).to_be_focused()
+        expect(page.locator('#user-content-末尾')).to_be_focused()
         check("table link anchor works", True)
         target.focus()
         page.keyboard.press("Shift+Tab")
@@ -139,16 +139,12 @@ with sync_playwright() as pw:
     check("fitting table skips extra Tab stop", True)
 
     ratios = []
-    for theme in json.loads((Path(__file__).resolve().parents[1] / "src/themes.json").read_text()):
+    for theme in THEMES:
         page.locator('[data-action="settings"]').click()
         page.locator(f'#themes [data-theme="{theme["id"]}"]').click()
         page.keyboard.press("Escape")
         scrollers.nth(2).focus()
-        value = scrollers.nth(2).evaluate("""e=>{
-          const rgb=c=>{const n=document.createElement('span');n.style.color=c;e.append(n);const s=getComputedStyle(n).color;n.remove();return s.match(/[\\d.]+/g).slice(0,3).map(Number)};
-          const lum=c=>rgb(c).map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4}).reduce((s,n,i)=>s+n*[.2126,.7152,.0722][i],0);
-          const contrast=(a,b)=>{a=lum(a);b=lum(b);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05)};
-          const css=getComputedStyle(e),a=getComputedStyle(e.querySelector('a')),t=getComputedStyle(e.querySelector('th')),
+        value = scrollers.nth(2).evaluate(CONTRAST + """          const css=getComputedStyle(e),a=getComputedStyle(e.querySelector('a')),t=getComputedStyle(e.querySelector('th')),
             paper=css.getPropertyValue('--card'),muted=css.getPropertyValue('--muted');
           return {text:contrast(css.color,paper),header:contrast(t.color,t.backgroundColor),link:contrast(a.color,paper),
            focus:contrast(css.getPropertyValue('--ring'),paper),thumb:contrast(css.getPropertyValue('--muted-foreground'),muted)};
@@ -156,7 +152,7 @@ with sync_playwright() as pw:
         ratios.append(value)
         check(f'{theme["id"]} table contrast', min(value["text"], value["header"], value["link"]) >= 4.5 and min(value["focus"], value["thumb"]) >= 3, value)
         if theme["id"] in ["paper", "nord"]:
-            page.screenshot(path=f'/tmp/{PREFIX}-table-{theme["id"]}.png')
+            page.screenshot(path=str(ARTIFACTS / f'table-{theme["id"]}.png'))
     print("contrast minima", {key: min(v[key] for v in ratios) for key in ratios[0]}, flush=True)
 
     target = scrollers.nth(2)

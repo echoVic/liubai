@@ -1,24 +1,14 @@
 """Quick Note enhancements: run against a fresh -web server."""
-import os
-import sys
-import tempfile
-from pathlib import Path
 
 from playwright.sync_api import expect, sync_playwright
+from checklib import api, base_url, evidence, launch, wait_state
 
-BASE = sys.argv[1].rstrip("/")
-ARTIFACTS = Path(tempfile.mkdtemp(prefix="liubai-capture-notes-"))
-
-
-def api(page, method, *args):
-    response = page.request.post(BASE + "/api", data={"method": method, "args": list(args)}, headers={"Origin": BASE})
-    result = response.json()
-    assert response.ok and not result.get("error"), result
-    return result["value"]
+BASE = base_url()
+ARTIFACTS = evidence("liubai-capture-notes-")
 
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"), headless=True)
+    browser = launch(p.chromium)
     context = browser.new_context(locale="zh-CN", viewport={"width": 1120, "height": 820})
     errors = []
     context.on("page", lambda page: page.on("pageerror", lambda error: errors.append(str(error))))
@@ -52,11 +42,8 @@ with sync_playwright() as p:
     main.keyboard.press("Meta+s")
     # Save opened the draft's Save As flow; Esc closes it in web mode if present.
     main.keyboard.press("Escape")
-    main.wait_for_function("""async () => {
-      const r=await fetch('/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({method:'State',args:[]})});
-      return (await r.json()).value.current.content.includes('新任务')
-    }""")
-    target = api(main, "Capture", "另一份文稿\n\n原来的段落")
+    wait_state(main, lambda state: "新任务" in state["current"]["content"])
+    target = api(main, "SaveCapture", {"text": "另一份文稿\n\n原来的段落", "tags": [], "targetID": "", "revision": 0})
     capture = context.new_page()
     capture.set_viewport_size({"width": 560, "height": 340})
     capture.goto(BASE + "/capture.html")
@@ -100,4 +87,3 @@ with sync_playwright() as p:
     assert not errors, errors
     browser.close()
     print("PASS: pending text, append undo/redo, templates, Markdown tags, deleted target recovery, tag search, compact layout")
-    print("Evidence:", ARTIFACTS)

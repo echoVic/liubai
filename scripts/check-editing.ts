@@ -81,3 +81,23 @@ assert.deepEqual(localDocumentLink('a.md#bad%ZZ'),{path:'a.md',fragment:'bad%ZZ'
 assert.deepEqual(localDocumentLink('a.md?next=other.md#one#two'),{path:'a.md',fragment:'one#two'});
 for(const href of ['', '?file=a.md', 'a.png?file=a.md', 'a.md.exe', 'javascript:a.md', 'file:///a.md'])assert.equal(localDocumentLink(href),null,href);
 console.log('相对文稿链接识别检查通过');
+// The outline and the reading view read a heading's text alike, so editor jumps and #slug links find the same heading.
+{
+ const {Highlight}=await import('../src/marks'),{MathSyntax}=await import('../src/math'),{WikiSyntax}=await import('../src/wiki-links');
+ const full=(doc:string)=>EditorState.create({doc,extensions:[markdown({base:markdownLanguage,extensions:[GFM,Highlight,MathSyntax,WikiSyntax]})]});
+ const rendered='## See [docs](https://x.com/a-b "title")\n\n## R&amp;D\n\n## $x^2$\n\n##\n\n## **Bold** `code` ==mark== [ref][r] [none][x] [^1] [^2] \\*\n\nSetext\n===\n\n[r]: https://r.example\n\n[^1]: note';
+ const outline=headings(full(rendered));
+ assert.deepEqual(outline.map(h=>h.text),['See docs','R&D','x^2','Bold code mark ref [none][x] [^2] *','Setext']);
+ assert.deepEqual(outline.map(h=>h.slug),['see-docs','rd','x2','bold-code-mark-ref-nonex-2','setext']);
+ assert.deepEqual(headings(full('## A <u>b</u>')).map(h=>[h.text,h.slug]),[['A b','a-b']]);
+ const page=(await import('./headless-dom')).headlessDOM();
+ const {renderMarkdown}=await import('../src/markdown'),{installAnchors,headingText,anchorPrefix}=await import('../src/headings');
+ const view=renderMarkdown(rendered,{resolve:()=>undefined,external:'link'});installAnchors(view.root);
+ assert.deepEqual(Array.from(view.root.querySelectorAll('h1,h2,h3,h4,h5,h6'),h=>h.id).filter(Boolean),outline.map(h=>h.slug));
+ installAnchors(view.root,anchorPrefix);
+ assert.equal(view.root.querySelector('h2')!.id,anchorPrefix+'see-docs');assert.ok(view.root.querySelector('#'+anchorPrefix+'fn1'),'footnote ids move with the headings');
+ // Author HTML goes through DOMPurify, which needs a browser; the sanitised heading keeps its <u>.
+ const author=page.createElement('h2');author.innerHTML='A <u>b</u>';assert.equal(headingText(author),'A b');
+ view.dispose();
+}
+console.log('大纲与阅读视图的标题文字和锚点一致');

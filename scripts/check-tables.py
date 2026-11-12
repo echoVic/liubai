@@ -1,24 +1,13 @@
 """Inline tables. Run via scripts/e2e.sh check-tables (fresh server/data)."""
 import json
-import os
-from pathlib import Path
-import sys
-import tempfile
 from playwright.sync_api import expect, sync_playwright
+from checklib import api, base_url, evidence, launch, save_failure
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:4196'
-ARTIFACTS = Path(tempfile.mkdtemp(prefix='liubai-tables-qa-'))
+BASE = base_url()
+ARTIFACTS = evidence('liubai-tables-qa-')
 PREFIX, SUFFIX = '前文  \n\n', '\n\n尾文\t '
 TABLE = '| **头** | `代码` |\n| :--- | ---: |\n| 甲\\|乙 | [链接](x) |'
 TEXT = PREFIX + TABLE + SUFFIX
-
-
-def api(page, method, *args):
-    response = page.request.post(BASE + '/api', data={'method': method, 'args': list(args)}, headers={'Origin': BASE})
-    assert response.ok, response.text()
-    data = response.json()
-    assert not data.get('error'), data
-    return data['value']
 
 
 def saved(page, expected=None):
@@ -90,6 +79,20 @@ def run(page):
     # Edits separated by a pause are separate undo steps, as in the rest of the editor.
     undo(page, expected)
     undo(page)
+
+    # Typing above a table only moves it: its DOM is left alone, and its cells still edit the table where it now is.
+    page.locator('.rendered-table').evaluate("el => { window.tableMutations = []; new MutationObserver(records => window.tableMutations.push(...records.map(r => r.type + ' ' + r.target.nodeName))).observe(el, {subtree: true, childList: true, attributes: true, characterData: true}) }")
+    page.locator('.cm-line').filter(has_text='前文').click()
+    page.keyboard.press('End')
+    page.keyboard.insert_text('续')
+    moved = TEXT.replace('前文  ', '前文  续')
+    saved(page, moved)
+    assert page.evaluate('window.tableMutations') == [], page.evaluate('window.tableMutations')
+    cell(page, 1, 0).click()
+    page.keyboard.press('Meta+a')
+    page.keyboard.insert_text('丙')
+    saved(page, moved.replace('甲\\|乙', '丙'))
+    source(page, TEXT)
 
     # Tab order, reverse Tab and appending exactly one row from the last cell.
     cell(page).click()
@@ -343,7 +346,7 @@ def run(page):
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=True, channel=os.environ.get('PLAYWRIGHT_CHANNEL', 'chrome'))
+    browser = launch(playwright.chromium)
     page = browser.new_page(locale='zh-CN', viewport={'width': 1120, 'height': 820})
     page.set_default_timeout(7000)
     errors = []
@@ -352,13 +355,11 @@ with sync_playwright() as playwright:
         run(page)
         assert not errors, errors
     except Exception:
-        page.screenshot(path=str(ARTIFACTS / 'failure.png'))
-        (ARTIFACTS / 'errors.json').write_text(json.dumps(errors, ensure_ascii=False))
+        save_failure(ARTIFACTS, page, errors)
         try:
             (ARTIFACTS / 'focus.json').write_text(json.dumps(page.evaluate('window.focusLog || []'), ensure_ascii=False))
         except Exception:
             pass
         raise
     finally:
-        print(f'Evidence: {ARTIFACTS}')
         browser.close()

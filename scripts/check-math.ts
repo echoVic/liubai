@@ -20,7 +20,7 @@ try{
  for(const [viewComposing,stateComposing] of [[true,false],[false,true]]){
   globalThis.document={createElement:()=>({classList:{add(){}},addEventListener(){},isConnected:false})} as unknown as Document;
   const state=EditorState.create({extensions:composing}).update({effects:setComposing.of(stateComposing)}).state;
-  const widget=new MathWidget('IMEguard'+Number(viewComposing),true,0,composing),calls=mathRenderStats.calls;
+  const widget=new MathWidget('IMEguard'+Number(viewComposing),true,composing),calls=mathRenderStats.calls;
   const dom=widget.toDOM({state,composing:viewComposing} as any);widget.destroy(dom);
   assert.equal(mathRenderStats.calls,calls,'lazy mount must defer KaTeX while composing');
  }
@@ -108,8 +108,13 @@ state=state.update({effects:setComposing.of(false)}).state;assert.equal(widgets(
 for(const change of [{from:1,insert:'续'},{from:0,to:1,insert:'$new$'},{from:0,to:1,insert:'$$new$$'},{from:doc.indexOf('y^2'),insert:'a+'}]){
  let s=create(doc,0,0,field);ensureSyntaxTree(s,s.doc.length,5000);s=s.update({changes:change,selection:{anchor:change.from+change.insert.length}}).state;
  const freshField=createBlockField(async()=>''),fresh=create(s.doc.toString(),s.selection.main.head,s.selection.main.head,freshField);
- const simple=(s:EditorState,f:typeof field)=>widgets(s,f).map(w=>({from:w.from,to:w.to,source:w.widget.source,widgetFrom:w.widget.from}));
+ const simple=(s:EditorState,f:typeof field)=>widgets(s,f).map(w=>({from:w.from,to:w.to,source:w.widget.source}));
  assert.deepEqual(simple(s,field),simple(fresh,freshField),'prose mapping agrees with rebuild');
+}
+// Formulas below an edit keep equal widgets, so CodeMirror keeps their DOM; a click reads the position from the DOM.
+{
+ let s=create(doc,doc.length,doc.length,field);const before=[...widgets(s),...widgets(s,field)];s=s.update({changes:{from:0,insert:'续'}}).state;const after=[...widgets(s),...widgets(s,field)];
+ assert.equal(after.length,3);assert.ok(after.every((w,i)=>w.from===before[i].from+1&&w.widget.eq(before[i].widget)),'a formula that only moved keeps its DOM');
 }
 // Split preview renders the whole document again after every pause. Each of a few hundred different formulas
 // must come from the cache the second time instead of being typeset again.

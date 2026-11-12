@@ -3,6 +3,7 @@ import {EditorState} from '@codemirror/state';
 import {history,undo} from '@codemirror/commands';
 import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
 import {GFM} from '@lezer/markdown';
+import {ensureSyntaxTree} from '@codemirror/language';
 import * as images from '../src/images';
 import {normalizeImageDestination} from '../src/markdown';
 import {createBlockField,inlineDecorations,composing} from '../src/editor';
@@ -106,5 +107,16 @@ for(const change of [
  assert.equal(images.imageRanges(moved),found,'a caret move reuses the image ranges');assert.equal(images.tableRanges(moved),tables,'a caret move reuses the table ranges');
  const edited=moved.update({changes:{from:0,insert:'新'}}).state;
  assert.notEqual(images.imageRanges(edited),found,'an edit collects again');assert.equal(images.imageRanges(edited)[0].from,found[0].from+1);
+}
+// Long whitespace runs in a tag that never closes are rejected in linear time. These sizes took tens of seconds when
+// the patterns could split a run in many ways; the limit leaves room for a loaded machine.
+{
+ const n=6000,start=performance.now();
+ assert.equal(images.parseImage('<img'+' '.repeat(n)+'x <b>'),null);assert.equal(images.parseImage('<p align="center">'+' '.repeat(n)+'x'),null);
+ assert.equal(images.parseImage('<img'+' '.repeat(n)+'src="a.png"'+' '.repeat(n)+'/ >')?.src,'a.png');
+ assert.equal(images.parseImage('<p align="center">'+' '.repeat(n)+'<img src="a.png">'+' '.repeat(n)+'</p>')?.align,'center');
+ const state=create('<img'+' '.repeat(n)+'x <b>y</b>');ensureSyntaxTree(state,state.doc.length,5000);
+ assert.deepEqual(images.imageRanges(state),[]);
+ assert.ok(performance.now()-start<1500,`crafted image tags took ${(performance.now()-start).toFixed(0)} ms`);
 }
 console.log('image selection/history, dimensions, container-scoped deletion/insets, incremental widget ranges and caret-move reuse passed');

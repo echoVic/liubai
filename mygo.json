@@ -1,7 +1,7 @@
 {
   "name": "Liubai",
   "identifier": "app.liubai.desktop",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "license": "MIT",
   "resources": ["web"],
   "out": "build",

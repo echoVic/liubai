@@ -140,7 +140,7 @@ console.log('PASS: 180ms debounce, one flight/latest pending, stale success/erro
  const code=ts.transpileModule(functions,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
  const makeNavigation=new Function('env',`
   const {call,toast,messages,sidebarSearch,preview,wikiChooser,validSearchTarget}=env;
-  const noop=()=>{},setTimeout=()=>0,clearTimeout=noop;
+  const noop=()=>{},setTimeout=()=>0,clearTimeout=noop,desktop=false,journalSaved=noop;
   let view=env.view,doc=env.doc,state={current:doc},appearance={layout:'single'},
       generation=0,navigationEpoch=0,dirty=true,busy=false,compositionActive=false,
       timer,outlineTimer,saveFlight=null,savedPosition='',failedSaveError,

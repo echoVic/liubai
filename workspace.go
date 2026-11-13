@@ -46,6 +46,9 @@ type Position struct {
 	Scroll float64 `json:"scroll"`
 }
 type Document struct {
+	RecoverySourceID     string            `json:"recoverySourceID,omitempty"`
+	RecoverySourceHash   string            `json:"recoverySourceHash,omitempty"`
+	RecoveryContentHash  string            `json:"recoveryContentHash,omitempty"`
 	ID                   string            `json:"id"`
 	Title                string            `json:"title"`
 	CustomTitle          bool              `json:"customTitle,omitempty"`
@@ -103,13 +106,15 @@ type index struct {
 	Appearance       Appearance       `json:"appearance"`
 }
 type Edit struct {
-	ID       string   `json:"id"`
-	Revision int      `json:"revision"`
-	Content  string   `json:"content"`
-	Position Position `json:"position"`
+	RecoverySequence uint64   `json:"recoverySequence,omitempty"`
+	ID               string   `json:"id"`
+	Revision         int      `json:"revision"`
+	Content          string   `json:"content"`
+	Position         Position `json:"position"`
 }
 type Workspace struct {
 	mu               sync.Mutex
+	recovery         map[string]stagedRecovery
 	root             string
 	docs             map[string]*Document
 	positions        map[string]Position
@@ -691,6 +696,9 @@ func clampPosition(content string, p Position) Position {
 	for _, r := range content {
 		length += utf16.RuneLen(r)
 	}
+	return clampPositionLength(length, p)
+}
+func clampPositionLength(length int, p Position) Position {
 	p.Anchor = max(0, min(length, p.Anchor))
 	p.Head = max(0, min(length, p.Head))
 	if math.IsNaN(p.Scroll) || math.IsInf(p.Scroll, 0) || p.Scroll < 0 {
@@ -798,6 +806,14 @@ func (w *Workspace) updateLocked(e Edit) (Document, error) {
 		d.setStatus("recoveryUpdateFailed")
 	}
 	// A prior position-only save must not override the newer position in the draft.
+	if e.RecoverySequence > 0 {
+		if w.recovery == nil {
+			w.recovery = map[string]stagedRecovery{}
+		}
+		if old := w.recovery[e.ID]; old.sequence <= e.RecoverySequence {
+			w.recovery[e.ID] = stagedRecovery{sequence: e.RecoverySequence, content: d.Content, position: d.Position, length: recoveryLength(d.Content)}
+		}
+	}
 	if _, ok := w.positions[d.ID]; ok {
 		_ = w.savePosition(d, d.Position)
 	}

@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import {createRecoveryStream,type RecoveryPacket,type RecoverySnapshot} from '../src/session-recovery';
+
+const pending:{packet:RecoveryPacket;resolve:()=>void;reject:()=>void}[]=[];
+let snapshot:RecoverySnapshot={id:'document',content:'中😀',position:{anchor:3,head:3,scroll:0},composing:false};
+const stream=createRecoveryStream(packet=>new Promise<void>((resolve,reject)=>pending.push({packet,resolve,reject:()=>reject(Error('transport'))})),()=>snapshot);
+const settle=async()=>{await Promise.resolve();await Promise.resolve()};
+stream.seed(snapshot);
+snapshot={...snapshot,content:'中😀尾'};
+stream.change(snapshot,[{from:3,to:3,insert:'尾'}]);
+assert.equal(pending.length,1,'one IPC flight');
+pending[0].resolve();await settle();
+assert.equal(pending.length,2);
+assert.equal(pending[1].packet.content,undefined,'delta must not copy the full document');
+assert.deepEqual(pending[1].packet.changes,[{from:3,to:3,insert:'尾'}]);
+assert.equal(pending[1].packet.previous,pending[0].packet.sequence);
+pending[1].reject();await settle();
+snapshot={...snapshot,content:'中😀尾最新',composing:true};
+stream.change(snapshot,[{from:4,to:4,insert:'最新'}]);
+assert.equal(pending[2].packet.content,'中😀尾','failure reseeds the state at failure');
+pending[2].resolve();await settle();
+assert.equal(pending[3].packet.composing,true);
+assert.equal(pending[3].packet.previous,pending[2].packet.sequence);
+pending[3].resolve();await settle();stream.dispose();
+console.log('PASS: UTF-16 deltas, one IPC flight, failed transport reseed and composition state');

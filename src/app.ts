@@ -1,3 +1,5 @@
+import {createRecoveryStream,type RecoveryChange} from './session-recovery';
+import {recoveryJournal} from './recovery-journal';
 import {messages,pageLocale,localizePage,onPageLocaleChange,setPageLocale,statusText,statusFailed,noticeText,localizedError} from './i18n';
 import {call,desktop,type Summary,type LocaleNotice,type Doc,type DocStatus,type WorkspaceState,type Appearance,type ImageResult,type ExportResult,type CaptureAppendResult} from './types';
 import {createEditor,mode,editorLocale,localizedEditor,richExtensions,setFocus,undo,redo,EditorState,EditorView} from './editor';
@@ -15,7 +17,7 @@ import {focusedImageRange} from './image-ui';
 import {imageRanges} from './images';
 import {leaveBlock} from './block-navigation';
 import {filterSlashItems,insertToolbarItem,type SlashItemID,openSlashMenu} from './slash';
-import {Transaction,Compartment,StateEffect,type Text} from '@codemirror/state';
+import {Transaction,Compartment,StateEffect,type Text,type ChangeSet} from '@codemirror/state';
 import {blockFormat,setHeading,headingLevel,inlineMarkers,clearFormatting,inList,indentList,wrapSelection,insertMath,codeBlock,linkAt,makeLink,safeLink,localDocumentLink,insertTable,headings,type BlockKind} from './editing';
 import {isolateHistory} from '@codemirror/commands';
 import {ensureSyntaxTree,syntaxTree} from '@codemirror/language';
@@ -127,8 +129,19 @@ function scheduleWordCount(immediate=false){
 }
 function syncBacklinks(){if(doc)backlinks?.context(doc.id,doc.revision,dirty||compositionActive||!!view?.composing)}
 let pendingSent=false;function syncPending(){syncBacklinks();const pending=dirty||compositionActive||busy||!!saveFlight;if(pending===pendingSent||!desktop)return;pendingSent=pending;void call('SetPending',pending).catch(()=>{pendingSent=!pending})}
-function changed(content=true){if(loading||!doc)return;if(content){dirty=true;generation++;sidebarSearch?.contentPending();header();scheduleWordCount()}else updateHeading();documentFind?.changed(content);preview.changed(content,view.state.doc.lineAt(view.state.selection.main.head).number-1);if(content)scheduleOutline();else scheduleOutlineLayout();clearTimeout(timer);if(!compositionActive)timer=setTimeout(()=>void save(),content?450:800);syncPending()}
-function composition(active:boolean){if(active)navigationEpoch++;compositionActive=active;if(!active&&localePending){localePending=false;refreshLanguage()}preview.composition(active);if(active)clearTimeout(outlineTimer);else scheduleOutline();clearTimeout(timer);if(!active){timer=setTimeout(()=>void save(),800);if(pendingClose){pendingClose=false;void closeApp()}else void processOpened()}syncPending()}
+let journal:ReturnType<typeof recoveryJournal>|undefined;
+const recoverySnapshot=()=>({id:doc.id,content:view.state.doc.toString(),position:position(),composing:compositionActive||view.composing});
+let journalFailed=false;
+let journalReseed=false;
+function journalError(error:unknown){console.warn('liubai recovery journal',error);if(!journalFailed){journalFailed=true;toast(messages.fSaveFailedYourTextIsStillHere())}}
+function journalSaved(){try{journal?.saved(recoverySnapshot(),recovery.sequence())}catch(error){journalError(error)}}
+function seedRecovery(){if(desktop)recovery.seed(recoverySnapshot())}
+const recovery=createRecoveryStream(packet=>call('StageRecovery',packet),recoverySnapshot,packet=>{try{
+ journal?.record(journalReseed&&packet.content===undefined?{...packet,content:recoverySnapshot().content,changes:undefined}:packet,packet.content===undefined||dirty||compositionActive);
+ journalReseed=false;
+}catch(error){journalReseed=true;journalError(error)}});
+function changed(content=true,changes?:ChangeSet){if(loading||!doc)return;if(content){dirty=true;generation++}if(desktop){const delta:RecoveryChange[]=[];changes?.iterChanges((from,to,_from,_to,insert)=>delta.push({from,to,insert:insert.toString()}));recovery.change({id:doc.id,position:position(),composing:compositionActive||view.composing},delta)}if(content){sidebarSearch?.contentPending();header();scheduleWordCount()}else updateHeading();documentFind?.changed(content);preview.changed(content,view.state.doc.lineAt(view.state.selection.main.head).number-1);if(content)scheduleOutline();else scheduleOutlineLayout();clearTimeout(timer);if(!compositionActive)timer=setTimeout(()=>void save(),content?450:800);syncPending()}
+function composition(active:boolean){if(active)navigationEpoch++;compositionActive=active;if(desktop&&doc&&view)recovery.change({id:doc.id,position:position(),composing:active});if(!active&&localePending){localePending=false;refreshLanguage()}preview.composition(active);if(active)clearTimeout(outlineTimer);else scheduleOutline();clearTimeout(timer);if(!active){timer=setTimeout(()=>void save(),800);if(pendingClose){pendingClose=false;void closeApp()}else void processOpened()}syncPending()}
 // Reading/single/split without source all share the same rich extension set; rebuilding it on every layout switch remounts every block widget (shaking the height map and dropping inline decorations). Only reconfigure when source mode actually toggles.
 let richMode=true;
 function reconfigure(){const want=!sourceActive();if(want===richMode)return;richMode=want;view.dispatch({effects:mode.reconfigure(want?richExtensions(resolveImage):[]),annotations:Transaction.addToHistory.of(false)})}
@@ -138,10 +151,10 @@ async function save(force=false):Promise<boolean>{
  const pos=position();if(!force&&!dirty&&JSON.stringify(pos)===savedPosition)return true;
  const id=doc.id,stamp=generation,positionOnly=!dirty&&!force,content=positionOnly?'':view.state.doc.toString();if(dirty)$('#save-status').textContent=messages.fSaving();
  saveFlight=(async()=>{try{
-  if(positionOnly){await call('SavePosition',id,pos);if(doc.id===id){doc.position=pos;savedPosition=JSON.stringify(pos)}return true}
-  const result=await call<Doc>('Update',{id,revision:doc.revision,content,position:pos});
+  if(positionOnly){await call('SavePosition',id,pos);if(doc.id===id){doc.position=pos;savedPosition=JSON.stringify(pos);if(!dirty&&JSON.stringify(position())===JSON.stringify(pos))journalSaved()}return true}
+  const result=await call<Doc>('Update',{id,revision:doc.revision,content,position:pos,recoverySequence:desktop?recovery.sequence():0});
   if(doc.id!==id)return true;doc.revision=result.revision;doc.status=result.status;doc.statusCode=result.statusCode;failedSaveError=undefined;doc.conflict=result.conflict;doc.title=result.title;doc.customTitle=result.customTitle;doc.content=content;doc.position=pos;doc.updated=result.updated;
-  if(stamp===generation)dirty=false;savedPosition=JSON.stringify(pos);header();preview.saved();sidebarSearch?.contentAccepted(dirty);
+  if(stamp===generation){dirty=false;if(desktop&&!compositionActive&&JSON.stringify(position())===JSON.stringify(pos))journalSaved()}savedPosition=JSON.stringify(pos);header();preview.saved();sidebarSearch?.contentAccepted(dirty);
   if(result.conflict||statusFailed(result))banner(statusText(result),result.conflict?'conflict':'error');else banner();return true;
  }catch(e){if(positionOnly)return true;failedSaveError=e;saveFailedBanner();$('#save-status').textContent=messages.fSaveFailedYourTextIsStillHere();dirty=true;sidebarSearch?.contentFailed();return false}finally{saveFlight=null;syncPending()}})();syncPending();const ok=await saveFlight;if(ok&&dirty)return save();return ok;
 }
@@ -156,7 +169,7 @@ window.liubaiAppendCapture=async request=>{
   if(target.id===doc.id){
    loading=true;
    try{view.dispatch({changes:result.changes,annotations:isolateHistory.of('full')})}finally{loading=false}
-   doc=target;dirty=false;savedPosition='';header();documentFind?.changed(true);scheduleWordCount(true);scheduleOutline(true);preview.changed(true,view.state.doc.lineAt(view.state.selection.main.head).number-1);preview.saved();
+   doc=target;dirty=false;savedPosition='';seedRecovery();header();documentFind?.changed(true);scheduleWordCount(true);scheduleOutline(true);preview.changed(true,view.state.doc.lineAt(view.state.selection.main.head).number-1);preview.saved();
    if(doc.conflict||statusFailed(doc))banner(statusText(doc),doc.conflict?'conflict':'error');else banner();
    await save();
   }else sessions.delete(target.id);
@@ -193,7 +206,7 @@ function load(next:WorkspaceState,hit?:SearchHit){
  // Reading layout keeps the editor editable-state (it is visibility:hidden, pointer-events:none and focus moves to the preview): flipping readOnly swaps widget DOM (e.g. table cell line boxes) and corrupts CodeMirror's cached height map for off-viewport blocks, so the document jumped on return.
  view.dispatch({effects:[editLock.reconfigure(EditorState.readOnly.of(busy)),editorLocale.reconfigure(localizedEditor())]});
  reconfigure();
- loading=false;view.dispatch({effects:setFocus.of(focusMode)});applyTheme();const changedPreviewDocument=preview.setDocument(doc.id);applyLayout();if(!changedPreviewDocument)preview.refresh();header();scheduleWordCount(true);scheduleOutline(true);if(doc.conflict||statusFailed(doc))banner(statusText(doc),doc.conflict?'conflict':'error');else banner();
+ loading=false;seedRecovery();view.dispatch({effects:setFocus.of(focusMode)});applyTheme();const changedPreviewDocument=preview.setDocument(doc.id);applyLayout();if(!changedPreviewDocument)preview.refresh();header();scheduleWordCount(true);scheduleOutline(true);if(doc.conflict||statusFailed(doc))banner(statusText(doc),doc.conflict?'conflict':'error');else banner();
  const loadedView=view,loadedID=doc.id,loadedGeneration=generation,scroll=doc.position.scroll||0;
  requestAnimationFrame(()=>{
   if(view!==loadedView||doc.id!==loadedID||epoch!==navigationEpoch||compositionActive||hit&&generation!==loadedGeneration)return;
@@ -404,7 +417,7 @@ let busyHolds=0;
 function setBusy(value:boolean){busyHolds=Math.max(0,busyHolds+(value?1:-1));busy=busyHolds>0;if(view)view.dispatch({effects:editLock.reconfigure(EditorState.readOnly.of(busy))});if(!busy){if(pendingClose){pendingClose=false;void closeApp()}else if(openedQueue.length)setTimeout(()=>void processOpened(),500)}syncPending()}
 async function run(fn:()=>Promise<void>){if(busy)return;setBusy(true);try{await fn()}catch(e){toast(errorText(e))}finally{setBusy(false)}}
 async function processOpened(){if(busy||compositionActive||!openedQueue.length)return;const id=openedQueue.shift()!;await run(async()=>{if(await saveForAction())load(await call<WorkspaceState>('Activate',id));else toast(messages.fSaveTheCurrentDocumentFirstFindTheOpenedFile())})}
-async function saveAs(){if(!await saveForAction()){await rescue();return;}if(!desktop){download(doc.title+'.md',view.state.doc.toString(),'text/markdown');toast(messages.fMarkdownDownloadedUseExportToIncludeImages());return}const r=await call<ExportResult>('SaveAs',doc.id);if(r.cancelled)return;const old=view.state.doc.toString();doc=r.document;loading=true;try{if(old!==doc.content)view.dispatch({changes:r.changes||[],annotations:Transaction.addToHistory.of(false)})}finally{loading=false}imageCache.clear();const next=await call<WorkspaceState>('State');state=next;dirty=false;savedPosition='';if(!preview.setDocument(doc.id))preview.refresh();header();documentFind?.changed(true);scheduleWordCount(true);scheduleOutline(true);sidebarSearch?.contentAccepted();banner();stateArrived(next);toast(messages.fSavedWithImages(r.path,r.missing?.length||0))}
+async function saveAs(){if(!await saveForAction()){await rescue();return;}if(!desktop){download(doc.title+'.md',view.state.doc.toString(),'text/markdown');toast(messages.fMarkdownDownloadedUseExportToIncludeImages());return}const r=await call<ExportResult>('SaveAs',doc.id);if(r.cancelled)return;const old=view.state.doc.toString();doc=r.document;loading=true;try{if(old!==doc.content)view.dispatch({changes:r.changes||[],annotations:Transaction.addToHistory.of(false)})}finally{loading=false}seedRecovery();imageCache.clear();const next=await call<WorkspaceState>('State');state=next;dirty=false;savedPosition='';if(!preview.setDocument(doc.id))preview.refresh();header();documentFind?.changed(true);scheduleWordCount(true);scheduleOutline(true);sidebarSearch?.contentAccepted();banner();stateArrived(next);toast(messages.fSavedWithImages(r.path,r.missing?.length||0))}
 async function rescue(){
  if(desktop){try{const r=await call<ExportResult>('Rescue',doc.id,view.state.doc.toString());if(!r.cancelled)toast(messages.fRecoverySaved(r.path))}catch(e){toast(errorText(e))}}
  else {download(messages.fRecoveryFilename(doc.title),view.state.doc.toString(),'text/markdown');toast(messages.fTextDownloadedImagesRemainOnThisMac())}
@@ -732,7 +745,7 @@ $('.editor-pane').addEventListener('mousedown',e=>{
  const image=imageRanges(state).find(i=>i.from>=last.from&&i.to<=last.to);
  view.dispatch(table||image?leaveBlock(state,(table||image)!):{selection:{anchor:doc.length},userEvent:'select.pointer'});view.focus();
 });
-$('.editor-scroll').addEventListener('scroll',()=>{if(loading||!doc)return;clearTimeout(timer);timer=setTimeout(()=>void save(),500)},{passive:true});
+$('.editor-scroll').addEventListener('scroll',()=>{if(loading||!doc)return;if(desktop)recovery.change({id:doc.id,position:position(),composing:compositionActive||view.composing});clearTimeout(timer);timer=setTimeout(()=>void save(),500)},{passive:true});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
 if(window.mygo){window.mygo.on<Partial<Appearance>>('liubai:appearance-changed',change=>{if(!appearance){pendingAppearance={...pendingAppearance,...change};return}applyAppearance({...appearance,...change});try{localStorage.setItem('liubai-appearance',JSON.stringify(appearance))}catch{}});window.mygo.on<Summary>('liubai:captured',summary=>{if(state){state.recent=[summary,...state.recent.filter(d=>d.id!==summary.id)];sidebarSearch?.refresh();backlinks?.refresh();if(!$('#drawer').hidden)renderDrawer()}toast(messages.fCaptured(summary.title),messages.fOpen(),()=>void run(async()=>{if(await saveForAction())load(await call<WorkspaceState>('Activate',summary.id))}))});window.mygo.on<string>('liubai:action',id=>void action(id));window.mygo.on<string>('liubai:disk-changed',id=>{backlinks?.refresh();if(doc?.id===id)void pollStatus()});window.mygo.on<WorkspaceState>('liubai:opened',next=>{openedQueue.push(next.current.id);sidebarSearch?.refresh();backlinks?.refresh();void processOpened()});window.mygo.on<{path:string;error:string}>('liubai:open-failed',f=>toast(messages.fOpenFailed(f.path.split(/[\\/]/).pop()||f.path,f.error)))}
 preview=createPreviewController({
@@ -754,7 +767,13 @@ backlinks=createBacklinks({
  request:id=>call<BacklinkResponse>('Backlinks',id),
  activate:(item,hit)=>void navigateSearch(item,hit,false),
 });
-try{const next=await call<WorkspaceState>('State');load(next);stateArrived(next)}catch(e){banner(messages.fDocumentOpenError(errorText(e)),'notice')}
+try{
+ if(desktop){try{
+  const namespace=await call<string>('RecoveryNamespace');journal=recoveryJournal(localStorage,namespace);
+  await journal.restore(snapshot=>call('RestoreRecovery',{version:1,sequence:1,previous:0,...snapshot}));
+ }catch(error){journalError(error)}}
+ const next=await call<WorkspaceState>('State');load(next);stateArrived(next)
+}catch(e){banner(messages.fDocumentOpenError(errorText(e)),'notice')}
 async function pollStatus(){
  if(!doc||busy||dirty||saveFlight||compositionActive||document.visibilityState!=='visible')return;
  const id=doc.id;let s:DocStatus;try{s=await call<DocStatus>('Status',id)}catch{return}

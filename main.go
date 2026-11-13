@@ -372,6 +372,34 @@ func (d *Desktop) SetPending(pending bool) {
 	}
 }
 
+func (d *Desktop) StageRecovery(update RecoveryUpdate) error { return d.w.stageRecovery(update) }
+
+func (d *Desktop) RecoveryNamespace() string { return digest([]byte(d.w.root))[:24] }
+
+func (d *Desktop) RestoreRecovery(update RecoveryUpdate) error {
+	// Each renderer restart begins a fresh sequence. Restoration occurs before
+	// the editor is seeded, and creates a separate, deduplicated draft.
+	d.w.mu.Lock()
+	exists := d.w.docs[update.ID] != nil
+	update.Sequence = d.w.recovery[update.ID].sequence + 1
+	d.w.mu.Unlock()
+	if !exists {
+		return nil
+	} // Intentionally removed documents stay removed.
+	if err := d.w.stageRecovery(update); err != nil {
+		return err
+	}
+	err := d.w.flushRecovery()
+	if err != nil {
+		// Failed replay stays in the renderer journal. It must not become the
+		// seed for the new renderer's live sequence, which begins at one.
+		d.w.mu.Lock()
+		delete(d.w.recovery, update.ID)
+		d.w.mu.Unlock()
+	}
+	return err
+}
+
 // Reveal shows the quarantine folder State reported. It lies in the
 // workspace, and nothing outside it is revealed for the page.
 func (d *Desktop) Reveal(path string) {
@@ -676,6 +704,13 @@ func main() {
 		d.win.Page().OnWillNavigate(func(e *mygo.NavigateEvent) { e.PreventDefault() })
 	})
 	mygo.App.OnBeforeQuit(func(e *mygo.QuitEvent) {
+		if e.SessionEnding {
+			d.allowClose.Store(true)
+			if err := d.w.flushRecovery(); err != nil {
+				log.Printf("session recovery: %v", err)
+			}
+			return
+		}
 		if !quitAllowed(d.allowClose.Load(), d.pending.Load()) {
 			e.PreventDefault()
 			d.requestClose()
@@ -832,6 +867,20 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 		case "SetPending":
 			var pending bool
 			e = arg(0, &pending)
+		case "StageRecovery":
+			var update RecoveryUpdate
+			e = arg(0, &update)
+			if e == nil {
+				e = d.StageRecovery(update)
+			}
+		case "RecoveryNamespace":
+			value = d.RecoveryNamespace()
+		case "RestoreRecovery":
+			var update RecoveryUpdate
+			e = arg(0, &update)
+			if e == nil {
+				e = d.RestoreRecovery(update)
+			}
 		case "Update":
 			var x Edit
 			e = arg(0, &x)

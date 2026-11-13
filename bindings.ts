@@ -93,6 +93,9 @@ export interface DocStatus {
 }
 
 export interface Document {
+  recoverySourceID?: string;
+  recoverySourceHash?: string;
+  recoveryContentHash?: string;
   id: string;
   title: string;
   customTitle?: boolean;
@@ -136,6 +139,7 @@ export interface DocumentFilterResponse {
 }
 
 export interface Edit {
+  recoverySequence?: number;
   id: string;
   revision: number;
   content: string;
@@ -177,6 +181,28 @@ export interface Position {
   anchor: number;
   head: number;
   scroll: number;
+}
+
+/**
+ * RecoveryDelta uses the editor's UTF-16 coordinates, relative to the previous
+ * accepted snapshot. Full snapshots seed/reseed a stream; neither path writes
+ * an original file or performs disk IO on each keystroke.
+ */
+export interface RecoveryDelta {
+  from: number;
+  to: number;
+  insert: string;
+}
+
+export interface RecoveryUpdate {
+  version: number;
+  id: string;
+  sequence: number;
+  previous: number;
+  content?: string;
+  changes?: RecoveryDelta[];
+  position: Position;
+  composing: boolean;
 }
 
 export interface SearchHit {
@@ -326,6 +352,9 @@ export const Desktop = {
   readImage(id: string, dest: string): Promise<ImageResult> {
     return call("Desktop.ReadImage", id, dest);
   },
+  recoveryNamespace(): Promise<string> {
+    return call("Desktop.RecoveryNamespace");
+  },
   reload(id: string): Promise<WorkspaceState> {
     return call("Desktop.Reload", id);
   },
@@ -337,6 +366,9 @@ export const Desktop = {
   },
   resolveWikiLink(request: WikiResolveRequest): Promise<SearchResponse> {
     return call("Desktop.ResolveWikiLink", request);
+  },
+  restoreRecovery(update: RecoveryUpdate): Promise<void> {
+    return call("Desktop.RestoreRecovery", update);
   },
   /**
    * Reveal shows the quarantine folder State reported. It lies in the
@@ -386,6 +418,9 @@ export const Desktop = {
    */
   showSettings(tab: string): Promise<void> {
     return call("Desktop.ShowSettings", tab);
+  },
+  stageRecovery(update: RecoveryUpdate): Promise<void> {
+    return call("Desktop.StageRecovery", update);
   },
   state(): Promise<WorkspaceState> {
     return call("Desktop.State");

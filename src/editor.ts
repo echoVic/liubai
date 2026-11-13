@@ -1,5 +1,5 @@
 import {messages,activeLocale} from './i18n';
-import { EditorState, Compartment, RangeSetBuilder, StateEffect, StateField, type Extension, type Transaction } from '@codemirror/state';
+import { EditorState, Compartment, RangeSetBuilder, StateEffect, StateField, type Extension, type Transaction, type ChangeSet } from '@codemirror/state';
 import { EditorView, Decoration, WidgetType, ViewPlugin, type DecorationSet, type ViewUpdate, keymap, placeholder } from '@codemirror/view';
 import { history,historyKeymap,defaultKeymap,indentWithTab,undo,redo } from '@codemirror/commands';
 import { markdown,markdownLanguage,markdownKeymap } from '@codemirror/lang-markdown';
@@ -256,7 +256,7 @@ export function richExtensions(resolve:(dest:string)=>Promise<string>):Extension
  },{decorations:plugin=>plugin.decorations});
  return [blockRichMode.of(true),imageSelection,extraMarkers,createDetailsFolding(composing),footnoteInteractions(composing),createBlockField(resolve),inlinePlugin];
 }
-export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions){
+export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean,changes?:ChangeSet)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions){
  const state=EditorState.create({doc:doc.content,selection:{anchor:Math.min(doc.position.anchor||0,doc.content.length),head:Math.min(doc.position.head||0,doc.content.length)},extensions:[
   tableComposition.of((view,active,commit)=>{view.dispatch({effects:setComposing.of(active)});commit?.();onCompose(active)}),
   tableLink.of(onLink),
@@ -265,7 +265,7 @@ export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>P
   // ⌘U underlines and ⌘I italicizes like the toolbar, so CodeMirror's undo-selection and select-parent bindings are dropped.
   keymap.of([{key:'Mod-Home',run:v=>docStart(v,false),shift:v=>docStart(v,true)},{mac:'Cmd-ArrowUp',run:v=>docStart(v,false),shift:v=>docStart(v,true)},...(blocks?[{key:'Alt-Shift-ArrowUp',run:()=>{blocks.action('up');return true}},{key:'Alt-Shift-ArrowDown',run:()=>{blocks.action('down');return true}},{key:'Mod-/',run:()=>{blocks.action('menu');return true}}]:[]),...([1,-1] as const).map(direction=>({key:direction>0?'Tab':'Shift-Tab',run:(view:EditorView)=>{if(view.composing||view.state.field(composing)||view.state.readOnly)return false;const spec=indentList(view.state,direction);if(!spec)return false;view.dispatch(spec);return true}})),...markdownKeymap,...historyKeymap.filter(binding=>binding.key!=='Mod-u'),...searchKeymap.filter(binding=>binding.key==='Mod-Alt-g'),...defaultKeymap.filter(binding=>binding.key!=='Mod-i'),indentWithTab]),
   mode.of(richExtensions(resolve)),EditorView.lineWrapping,editorLocale.of(localizedEditor()),
-  EditorView.updateListener.of(u=>{if(u.docChanged||u.selectionSet)onChange(u.docChanged)}),
+  EditorView.updateListener.of(u=>{if(u.docChanged||u.selectionSet)onChange(u.docChanged,u.changes)}),
   EditorView.domEventHandlers({
    compositionstart:(_e,v)=>{v.dispatch({effects:setComposing.of(true)});onCompose(true);return false},
    compositionend:(_e,v)=>{setTimeout(()=>{if(v.dom.isConnected){v.dispatch({effects:setComposing.of(false)});onCompose(false)}},0);return false},

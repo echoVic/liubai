@@ -114,7 +114,7 @@ class TableDOM{
   this.dom.append(this.button,this.scroller);
   this.buildMenu();
   this.menu=attachMenu(this.button,this.popup,id=>{
-   if(id==='copyRich'){const {rows,aligns}=parseTable(this.raw);for(const copy of this.view.state.facet(tableCopy))copy(serializeTable(rows,aligns)+'\n\n'+tableReferences(this.view.state,this.from,this.from+this.raw.length))}
+   if(id==='copyRich'){const {rows,aligns}=parseTable(this.raw);for(const copy of this.view.state.facet(tableCopy))copy(serializeTable(rows,aligns)+'\n\n'+tableReferences(this.view.state,this.from,this.from+this.raw.length,true))}
    else this.change(id as TableAction);
   });
   this.button.addEventListener('click',()=>{if(this.blocked())this.menu.close()});

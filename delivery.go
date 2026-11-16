@@ -43,7 +43,7 @@ func (w *Workspace) Delivery(id string) (Delivery, error) {
 	if d == nil {
 		return Delivery{}, messageError("bDocumentMissing", nil)
 	}
-	return w.delivery(d)
+	return w.delivery(d, nil)
 }
 
 // TableDelivery freezes only the selected table and the image bytes it references.
@@ -58,29 +58,39 @@ func (w *Workspace) TableDelivery(id, content string) (Delivery, error) {
 	if len(content) > maxDocument || !utf8.ValidString(content) {
 		return Delivery{}, messageError("bInvalidDocument", nil)
 	}
-	allowed := map[string]bool{}
+	allowed := map[string]string{}
 	for _, dest := range imageTargets(d.Content) {
-		allowed[canonicalDestination(dest)] = true
+		key := canonicalDestination(dest)
+		if _, exists := allowed[key]; !exists {
+			allowed[key] = dest
+		}
 	}
+	targets := map[string]string{}
 	for _, dest := range imageTargets(content) {
-		if !allowed[canonicalDestination(dest)] {
+		target, exists := allowed[canonicalDestination(dest)]
+		if !exists {
 			return Delivery{}, messageError("bImageNotReferenced", nil)
 		}
+		targets[dest] = target
 	}
 	snapshot := *d
 	snapshot.Content = content
-	return w.delivery(&snapshot)
+	return w.delivery(&snapshot, targets)
 }
 
-func (w *Workspace) delivery(d *Document) (Delivery, error) {
+func (w *Workspace) delivery(d *Document, targets map[string]string) (Delivery, error) {
 	result := Delivery{Title: d.Title, Content: d.Content, Images: map[string]string{}, Missing: []string{}, source: *d}
 	total := len(d.Content)
 	for _, dest := range imageTargets(d.Content) {
-		if external(dest) {
+		target := dest
+		if targets != nil {
+			target = targets[dest]
+		}
+		if external(target) {
 			result.External++
 			continue
 		}
-		path, e := w.imagePath(d, dest)
+		path, e := w.imagePath(d, target)
 		if e != nil {
 			result.Missing = append(result.Missing, dest)
 			continue

@@ -10,7 +10,7 @@ import { searchKeymap,highlightSelectionMatches } from '@codemirror/search';
 import {documentSearch} from './document-find';
 import { GFM } from '@lezer/markdown';
 import type { SyntaxNode } from '@lezer/common';
-import {TableWidget,tableComposition,tableLink} from './table-ui';
+import {TableWidget,tableComposition,tableCopy,tableLink} from './table-ui';
 import {ImageWidget,imageSelection,imageSelected} from './image-ui';
 import {imageRanges,tableRanges,mathRanges,mermaidRanges,mapImageRanges} from './images';
 import type { Doc } from './types';
@@ -256,10 +256,10 @@ export function richExtensions(resolve:(dest:string)=>Promise<string>):Extension
  },{decorations:plugin=>plugin.decorations});
  return [blockRichMode.of(true),imageSelection,extraMarkers,createDetailsFolding(composing),footnoteInteractions(composing),createBlockField(resolve),inlinePlugin];
 }
-export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean,changes?:ChangeSet)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions){
+export function createEditor(parent:HTMLElement,doc:Doc,resolve:(dest:string)=>Promise<string>,onChange:(content:boolean,changes?:ChangeSet)=>void,onImage:(files:File[],position?:number)=>void,onCompose:(active:boolean)=>void,onLink:(url:string)=>void,onOpenFiles:(files:File[])=>void,onPasteImage:(image:PasteImage)=>Promise<string>,onPasteError:(error:unknown)=>void,blocks?:BlockUIOptions,onCopyTable?:(raw:string)=>void){
  const state=EditorState.create({doc:doc.content,selection:{anchor:Math.min(doc.position.anchor||0,doc.content.length),head:Math.min(doc.position.head||0,doc.content.length)},extensions:[
   tableComposition.of((view,active,commit)=>{view.dispatch({effects:setComposing.of(active)});commit?.();onCompose(active)}),
-  tableLink.of(onLink),
+  tableLink.of(onLink),onCopyTable?tableCopy.of(onCopyTable):[],
   history(),composing,focusField,focusDecorations,createSlashMenu(composing,focusField,()=>blocks?.action('image')),blocks?createBlockUI(composing,focusField,blocks):[],markdown({base:markdownLanguage,codeLanguages:languages,extensions:[GFM,Highlight,MathSyntax,MermaidSyntax,WikiSyntax]}),syntaxHighlighting(colours),bracketMatching(),indentOnInput(),highlightSelectionMatches(),documentSearch,
   EditorView.editorAttributes.of(view=>({class:view.state.field(focusField)?'cm-focus-on':''})),
   // ⌘U underlines and ⌘I italicizes like the toolbar, so CodeMirror's undo-selection and select-parent bindings are dropped.

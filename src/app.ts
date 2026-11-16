@@ -198,7 +198,8 @@ function load(next:WorkspaceState,hit?:SearchHit){
  state=next;doc=next.current;source=!!appearance.source;dirty=false;failedSaveError=undefined;generation=0;savedPosition=JSON.stringify(doc.position);
  // Pictures stay cached for the open document only, so they are read again (and a replaced file shows) when another opens.
  for(const key of imageCache.keys())if(!key.startsWith(doc.id+':'))imageCache.delete(key);
- view=createEditor($('#editor'),doc,resolveImage,changed,insertImages,composition,openLink,files=>{if(!desktop&&files[0])void importFile(files[0])},importPastedImage,error=>toast(errorText(error)),{action:id=>void action(id==='image'?id:'block:'+id),dispatch:spec=>{if(!compositionActive&&!view.state.readOnly)view.dispatch(spec);view.focus()}});
+ const copyDocumentID=doc.id;
+ view=createEditor($('#editor'),doc,resolveImage,changed,insertImages,composition,openLink,files=>{if(!desktop&&files[0])void importFile(files[0])},importPastedImage,error=>toast(errorText(error)),{action:id=>void action(id==='image'?id:'block:'+id),dispatch:spec=>{if(!compositionActive&&!view.state.readOnly)view.dispatch(spec);view.focus()}},raw=>void run(()=>copyTable(raw,copyDocumentID)));
  // Top margin is the breathing room kept below the format bar when scrolling targets into view. It must stay below the first line's height above the scroller (about 18px at the 15px minimum font size), or hover tooltips anchored on the document's first line are measured as hidden and parked off-screen by CodeMirror.
  view.dispatch({effects:StateEffect.appendConfig.of([editLock.of(EditorState.readOnly.of(false)),EditorView.scrollMargins.of(()=>({top:12}))])});
  const cached=sessions.get(doc.id);if(cached&&cached.doc.toString()===doc.content){view.setState(cached);richMode=sessionRich.get(doc.id)??true}
@@ -434,6 +435,17 @@ async function exportDoc(allowMissing=false){
  toast(messages.fArchiveSaved(r.path)+(r.missing?.length?messages.fMissingImageReferencesPreserved():'')+(r.external?messages.fExternalImagesNeedAnInternetConnection():''));
 }
 $('#export-anyway').onclick=()=>{closeDialog('missing-dialog');void run(pendingMissing)};
+async function copyTable(raw:string,id:string,allowMissing=false){
+ if(doc.id===id&&!await saveForAction())return;
+ const data=await call<Delivery>('TableDelivery',id,raw);
+ if(data.missing.length&&!allowMissing){pendingMissing=()=>copyTable(raw,id,true);$('#missing-list').textContent=data.missing.join('\n');dialog('missing-dialog');return}
+ if(prepared)disposeMermaid(prepared);
+ prepared=renderDelivery(data,'mathml',anchorPrefix);$('#print-document').replaceChildren(prepared);
+ await waitImages(prepared);await document.fonts.ready;
+ readyClipboard=await prepareRichClipboard(prepared);readyAction='copyRich';readyData=data;
+ renderReadyInfo();$<HTMLButtonElement>('#ready-go').disabled=false;dialog('ready-dialog');
+}
+
 async function prepareDelivery(kind:string,allowMissing=false){
  if(!await saveForAction())return;const data=await call<Delivery>('Delivery',doc.id);
  if(data.missing.length&&!allowMissing){pendingMissing=()=>prepareDelivery(kind,true);$('#missing-list').textContent=data.missing.join('\n');dialog('missing-dialog');return}

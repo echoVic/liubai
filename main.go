@@ -268,6 +268,10 @@ func (d *Desktop) Delivery(id string) (Delivery, error) {
 	r, err := d.w.Delivery(id)
 	return deliveryIn(r, i18n.Locale()), err
 }
+func (d *Desktop) TableDelivery(id, content string) (Delivery, error) {
+	r, err := d.w.TableDelivery(id, content)
+	return deliveryIn(r, i18n.Locale()), err
+}
 func (d *Desktop) CopyRich(html, text string) error {
 	if len(html)+len(text) > 64<<20 {
 		return messageError("bCopyTooLarge", nil)
@@ -974,6 +978,17 @@ func serveWeb(addr string, web fs.FS, d *Desktop) error {
 			if e == nil {
 				var r Delivery
 				r, e = d.w.Delivery(id)
+				value = deliveryIn(r, req.Locale)
+			}
+		case "TableDelivery":
+			var id, content string
+			e = arg(0, &id)
+			if e == nil {
+				e = arg(1, &content)
+			}
+			if e == nil {
+				var r Delivery
+				r, e = d.w.TableDelivery(id, content)
 				value = deliveryIn(r, req.Locale)
 			}
 		case "ExportBrowser":

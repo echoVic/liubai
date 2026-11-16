@@ -31,8 +31,8 @@ export const extraMarkers=StateField.define<boolean>({
 // Code, math, diagrams, HTML and link targets never hold footnotes.
 const literal=/^(FencedCode|CodeBlock|InlineCode|MathBlock|MathFence|InlineMath|MermaidFence|Escape|Image|Autolink|URL|HTMLBlock|CommentBlock|ProcessingInstructionBlock)$/;
 const containers=/^(Document|BulletList|OrderedList|ListItem|Blockquote)$/;
-export function extraRanges(state:EditorState):Extras{
- const tree=syntaxTree(state),cached=cache.get(state.doc);if(cached?.tree===tree)return cached.ranges;
+export function extraRanges(state:EditorState,tree=syntaxTree(state)):Extras{
+ const cached=cache.get(state.doc);if(cached?.tree===tree)return cached.ranges;
  const result:Extras={callouts:[],details:[],references:[],definitions:new Map(),labels:new Set()};
  const present=state.field(extraMarkers,false);
  if(present===undefined?markers.test(state.doc.toString()):present){

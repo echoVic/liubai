@@ -6,7 +6,7 @@ import {undo,redo,isolateHistory} from '@codemirror/commands';
 import {markdown,markdownLanguage} from '@codemirror/lang-markdown';
 import {GFM} from '@lezer/markdown';
 import {Highlight} from './marks';
-import {wrapSelection,insertMath,clearFormatting,inlineMarkers,editTable,parseTable,frontMatterRange,type TableAction} from './editing';
+import {wrapSelection,insertMath,clearFormatting,inlineMarkers,editTable,parseTable,serializeTable,frontMatterRange,type TableAction} from './editing';
 import {messages,activeLocale} from './i18n';
 import {insertFootnote} from './extras';
 import {attachMenu} from './menu';
@@ -14,9 +14,11 @@ import {icon} from './icons';
 import {wikiAt,wikiURL,wikiNodeAllowed} from './wiki-links';
 import {keyLabel} from './platform';
 import {shortcutAction} from './shortcuts';
+import {tableReferences} from './table-references';
 
 // The editor clears its IME guard, commits the cell, then resumes saves and queued actions.
 export const tableComposition=Facet.define<(view:EditorView,active:boolean,commit?:()=>void)=>void>();
+export const tableCopy=Facet.define<(raw:string)=>void>();
 export const tableLink=Facet.define<(url:string)=>void>();
 // Keep the document parser's native contexts and reference definitions, not a cell-only parse.
 export function tableWikiLinkAt(state:EditorState,from:number,row:number,column:number,text:string,offset:number):{from:number;to:number;url:string}|null{
@@ -111,7 +113,10 @@ class TableDOM{
   this.scroller.append(this.table);
   this.dom.append(this.button,this.scroller);
   this.buildMenu();
-  this.menu=attachMenu(this.button,this.popup,id=>this.change(id as TableAction));
+  this.menu=attachMenu(this.button,this.popup,id=>{
+   if(id==='copyRich'){const {rows,aligns}=parseTable(this.raw);for(const copy of this.view.state.facet(tableCopy))copy(serializeTable(rows,aligns)+'\n\n'+tableReferences(this.view.state,this.from,this.from+this.raw.length,true))}
+   else this.change(id as TableAction);
+  });
   this.button.addEventListener('click',()=>{if(this.blocked())this.menu.close()});
  }
  private blocked(){return this.readOnly||this.view.state.readOnly||this.view.state.field(this.composing)||!!this.composingCell}
@@ -119,6 +124,7 @@ class TableDOM{
  private buildMenu(){
   TABLE_MENU_GROUPS.forEach((group,gi)=>{
    if(gi>0){const sep=document.createElement('div');sep.setAttribute('role','separator');this.popup.append(sep)}
+   if(group[0]==='deleteTable'){const copy=document.createElement('button');copy.type='button';copy.tabIndex=-1;copy.dataset.menuAction='copyRich';copy.setAttribute('role','menuitem');this.popup.append(copy)}
    for(const id of group){
     const item=document.createElement('button');item.type='button';item.tabIndex=-1;item.dataset.menuAction=id;
     item.setAttribute('role',TABLE_ALIGN.has(id)?'menuitemradio':'menuitem');
@@ -152,6 +158,7 @@ class TableDOM{
    const item=this.popup.querySelector<HTMLButtonElement>(`[data-menu-action="${id}"]`);
    if(item)item.firstElementChild!.textContent=labels[id]!;
   }
+  const copy=this.popup.querySelector<HTMLButtonElement>('[data-menu-action=copyRich]')!;copy.textContent=messages.fCopyRichText();copy.disabled=!this.view.state.facet(tableCopy).length;
   this.updateAlignState();
   while(this.table.rows.length>rows.length)this.table.deleteRow(-1);
   rows.forEach((row,i)=>{

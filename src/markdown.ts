@@ -19,6 +19,8 @@ export interface MarkdownOptions {
  mathOutput?:MathOutput;
  diagramTheme?:MermaidTheme;
  wikiLinks?:'interactive'|'text';
+ inline?:boolean;
+ referenceDefinitions?:string;
 }
 
 export interface MarkdownRender {
@@ -238,9 +240,10 @@ function isPromise<T>(value:T|Promise<T>):value is Promise<T> {
 export function renderMarkdown(content:string,options:MarkdownOptions):MarkdownRender {
  const root=document.createElement('article');
  root.className='markdown-document';
- const meta=splitFrontMatter(content);
+ const meta=options.inline?{raw:null,body:content,lines:0}:splitFrontMatter(content);
  const env:{lineOffset:number;wikiLinks?:'interactive'|'text';math?:{source:string;display:boolean}[];mathID?:string;mermaid?:{source:string;fallback:string}[];mermaidID?:string}={lineOffset:meta.lines,wikiLinks:options.wikiLinks};
- const tokens=parser.parse(meta.body,env);
+ if(options.referenceDefinitions)parser.parse(options.referenceDefinitions,env);
+ const tokens=options.inline?parser.parseInline(meta.body,env):parser.parse(meta.body,env);
  for(const token of tokens){
   if(token.type==='html_block'&&!token.meta?.liubai)token.content=stripEventHandlers(token.content);
   for(const child of token.children||[])if(child.type==='html_inline'&&!child.meta?.liubai)child.content=stripEventHandlers(child.content);

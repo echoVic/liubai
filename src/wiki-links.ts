@@ -162,7 +162,7 @@ export const wikiPlugin:PluginSimple=md=>{
  });
  md.core.ruler.before('inline','liubai_wiki_native_references',state=>{
   if(!state.src.includes(']]['))return;
-  const context:NativeContext={references:{}};
+  const context:NativeContext={references:{...state.env.references}};
   nativeLinks.block.parse(state.src,nativeLinks,context,[]);
   state.env.liubaiWikiReferences=context;
  });

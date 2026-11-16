@@ -1,4 +1,12 @@
 import assert from 'node:assert/strict';
+import {cellSourceOffset} from '../src/table-cell-selection';
+assert.equal(cellSourceOffset('**粗体内容一二三四五六**',8,-1),10);
+assert.equal(cellSourceOffset('a **bold** z',4,-1),6);
+assert.equal(cellSourceOffset('[label](https://example.com)',3,-1),4);
+assert.equal(cellSourceOffset('&amp; x',1,-1),5);
+assert.equal(cellSourceOffset('甲\\|乙',2,-1),3);
+assert.equal(cellSourceOffset('` code `',2,-1),4);
+assert.equal(cellSourceOffset('**x**',0,1),2);
 import {EditorState} from '@codemirror/state';
 import {history,undo} from '@codemirror/commands';
 import {markdown,markdownLanguage} from '@codemirror/lang-markdown';

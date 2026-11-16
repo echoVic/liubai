@@ -14,9 +14,12 @@ import {icon} from './icons';
 import {wikiAt,wikiURL,wikiNodeAllowed} from './wiki-links';
 import {keyLabel} from './platform';
 import {shortcutAction} from './shortcuts';
+import {renderMarkdown} from './markdown';
+import {cellSourceOffset,renderedCellOffset} from './table-cell-selection';
 
 // The editor clears its IME guard, commits the cell, then resumes saves and queued actions.
 export const tableComposition=Facet.define<(view:EditorView,active:boolean,commit?:()=>void)=>void>();
+export const tableResolve=Facet.define<(destination:string)=>Promise<string>>();
 export const tableLink=Facet.define<(url:string)=>void>();
 // Keep the document parser's native contexts and reference definitions, not a cell-only parse.
 export function tableWikiLinkAt(state:EditorState,from:number,row:number,column:number,text:string,offset:number):{from:number;to:number;url:string}|null{
@@ -78,8 +81,8 @@ export function tableFootnote(view:EditorView):(()=>TransactionSpec)|undefined{
 }
 export class TableWidget extends WidgetType{
  readonly locale=activeLocale;
- constructor(readonly raw:string,readonly from:number,readonly composing:StateField<boolean>,readonly readOnly=false){super()}
- eq(o:TableWidget){return o.locale===this.locale&&o.raw===this.raw&&o.from===this.from&&o.readOnly===this.readOnly}
+ constructor(readonly raw:string,readonly from:number,readonly composing:StateField<boolean>,readonly readOnly=false,readonly references=''){super()}
+ eq(o:TableWidget){return o.locale===this.locale&&o.raw===this.raw&&o.from===this.from&&o.readOnly===this.readOnly&&o.references===this.references}
  toDOM(view:EditorView){const table=new TableDOM(view,this.composing);tables.set(table.dom,table);table.update(this);return table.dom}
  updateDOM(dom:HTMLElement){tables.get(dom)!.update(this);return true}
  destroy(dom:HTMLElement){tables.get(dom)?.destroy();tables.delete(dom)}
@@ -89,6 +92,7 @@ class TableDOM{
  readonly dom=document.createElement('div');
  private scroller=document.createElement('div');
  private table=document.createElement('table');
+ private cells=new WeakMap<HTMLElement,{source:string;editing:boolean;references?:string;dispose?:()=>void}>();
  private button=document.createElement('button');
  private popup=document.createElement('div');
  private menu:ReturnType<typeof attachMenu>;
@@ -103,6 +107,7 @@ class TableDOM{
  raw='';
  from=0;
  private locale='';
+ private references='';
  constructor(private view:EditorView,private composing:StateField<boolean>){
   this.dom.className='rendered-table';this.dom.contentEditable='false';
   this.scroller.className='table-scroll';
@@ -138,8 +143,8 @@ class TableDOM{
  }
  update(widget:TableWidget){
   // A table that only moved looks the same: its handlers read the position from this.from.
-  if(widget.raw===this.raw&&widget.readOnly===this.readOnly&&widget.locale===this.locale){this.from=widget.from;return}
-  this.raw=widget.raw;this.from=widget.from;this.readOnly=widget.readOnly;this.locale=widget.locale;
+  if(widget.raw===this.raw&&widget.readOnly===this.readOnly&&widget.locale===this.locale&&widget.references===this.references){this.from=widget.from;return}
+  this.raw=widget.raw;this.from=widget.from;this.readOnly=widget.readOnly;this.locale=widget.locale;this.references=widget.references;
   this.button.disabled=this.blocked();this.button.setAttribute('aria-label',messages.fTableActions());this.popup.setAttribute('aria-label',messages.fTableActions());
   const {rows,aligns}=parseTable(this.raw),count=rows[0].length;
   const labels:Partial<Record<TableAction,string>>={
@@ -163,18 +168,40 @@ class TableDOM{
     cell.dataset.row=String(i);cell.dataset.column=String(j);cell.contentEditable=String(!this.readOnly);cell.tabIndex=this.readOnly?-1:0;
     cell.setAttribute('role','textbox');cell.setAttribute('aria-label',i===0?messages.fTableHeaderCell(j+1):messages.fTableCell(i,j+1));cell.style.textAlign=aligns[j]||'left';
     const value=row[j]||'';
-    // Own input already lives in this node. Never reset it or its DOM selection.
-    if(cell!==this.composingCell&&!(this.committing&&cell===document.activeElement)&&cell.textContent!==value){
-     const selection=window.getSelection(),active=cell===document.activeElement,offset=active&&selection?.anchorNode&&cell.contains(selection.anchorNode)?selection.anchorOffset:0;
-     cell.textContent=value;
-     if(active){const text=cell.firstChild||cell.appendChild(document.createTextNode(''));selection?.collapse(text,Math.min(offset,value.length))}
-    }
+    // The active cell owns its plain Markdown and selection; other cells show inline formatting.
+    if(cell!==this.composingCell&&!(this.committing&&cell===document.activeElement))this.showCell(cell,value,cell===document.activeElement&&!this.readOnly);
    }
   });
   this.row=Math.min(this.row,rows.length-1);this.column=Math.min(this.column,count-1);
  }
+ private showCell(cell:HTMLElement,source:string,editing:boolean){
+  const previous=this.cells.get(cell);
+  if(previous?.source===source&&previous.editing===editing&&(editing||previous.references===this.references))return;
+  const selection=window.getSelection(),active=cell===document.activeElement;
+  const offset=active&&selection?.anchorNode&&cell.contains(selection.anchorNode)?selection.anchorOffset:0;
+  previous?.dispose?.();
+  if(editing){
+   cell.style.height=cell.getBoundingClientRect().height+'px';cell.textContent=source;
+   if(active){const text=cell.firstChild||cell.appendChild(document.createTextNode(''));selection?.collapse(text,Math.min(offset,source.length))}
+   this.cells.set(cell,{source,editing});
+  }else{
+   // GFM removes escaped pipes before parsing the inline cell, including in code and math.
+   const rendered=renderMarkdown(source.replace(/\\\|/g,'|'),{inline:true,referenceDefinitions:this.references,resolve:destination=>this.view.state.facet(tableResolve)[0]?.(destination),external:'load',wikiLinks:'interactive'});
+   cell.style.height='';cell.replaceChildren(...rendered.root.childNodes);
+   this.cells.set(cell,{source,editing,references:this.references,dispose:rendered.dispose});
+  }
+ }
  private bind(cell:HTMLTableCellElement){
+  cell.addEventListener('mousedown',e=>{
+   if(e.button!==0||this.blocked()||this.view.composing||this.cells.get(cell)?.editing)return;
+   if((e.metaKey||e.ctrlKey)&&!e.altKey&&!e.shiftKey&&this.wikiLink(cell,e)){e.preventDefault();return}
+   const hit=renderedCellOffset(cell,e.clientX,e.clientY);if(!hit)return;
+   const source=this.cells.get(cell)?.source||'',offset=cellSourceOffset(source,hit.offset,hit.side,this.references);
+   e.preventDefault();cell.focus();
+   const text=cell.firstChild||cell.appendChild(document.createTextNode(''));window.getSelection()?.collapse(text,offset);
+  });
   cell.addEventListener('click',e=>{
+   if((e.target as Element).closest('a'))e.preventDefault();
    if(e.button!==0||!(e.metaKey||e.ctrlKey)||e.altKey||e.shiftKey||this.blocked()||this.view.composing||this.disposed)return;
    const handlers=this.view.state.facet(tableLink);if(!handlers.length)return;
    const link=this.wikiLink(cell,e);if(!link)return;
@@ -185,11 +212,14 @@ class TableDOM{
   });
   cell.addEventListener('focus',()=>{
    this.row=Number(cell.dataset.row);this.column=Number(cell.dataset.column);this.fresh=true;this.updateAlignState();
-   if(!this.blocked())this.view.dispatch({selection:{anchor:this.from+2},userEvent:'select.table'});
+   const editing=this.cells.get(cell)?.editing;
+   if(!this.readOnly)this.showCell(cell,parseTable(this.raw).rows[this.row]?.[this.column]||'',true);
+   if(!editing&&!this.blocked())this.view.dispatch({selection:{anchor:this.from+2},userEvent:'select.table'});
   });
-  cell.addEventListener('input',()=>{if(!this.blocked())this.commit(cell)});
+  cell.addEventListener('blur',()=>{if(document.activeElement!==cell&&!this.composingCell)this.showCell(cell,parseTable(this.raw).rows[Number(cell.dataset.row)]?.[Number(cell.dataset.column)]||'',false)});
+  cell.addEventListener('input',e=>{e.stopPropagation();if(!this.blocked())this.commit(cell)});
   cell.addEventListener('compositionstart',e=>{
-   e.stopPropagation();this.composingCell=cell;this.menu.close();this.button.disabled=true;
+   e.stopPropagation();this.showCell(cell,parseTable(this.raw).rows[Number(cell.dataset.row)]?.[Number(cell.dataset.column)]||'',true);this.composingCell=cell;this.menu.close();this.button.disabled=true;
    for(const notify of this.view.state.facet(tableComposition))notify(this.view,true);
   });
   cell.addEventListener('compositionend',e=>{
@@ -205,6 +235,12 @@ class TableDOM{
   cell.addEventListener('keydown',e=>this.key(e));
  }
  private wikiLink(cell:HTMLTableCellElement,event:MouseEvent){
+  if(!this.cells.get(cell)?.editing){
+   for(const link of cell.querySelectorAll<HTMLAnchorElement>('a[href^="liubai-wiki:"]')){
+    if(Array.from(link.getClientRects()).some(r=>event.clientX>=r.left&&event.clientX<=r.right&&event.clientY>=r.top&&event.clientY<=r.bottom))return {from:0,to:0,url:link.getAttribute('href')!};
+   }
+   return null;
+  }
   const doc=cell.ownerDocument,caret=doc.caretPositionFromPoint?.(event.clientX,event.clientY),fallback=caret?null:doc.caretRangeFromPoint?.(event.clientX,event.clientY);
   const node=caret?.offsetNode||fallback?.startContainer,offset=caret?.offset??fallback?.startOffset;
   if(!node||offset===undefined||!cell.contains(node))return null;
@@ -225,9 +261,10 @@ class TableDOM{
   return null;
  }
  private commit(cell:HTMLElement,annotations?:TransactionSpec['annotations']){
-  if(this.blocked()||!cell.isConnected)return;
+  if(this.blocked()||!cell.isConnected||!this.cells.get(cell)?.editing)return;
   const value=cell.textContent||'',row=Number(cell.dataset.row),column=Number(cell.dataset.column);
   if(value===(parseTable(this.raw).rows[row]?.[column]||''))return;
+  this.cells.set(cell,{source:value,editing:true});
   this.committing=true;
   try{
    const spec=editTable(this.view.state,{from:this.from,to:this.from+this.raw.length},row,column,'cell',value);
@@ -299,5 +336,5 @@ class TableDOM{
    if(row<0||row>=rows)this.leave(row<0);else this.focus(row,this.column);
   }else if(e.key==='Enter'){e.preventDefault();e.stopPropagation()}
  }
- destroy(){this.disposed=true;clearTimeout(this.endTimer);this.menu.destroy();this.popup.remove()}
+ destroy(){for(const cell of this.table.querySelectorAll<HTMLElement>('th,td'))this.cells.get(cell)?.dispose?.();this.disposed=true;clearTimeout(this.endTimer);this.menu.destroy();this.popup.remove()}
 }

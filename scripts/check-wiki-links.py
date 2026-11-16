@@ -62,7 +62,13 @@ def table_navigation(page):
           const text=args.text,modifier=args.modifier;
           const raw=cell.textContent,start=raw.indexOf(text),range=document.createRange();
           if(start<0)throw Error('Missing cell text: '+text);
-          range.setStart(cell.firstChild,start);range.setEnd(cell.firstChild,start+text.length);
+          const walker=document.createTreeWalker(cell,NodeFilter.SHOW_TEXT);let offset=0;
+          while(walker.nextNode()){
+            const node=walker.currentNode,end=offset+node.textContent.length;
+            if(start>=offset&&start<end)range.setStart(node,start-offset);
+            if(start+text.length<=end){range.setEnd(node,start+text.length-offset);break}
+            offset=end;
+          }
           const r=range.getBoundingClientRect();
           const init={bubbles:true,cancelable:true,view:window,button:0,buttons:1,
             clientX:r.x+r.width/2,clientY:r.y+r.height/2,

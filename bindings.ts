@@ -428,6 +428,9 @@ export const Desktop = {
   status(id: string): Promise<DocStatus> {
     return call("Desktop.Status", id);
   },
+  tableDelivery(id: string, content: string): Promise<Delivery> {
+    return call("Desktop.TableDelivery", id, content);
+  },
   update(e: Edit): Promise<Document> {
     return call("Desktop.Update", e);
   },

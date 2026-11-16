@@ -43,6 +43,36 @@ func (w *Workspace) Delivery(id string) (Delivery, error) {
 	if d == nil {
 		return Delivery{}, messageError("bDocumentMissing", nil)
 	}
+	return w.delivery(d)
+}
+
+// TableDelivery freezes only the selected table and the image bytes it references.
+// As with ReadImage, a selection cannot introduce paths absent from the saved document.
+func (w *Workspace) TableDelivery(id, content string) (Delivery, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	d := w.docs[id]
+	if d == nil {
+		return Delivery{}, messageError("bDocumentMissing", nil)
+	}
+	if len(content) > maxDocument || !utf8.ValidString(content) {
+		return Delivery{}, messageError("bInvalidDocument", nil)
+	}
+	allowed := map[string]bool{}
+	for _, dest := range imageTargets(d.Content) {
+		allowed[canonicalDestination(dest)] = true
+	}
+	for _, dest := range imageTargets(content) {
+		if !allowed[canonicalDestination(dest)] {
+			return Delivery{}, messageError("bImageNotReferenced", nil)
+		}
+	}
+	snapshot := *d
+	snapshot.Content = content
+	return w.delivery(&snapshot)
+}
+
+func (w *Workspace) delivery(d *Document) (Delivery, error) {
 	result := Delivery{Title: d.Title, Content: d.Content, Images: map[string]string{}, Missing: []string{}, source: *d}
 	total := len(d.Content)
 	for _, dest := range imageTargets(d.Content) {
